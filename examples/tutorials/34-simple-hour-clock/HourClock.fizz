@@ -1,0 +1,13 @@
+init:
+  hour = 1
+
+
+always assertion Safety:
+  return hour <= 12 and hour >= 1
+
+always eventually assertion Liveness:
+    return hour in [6]
+
+
+atomic action Tick:
+    hour = hour%12 + 1

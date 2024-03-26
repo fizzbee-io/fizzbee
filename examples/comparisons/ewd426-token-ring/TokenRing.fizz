@@ -1,0 +1,28 @@
+
+eventually always assertion Stabilized:
+    return any(
+                   [ all([counters[j] == counters[0] for j in range(0,i)]) and
+                     all([counters[j] == (counters[0]-1)%M for j in range(i,N)])
+                       for i in range(N+1)
+                   ]
+               )
+
+
+atomic action Init:
+    N = 5
+    M = 4
+    NODES = range(0, N)
+    counters = [0] * N
+    for i in reversed(NODES):
+        any j in range(0, M):
+            counters[i] = j
+
+atomic fair<weak> action CreateToken:
+    if counters[0] == counters[N-1]:
+        `createtoken` counters[0] = (counters[N-1] + 1) % M
+
+atomic fair<weak> action PassToken:
+    any i in NODES[1:]:
+        if counters[i] != counters[i-1]:
+            `passtoken`
+            counters[i] = counters[i-1]

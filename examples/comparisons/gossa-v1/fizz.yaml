@@ -1,0 +1,7 @@
+options:
+  maxActions: 200
+
+actionOptions:
+  FalselyDetectDeadNode:
+    maxActions: 10
+

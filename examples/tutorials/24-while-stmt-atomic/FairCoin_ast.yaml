@@ -1,0 +1,51 @@
+states:
+  code: |
+    value = -1  
+
+actions:
+  - name: Toss
+    block:
+      flow: FLOW_ATOMIC
+      stmts:
+        - pyStmt:
+            code: toss1 = -1
+        - pyStmt:
+            code: toss2 = -1
+        - whileStmt:
+            flow: FLOW_ATOMIC
+            pyExpr: toss1 == toss2
+            block:
+                flow: FLOW_ATOMIC
+                stmts:
+                  - block:
+                      flow: FLOW_ONEOF
+                      stmts:
+                          - pyStmt:
+                              code: toss1 = 0
+                          - pyStmt:
+                              code: toss1 = 1
+                  - block:
+                      flow: FLOW_ONEOF
+                      stmts:
+                          - pyStmt:
+                              code: toss2 = 0
+                          - pyStmt:
+                              code: toss2 = 1
+
+                  - ifStmt:
+                      flow: FLOW_ATOMIC
+                      branches:
+                        - condition: "toss1 == toss2"
+                          block:
+                            flow: FLOW_ATOMIC
+                            stmts:
+                              - pyStmt:
+                                  code: toss1 = -1
+                              - pyStmt:
+                                  code: toss2 = -1
+                        - condition: "True"
+                          block:
+                            flow: FLOW_ATOMIC
+                            stmts:
+                              - pyStmt:
+                                  code: value = toss2

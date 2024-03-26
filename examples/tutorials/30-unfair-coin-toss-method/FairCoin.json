@@ -1,0 +1,124 @@
+{
+  "invariants": [
+    {
+      "name": "Safety",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "pyStmt": {
+              "code": "name = \"FairToss\""
+            }
+          },
+          {
+            "returnStmt": {
+              "pyExpr": "('FairToss' not in __returns__ or\n        __returns__['FairToss'] in [0, 1])"
+            }
+          }
+        ]
+      },
+      "pyCode": "def Safety():\n    name = \"FairToss\"\n    return ('FairToss' not in __returns__ or\n        __returns__['FairToss'] in [0, 1])\n\n"
+    },
+    {
+      "name": "Liveness",
+      "temporalOperators": [
+        "always",
+        "eventually"
+      ],
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "returnStmt": {
+              "pyExpr": "'FairToss' in __returns__ and __returns__['FairToss'] in [0, 1]"
+            }
+          }
+        ]
+      },
+      "pyCode": "def Liveness():\n    return 'FairToss' in __returns__ and __returns__['FairToss'] in [0, 1]\n\n"
+    }
+  ],
+  "actions": [
+    {
+      "name": "FairToss",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "whileStmt": {
+              "pyExpr": "True",
+              "block": {
+                "stmts": [
+                  {
+                    "callStmt": {
+                      "vars": [
+                        "toss1"
+                      ],
+                      "name": "UnfairToss"
+                    }
+                  },
+                  {
+                    "callStmt": {
+                      "vars": [
+                        "toss2"
+                      ],
+                      "name": "UnfairToss"
+                    }
+                  },
+                  {
+                    "ifStmt": {
+                      "branches": [
+                        {
+                          "condition": "toss1 != toss2",
+                          "block": {
+                            "stmts": [
+                              {
+                                "returnStmt": {
+                                  "pyExpr": "toss2"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "functions": [
+    {
+      "name": "UnfairToss",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ONEOF",
+        "stmts": [
+          {
+            "returnStmt": {
+              "pyExpr": "0"
+            }
+          },
+          {
+            "returnStmt": {
+              "pyExpr": "0"
+            }
+          },
+          {
+            "returnStmt": {
+              "pyExpr": "1"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+
+init:
+  ELEMENTS = set([1, 2, 3])
+  elements = set([])
+  count = 0
+
+invariants:
+  always count == len(elements)
+
+action Add:
+   any e in (ELEMENTS - elements):
+     elements.add(e)
+     count += 1
+
+action Remove:
+   any e in elements:
+     elements.remove(e)
+     count -= 1
+

@@ -1,0 +1,59 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "modelchecker",
+    srcs = [
+        "checker.go",
+        "clone.go",
+        "error.go",
+        "graph.go",
+        "invariants.go",
+        "markovchain.go",
+        "options.go",
+        "perf_checker.go",
+        "processor.go",
+        "protopath.go",
+        "starlark.go",
+        "testconstants.go",
+        "thread.go",
+    ],
+    importpath = "github.com/jayaprabhakar/fizzbee/modelchecker",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib",
+        "//proto",
+        "//proto:options",
+        "@com_github_golang_glog//:glog",
+        "@com_github_golang_protobuf//proto:go_default_library",
+        "@net_starlark_go//starlark",
+        "@net_starlark_go//syntax",
+    ],
+)
+
+go_test(
+    name = "modelchecker_test",
+    srcs = [
+        "checker_test.go",
+        "graph_test.go",
+        "invariants_test.go",
+        "markovchain_test.go",
+        "processor_test.go",
+        "protopath_test.go",
+        "starlark_test.go",
+        "thread_test.go",
+    ],
+    data = [
+        "//examples/comparisons",
+        "//examples/tutorials",
+    ],
+    embed = [":modelchecker"],
+    deps = [
+        "//lib",
+        "//proto",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@net_starlark_go//starlark",
+        "@net_starlark_go//syntax",
+        "@org_golang_google_protobuf//encoding/protojson:go_default_library",
+    ],
+)

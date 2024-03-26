@@ -1,0 +1,111 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@com_google_protobuf//:protobuf.bzl", "py_proto_library")
+
+proto_library(
+    name = "ast_proto",
+    srcs = ["fizz_ast.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "ast_go_proto",
+    importpath = "fizz/ast",
+    proto = ":ast_proto",
+    visibility = ["//visibility:public"],
+)
+
+py_proto_library(
+    name = "ast_py_proto",
+    srcs = ["fizz_ast.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "ast",
+    embed = [":ast_go_proto"],
+    importpath = "fizz/ast",
+    visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "perf_proto",
+    srcs = [
+        "performance_model.proto",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "perf_go_proto",
+    importpath = "fizz/perf",
+    proto = ":perf_proto",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "perf",
+    embed = [":perf_go_proto"],
+    importpath = "fizz/perf",
+    visibility = ["//visibility:public"],
+)
+
+py_proto_library(
+    name = "perf_py_proto",
+    srcs = ["performance_model.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "proto",
+    embed = [":proto_go_proto"],
+    importpath = "fizz/proto",
+    visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "options_proto",
+    srcs = [
+        "statespace_options.proto",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "options_go_proto",
+    importpath = "fizz/proto",
+    proto = ":options_proto",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "options",
+    embed = [":options_go_proto"],
+    importpath = "fizz/proto",
+    visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "proto_proto",
+    srcs = [
+        "fizz_ast.proto",
+        "graph.proto",
+        "performance_model.proto",
+        "statespace_options.proto",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "proto_go_proto",
+    importpath = "fizz/proto",
+    proto = ":proto_proto",
+    visibility = ["//visibility:public"],
+)
+
+py_proto_library(
+    name = "graph_py_proto",
+    srcs = ["graph.proto"],
+    visibility = ["//visibility:public"],
+)

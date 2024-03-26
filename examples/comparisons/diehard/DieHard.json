@@ -1,0 +1,180 @@
+{
+  "states": {
+    "code": "big = 0\nsmall = 0\n\n"
+  },
+  "invariants": [
+    {
+      "name": "CheckBigJug",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "returnStmt": {
+              "pyExpr": "big != 4"
+            }
+          }
+        ]
+      },
+      "pyCode": "def CheckBigJug():\n    return big != 4\n\n"
+    }
+  ],
+  "actions": [
+    {
+      "name": "FillBigJug",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "pyStmt": {
+              "code": "big = 5"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "FillSmallJug",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "pyStmt": {
+              "code": "small = 3"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "EmptyBigJug",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "pyStmt": {
+              "code": "big = 0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "EmptySmallJug",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "pyStmt": {
+              "code": "small = 0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SmallToBig",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "ifStmt": {
+              "branches": [
+                {
+                  "condition": "small + big <= 5",
+                  "block": {
+                    "stmts": [
+                      {
+                        "pyStmt": {
+                          "code": "big = big + small"
+                        }
+                      },
+                      {
+                        "pyStmt": {
+                          "code": "small = 0"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "condition": "True",
+                  "block": {
+                    "stmts": [
+                      {
+                        "pyStmt": {
+                          "code": "small = small - (5 - big)"
+                        }
+                      },
+                      {
+                        "pyStmt": {
+                          "code": "big = 5"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "BigToSmall",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "ifStmt": {
+              "branches": [
+                {
+                  "condition": "small + big <= 3",
+                  "block": {
+                    "stmts": [
+                      {
+                        "pyStmt": {
+                          "code": "small = big + small"
+                        }
+                      },
+                      {
+                        "pyStmt": {
+                          "code": "big = 0"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "condition": "True",
+                  "block": {
+                    "stmts": [
+                      {
+                        "pyStmt": {
+                          "code": "big = big - (3 - small)"
+                        }
+                      },
+                      {
+                        "pyStmt": {
+                          "code": "small = 3"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

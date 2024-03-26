@@ -1,0 +1,23 @@
+
+invariants:
+  always 'TwoDice' not in __returns__ or __returns__['TwoDice'] in [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  always eventually 'TwoDice' in __returns__ and __returns__['TwoDice'] in [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+atomic func Toss():
+    oneof:
+        return 0
+        return 1
+
+atomic func RollDie():
+  toss0 = Toss()
+  while True:
+    toss1 = Toss()
+    toss2 = Toss()
+
+    if (toss0 != toss1 or toss0 != toss2):
+      return 4 * toss0 + 2 * toss1 + toss2
+
+atomic action TwoDice:
+  die1 = RollDie()
+  die2 = RollDie()
+  return die1 + die2

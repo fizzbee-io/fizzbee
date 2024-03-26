@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+option go_package = "fizz/proto";
+
+message Matrix {
+  repeated Row rows = 1;
+}
+
+message Row {
+  repeated Cell cells = 1;
+}
+
+message Cell {
+  bool has_link = 1;
+  string name = 2;
+  repeated string labels = 3;
+}
+
+message Nodes {
+  repeated string json = 1;
+}
+
+message Link {
+  int64 src = 1;
+  int64 dest = 2;
+  string name = 3;
+  repeated string labels = 4;
+  double weight = 5;
+}
+
+message Links {
+  int64 total_nodes = 1;
+  repeated Link links = 2;
+}

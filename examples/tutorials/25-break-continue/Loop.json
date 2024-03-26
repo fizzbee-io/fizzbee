@@ -1,0 +1,179 @@
+{
+  "states": {
+    "code": "a = set([])\nb = 0\n\n"
+  },
+  "actions": [
+    {
+      "name": "ForContinueExample",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "forStmt": {
+              "loopVars": [
+                "i"
+              ],
+              "pyExpr": "range(0,15)",
+              "block": {
+                "stmts": [
+                  {
+                    "ifStmt": {
+                      "branches": [
+                        {
+                          "condition": "i%2 == 1",
+                          "block": {
+                            "stmts": [
+                              {
+                                "continueStmt": {}
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pyStmt": {
+                      "code": "a.add(i)"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "WhileContinueExample",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "pyStmt": {
+              "code": "i = -1"
+            }
+          },
+          {
+            "whileStmt": {
+              "pyExpr": "i < 15",
+              "block": {
+                "stmts": [
+                  {
+                    "pyStmt": {
+                      "code": "i = i + 1"
+                    }
+                  },
+                  {
+                    "ifStmt": {
+                      "branches": [
+                        {
+                          "condition": "i%2 == 1",
+                          "block": {
+                            "stmts": [
+                              {
+                                "continueStmt": {}
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pyStmt": {
+                      "code": "a.add(i)"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "WhileBreakExample",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "whileStmt": {
+              "pyExpr": "True",
+              "block": {
+                "stmts": [
+                  {
+                    "pyStmt": {
+                      "code": "b = b + 1"
+                    }
+                  },
+                  {
+                    "ifStmt": {
+                      "branches": [
+                        {
+                          "condition": "b >= 10",
+                          "block": {
+                            "stmts": [
+                              {
+                                "breakStmt": {}
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ForBreakExample",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "forStmt": {
+              "loopVars": [
+                "i"
+              ],
+              "pyExpr": "range(0,200)",
+              "block": {
+                "stmts": [
+                  {
+                    "pyStmt": {
+                      "code": "b = b + 1"
+                    }
+                  },
+                  {
+                    "ifStmt": {
+                      "branches": [
+                        {
+                          "condition": "b >= 10",
+                          "block": {
+                            "stmts": [
+                              {
+                                "breakStmt": {}
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

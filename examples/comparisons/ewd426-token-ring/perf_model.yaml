@@ -1,0 +1,13 @@
+configs:
+  CreateToken.createtoken:
+    counters:
+      steps:
+        numeric: 1
+      create:
+        numeric: 1
+  PassToken.passtoken:
+    counters:
+      steps:
+        numeric: 1
+      pass:
+        numeric: 1

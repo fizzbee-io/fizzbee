@@ -1,0 +1,27 @@
+
+init:
+  value = -1
+
+invariants:
+  always value in [-1, 0, 1]
+  always eventually value in [0, 1]
+
+atomic action Toss:
+    while True:
+        toss1 = -1
+        toss2 = -1
+
+        oneof:
+            toss1 = 0
+            toss1 = 1
+        oneof:
+            toss2 = 0
+            toss2 = 1
+
+        if toss1 == toss2:
+            toss1 = -1
+            toss2 = -1
+        else:
+            value = toss2
+            return
+

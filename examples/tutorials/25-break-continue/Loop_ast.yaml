@@ -1,0 +1,96 @@
+states:
+  code: |
+    a = set([])
+    b = 0
+
+actions:
+  - name: ForContinueExample
+    block:
+      flow: FLOW_ATOMIC
+      stmts:
+        - forStmt:
+            flow: FLOW_ATOMIC
+            loopVars: ["i"]
+            pyExpr: "range(0, 5)"
+            block:
+              flow: FLOW_ATOMIC
+              stmts:
+                - ifStmt:
+                    flow: FLOW_ATOMIC
+                    branches:
+                      - condition: "i%2 == 1"
+                        block:
+                          flow: FLOW_ATOMIC
+                          stmts:
+                            - continueStmt:{}
+
+                - pyStmt:
+                    code: a.add(i)
+
+  - name: WhileContinueExample
+    block:
+      flow: FLOW_ATOMIC
+      stmts:
+        - pyStmt:
+            code: i = -1
+        - whileStmt:
+            flow: FLOW_ATOMIC
+            pyExpr: "i < 5"
+            block:
+              flow: FLOW_ATOMIC
+              stmts:
+                - pyStmt:
+                    code: i = i + 1
+                - ifStmt:
+                    flow: FLOW_ATOMIC
+                    branches:
+                      - condition: "i%2 == 1"
+                        block:
+                          flow: FLOW_ATOMIC
+                          stmts:
+                            - continueStmt:{}
+                - pyStmt:
+                    code: a.add(i)
+
+  - name: WhileBreakExample
+    block:
+      flow: FLOW_ATOMIC
+      stmts:
+      - whileStmt:
+          flow: FLOW_ATOMIC
+          pyExpr: "True"
+          block:
+              flow: FLOW_ATOMIC
+              stmts:
+                - pyStmt:
+                    code: b = b + 1
+                - ifStmt:
+                    flow: FLOW_ATOMIC
+                    branches:
+                      - condition: "b >= 3"
+                        block:
+                          flow: FLOW_ATOMIC
+                          stmts:
+                          - breakStmt:{}
+
+  - name: ForBreakExample
+    block:
+      flow: FLOW_ATOMIC
+      stmts:
+        - forStmt:
+            flow: FLOW_ATOMIC
+            loopVars: ["i"]
+            pyExpr: "range(0, 5)"
+            block:
+              flow: FLOW_ATOMIC
+              stmts:
+                - pyStmt:
+                    code: b = b + 1
+                - ifStmt:
+                    flow: FLOW_ATOMIC
+                    branches:
+                      - condition: "b >= 3"
+                        block:
+                          flow: FLOW_ATOMIC
+                          stmts:
+                            - breakStmt:{}

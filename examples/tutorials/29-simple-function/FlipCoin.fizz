@@ -1,0 +1,10 @@
+
+atomic func FairToss():
+    oneof:
+        return 0
+        return 0
+        return 1
+
+atomic action FlipCoin:
+    toss1 = FairToss()
+    return toss1

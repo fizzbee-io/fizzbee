@@ -1,0 +1,45 @@
+{
+  "states": {
+    "code": "a = 0\nb = 0\n\n"
+  },
+  "actions": [
+    {
+      "name": "Incr",
+      "flow": "FLOW_PARALLEL",
+      "block": {
+        "flow": "FLOW_PARALLEL",
+        "stmts": [
+          {
+            "pyStmt": {
+              "code": "a = a + 1"
+            }
+          },
+          {
+            "pyStmt": {
+              "code": "b = b + 1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Decr",
+      "flow": "FLOW_PARALLEL",
+      "block": {
+        "flow": "FLOW_PARALLEL",
+        "stmts": [
+          {
+            "pyStmt": {
+              "code": "a = a - 1"
+            }
+          },
+          {
+            "pyStmt": {
+              "code": "b = b - 1"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

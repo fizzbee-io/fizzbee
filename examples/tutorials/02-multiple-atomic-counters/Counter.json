@@ -1,0 +1,51 @@
+{
+  "states": {
+    "code": "a = 0\nb = 0\n\n"
+  },
+  "invariants": [
+    {
+      "always": true,
+      "pyExpr": "a == b"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Add",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "pyStmt": {
+              "code": "a = a + 1"
+            }
+          },
+          {
+            "pyStmt": {
+              "code": "b = b + 1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Multiply",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "pyStmt": {
+              "code": "a = a * 2"
+            }
+          },
+          {
+            "pyStmt": {
+              "code": "b = b * 2"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

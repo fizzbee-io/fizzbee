@@ -1,0 +1,50 @@
+
+role Coordinator:
+  state:
+    status = "init"
+    prepared = set()
+
+  Prepared(msg):
+    if status != "init":
+      return
+
+    prepared.add(msg.rm)
+
+    if prepared != RM:
+      return
+
+    status == "committed"
+    parallel for rm in participants:
+      rm.Commit()
+
+  action Abort:
+    if status != "init":
+      return
+    for rm in participants:
+      rm.Abort()
+     
+role Participant(rm):
+  status = "working"
+
+  weak action Prepare:
+    if status == "working":
+      status = "prepared"
+      coordinator.Prepared(rm)
+
+  action ChooseToAbort:
+    if status == "working":
+      status = "aborted"
+      
+  Commit():
+    status = "committed"
+
+  Abort():
+    status = "aborted"
+
+constants:
+  RM
+
+state:
+  participants = {Participant(rm) for rm in RM}
+  coordinator = Coordinator()
+

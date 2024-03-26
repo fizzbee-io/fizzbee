@@ -1,0 +1,170 @@
+{
+  "invariants": [
+    {
+      "name": "Stabilized",
+      "temporalOperators": [
+        "eventually",
+        "always"
+      ],
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "returnStmt": {
+              "pyExpr": "any(\n                   [ all([counters[j] == counters[0] for j in range(0,i)]) and\n                     all([counters[j] == (counters[0]-1)%M for j in range(i,N)])\n                       for i in range(N+1)\n                   ]\n               )"
+            }
+          }
+        ]
+      },
+      "pyCode": "def Stabilized():\n    return any(\n                   [ all([counters[j] == counters[0] for j in range(0,i)]) and\n                     all([counters[j] == (counters[0]-1)%M for j in range(i,N)])\n                       for i in range(N+1)\n                   ]\n               )\n\n\n"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Init",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "pyStmt": {
+              "code": "N = 5"
+            }
+          },
+          {
+            "pyStmt": {
+              "code": "M = 4"
+            }
+          },
+          {
+            "callStmt": {
+              "vars": [
+                "NODES"
+              ],
+              "name": "range",
+              "args": [
+                {
+                  "pyExpr": "0"
+                },
+                {
+                  "pyExpr": "N"
+                }
+              ]
+            }
+          },
+          {
+            "pyStmt": {
+              "code": "counters = [0] * N"
+            }
+          },
+          {
+            "forStmt": {
+              "loopVars": [
+                "i"
+              ],
+              "pyExpr": "reversed(NODES)",
+              "block": {
+                "stmts": [
+                  {
+                    "anyStmt": {
+                      "loopVars": [
+                        "j"
+                      ],
+                      "pyExpr": "range(0, M)",
+                      "block": {
+                        "stmts": [
+                          {
+                            "pyStmt": {
+                              "code": "counters[i] = j"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateToken",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_WEAK"
+      },
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "ifStmt": {
+              "branches": [
+                {
+                  "condition": "counters[0] == counters[N-1]",
+                  "block": {
+                    "stmts": [
+                      {
+                        "label": "createtoken",
+                        "pyStmt": {
+                          "code": "counters[0] = (counters[N-1] + 1) % M"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PassToken",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_WEAK"
+      },
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "anyStmt": {
+              "loopVars": [
+                "i"
+              ],
+              "pyExpr": "NODES[1:]",
+              "block": {
+                "stmts": [
+                  {
+                    "ifStmt": {
+                      "branches": [
+                        {
+                          "condition": "counters[i] != counters[i-1]",
+                          "block": {
+                            "stmts": [
+                              {
+                                "label": "passtoken",
+                                "pyStmt": {
+                                  "code": "counters[i] = counters[i-1]"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

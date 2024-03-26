@@ -1,0 +1,17 @@
+states:
+  code: |
+      count = 0
+
+actions:
+  - name: Incr
+    block:
+      flow: FLOW_ATOMIC
+      stmts:
+        - whileStmt:
+            flow: FLOW_ATOMIC
+            pyExpr: count < 5
+            block:
+                flow: FLOW_ATOMIC
+                stmts:
+                  - pyStmt:
+                      code: count += 1

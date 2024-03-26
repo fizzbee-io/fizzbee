@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option go_package = "fizz/proto";
+
+message StateSpaceOptions {
+  Options options = 1;
+  map<string, Options> action_options = 2;
+
+  // If true, continue exploring the state space of other paths that did not fail.
+  bool continue_on_invariant_failures = 3;
+
+  // If true, continue the failed path as well, ignoring the invariant failure.
+  // This is almost equivalent to not having the invariant at all, but it can be useful
+  // for debugging
+  bool continue_path_on_invariant_failures = 4;
+
+  string liveness = 5;
+
+  bool deadlock_detection = 6;
+}
+
+message Options {
+  int64 max_actions = 1;
+  int64 max_concurrent_actions = 2;
+}

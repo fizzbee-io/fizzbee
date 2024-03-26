@@ -1,0 +1,32 @@
+{
+  "states": {
+    "code": "count = 0\n\n"
+  },
+  "actions": [
+    {
+      "name": "Incr",
+      "flow": "FLOW_SERIAL",
+      "block": {
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "whileStmt": {
+              "flow": "FLOW_SERIAL",
+              "pyExpr": "count < 5",
+              "block": {
+                "flow": "FLOW_ATOMIC",
+                "stmts": [
+                  {
+                    "pyStmt": {
+                      "code": "count = count + 1"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+
+init:
+  a = 0
+  b = 0
+
+invariants:
+  #always a >= b
+  always eventually a == b
+
+action Add:
+  serial:
+    a = a + 1
+    b = b + 1
+
+action Multiply:
+  serial:
+    a = a * 2
+    b = b * 2

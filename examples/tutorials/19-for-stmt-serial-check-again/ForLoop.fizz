@@ -1,0 +1,17 @@
+
+init:
+  elements = set([1, 2, 3])
+  count = 3
+
+invariants:
+  always count <= len(elements)
+  always count >= 0
+  always eventually count == len(elements)
+
+action Remove:
+   for e in elements:
+     atomic:
+       if e in elements:
+         elements.discard(e)
+         count -= 1
+

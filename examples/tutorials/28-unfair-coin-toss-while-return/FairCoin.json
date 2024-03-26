@@ -1,0 +1,124 @@
+{
+  "invariants": [
+    {
+      "always": true,
+      "pyExpr": "'FairToss' not in __returns__ or __returns__['FairToss'] in [0, 1]"
+    },
+    {
+      "always": true,
+      "eventually": true,
+      "pyExpr": "'FairToss' not in __returns__ or __returns__['FairToss'] in [0, 1]"
+    }
+  ],
+  "actions": [
+    {
+      "name": "FairToss",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "pyStmt": {
+              "code": "toss1 = -1"
+            }
+          },
+          {
+            "pyStmt": {
+              "code": "toss2 = -1"
+            }
+          },
+          {
+            "whileStmt": {
+              "flow": "FLOW_ATOMIC",
+              "pyExpr": "toss1 == toss2",
+              "block": {
+                "flow": "FLOW_ATOMIC",
+                "stmts": [
+                  {
+                    "block": {
+                      "flow": "FLOW_ONEOF",
+                      "stmts": [
+                        {
+                          "pyStmt": {
+                            "code": "toss1 = 0"
+                          }
+                        },
+                        {
+                          "pyStmt": {
+                            "code": "toss1 = 0"
+                          }
+                        },
+                        {
+                          "pyStmt": {
+                            "code": "toss1 = 1"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "block": {
+                      "flow": "FLOW_ONEOF",
+                      "stmts": [
+                        {
+                          "pyStmt": {
+                            "code": "toss2 = 0"
+                          }
+                        },
+                        {
+                          "pyStmt": {
+                            "code": "toss2 = 0"
+                          }
+                        },
+                        {
+                          "pyStmt": {
+                            "code": "toss2 = 1"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "ifStmt": {
+                      "branches": [
+                        {
+                          "condition": "toss1 == toss2",
+                          "block": {
+                            "stmts": [
+                              {
+                                "pyStmt": {
+                                  "code": "toss1 = -1"
+                                }
+                              },
+                              {
+                                "pyStmt": {
+                                  "code": "toss2 = -1"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "condition": "True",
+                          "block": {
+                            "stmts": [
+                              {
+                                "returnStmt": {
+                                  "pyExpr": "toss2"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

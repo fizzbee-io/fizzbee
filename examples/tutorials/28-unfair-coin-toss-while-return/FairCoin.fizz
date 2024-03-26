@@ -1,0 +1,24 @@
+invariants:
+    always 'FairToss' not in __returns__ or __returns__['FairToss'] in [0, 1]
+    always eventually 'FairToss' not in __returns__ or __returns__['FairToss'] in [0, 1]
+
+atomic action FairToss:
+    toss1 = -1
+    toss2 = -1
+    atomic while toss1 == toss2:
+        atomic:
+            oneof:
+                toss1 = 0
+                toss1 = 0
+                toss1 = 1
+            oneof:
+                toss2 = 0
+                toss2 = 0
+                toss2 = 1
+
+            if toss1 == toss2:
+                toss1 = -1
+                toss2 = -1
+            else:
+                return toss2
+

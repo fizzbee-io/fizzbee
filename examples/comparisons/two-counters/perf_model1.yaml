@@ -1,0 +1,15 @@
+configs:
+  Next.add1:
+    probability: 0.75
+    counters:
+      increments:
+        numeric: 1
+      latency:
+        numeric: 1
+  Next.add2:
+    probability: 0.25
+    counters:
+      increments:
+        numeric: 1
+      latency:
+        numeric: 10

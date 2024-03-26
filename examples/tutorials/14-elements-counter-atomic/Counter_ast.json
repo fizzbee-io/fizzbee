@@ -1,0 +1,77 @@
+{
+  "states": {
+    "code": "ELEMENTS = set([1, 2, 3])\nelements = set([])\ncount=0\n"
+  },
+  "invariants": [
+    {
+      "always": true,
+      "pyExpr": "count == len(elements)\n"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Add",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "anyStmt": {
+              "flow": "FLOW_ATOMIC",
+              "loopVars": [
+                "e"
+              ],
+              "py_expr": "ELEMENTS - elements",
+              "block": {
+                "flow": "FLOW_ATOMIC",
+                "stmts": [
+                  {
+                    "pyStmt": {
+                      "code": "elements.add(e)"
+                    }
+                  },
+                  {
+                    "pyStmt": {
+                      "code": "count += 1"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Remove",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "anyStmt": {
+              "flow": "FLOW_ATOMIC",
+              "loopVars": [
+                "e"
+              ],
+              "py_expr": "elements",
+              "block": {
+                "flow": "FLOW_ATOMIC",
+                "stmts": [
+                  {
+                    "pyStmt": {
+                      "code": "elements.remove(e)"
+                    }
+                  },
+                  {
+                    "pyStmt": {
+                      "code": "count -= 1"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

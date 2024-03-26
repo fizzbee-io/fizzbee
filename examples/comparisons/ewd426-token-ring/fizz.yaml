@@ -1,0 +1,7 @@
+liveness: strict
+options:
+  maxActions: 200
+
+actionOptions:
+  Disrupt:
+    maxActions: 1

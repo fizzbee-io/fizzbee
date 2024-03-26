@@ -1,0 +1,6 @@
+options:
+  maxActions: 10
+
+actionOptions:
+  Increment:
+    maxActions: 4

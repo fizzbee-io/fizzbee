@@ -1,0 +1,166 @@
+{
+  "states": {
+    "code": "toss0=-1\ntoss1=-1\ntoss2=-1\nvalue=-1\n"
+  },
+  "invariants": [
+    {
+      "always": true,
+      "pyExpr": "value in [-1, 1, 2, 3, 4, 5, 6]\n"
+    },
+    {
+      "always": true,
+      "pyExpr": "toss2 == -1 or value in [1, 2, 3, 4, 5, 6]\n"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Toss",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "ifStmt": {
+              "flow": "FLOW_ATOMIC",
+              "branches": [
+                {
+                  "condition": "value <= 0",
+                  "block": {
+                    "flow": "FLOW_ATOMIC",
+                    "stmts": [
+                      {
+                        "ifStmt": {
+                          "flow": "FLOW_ATOMIC",
+                          "branches": [
+                            {
+                              "condition": "toss0 == -1",
+                              "block": {
+                                "flow": "FLOW_ONEOF",
+                                "stmts": [
+                                  {
+                                    "pyStmt": {
+                                      "code": "toss0 = 0"
+                                    }
+                                  },
+                                  {
+                                    "pyStmt": {
+                                      "code": "toss0 = 1"
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "condition": "True",
+                              "block": {
+                                "flow": "FLOW_ATOMIC",
+                                "stmts": [
+                                  {
+                                    "ifStmt": {
+                                      "flow": "FLOW_ATOMIC",
+                                      "branches": [
+                                        {
+                                          "condition": "toss1 == -1",
+                                          "block": {
+                                            "flow": "FLOW_ONEOF",
+                                            "stmts": [
+                                              {
+                                                "pyStmt": {
+                                                  "code": "toss1 = 0"
+                                                }
+                                              },
+                                              {
+                                                "pyStmt": {
+                                                  "code": "toss1 = 1"
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "condition": "True",
+                                          "block": {
+                                            "flow": "FLOW_ATOMIC",
+                                            "stmts": [
+                                              {
+                                                "pyStmt": {
+                                                  "code": "toss2 = -1"
+                                                }
+                                              },
+                                              {
+                                                "block": {
+                                                  "flow": "FLOW_ONEOF",
+                                                  "stmts": [
+                                                    {
+                                                      "pyStmt": {
+                                                        "code": "toss2 = 0"
+                                                      }
+                                                    },
+                                                    {
+                                                      "pyStmt": {
+                                                        "code": "toss2 = 1"
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              {
+                                                "ifStmt": {
+                                                  "flow": "FLOW_ATOMIC",
+                                                  "branches": [
+                                                    {
+                                                      "condition": "(toss0 == 0 and toss1 == 0 and toss2 == 0) or (toss0 == 1 and toss1 == 1 and toss2 == 1)",
+                                                      "block": {
+                                                        "flow": "FLOW_ATOMIC",
+                                                        "stmts": [
+                                                          {
+                                                            "pyStmt": {
+                                                              "code": "toss1 = -1"
+                                                            }
+                                                          },
+                                                          {
+                                                            "pyStmt": {
+                                                              "code": "toss2 = -1"
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
+                                                    },
+                                                    {
+                                                      "condition": "True",
+                                                      "block": {
+                                                        "flow": "FLOW_ATOMIC",
+                                                        "stmts": [
+                                                          {
+                                                            "pyStmt": {
+                                                              "code": "value = 4*toss0 + 2 * toss1 + toss2"
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

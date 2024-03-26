@@ -1,0 +1,43 @@
+{
+  "states": {
+    "code": "a = 0\nb = 0"
+  },
+  "actions": [
+    {
+      "name": "Add",
+      "block": {
+        "flow": "FLOW_ONEOF",
+        "stmts": [
+          {
+            "pyStmt": {
+              "code": "a = a + 1"
+            }
+          },
+          {
+            "pyStmt": {
+              "code": "b = b + 1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Multiply",
+      "block": {
+        "flow": "FLOW_ONEOF",
+        "stmts": [
+          {
+            "pyStmt": {
+              "code": "a = a * 2"
+            }
+          },
+          {
+            "pyStmt": {
+              "code": "b = b * 2"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

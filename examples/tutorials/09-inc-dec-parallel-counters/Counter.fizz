@@ -1,0 +1,14 @@
+
+init:
+  a = 0
+  b = 0
+
+action Incr:
+  parallel:
+    a = a + 1
+    b = b + 1
+
+action Decr:
+  parallel:
+    a = a - 1
+    b = b - 1

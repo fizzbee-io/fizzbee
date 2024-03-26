@@ -1,0 +1,20 @@
+{
+  "states": {
+    "code": "a = 0"
+  },
+  "actions": [
+    {
+      "name": "NoOp",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "pyStmt": {
+              "code": "a = 0"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

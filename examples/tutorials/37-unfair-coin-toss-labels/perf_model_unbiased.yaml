@@ -1,0 +1,15 @@
+configs:
+  UnfairToss.call:
+    counters:
+      latency:
+        numeric: 0.5
+  UnfairToss.head:
+    probability: 0.5
+    counters:
+      toss:
+        numeric: 1
+  UnfairToss.tail:
+    probability: 0.5
+    counters:
+      toss:
+        numeric: 1

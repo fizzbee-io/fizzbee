@@ -1,0 +1,15 @@
+
+
+action Init:
+  a = -2
+  any x in range(-2, 2):
+    a = x
+
+eventually always assertion StayPositive:
+  return a == 0
+
+atomic fair<weak> action Add:
+  if a >= 3:
+    a = 0
+  else:
+    a = a + 1

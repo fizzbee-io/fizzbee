@@ -1,0 +1,14 @@
+states:
+  code: |2-
+      a = 0
+      b = 0
+
+actions:
+  - name: Add
+    block:
+      flow: FLOW_ATOMIC
+      stmts:
+        - pyStmt:
+            code: a = 0
+        - pyStmt:
+            code: b = 0

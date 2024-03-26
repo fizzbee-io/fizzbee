@@ -1,0 +1,8 @@
+filegroup(
+    name = "tutorials",
+    srcs = glob([
+        "**/*.json",
+        "**/*.yaml",
+    ]),
+    visibility = ["//visibility:public"],
+)

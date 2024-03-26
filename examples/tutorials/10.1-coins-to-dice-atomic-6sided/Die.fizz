@@ -1,0 +1,33 @@
+
+init:
+  toss0 = -1
+  toss1 = -1
+  toss2 = -1
+  value = -1
+
+invariants:
+  always value in [-1, 1, 2, 3, 4, 5, 6]
+  always (toss2 == -1 or value in [1, 2, 3, 4, 5, 6])
+
+atomic action Toss:
+    if value <= 0:
+        if toss0 == -1:
+            oneof:
+                toss0 = 0
+                toss0 = 1
+        else:
+            if toss1 == -1:
+                oneof:
+                    toss1 = 0
+                    toss1 = 1
+            else:
+                oneof:
+                    toss2 = 0
+                    toss2 = 1
+
+                if toss0 == 0 and toss1 == 0 and toss2 == 0 or toss0 == 1 and toss1 == 1 and toss2 == 1:
+                    toss1 = -1
+                    toss2 = -1
+                else:
+                    value = 4 * toss0 + 2 * toss1 + toss2
+
