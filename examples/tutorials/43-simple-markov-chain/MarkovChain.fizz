@@ -1,0 +1,22 @@
+
+invariants:
+  eventually always state == "committed"
+
+action Init:
+  state = "in_progress"
+
+atomic fair<weak> action Prepare:
+  if state == "in_progress":
+    state = "prepared"
+
+atomic action BackToWork:
+  if state == "prepared":
+    state = "in_progress"
+
+atomic fair<strong> action Commit:
+  if state == "prepared":
+    state = "committed"
+
+atomic action StayDone:
+  if state == "committed":
+    state = state

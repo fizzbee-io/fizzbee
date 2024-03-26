@@ -1,0 +1,12 @@
+
+init:
+  elements = set([1, 2, 3])
+  count = 3
+
+action Remove:
+   parallel for e in elements:
+     atomic:
+       if e in elements:
+         elements.discard(e)
+         count -= 1
+

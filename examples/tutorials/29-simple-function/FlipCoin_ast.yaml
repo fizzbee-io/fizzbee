@@ -1,0 +1,24 @@
+---
+functions:
+  - name: FairToss
+    block:
+      flow: FLOW_ONEOF
+      stmts:
+        - returnStmt:
+            pyExpr: '0'
+        - returnStmt:
+            pyExpr: '0'
+        - returnStmt:
+            pyExpr: '1'
+
+actions:
+  - name: FlipCoin
+    block:
+      flow: FLOW_ATOMIC
+      stmts:
+        - callStmt:
+            vars:
+              - toss1
+            name: FairToss
+        - returnStmt:
+            pyExpr: toss1

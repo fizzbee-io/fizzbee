@@ -1,0 +1,42 @@
+
+invariants:
+    always eventually all( [ all([ (running[i] == peer_status[j][i] or not running[j] ) for i in nodes]) for j in nodes ] )
+
+init:
+  nodes = range(0, 3)
+
+  running = [True for i in nodes]
+  peer_status = [ [True for i in nodes] for j in nodes]
+
+atomic action Die:
+    any i in nodes:
+        running[i] = False
+
+atomic action Start:
+    any i in nodes:
+        running[i] = True
+
+atomic action CorrectlyDetectDeadNode:
+    any local in nodes:
+        any remote in nodes:
+            if (local != remote and running[local]
+                    and not running[remote]
+                    and peer_status[local][remote]):
+                peer_status[local][remote] = False
+
+atomic action FalselyDetectDeadNode:
+    any local in nodes:
+        any remote in nodes:
+            if (local != remote
+                    and running[local]
+                    and running[remote]
+                    and peer_status[local][remote]):
+                peer_status[local][remote] = False
+
+
+atomic action Gossip:
+    any local in nodes:
+        any remote in nodes:
+            if local != remote and running[local] and running[remote]:
+                peer_status[local] = [peer_status[remote][i] for i in nodes ]
+                peer_status[local][local] = True

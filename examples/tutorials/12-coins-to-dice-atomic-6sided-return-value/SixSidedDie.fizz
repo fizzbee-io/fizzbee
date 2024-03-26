@@ -1,0 +1,22 @@
+
+func Toss():
+  oneof:
+    #`label=tail`
+    return 0
+    #`label=head`
+    return 1
+
+  # any c in {0, 1}:
+  #  return c
+
+
+atomic action Roll:
+  toss1 = Toss()
+  while (True):
+    toss2 = Toss()
+    toss3 = Toss()
+
+    value = 4 * toss1 + 2 * toss2 + toss3
+    if value >= 0 and value <= 6:
+      return value
+

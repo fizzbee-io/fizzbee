@@ -1,0 +1,224 @@
+{
+  "states": {
+    "code": "nodes = range(0, 3)\n\nrunning = [True for i in nodes]\npeer_status = [ [True for i in nodes] for j in nodes]\n\n"
+  },
+  "invariants": [
+    {
+      "always": true,
+      "eventually": true,
+      "pyExpr": "all( [ all([ (running[i] == peer_status[j][i] or not running[j] ) for i in nodes]) for j in nodes ] )"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Die",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "anyStmt": {
+              "loopVars": [
+                "i"
+              ],
+              "pyExpr": "nodes",
+              "block": {
+                "stmts": [
+                  {
+                    "pyStmt": {
+                      "code": "running[i] = False"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Start",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "anyStmt": {
+              "loopVars": [
+                "i"
+              ],
+              "pyExpr": "nodes",
+              "block": {
+                "stmts": [
+                  {
+                    "pyStmt": {
+                      "code": "running[i] = True"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CorrectlyDetectDeadNode",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "anyStmt": {
+              "loopVars": [
+                "local"
+              ],
+              "pyExpr": "nodes",
+              "block": {
+                "stmts": [
+                  {
+                    "anyStmt": {
+                      "loopVars": [
+                        "remote"
+                      ],
+                      "pyExpr": "nodes",
+                      "block": {
+                        "stmts": [
+                          {
+                            "ifStmt": {
+                              "branches": [
+                                {
+                                  "condition": "(local != remote and running[local]\n                    and not running[remote]\n                    and peer_status[local][remote])",
+                                  "block": {
+                                    "stmts": [
+                                      {
+                                        "pyStmt": {
+                                          "code": "peer_status[local][remote] = False"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "FalselyDetectDeadNode",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "anyStmt": {
+              "loopVars": [
+                "local"
+              ],
+              "pyExpr": "nodes",
+              "block": {
+                "stmts": [
+                  {
+                    "anyStmt": {
+                      "loopVars": [
+                        "remote"
+                      ],
+                      "pyExpr": "nodes",
+                      "block": {
+                        "stmts": [
+                          {
+                            "ifStmt": {
+                              "branches": [
+                                {
+                                  "condition": "(local != remote\n                    and running[local]\n                    and running[remote]\n                    and peer_status[local][remote])",
+                                  "block": {
+                                    "stmts": [
+                                      {
+                                        "pyStmt": {
+                                          "code": "peer_status[local][remote] = False"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Gossip",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "anyStmt": {
+              "loopVars": [
+                "local"
+              ],
+              "pyExpr": "nodes",
+              "block": {
+                "stmts": [
+                  {
+                    "anyStmt": {
+                      "loopVars": [
+                        "remote"
+                      ],
+                      "pyExpr": "nodes",
+                      "block": {
+                        "stmts": [
+                          {
+                            "ifStmt": {
+                              "branches": [
+                                {
+                                  "condition": "local != remote and running[local] and running[remote]",
+                                  "block": {
+                                    "stmts": [
+                                      {
+                                        "pyStmt": {
+                                          "code": "peer_status[local] = [peer_status[remote][i] for i in nodes ]"
+                                        }
+                                      },
+                                      {
+                                        "pyStmt": {
+                                          "code": "peer_status[local][local] = True"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

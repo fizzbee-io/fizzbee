@@ -1,0 +1,13 @@
+
+init:
+  elements = ["a", "b", "c"]
+  count = 3
+
+invariants:
+  always count == len(elements)
+
+atomic action Remove:
+   any e in elements:
+     elements.remove(e)
+     count -= 1
+

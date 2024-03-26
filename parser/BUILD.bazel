@@ -1,0 +1,27 @@
+load("@my_deps//:requirements.bzl", "requirement")
+
+py_library(
+    name = "fizz",
+    srcs = [
+        "BuildAstVisitor.py",
+        "FizzLexer.py",
+        "FizzParser.py",
+        "FizzParserListener.py",
+        "FizzParserVisitor.py",
+        "PythonLexerBase.py",
+        "PythonParserBase.py",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//proto:ast_py_proto",
+        requirement("antlr4-python3-runtime"),
+    ],
+)
+
+py_binary(
+    name = "parser_bin",
+    srcs = ["main.py"],
+    main = "main.py",
+    visibility = ["//visibility:public"],
+    deps = [":fizz"],
+)

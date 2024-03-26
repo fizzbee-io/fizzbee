@@ -1,0 +1,52 @@
+{
+  "actions": [
+    {
+      "name": "FlipCoin",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "callStmt": {
+              "vars": [
+                "toss1"
+              ],
+              "name": "FairToss"
+            }
+          },
+          {
+            "returnStmt": {
+              "pyExpr": "toss1"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "functions": [
+    {
+      "name": "FairToss",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ONEOF",
+        "stmts": [
+          {
+            "returnStmt": {
+              "pyExpr": "0"
+            }
+          },
+          {
+            "returnStmt": {
+              "pyExpr": "0"
+            }
+          },
+          {
+            "returnStmt": {
+              "pyExpr": "1"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

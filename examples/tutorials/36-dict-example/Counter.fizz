@@ -1,0 +1,16 @@
+
+init:
+  ELEMENTS = {"a":1, "b":2, "c":3}
+  elements = {}
+  count = 0
+
+invariants:
+  always count == len(elements)
+
+atomic action Insert:
+   any e in ELEMENTS.items():
+     key = e[0]
+     if key not in elements:
+       elements[key] = ELEMENTS[key]
+       count += 1
+

@@ -1,0 +1,42 @@
+---
+functions:
+  - name: UnfairToss
+    block:
+      flow: FLOW_ONEOF
+      stmts:
+        - returnStmt:
+            pyExpr: '0'
+        - returnStmt:
+            pyExpr: '0'
+        - returnStmt:
+            pyExpr: '1'
+
+actions:
+  - name: FairToss
+    block:
+      flow: FLOW_ATOMIC
+      stmts:
+        - whileStmt:
+            flow: FLOW_ATOMIC
+            pyExpr: True
+            block:
+                flow: FLOW_ATOMIC
+                stmts:
+                  - callStmt:
+                      vars:
+                        - toss1
+                      name: UnfairToss
+                  - callStmt:
+                      vars:
+                        - toss2
+                      name: UnfairToss
+
+                  - ifStmt:
+                      flow: FLOW_ATOMIC
+                      branches:
+                        - condition: "toss1 != toss2"
+                          block:
+                            flow: FLOW_ATOMIC
+                            stmts:
+                              - returnStmt:
+                                  pyExpr: "toss2"

@@ -1,0 +1,48 @@
+
+role TransMgr:
+  state = "init"
+  prepared = set()
+
+  weak atomic action Commit:
+    if state == 'init' and prepared == resMgrs:
+      state = 'committed'
+      msgs.add({"type": "Commit"})
+
+  weak atomic action Abort:
+    if state == "init":
+      state = "aborted"
+      msgs.add({"type": "Abort"})
+  
+  weak atomic action RcvPrepared:
+    any rm in resMgrs:
+      if state == "init" && {"type": "Prepared", "rm": rm} in msgs:
+        prepared |= {rm}
+    
+
+role ResMgr(rm):
+  state = "working"
+  
+  weak atomic action Prepare:
+    if state == "working":
+        state = "prepared"
+        msgs.add({"type": "Prepared", "rm": rm})
+
+  weak atomic action ChooseToAbort:
+    if state == "working":
+        state = "aborted"
+
+  weak atomic action RcvCommitMsg:
+    if {"type": "Commit"} in msgs:
+        state = "committed"
+
+  weak atomic action RcvAbortMsg:
+    if {"type": "Abort"} in msgs:
+        state = "aborted"
+
+constants:
+  RM
+
+state:
+  resMgrs = {ResMgr(rm) for rm in RM}
+
+ 

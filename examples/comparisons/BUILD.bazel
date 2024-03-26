@@ -1,0 +1,8 @@
+filegroup(
+    name = "comparisons",
+    srcs = glob([
+        "**/*.json",
+        "**/*.yaml",
+    ]),
+    visibility = ["//visibility:public"],
+)

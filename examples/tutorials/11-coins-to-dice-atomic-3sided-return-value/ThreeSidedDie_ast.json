@@ -1,0 +1,119 @@
+{
+  "states": {
+    "code": "toss1=-1\ntoss2 = -1\nvalue=-1\n"
+  },
+  "actions": [
+    {
+      "name": "Toss",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "ifStmt": {
+              "flow": "FLOW_ATOMIC",
+              "branches": [
+                {
+                  "condition": "value <= 0",
+                  "block": {
+                    "flow": "FLOW_ATOMIC",
+                    "stmts": [
+                      {
+                        "ifStmt": {
+                          "flow": "FLOW_ATOMIC",
+                          "branches": [
+                            {
+                              "condition": "toss1 == -1",
+                              "block": {
+                                "flow": "FLOW_ONEOF",
+                                "stmts": [
+                                  {
+                                    "pyStmt": {
+                                      "code": "toss1 = 0"
+                                    }
+                                  },
+                                  {
+                                    "pyStmt": {
+                                      "code": "toss1 = 1"
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "condition": "True",
+                              "block": {
+                                "flow": "FLOW_ATOMIC",
+                                "stmts": [
+
+                                  {
+                                    "block": {
+                                      "flow": "FLOW_ONEOF",
+                                      "stmts": [
+                                        {
+                                          "pyStmt": {
+                                            "code": "toss2 = 0"
+                                          }
+                                        },
+                                        {
+                                          "pyStmt": {
+                                            "code": "toss2 = 1"
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "ifStmt": {
+                                      "flow": "FLOW_ATOMIC",
+                                      "branches": [
+                                        {
+                                          "condition": "toss1 == 0 and toss2 == 0",
+                                          "block": {
+                                            "flow": "FLOW_ATOMIC",
+                                            "stmts": [
+                                              {
+                                                "pyStmt": {
+                                                  "code": "toss1 = -1"
+                                                }
+                                              },
+                                              {
+                                                "pyStmt": {
+                                                  "code": "toss2 = -1"
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "condition": "True",
+                                          "block": {
+                                            "flow": "FLOW_ATOMIC",
+                                            "stmts": [
+                                              {
+                                                "pyStmt": {
+                                                  "code": "value = 2 * toss1 + toss2"
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

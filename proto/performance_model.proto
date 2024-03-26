@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option go_package = "fizz/proto";
+
+message PerformanceModel {
+  map<string, TransitionConfig> configs = 1;
+}
+
+message TransitionConfig {
+  // The probability for the branch to be taken.
+  double probability = 1;
+
+  map<string, Counter> counters = 2;
+}
+
+// Counter defines the metric to be collected.
+// This can be used to collect the number of times a branch is taken.
+// Or other cost metrics like resource usage, or price. This is equivalent to
+// reward in PRISM.
+// For now, supports only simple numberic values. Eventually, this should support
+// distributions like normal, exponential, etc.
+message Counter {
+  // The value to be added to the counter.
+  double numeric = 1;
+}

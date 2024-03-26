@@ -1,0 +1,67 @@
+# Simplified Model for Two Phase Commit
+# Equivalent of the TLA+ model of TwoPhase commit
+# https://github.com/tlaplus/Examples/blob/master/specifications/transaction_commit/TwoPhase.tla
+
+# It is significantly simplified model like the TLA+ implementation
+# Coordinator do not send explicit Prepare Request message,
+# and Participants do not send explicit Abort message when aborting.
+# (A real implementation will have to deal with not receiving abort message in time anyway)
+
+# The TLA+ model assumes, a single centralized storage for messages, that can be reliable
+# accessed. Not realistic.
+# The Fizz model, with the shorter lines of code, will actually model unreliable messaging
+# channel. This is more realistic than the TLA+ model.
+
+# Coordinator coordinates the transaction, by listening to the prepared success
+# messages from participants and decides whether to commit or abort.
+
+role Coordinator:
+  state:
+    status = "init"
+    prepared = set()
+
+  Prepared(msg):
+    if status != "init":
+      return
+
+    prepared.add(msg.rm)
+
+    if prepared != RM:
+      return
+
+    status == "committed"
+    parallel for rm in participants:
+      rm.Commit()
+
+  action Abort:
+    if status != "init":
+      return
+    parallel for rm in participants:
+      rm.Abort()
+
+# These are the
+role Participant(rm):
+  status = "working"
+
+  action Prepare:
+    if status == "working":
+      status = "prepared"
+      coordinator.Prepared(rm)
+
+  action ChooseToAbort:
+    if status == "working":
+      status = "aborted"
+      
+  Commit():
+    status = "committed"
+
+  Abort():
+    status = "aborted"
+
+constants:
+  RM
+
+state:
+  participants = {Participant(rm) for rm in RM}
+  coordinator = Coordinator()
+

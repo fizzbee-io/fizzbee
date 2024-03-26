@@ -1,0 +1,84 @@
+{
+  "actions": [
+    {
+      "name": "Roll",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "whileStmt": {
+              "pyExpr": "(True)",
+              "block": {
+                "stmts": [
+                  {
+                    "callStmt": {
+                      "vars": [
+                        "toss1"
+                      ],
+                      "name": "Toss"
+                    }
+                  },
+                  {
+                    "callStmt": {
+                      "vars": [
+                        "toss2"
+                      ],
+                      "name": "Toss"
+                    }
+                  },
+                  {
+                    "ifStmt": {
+                      "branches": [
+                        {
+                          "condition": "toss1 != 0 or toss2 != 0",
+                          "block": {
+                            "stmts": [
+                              {
+                                "returnStmt": {
+                                  "pyExpr": "2 * toss1 + toss2"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "functions": [
+    {
+      "name": "Toss",
+      "flow": "FLOW_SERIAL",
+      "block": {
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "anyStmt": {
+              "loopVars": [
+                "c"
+              ],
+              "pyExpr": "[0, 1]",
+              "block": {
+                "stmts": [
+                  {
+                    "returnStmt": {
+                      "pyExpr": "c"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,153 @@
+{
+  "states": {
+    "code": "toss0 = -1\ntoss1 = -1\ntoss2 = -1\nvalue = -1\n\n"
+  },
+  "invariants": [
+    {
+      "always": true,
+      "pyExpr": "value in [-1, 1, 2, 3, 4, 5, 6]"
+    },
+    {
+      "always": true,
+      "pyExpr": "(toss2 == -1 or value in [1, 2, 3, 4, 5, 6])"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Toss",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "ifStmt": {
+              "branches": [
+                {
+                  "condition": "value <= 0",
+                  "block": {
+                    "stmts": [
+                      {
+                        "ifStmt": {
+                          "branches": [
+                            {
+                              "condition": "toss0 == -1",
+                              "block": {
+                                "flow": "FLOW_ONEOF",
+                                "stmts": [
+                                  {
+                                    "pyStmt": {
+                                      "code": "toss0 = 0"
+                                    }
+                                  },
+                                  {
+                                    "pyStmt": {
+                                      "code": "toss0 = 1"
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "condition": "True",
+                              "block": {
+                                "stmts": [
+                                  {
+                                    "ifStmt": {
+                                      "branches": [
+                                        {
+                                          "condition": "toss1 == -1",
+                                          "block": {
+                                            "flow": "FLOW_ONEOF",
+                                            "stmts": [
+                                              {
+                                                "pyStmt": {
+                                                  "code": "toss1 = 0"
+                                                }
+                                              },
+                                              {
+                                                "pyStmt": {
+                                                  "code": "toss1 = 1"
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "condition": "True",
+                                          "block": {
+                                            "stmts": [
+                                              {
+                                                "block": {
+                                                  "flow": "FLOW_ONEOF",
+                                                  "stmts": [
+                                                    {
+                                                      "pyStmt": {
+                                                        "code": "toss2 = 0"
+                                                      }
+                                                    },
+                                                    {
+                                                      "pyStmt": {
+                                                        "code": "toss2 = 1"
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              {
+                                                "ifStmt": {
+                                                  "branches": [
+                                                    {
+                                                      "condition": "toss0 == 0 and toss1 == 0 and toss2 == 0 or toss0 == 1 and toss1 == 1 and toss2 == 1",
+                                                      "block": {
+                                                        "stmts": [
+                                                          {
+                                                            "pyStmt": {
+                                                              "code": "toss1 = -1"
+                                                            }
+                                                          },
+                                                          {
+                                                            "pyStmt": {
+                                                              "code": "toss2 = -1"
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
+                                                    },
+                                                    {
+                                                      "condition": "True",
+                                                      "block": {
+                                                        "stmts": [
+                                                          {
+                                                            "pyStmt": {
+                                                              "code": "value = 4 * toss0 + 2 * toss1 + toss2"
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

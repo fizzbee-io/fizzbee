@@ -1,0 +1,7 @@
+
+init:
+  count = 0
+
+atomic action Incr:
+  atomic while count < 5:
+    count = count + 1

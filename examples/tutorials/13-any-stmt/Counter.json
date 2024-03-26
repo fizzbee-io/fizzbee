@@ -1,0 +1,44 @@
+{
+  "states": {
+    "code": "elements = set([1, 2, 3, 4, 5])\ncount = 5\n\n"
+  },
+  "invariants": [
+    {
+      "always": true,
+      "pyExpr": "count == len(elements)"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Remove",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "anyStmt": {
+              "loopVars": [
+                "e"
+              ],
+              "pyExpr": "elements",
+              "block": {
+                "stmts": [
+                  {
+                    "pyStmt": {
+                      "code": "elements.remove(e)"
+                    }
+                  },
+                  {
+                    "pyStmt": {
+                      "code": "count -= 1"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

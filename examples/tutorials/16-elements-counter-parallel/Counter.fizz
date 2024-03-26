@@ -1,0 +1,21 @@
+
+init:
+  ELEMENTS = set([1, 2, 3])
+  elements = set([])
+  count = 0
+
+invariants:
+  always eventually count == len(elements)
+
+action Add:
+   any e in (ELEMENTS - elements):
+     parallel:
+       elements.add(e)
+       count += 1
+
+action Remove:
+   any e in elements:
+     parallel:
+       elements.discard(e)
+       count -= 1
+

@@ -1,0 +1,19 @@
+
+always assertion Safety:
+    return 'FairToss' not in __returns__ or __returns__['FairToss'] in ['head', 'tail']
+
+always eventually assertion Liveness:
+    return 'FairToss' in __returns__ and __returns__['FairToss'] in ['head', 'tail']
+
+atomic func UnfairToss():
+    oneof:
+        `head` return "head"
+        `tail` return "tail"
+
+atomic action FairToss:
+    while True:
+        toss1 = UnfairToss()
+        toss2 = UnfairToss()
+
+        if toss1 != toss2:
+            return toss2

@@ -1,0 +1,90 @@
+{
+  "actions": [
+    {
+      "name": "Roll",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "callStmt": {
+              "vars": [
+                "toss1"
+              ],
+              "name": "Toss"
+            }
+          },
+          {
+            "whileStmt": {
+              "pyExpr": "(True)",
+              "block": {
+                "stmts": [
+                  {
+                    "callStmt": {
+                      "vars": [
+                        "toss2"
+                      ],
+                      "name": "Toss"
+                    }
+                  },
+                  {
+                    "callStmt": {
+                      "vars": [
+                        "toss3"
+                      ],
+                      "name": "Toss"
+                    }
+                  },
+                  {
+                    "pyStmt": {
+                      "code": "value = 4 * toss1 + 2 * toss2 + toss3"
+                    }
+                  },
+                  {
+                    "ifStmt": {
+                      "branches": [
+                        {
+                          "condition": "value >= 0 and value <= 6",
+                          "block": {
+                            "stmts": [
+                              {
+                                "returnStmt": {
+                                  "pyExpr": "value"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "functions": [
+    {
+      "name": "Toss",
+      "flow": "FLOW_ONEOF",
+      "block": {
+        "flow": "FLOW_ONEOF",
+        "stmts": [
+          {
+            "returnStmt": {
+              "pyExpr": "0"
+            }
+          },
+          {
+            "returnStmt": {
+              "pyExpr": "1"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

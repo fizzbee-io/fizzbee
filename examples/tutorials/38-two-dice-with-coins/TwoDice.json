@@ -1,0 +1,126 @@
+{
+  "invariants": [
+    {
+      "always": true,
+      "pyExpr": "'TwoDice' not in __returns__ or __returns__['TwoDice'] in [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]"
+    },
+    {
+      "always": true,
+      "eventually": true,
+      "pyExpr": "'TwoDice' in __returns__ and __returns__['TwoDice'] in [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]"
+    }
+  ],
+  "actions": [
+    {
+      "name": "TwoDice",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "callStmt": {
+              "vars": [
+                "die1"
+              ],
+              "name": "RollDie"
+            }
+          },
+          {
+            "callStmt": {
+              "vars": [
+                "die2"
+              ],
+              "name": "RollDie"
+            }
+          },
+          {
+            "returnStmt": {
+              "pyExpr": "die1 + die2"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "functions": [
+    {
+      "name": "Toss",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ONEOF",
+        "stmts": [
+          {
+            "returnStmt": {
+              "pyExpr": "0"
+            }
+          },
+          {
+            "returnStmt": {
+              "pyExpr": "1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RollDie",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "callStmt": {
+              "vars": [
+                "toss0"
+              ],
+              "name": "Toss"
+            }
+          },
+          {
+            "whileStmt": {
+              "pyExpr": "True",
+              "block": {
+                "stmts": [
+                  {
+                    "callStmt": {
+                      "vars": [
+                        "toss1"
+                      ],
+                      "name": "Toss"
+                    }
+                  },
+                  {
+                    "callStmt": {
+                      "vars": [
+                        "toss2"
+                      ],
+                      "name": "Toss"
+                    }
+                  },
+                  {
+                    "ifStmt": {
+                      "branches": [
+                        {
+                          "condition": "(toss0 != toss1 or toss0 != toss2)",
+                          "block": {
+                            "stmts": [
+                              {
+                                "returnStmt": {
+                                  "pyExpr": "4 * toss0 + 2 * toss1 + toss2"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

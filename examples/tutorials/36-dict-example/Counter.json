@@ -1,0 +1,62 @@
+{
+  "states": {
+    "code": "ELEMENTS = {\"a\":1, \"b\":2, \"c\":3}\nelements = {}\ncount = 0\n\n"
+  },
+  "invariants": [
+    {
+      "always": true,
+      "pyExpr": "count == len(elements)"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Insert",
+      "flow": "FLOW_ATOMIC",
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "anyStmt": {
+              "loopVars": [
+                "e"
+              ],
+              "pyExpr": "ELEMENTS.items()",
+              "block": {
+                "stmts": [
+                  {
+                    "pyStmt": {
+                      "code": "key = e[0]"
+                    }
+                  },
+                  {
+                    "ifStmt": {
+                      "branches": [
+                        {
+                          "condition": "key not in elements",
+                          "block": {
+                            "stmts": [
+                              {
+                                "pyStmt": {
+                                  "code": "elements[key] = ELEMENTS[key]"
+                                }
+                              },
+                              {
+                                "pyStmt": {
+                                  "code": "count += 1"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

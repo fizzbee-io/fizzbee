@@ -1,0 +1,24 @@
+
+atomic action Init:
+    # Constants/Params are not supported yet
+    C = ['a', 'b']
+    counters = { key: 0 for key in C }
+
+always assertion AlwaysNonNegative:
+    # concise pythonic way
+    # return all(counters[key] >= 0 for key in C)
+
+    # verbose equivalent
+    for key in C:
+        if counters[key] < 0:
+            return False
+    return True
+
+always assertion AlwaysBelowLimit:
+    return all([counters[key] <= 8 for key in C])
+
+atomic action Next:
+    any key in C:
+        oneof:
+            `add1` counters[key] = counters[key] + 1
+            `add2` counters[key] = counters[key] + 2

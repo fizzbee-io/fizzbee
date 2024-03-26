@@ -1,0 +1,190 @@
+syntax = "proto3";
+
+option go_package = "fizz/proto";
+
+message File {
+  SourceInfo source_info = 1;
+  repeated Import imports = 2;
+  repeated Constant constants = 3;
+  StateVars states = 4;
+//  StateVars variables = 5;
+//  Action init = 5;
+  repeated Invariant invariants = 6;
+  repeated Action actions = 7;
+  repeated Function functions = 8;
+}
+
+enum FairnessLevel {
+  FAIRNESS_LEVEL_UNKNOWN = 0;
+  FAIRNESS_LEVEL_UNFAIR = 1;
+  FAIRNESS_LEVEL_WEAK = 2;
+  FAIRNESS_LEVEL_STRONG = 3;
+}
+
+enum Flow {
+  FLOW_UNKNOWN = 0;
+  FLOW_SERIAL = 1;
+  FLOW_PARALLEL = 2;
+  FLOW_ATOMIC = 3;
+  FLOW_ONEOF = 4;
+}
+
+message Fairness {
+  SourceInfo source_info = 1;
+  FairnessLevel level = 2;
+}
+
+message Block {
+  SourceInfo source_info = 1;
+  Flow flow = 2;
+  repeated Statement stmts = 3;
+}
+
+message Statement {
+  SourceInfo source_info = 1;
+  string label = 2;
+
+  PyStmt py_stmt = 3;
+  Block block = 4;
+
+  IfStmt if_stmt = 5;
+
+  ForStmt for_stmt = 6;
+  AnyStmt any_stmt = 7;
+  WhileStmt while_stmt = 8;
+
+  BreakStmt break_stmt = 9;
+  ContinueStmt continue_stmt = 10;
+  ReturnStmt return_stmt = 11;
+
+  CallStmt call_stmt = 12;
+}
+
+message IfStmt {
+  SourceInfo source_info = 1;
+  Flow flow = 2;
+  
+  repeated Branch branches = 3;
+}
+
+message Branch {
+  SourceInfo source_info = 1;
+  string condition = 2;
+  Block block = 3;
+}
+
+message ForStmt {
+  SourceInfo source_info = 1;
+  Flow flow = 2;
+  
+  repeated string loop_vars = 3;
+  string py_expr = 4;
+  Block block = 5;
+}
+
+message AnyStmt {
+  SourceInfo source_info = 1;
+  Flow flow = 2;
+  
+  repeated string loop_vars = 3;
+  string py_expr = 4;
+  Block block = 5;
+}
+
+message WhileStmt {
+  SourceInfo source_info = 1;
+  Flow flow = 2;
+
+  string py_expr = 3;
+  Block block = 4;
+}
+
+message BreakStmt {
+  SourceInfo source_info = 1;
+}
+
+message ContinueStmt {
+  SourceInfo source_info = 1;
+}
+
+message ReturnStmt {
+  SourceInfo source_info = 1;
+  string py_expr = 2;
+}
+
+message CallStmt {
+  SourceInfo source_info = 1;
+  repeated string vars = 2;
+  string name = 3;
+  repeated Argument args = 4;
+}
+
+// The actual arguments to a function/method call.
+// For example, in `foo(4, 5)`, `4` and `5` are arguments.
+message Argument {
+  SourceInfo source_info = 1;
+  string name = 2;
+  string py_expr = 3;
+}
+
+message PyStmt {
+  SourceInfo source_info = 1;
+  string code = 2; 
+}
+
+message Action {
+  SourceInfo source_info = 1;
+  string name = 2;
+  Flow flow = 3;
+  Fairness fairness = 4;
+  Block block = 5;
+}
+
+message Function {
+  SourceInfo source_info = 1;
+  string name = 2;
+  Flow flow = 3;
+  repeated Parameter params = 4;
+  Block block = 5;
+}
+
+// Variables in the function/method declaration.
+// For example, in `def foo(x, y)`, `x` and `y` are parameters.
+message Parameter {
+  SourceInfo source_info = 1;
+  string name = 2;
+}
+
+message Invariant {
+  SourceInfo source_info = 1;
+  bool always = 2;
+  bool eventually = 3;
+  string pyExpr = 4;
+  Invariant nested = 5;
+
+  string name = 6;
+  repeated string temporal_operators = 7;
+  Block block = 8;
+  string py_code = 9;
+}
+
+message StateVars {
+  SourceInfo source_info = 1;
+  string code = 2;
+}
+
+message Constant {
+  SourceInfo source_info = 1;
+  string name = 2;
+}
+
+message Import {
+  SourceInfo source_info = 1;
+  string path = 2;
+  string alias = 3;
+}
+
+message SourceInfo {
+
+}
+

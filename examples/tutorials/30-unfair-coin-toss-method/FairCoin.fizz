@@ -1,0 +1,24 @@
+
+
+always assertion Safety:
+    name = "FairToss"
+    return ('FairToss' not in __returns__ or
+        __returns__['FairToss'] in [0, 1])
+
+always eventually assertion Liveness:
+    return 'FairToss' in __returns__ and __returns__['FairToss'] in [0, 1]
+
+atomic func UnfairToss():
+    oneof:
+        return 0
+        return 0
+        return 1
+
+atomic action FairToss:
+    while True:
+        toss1 = UnfairToss()
+        toss2 = UnfairToss()
+
+        if toss1 != toss2:
+            return toss2
+

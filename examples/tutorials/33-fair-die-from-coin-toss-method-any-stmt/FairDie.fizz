@@ -1,0 +1,14 @@
+
+atomic func Toss():
+    any c in [0, 1]:
+        return c
+
+atomic action Roll:
+  toss0 = Toss()
+  while True:
+    toss1 = Toss()
+    toss2 = Toss()
+
+    if (toss0 != toss1 or toss0 != toss2):
+      return 4 * toss0 + 2 * toss1 + toss2
+

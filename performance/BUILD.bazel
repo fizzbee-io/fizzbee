@@ -1,0 +1,28 @@
+load("@my_deps//:requirements.bzl", "requirement")
+
+py_library(
+    name = "performance",
+    srcs = [
+        "files.py",
+        "fmt.py",
+        "markov_chain.py",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//proto:ast_py_proto",
+        "//proto:perf_py_proto",
+        "//proto:graph_py_proto",
+        requirement("PyYAML"),
+        requirement("numpy"),
+        requirement("matplotlib"),
+        requirement("scipy"),
+    ],
+)
+
+py_binary(
+    name = "performance_bin",
+    srcs = ["main.py"],
+    main = "main.py",
+    visibility = ["//visibility:public"],
+    deps = [":performance"],
+)

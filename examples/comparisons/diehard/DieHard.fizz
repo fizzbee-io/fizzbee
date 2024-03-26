@@ -1,0 +1,35 @@
+
+init:
+    big = 0
+    small = 0
+
+always assertion CheckBigJug:
+    return big != 4
+
+atomic action FillBigJug:
+    big = 5
+
+atomic action FillSmallJug:
+    small = 3
+
+atomic action EmptyBigJug:
+    big = 0
+
+atomic action EmptySmallJug:
+    small = 0
+
+atomic action SmallToBig:
+    if small + big <= 5:
+        big = big + small
+        small = 0
+    else:
+        small = small - (5 - big)
+        big = 5
+
+atomic action BigToSmall:
+    if small + big <= 3:
+        small = big + small
+        big = 0
+    else:
+        big = big - (3 - small)
+        small = 3

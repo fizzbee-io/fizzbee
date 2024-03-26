@@ -1,0 +1,10 @@
+
+init:
+  elements = set([1, 2, 3, 4, 5])
+  count = 5
+
+atomic action Remove:
+   for e in elements:
+     elements.remove(e)
+     count -= 1
+

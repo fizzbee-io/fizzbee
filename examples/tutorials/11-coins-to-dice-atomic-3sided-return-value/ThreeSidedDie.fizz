@@ -1,0 +1,15 @@
+
+func Toss():
+  any c in [0, 1]:
+    return c
+
+
+atomic action Roll:
+  while (True):
+    toss1 = Toss()
+    toss2 = Toss()
+
+    if toss1 != 0 or toss2 != 0:
+      return 2 * toss1 + toss2
+
+

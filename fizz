@@ -1,0 +1,38 @@
+#!/bin/bash
+#bazel-bin/parser/parser_bin $1 > parserout.log
+
+# Check if the correct number of arguments is provided
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <input_filename>"
+    exit 1
+fi
+
+input_filename=$1
+
+if ! test -f bazel-bin/parser/parser_bin; then
+  echo "bazel-bin/parser/parser_bin not found. Running 'bazel build parser/parser_bin'!"
+  bazel build parser/parser_bin
+fi
+if ! test -f bazel-bin/fizzbee_/fizzbee; then
+  echo "bazel-bin/fizzbee_/fizzbee not found. Running 'bazel build //:fizzbee'!"
+  bazel build //:fizzbee
+fi
+
+# Call the first binary and redirect output to a temporary file
+temp_output=$(mktemp)
+if ! bazel-bin/parser/parser_bin "$input_filename" > "$temp_output"; then
+    echo "Error: Compilation failed"
+    echo "Logs at $temp_output" 
+    exit 1
+fi
+
+# Create the JSON filename by replacing the extension
+json_filename="${input_filename%.*}.json"
+
+echo "Model checking" $json_filename
+# Run the second command with the JSON filename
+bazel-bin/fizzbee_/fizzbee "$json_filename"
+
+# Clean up the temporary file
+rm "$temp_output"
+

@@ -1,0 +1,25 @@
+states:
+  code: |
+    elements = set([1, 2, 3, 4, 5])
+    count = 5
+invariants:
+  - always: True
+    pyExpr: |
+      count <= len(elements)
+actions:
+  - name: Remove
+    block:
+      flow: FLOW_SERIAL
+      stmts:
+        - forStmt:
+            flow: FLOW_SERIAL
+            loopVars: ["e"]
+            py_expr: "elements"
+            block:
+              flow: FLOW_ATOMIC
+              stmts:
+                - pyStmt:
+                    code: elements.discard(e)
+                - pyStmt:
+                    code: count -= 1
+

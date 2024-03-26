@@ -1,0 +1,3 @@
+options:
+  max_actions: 3
+  max_concurrent_actions: 2

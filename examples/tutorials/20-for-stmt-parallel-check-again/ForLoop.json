@@ -1,0 +1,53 @@
+{
+  "states": {
+    "code": "elements = set([1, 2, 3])\ncount = 3\n\n"
+  },
+  "actions": [
+    {
+      "name": "Remove",
+      "flow": "FLOW_SERIAL",
+      "block": {
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "forStmt": {
+              "flow": "FLOW_PARALLEL",
+              "loopVars": [
+                "e"
+              ],
+              "pyExpr": "elements",
+              "block": {
+                "flow": "FLOW_ATOMIC",
+                "stmts": [
+                  {
+                    "ifStmt": {
+                      "branches": [
+                        {
+                          "condition": "e in elements",
+                          "block": {
+                            "stmts": [
+                              {
+                                "pyStmt": {
+                                  "code": "elements.discard(e)"
+                                }
+                              },
+                              {
+                                "pyStmt": {
+                                  "code": "count -= 1"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+
+atomic action Init:
+  state = False
+
+atomic action On:
+  if not state:
+    state = True
+
+#atomic action Off:
+#  if state:
+#    state = False

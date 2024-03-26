@@ -1,0 +1,89 @@
+{
+  "variables": [
+    {
+      "name": "MAX_ELEMENTS",
+      "expression": "5"
+    },
+    {
+      "name": "elements",
+      "expression": "set()"
+    },
+    {
+      "name": "count",
+      "expression": "0"
+    }
+  ],
+  "actions": [
+    {
+      "name": "add",
+      "block": {
+        "stmts": [
+          {
+            "anyStmt": {
+              "loop_vars": [
+                "e"
+              ],
+              "pyExpr": "range(0, MAX_ELEMENTS)",
+              "block": {
+                "stmts": [
+                  {
+                    "ifStmt": {
+                      "branches": [
+                        {
+                          "condition": "e not in elements",
+                          "block": {
+                            "stmts": [
+                              {
+                                "pyStmt": {
+                                  "code": "elements = elements | set([e])"
+                                }
+                              },
+                              {
+                                "pyStmt": {
+                                  "code": "count = count + 1"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "remove",
+      "block": {
+        "stmts": [
+          {
+            "anyStmt": {
+              "loop_vars": [
+                "e"
+              ],
+              "pyExpr": "elements",
+              "block": {
+                "stmts": [
+                  {
+                    "pyStmt": {
+                      "code": "elements = elements - set([e])"
+                    }
+                  },
+                  {
+                    "pyStmt": {
+                      "code": "count = count - 1"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

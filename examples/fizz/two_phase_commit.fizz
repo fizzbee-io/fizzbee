@@ -1,0 +1,107 @@
+
+role Coordinator:
+  state:
+    # map of status
+    statuses = {}
+    prepared = {}
+
+  Write(txn):
+    statuses[txn.id] = "init"
+    prepared[txn.id] = set()
+
+    parallel for p in participants:
+      status := p.prepare(txn)
+      if status == 'success':
+        prepared[txt.id].add(p)
+
+    atomic:
+      if status == init:
+        if len(a) == len(p):
+          statuses[txt.id] = "committed"
+        else:
+          statuses[txn.id] = "aborted"
+
+    if statuses[txt.id] == "committed":
+      parallel for p in participants:
+        p.Commit(txn)
+    else:
+      parallel for p in participants:
+        p.Abort(txn)
+
+    return statuses[txt.id]
+
+
+  action Abort:
+    any t,status in statuses:
+      atomic:
+        if status == "init"
+          status="aborted
+
+  Read(txn):
+    any p in participants:
+      return p.Read(txn.key)
+
+     
+role Participant(rm):
+  kvStore = {}
+  statuses = {}
+  pending = {}
+
+  Prepare(txn):
+    pending[txn.id] = txn
+    atomic:
+      if txn.id not in statuses:
+        any res in {"success", "failure"}:
+          if res == "success":
+            statuses[txn.id] = "prepared"
+          else:
+            statuses[txn.id] = "aborted"
+
+    if statuses[txn.id] == "prepared":
+      return "success"
+    else:
+      return "failure"
+      
+  Commit(txn):
+    atomic:
+      statuses[txn.id] = "committed"
+      kvStore[pending[txn.id].key] = pending[txn.id].value
+      del pending[txn.id]
+
+  Abort():
+    statuses[txn.id] = "aborted
+    del pending[txn.id]
+
+  Read(txn):
+    return kvStore[txn.key]
+
+
+constants:
+  PARTICIPANTS
+  MAX_TRANSACTIONS
+
+state:
+  participants = {Participant(p) for p in PARTICIPANTS}
+  coordinator = Coordinator(participants)
+
+invariants:
+  all_status_match(coordinator, participants)
+
+def all_status_match(coordinator, participants):
+    return all(
+        txn_id in coordinator.statuses and coordinator.statuses[txn_id] == 'committed'
+        and all(
+            txn_id in p.statuses and p.statuses[txn_id] != 'aborted'
+            for p in participants
+        )
+        for txn_id in coordinator.statuses
+    )
+
+
+action Transact:
+  for i in range(0, MAX_TRANSACTIONS):
+    any key in range(0, MAX_TRANSACTIONS):
+      oneof:
+        coordinator.Write(Transaction(i, key, i)
+        coordinator.Read(Transaction(i, key)
+

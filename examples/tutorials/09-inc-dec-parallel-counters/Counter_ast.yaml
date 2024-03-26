@@ -1,0 +1,22 @@
+states:
+  code: |2-
+      a = 0
+      b=0
+
+actions:
+  - name: Incr
+    block:
+      flow: FLOW_PARALLEL
+      stmts:
+        - pyStmt:
+            code: a = a + 1
+        - pyStmt:
+            code: b = b + 1
+  - name: Decr
+    block:
+      flow: FLOW_PARALLEL
+      stmts:
+        - pyStmt:
+            code: a = a - 1
+        - pyStmt:
+            code: b = b - 1

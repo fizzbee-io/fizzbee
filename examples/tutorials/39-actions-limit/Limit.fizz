@@ -1,0 +1,10 @@
+
+init:
+    count = 0
+
+atomic action Increment:
+    count = count + 1
+
+atomic action Decrement:
+    if count > 0:
+        count = count - 1
