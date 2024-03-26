@@ -1,0 +1,54 @@
+{
+  "states": {
+    "code": "count = 0\n\n"
+  },
+  "actions": [
+    {
+      "name": "Increment",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "pyStmt": {
+              "code": "count = count + 1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Decrement",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "ifStmt": {
+              "branches": [
+                {
+                  "condition": "count > 0",
+                  "block": {
+                    "stmts": [
+                      {
+                        "pyStmt": {
+                          "code": "count = count - 1"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
