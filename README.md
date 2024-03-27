@@ -2,7 +2,7 @@
 
 A Formal specification language and model checker
 to specify distributed systems.
-Try out now at (Fizzbee Online Playground)(https://fizzbee.io/). No installation needed.
+Try out now at [Fizzbee Online Playground](https://fizzbee.io/). No installation needed.
 
 # Docs
 If you are familiar with [TLA+](https://lamport.azurewebsites.net/tla/tla.html), this would be a quick start
