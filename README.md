@@ -2,13 +2,16 @@
 
 A Formal specification language and model checker
 to specify distributed systems.
+Try out now at (Fizzbee Online Playground)(https://fizzbee.io/). No installation needed.
 
 # Docs
 If you are familiar with [TLA+](https://lamport.azurewebsites.net/tla/tla.html), this would be a quick start
 [From TLA+ to Fizz](https://github.com/fizzbee-io/fizzbee/blob/main/docs/fizzbee-quick-start-for-tlaplus-users.md)
 
 # Run a model checker
-For now, no prebuilt binaries. 
+For now, no prebuilt binaries. But you can try without installation at https://fizzbee.io/ 
+
+Or Install from source.
 - Bazel: You need bazel installed to build. [Bazelisk](https://github.com/bazelbuild/bazelisk?tab=readme-ov-file#installation) is the recommended way to use bazel. Rename the binary to bazel and put it part of your PATH.
 - gcc: This project uses protobuf. Bazel proto_library does not use precompiled protoc, and it builds from scratch. It requires g++ compiler. `sudo apt update; sudo apt install g++`
 
