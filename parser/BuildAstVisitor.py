@@ -482,7 +482,7 @@ class BuildAstVisitor(FizzParserVisitor):
                     continue
 
                 print("visitSuite childProto",childProto)
-                raise Exception("visitSuite childProto (unknown) type", childProto.__class__.__name__, dir(childProto), childProto)
+                raise Exception("visitSuite childProto (unknown) type", childProto.__class__.__name__, dir(childProto), childProto, child)
             elif hasattr(child, 'getSymbol'):
 
                 if (child.getSymbol().type == FizzParser.LINE_BREAK
@@ -519,10 +519,15 @@ class BuildAstVisitor(FizzParserVisitor):
                     if child.getSymbol().type == FizzParser.LINE_BREAK:
                         continue
                     self.log_symbol(child)
+                else:
+                    print("visitStmt child (unknown) type",child.__class__.__name__, child.getText())
             if count != 1:
                 raise Exception("visitStmt child count != 1", count, ctx.getText())
+        else:
+            print("visitStmt child",childStmt.getText())
         childProto = self.visit(childStmt)
         if childProto is None:
+            print("childProto is None for visitStmt", childStmt.__name__)
             return None
         if isinstance(childProto, ast.PyStmt):
             return ast.Statement(py_stmt=childProto)
@@ -786,6 +791,10 @@ class BuildAstVisitor(FizzParserVisitor):
         print("visitWhile_stmt while_stmt", while_stmt)
         while_stmt.flow = flow
         return while_stmt
+
+    # Visit a parse tree produced by FizzParser#pass_stmt.
+    def visitPass_stmt(self, ctx:FizzParser.Pass_stmtContext):
+        return ast.PyStmt(code="pass")
 
     # Visit a parse tree produced by FizzParser#break_stmt.
     def visitBreak_stmt(self, ctx:FizzParser.Break_stmtContext):

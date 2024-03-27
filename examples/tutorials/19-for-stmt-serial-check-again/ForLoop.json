@@ -21,6 +21,9 @@
     {
       "name": "Remove",
       "flow": "FLOW_SERIAL",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
         "flow": "FLOW_SERIAL",
         "stmts": [
