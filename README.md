@@ -9,7 +9,7 @@ If you are familiar with [TLA+](https://lamport.azurewebsites.net/tla/tla.html),
 [From TLA+ to Fizz](https://github.com/fizzbee-io/fizzbee/blob/main/docs/fizzbee-quick-start-for-tlaplus-users.md)
 
 # Run a model checker
-For now, no prebuilt binaries. But you can try without installation at https://fizzbee.io/ 
+For now, no prebuilt binaries. But you can try without installation at https://fizzbee.io/play 
 
 Or Install from source.
 - Bazel: You need bazel installed to build. [Bazelisk](https://github.com/bazelbuild/bazelisk?tab=readme-ov-file#installation) is the recommended way to use bazel. Rename the binary to bazel and put it part of your PATH.
