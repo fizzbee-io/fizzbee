@@ -2,7 +2,7 @@ package modelchecker
 
 import (
 	"fizz/proto"
-	"github.com/jayaprabhakar/fizzbee/lib"
+	"github.com/fizzbee-io/fizzbee/lib"
 )
 
 func ReadOptionsFromYaml(filename string) (*proto.StateSpaceOptions, error) {

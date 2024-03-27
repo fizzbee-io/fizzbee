@@ -8,7 +8,7 @@ go_library(
         "tri_state.go",
         "yaml.go",
     ],
-    importpath = "github.com/jayaprabhakar/fizzbee/lib",
+    importpath = "github.com/fizzbee-io/fizzbee/lib",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_huandu_go_clone//:go-clone",

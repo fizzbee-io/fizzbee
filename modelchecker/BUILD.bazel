@@ -17,7 +17,7 @@ go_library(
         "testconstants.go",
         "thread.go",
     ],
-    importpath = "github.com/jayaprabhakar/fizzbee/modelchecker",
+    importpath = "github.com/fizzbee-io/fizzbee/modelchecker",
     visibility = ["//visibility:public"],
     deps = [
         "//lib",
