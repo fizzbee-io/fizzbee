@@ -5,7 +5,7 @@ to specify distributed systems.
 
 # Docs
 If you are familiar with [TLA+](https://lamport.azurewebsites.net/tla/tla.html), this would be a quick start
-[From TLA+ to Fizz](https://github.com/jayaprabhakar/fizzbee/blob/main/docs/fizzbee-quick-start-for-tlaplus-users.md)
+[From TLA+ to Fizz](https://github.com/fizzbee-io/fizzbee/blob/main/docs/fizzbee-quick-start-for-tlaplus-users.md)
 
 # Run a model checker
 For now, no prebuilt binaries. 

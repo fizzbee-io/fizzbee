@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 load("@bazel_gazelle//:def.bzl", "gazelle")
 
-# gazelle:prefix github.com/jayaprabhakar/fizzbee
+# gazelle:prefix github.com/fizzbee-io/fizzbee
 gazelle(name = "gazelle")
 
 platform(
@@ -24,7 +24,7 @@ go_library(
     name = "fizzbee_lib",
     srcs = ["main.go"],
     data = ["//examples/ast"],
-    importpath = "github.com/jayaprabhakar/fizzbee",
+    importpath = "github.com/fizzbee-io/fizzbee",
     visibility = ["//visibility:private"],
     deps = [
         "//modelchecker",

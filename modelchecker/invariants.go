@@ -3,7 +3,7 @@ package modelchecker
 import (
 	ast "fizz/proto"
 	"fmt"
-	"github.com/jayaprabhakar/fizzbee/lib"
+	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
 	"maps"
 	"slices"

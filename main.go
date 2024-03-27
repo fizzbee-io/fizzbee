@@ -6,7 +6,7 @@ import (
     ast "fizz/proto"
     "flag"
     "fmt"
-    "github.com/jayaprabhakar/fizzbee/modelchecker"
+    "github.com/fizzbee-io/fizzbee/modelchecker"
     "google.golang.org/protobuf/encoding/protojson"
     "os"
     "path/filepath"

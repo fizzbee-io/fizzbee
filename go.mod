@@ -1,3 +1,3 @@
-module github.com/jayaprabhakar/fizzbee
+module github.com/fizzbee-io/fizzbee
 
 go 1.21

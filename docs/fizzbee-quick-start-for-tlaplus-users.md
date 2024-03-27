@@ -438,7 +438,7 @@ fizz.yaml
 ```
 liveness: strict
 ```
-The other possible value is `probabilistic`. To trigger it, see [Liveness with probabilistic evaluation](https://github.com/jayaprabhakar/fizzbee/blob/main/docs/fizzbee-quick-start-for-tlaplus-users.md#liveness-with-probabilistic-evaluation).
+The other possible value is `probabilistic`. To trigger it, see [Liveness with probabilistic evaluation](https://github.com/fizzbee-io/fizzbee/blob/main/docs/fizzbee-quick-start-for-tlaplus-users.md#liveness-with-probabilistic-evaluation).
 At present, it is not triggered automatically.
 ```
 atomic action Init:
