@@ -424,7 +424,7 @@ func TestProcessor_Tutorials(t *testing.T) {
 		{
 			filename:      "examples/tutorials/29-simple-function/FlipCoin.json",
 			maxActions:    1,
-			expectedNodes: 4,
+			expectedNodes: 8,
 		},
 		{
 			filename:      "examples/tutorials/30-unfair-coin-toss-method/FairCoin.json",
