@@ -83,8 +83,7 @@
           "name": "a"
         },
         {
-          "name": "b",
-          "defaultPyExpr": "2"
+          "name": "b"
         }
       ],
       "block": {
