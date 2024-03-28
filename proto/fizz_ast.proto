@@ -153,6 +153,7 @@ message Function {
 message Parameter {
   SourceInfo source_info = 1;
   string name = 2;
+  string default_py_expr = 3;
 }
 
 message Invariant {

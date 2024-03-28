@@ -4,8 +4,8 @@ invariants:
 
 atomic func Toss():
     oneof:
-        return 0
-        return 1
+        `head` return 0
+        `tail` return 1
 
 atomic action Roll:
   toss0 = Toss()

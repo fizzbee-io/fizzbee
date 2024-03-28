@@ -595,9 +595,6 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			panic("Only atomic flow is supported for call statements for now")
 		}
 		def := t.Process.SymbolTable[stmt.CallStmt.Name]
-		if def != nil && len(stmt.CallStmt.Args) != 0 {
-			panic("CallStmt with args not supported")
-		}
 		if def == nil {
 			// Handle builtin functions. A slightly better way is to use the exact code from the input file
 			// and execute. For now, we will generate the code. This will mess up with error messages later
@@ -625,8 +622,42 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			t.Process.updateAllVariablesInScope(vars)
 			t.Process.Enable()
 		} else {
-
+			// Handle function calls
 			newFrame := &CallFrame{FileIndex: def.fileIndex, pc: def.path + ".Block", Name: stmt.CallStmt.Name}
+			newFrame.vars = starlark.StringDict{}
+			hasNamedArgs := false
+			for i, arg := range stmt.CallStmt.Args {
+				vars := t.Process.GetAllVariables()
+				val, err := t.Process.Evaluator.EvalPyExpr("filename.fizz", arg.PyExpr, vars)
+				t.Process.PanicOnError(fmt.Sprintf("Error evaluating expr: %s", arg.PyExpr), err)
+				//PanicOnError(err)
+				t.Process.updateAllVariablesInScope(vars)
+				if !hasNamedArgs && arg.Name == "" {
+					newFrame.vars[def.params[i].Name] = val
+				} else if arg.Name != "" {
+					newFrame.vars[arg.Name] = val
+					hasNamedArgs = true
+				} else {
+					panic("Named arguments must come after positional arguments")
+				}
+			}
+			for _, param := range def.params {
+				// handle default values
+				if _, ok := newFrame.vars[param.Name]; !ok {
+					if param.DefaultPyExpr != "" {
+						vars := t.Process.GetAllVariables()
+						val, err := t.Process.Evaluator.EvalPyExpr("filename.fizz", param.DefaultPyExpr, vars)
+						t.Process.PanicOnError(fmt.Sprintf("Error evaluating expr: %s", param.DefaultPyExpr), err)
+						//PanicOnError(err)
+						t.Process.updateAllVariablesInScope(vars)
+						newFrame.vars[param.Name] = val
+					} else {
+						panic(fmt.Sprintf("Missing argument %s", param.Name))
+					}
+				}
+			}
+			//fmt.Println("CallStmt: ", stmt.CallStmt.Name, newFrame.vars)
+
 			newFrame.callerAssignVarNames = stmt.CallStmt.Vars
 			t.Process.Labels = append(t.Process.Labels, newFrame.Name+".call")
 			// TODO: Handle args

@@ -275,7 +275,8 @@ class BuildAstVisitor(FizzParserVisitor):
                 childProto = self.visit(child)
                 if isinstance(childProto, ast.Block):
                     function.block.CopyFrom(childProto)
-
+                elif BuildAstVisitor.is_list_of_type(childProto, ast.Parameter):
+                    function.params.extend(childProto)
                 print("visitFunctiondef childProto",childProto)
             elif hasattr(child, 'getSymbol'):
 
@@ -378,10 +379,86 @@ class BuildAstVisitor(FizzParserVisitor):
 
     # Visit a parse tree produced by FizzParser#argument.
     def visitArgument(self, ctx:FizzParser.ArgumentContext):
+        # TODO: Handle named arguments
         argument = ast.Argument()
         py_str = self.get_py_str(ctx)
         argument.py_expr = BuildAstVisitor.transform_code(py_str)
         return argument
+
+    # Visit a parse tree produced by FizzParser#def_parameter.
+    def visitDef_parameter(self, ctx:FizzParser.Def_parameterContext):
+        print("\n\nvisitDef_parameter",ctx.__class__.__name__)
+        print("visitDef_parameter",ctx.getText())
+        print("visitDef_parameter",dir(ctx))
+        print("visitDef_parameter children count",ctx.getChildCount())
+        print("visitDef_parameter full text\n", self.get_py_str(ctx))
+
+        param = ast.Parameter()
+        for i, child in enumerate(ctx.getChildren()):
+            print()
+            print("visitDef_parameter child index",i,child.getText())
+            if hasattr(child, 'toStringTree'):
+                if isinstance(child, FizzParser.NameContext):
+                    param.name = child.getText()
+                    continue
+                if isinstance(child, FizzParser.TestContext):
+                    param.default_py_expr = self.get_py_str(child)
+                    continue
+                self.log_childtree(child)
+                childProto = self.visit(child)
+                if isinstance(childProto, ast.Parameter):
+                    param.CopyFrom(childProto)
+                print("visitDef_parameter childProto",childProto)
+            elif hasattr(child, 'getSymbol'):
+                if (child.getSymbol().type == FizzParser.NAME
+                        or child.getSymbol().type == FizzParser.COMMA
+                ):
+                    continue
+                self.log_symbol(child)
+            else:
+                print("visitDef_parameter child (unknown) type",child.__class__.__name__, dir(child))
+                raise Exception("visitDef_parameter child (unknown) type")
+
+        print("param", param)
+        return param
+
+    # Visit a parse tree produced by FizzParser#def_parameter.
+    def visitDef_parameters(self, ctx:FizzParser.Def_parameterContext):
+        params = []
+        for i, child in enumerate(ctx.getChildren()):
+            print()
+            print("visitDef_parameters child index",i,child.getText())
+            if hasattr(child, 'toStringTree'):
+                # if isinstance(child, FizzParser.NameContext):
+                #     return child.getText()
+                self.log_childtree(child)
+                childProto = self.visit(child)
+                if isinstance(childProto, ast.Parameter):
+                    params.append(childProto)
+                    continue
+                print("visitDef_parameters childProto",childProto)
+            elif hasattr(child, 'getSymbol'):
+                if (child.getSymbol().type == FizzParser.NAME
+                        or child.getSymbol().type == FizzParser.COMMA
+                ):
+                    continue
+                self.log_symbol(child)
+            else:
+                print("visitDef_parameters child (unknown) type",child.__class__.__name__, dir(child))
+                raise Exception("visitDef_parameters child (unknown) type")
+
+        print("visitDef_parameters params", params)
+        return params
+
+    # Visit a parse tree produced by FizzParser#named_parameter.
+    def visitNamed_parameter(self, ctx:FizzParser.Named_parameterContext):
+        print("\n\nvisitNamed_parameter",ctx.__class__.__name__)
+        print("visitNamed_parameter",ctx.getText())
+        child = ctx.getChild(0)
+        param = ast.Parameter(name=child.getText())
+        return param
+
+
 
     # Visit a parse tree produced by FizzParser#expr_stmt.
     def visitExpr_stmt(self, ctx:FizzParser.Expr_stmtContext):
