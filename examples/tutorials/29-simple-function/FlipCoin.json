@@ -3,6 +3,9 @@
     {
       "name": "FlipCoin",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
         "flow": "FLOW_ATOMIC",
         "stmts": [
@@ -15,8 +18,32 @@
             }
           },
           {
+            "callStmt": {
+              "vars": [
+                "toss2"
+              ],
+              "name": "FairToss"
+            }
+          },
+          {
+            "callStmt": {
+              "vars": [
+                "sum"
+              ],
+              "name": "Concat",
+              "args": [
+                {
+                  "pyExpr": "str(toss1)"
+                },
+                {
+                  "pyExpr": "\"-\"+str(toss2)"
+                }
+              ]
+            }
+          },
+          {
             "returnStmt": {
-              "pyExpr": "toss1"
+              "pyExpr": "sum"
             }
           }
         ]
@@ -43,6 +70,29 @@
           {
             "returnStmt": {
               "pyExpr": "1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Concat",
+      "flow": "FLOW_ATOMIC",
+      "params": [
+        {
+          "name": "a"
+        },
+        {
+          "name": "b",
+          "defaultPyExpr": "2"
+        }
+      ],
+      "block": {
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "returnStmt": {
+              "pyExpr": "a + b"
             }
           }
         ]

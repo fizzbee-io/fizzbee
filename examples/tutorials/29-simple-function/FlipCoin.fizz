@@ -5,6 +5,11 @@ atomic func FairToss():
         return 0
         return 1
 
+atomic func Concat(a, b):
+    return a + b
+
 atomic action FlipCoin:
     toss1 = FairToss()
-    return toss1
+    toss2 = FairToss()
+    sum = Concat(str(toss1), "-"+str(toss2))
+    return sum

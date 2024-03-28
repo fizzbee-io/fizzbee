@@ -38,10 +38,11 @@ const (
 const enableCaptureStackTrace = false
 
 type Definition struct {
-	DefType   DefType
-	name      string
-	fileIndex int
-	path      string
+	DefType    DefType
+	name       string
+	fileIndex  int
+	path   string
+	params []*ast.Parameter
 }
 
 type Stats struct {
@@ -114,6 +115,7 @@ func NewProcess(name string, files []*ast.File, parent *Process) *Process {
 				symbolTable[function.Name] = &Definition{
 					DefType:   Function,
 					name:      function.Name,
+					params:    function.Params,
 					fileIndex: i,
 					path:      fmt.Sprintf("Functions[%d]", j),
 				}
@@ -333,6 +335,7 @@ func (p *Process) removeCurrentThread() {
 func (p *Process) GetAllVariables() starlark.StringDict {
 	dict := CloneDict(p.Heap.globals)
 	frame := p.currentThread().currentFrame()
+	CopyDict(frame.vars, dict)
 	frame.scope.getAllVisibleVariablesToDict(dict)
 	return dict
 }
