@@ -384,8 +384,19 @@ func (t *Thread) Execute() ([]*Process, bool) {
 		default:
 			panic(fmt.Sprintf("Unknown protobuf type: %v", protobuf))
 		}
-		if len(forks) > 0 || yield {
+		if len(forks) > 0 {
 			break
+		}
+		if yield {
+			if t.Stack.Len() == 0 {
+				t.Process.removeCurrentThread()
+				return forks, true
+			}
+			for t.Stack.Len() > 0 && (t.currentFrame().pc == "" || strings.HasSuffix(t.currentFrame().pc, ".Block.$")) {
+				t.executeEndOfBlock()
+			}
+
+			return forks, true
 		}
 	}
 	return forks, yield
