@@ -101,7 +101,7 @@ func TestProcessor_Start(t *testing.T) {
 	})
 	root, _, _ := p1.Start()
 	assert.NotNil(t, root)
-	assert.Equal(t, 93, len(p1.visited))
+	assert.Equal(t, 91, len(p1.visited))
 }
 
 func printFileNames(rootDir string) error {
@@ -197,17 +197,17 @@ func TestProcessor_Tutorials(t *testing.T) {
 		{
 			filename:      "examples/tutorials/03-multiple-serial-counters/Counter.json",
 			maxActions:    1,
-			expectedNodes: 6,
+			expectedNodes: 4,
 		},
 		{
 			filename:      "examples/tutorials/03-multiple-serial-counters/Counter.json",
 			maxActions:    2,
-			expectedNodes: 45,
+			expectedNodes: 18,
 		},
 		{
 			filename:      "examples/tutorials/03-multiple-serial-counters/Counter.json",
 			maxActions:    4,
-			expectedNodes: 1622,
+			expectedNodes: 259,
 		},
 		{
 			filename:      "examples/tutorials/04-multiple-oneof-counters/Counter.json",
@@ -293,50 +293,50 @@ func TestProcessor_Tutorials(t *testing.T) {
 		{
 			filename:      "examples/tutorials/15-elements-counter-serial/Counter.json",
 			maxActions:    1,
-			expectedNodes: 15,
+			expectedNodes: 8,
 		},
 		{
 			filename:      "examples/tutorials/15-elements-counter-serial/Counter.json",
 			maxActions:    2,
-			expectedNodes: 216,
+			expectedNodes: 64,
 		},
 		{
 			filename:      "examples/tutorials/15-elements-counter-serial/Counter.json",
 			maxActions:    3,
-			expectedNodes: 1964,
+			expectedNodes: 309,
 		},
 		{
 			filename:      "examples/tutorials/16-elements-counter-parallel/Counter.json",
 			maxActions:    1,
-			expectedNodes: 18,
+			expectedNodes: 17,
 		},
 		{
 			filename:      "examples/tutorials/16-elements-counter-parallel/Counter.json",
 			maxActions:    2,
-			expectedNodes: 308,
+			expectedNodes: 284,
 		},
 		{
 			filename:             "examples/tutorials/16-elements-counter-parallel/Counter.json",
 			maxActions:           3,
-			expectedNodes:        3088,
+			expectedNodes:        2764,
 			maxConcurrentActions: 3,
 		},
 		{
 			filename:             "examples/tutorials/16-elements-counter-parallel/Counter.json",
 			maxActions:           3,
 			maxConcurrentActions: 2,
-			expectedNodes:        1733, // 0.16s 131
+			expectedNodes:        1630, // 0.16s 131
 		},
 		{
 			filename:             "examples/tutorials/16-elements-counter-parallel/Counter.json",
 			stateConfig: 		  "examples/tutorials/16-elements-counter-parallel/fizz.yaml",
-			expectedNodes:        1733, // 0.16s 131
+			expectedNodes:        1630, // 0.16s 131
 		},
 		{
 			filename:             "examples/tutorials/16-elements-counter-parallel/Counter.json",
 			maxActions:           4,
 			maxConcurrentActions: 2,
-			expectedNodes:        4773, // 0.16s 162
+			expectedNodes:        4601, // 0.16s 162
 		},
 		{
 			filename:      "examples/tutorials/17-for-stmt-atomic/ForLoop.json",
@@ -349,27 +349,27 @@ func TestProcessor_Tutorials(t *testing.T) {
 			// The main reason for the significant increase in the nodes is because, the two threads can execute
 			// concurrently. So, in one thread might have deleted first element, then the second thread would start
 			// the loop, then both the threads would start interleaving between the two threads for each iteration.
-			expectedNodes: 36,
+			expectedNodes: 21,
 		},
 		{
 			filename:      "examples/tutorials/19-for-stmt-serial-check-again/ForLoop.json",
 			maxActions:    1,
-			expectedNodes: 6,
+			expectedNodes: 5,
 		},
 		{
 			filename:      "examples/tutorials/19-for-stmt-serial-check-again/ForLoop.json",
 			maxActions:    2,
-			expectedNodes: 20,
+			expectedNodes: 13,
 		},
 		{
 			filename:      "examples/tutorials/20-for-stmt-parallel-check-again/ForLoop.json",
 			maxActions:    1,
-			expectedNodes: 25,
+			expectedNodes: 24,
 		},
 		{
 			filename:      "examples/tutorials/20-for-stmt-parallel-check-again/ForLoop.json",
 			maxActions:    2,
-			expectedNodes: 194,
+			expectedNodes: 162,
 		},
 		{
 			filename:      "examples/tutorials/21-unfair-coin/FairCoin.json",
@@ -389,12 +389,12 @@ func TestProcessor_Tutorials(t *testing.T) {
 		{
 			filename:      "examples/tutorials/23-while-stmt-serial/Counter.json",
 			maxActions:    1,
-			expectedNodes: 8,
+			expectedNodes: 7,
 		},
 		{
 			filename:      "examples/tutorials/23-while-stmt-serial/Counter.json",
 			maxActions:    4,
-			expectedNodes: 29,
+			expectedNodes: 16,
 		},
 		{
 			filename:      "examples/tutorials/24-while-stmt-atomic/FairCoin.json",

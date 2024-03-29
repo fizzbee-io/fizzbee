@@ -677,8 +677,15 @@ func (p *Processor) processNode(node *Node) bool {
 		// TODO: We could just copy the failed invariants from the parent
 		// instead of checking again
 		CheckInvariants(crashFork)
+		if node.Process.Enabled {
+			crashNode.Enable()
+		}
+		if other, ok := p.visited[crashNode.HashCode()]; ok {
+			crashNode.Duplicate(other)
+			return false
+		}
 		crashNode.Attach()
-		crashNode.Stutter()
+
 
 		//if other, ok := p.visited[node.HashCode()]; ok {
 		//	// Check if visited before scheduling children
