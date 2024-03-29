@@ -836,9 +836,12 @@ func (t *Thread) executeEndOfBlock() bool {
 					if len(oldFrame.callerAssignVarNames) > 1 {
 						panic("Multiple return values not supported yet")
 					}
+					returnedVars := starlark.StringDict{}
 					for _, name := range oldFrame.callerAssignVarNames {
-						frame.scope.vars[name] = starlark.None
+						returnedVars[name] = starlark.None
+						t.Process.Enable()
 					}
+					t.Process.updateAllVariablesInScope(returnedVars)
 					_,yield := t.executeEndOfStatement()
 					return yield
 				}
