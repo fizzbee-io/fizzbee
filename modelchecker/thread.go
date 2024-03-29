@@ -592,10 +592,12 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			if len(oldFrame.callerAssignVarNames) > 1 {
 				panic("Multiple return values not supported yet")
 			}
+			returnedVars := starlark.StringDict{}
 			for _, name := range oldFrame.callerAssignVarNames {
-				t.currentFrame().scope.vars[name] = val
+				returnedVars[name] = val
 				t.Process.Enable()
 			}
+			t.Process.updateAllVariablesInScope(returnedVars)
 			return t.executeEndOfStatement()
 		}
 		return nil, false
