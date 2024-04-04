@@ -605,7 +605,13 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 
 		frame := currentFrame
 		if frame.scope.flow != ast.Flow_FLOW_ATOMIC {
-			panic("Only atomic flow is supported for call statements for now")
+			parentScope := frame.scope
+			for parentScope != nil && parentScope.flow == ast.Flow_FLOW_ONEOF {
+				parentScope = parentScope.parent
+			}
+			if parentScope != nil && parentScope.flow != ast.Flow_FLOW_ATOMIC {
+				panic("Only atomic flow is supported for call statements for now")
+			}
 		}
 		def := t.Process.SymbolTable[stmt.CallStmt.Name]
 		if def == nil {
