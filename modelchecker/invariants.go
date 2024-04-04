@@ -512,27 +512,27 @@ func cycleFinderHelper(node *Node, callback CycleCallback, visited map[*Node]boo
 		return nil, true
 	}
 	globalVisited[node] = true
-	fairCount := 0
+	hasFair := false
 	for _, link := range node.Outbound {
 		if link.Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_STRONG ||
 			link.Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_WEAK {
-			fairCount++
+			hasFair = true
 		}
 	}
-	if fairCount == 0 {
+	if node.Name == "yield" && !hasFair {
 		pathCopy := slices.Clone(path)
 		pathCopy = append(pathCopy, &Link{
 			Node:     node,
 			Name:     "stutter",
 		})
-		return pathCopy, callback(pathCopy)
+		isLive := callback(pathCopy)
+		if !isLive {
+			return pathCopy, false
+		}
+
 	}
 	// Traverse outbound links
 	for _, link := range node.Outbound {
-		if link.Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_STRONG ||
-			link.Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_WEAK {
-			fairCount++
-		}
 		pathCopy := slices.Clone(path)
 		visitedCopy := maps.Clone(visited)
 		pathCopy = append(pathCopy, link)
