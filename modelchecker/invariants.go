@@ -38,7 +38,7 @@ func CheckInvariants(process *Process) map[int][]int {
 					results[i] = append(results[i], j)
 				}
 			} else {
-				passed = CheckAssertion(process, invariant)
+				passed = CheckAssertion(process, invariant, j)
 				if slices.Contains(invariant.TemporalOperators, "eventually") && passed && len(process.Threads) == 0  {
 					process.Witness[i][j] = true
 				} else if !slices.Contains(invariant.TemporalOperators, "eventually") && !passed {
@@ -69,19 +69,24 @@ func CheckInvariant(process *Process, invariant *ast.Invariant) bool {
 	return bool(cond.Truth())
 }
 
-func CheckAssertion(process *Process, invariant *ast.Invariant) bool {
+func CheckAssertion(process *Process, invariant *ast.Invariant, index int) bool {
 	if !slices.Contains(invariant.TemporalOperators, "always") {
 		panic("Invariant checking supported only for always/always-eventually/eventually-always invariants")
 	}
+	cloned := process.CloneForAssert()
+	cloned.Heap.globals["__returns__"] = NewDictFromStringDict(cloned.Returns)
 
-	vars := CloneDict(process.Heap.globals)
-	vars["__returns__"] = NewDictFromStringDict(process.Returns)
-	pyStmt := &ast.PyStmt{
-		Code: invariant.PyCode + "\n" + "__retval__ = " + invariant.Name + "()\n",
+	numThreads := len(cloned.Threads)
+	assertThread := cloned.NewThread()
+	cloned.Current = numThreads
+
+	assertThread.currentFrame().pc = fmt.Sprintf("Invariants[%d]", index)
+	assertThread.currentFrame().Name = invariant.Name
+	assertThread.Execute()
+	if len(cloned.Threads) > numThreads {
+		panic("Assertions should not include non-deterministic behavior")
 	}
-	_, err := process.Evaluator.ExecPyStmt("filename.fizz", pyStmt, vars)
-	PanicOnError(err)
-	return bool(vars["__retval__"].Truth())
+	return bool(cloned.Returns[invariant.Name].Truth())
 }
 
 func CheckStrictLiveness(node *Node) ([]*Link, *InvariantPosition) {

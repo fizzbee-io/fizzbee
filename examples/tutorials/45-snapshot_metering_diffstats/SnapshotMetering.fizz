@@ -1,0 +1,62 @@
+always assertion AllBlocksCharged:
+    return metered_size == 0 or metered_size >= len(volume)
+
+always eventually assertion MeteringMatchesLiveBackups:
+    size = GetUniqueBlocksCount()
+    return metered_size == size
+
+action Init:
+    MAX_BACKUPS = 2
+    MAX_REVISIONS = 2
+
+    next_id = 0
+    revision = 0
+
+    volume = [0, 0, 0]
+    backups = {}
+
+    metered_size = 0
+
+
+atomic action VolumeWrite:
+    if revision >= MAX_REVISIONS:
+        return
+    revision += 1
+    any i in range(len(volume)):
+        volume[i] += 1
+
+
+atomic action Backup:
+    if next_id >= MAX_BACKUPS:
+        return
+    backups[next_id] = volume[:]
+    next_id += 1
+
+
+atomic action Expire:
+    any b in backups:
+        backups.pop(b)
+
+atomic fair action MeterBackups:
+    metered_size = GetUniqueBlocksCount()
+
+
+atomic func GetUniqueBlocksCount():
+    if len(backups) == 0:
+        return 0
+    size = len(backups[backups.keys()[0]])
+    if len(backups) == 1:
+        return size
+
+    sorted_backup_ids = sorted(backups.keys())
+    for i in range(1, len(sorted_backup_ids)):
+        new_diff = diff(backups[sorted_backup_ids[i]], backups[sorted_backup_ids[i - 1]])
+        size += new_diff
+    return size
+
+atomic func diff(a, b):
+    count = 0
+    for item in zip(a, b):
+        if item[0] != item[1]:
+            count += 1
+    return count

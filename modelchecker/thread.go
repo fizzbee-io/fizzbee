@@ -373,6 +373,8 @@ func (t *Thread) Execute() ([]*Process, bool) {
 		case *ast.Action:
 			t.Fairness = msg.GetFairness().GetLevel()
 			t.executeAction()
+		case *ast.Invariant:
+			t.executeInvariant()
 		case *ast.Block:
 			forks = t.executeBlock()
 		case *ast.Statement:
@@ -382,7 +384,7 @@ func (t *Thread) Execute() ([]*Process, bool) {
 		case *ast.WhileStmt:
 			forks, yield = t.executeWhileStatement()
 		default:
-			panic(fmt.Sprintf("Unknown protobuf type: %v", protobuf))
+			panic(fmt.Sprintf("Unknown protobuf type: %T, value %v", protobuf, protobuf))
 		}
 		if len(forks) > 0 {
 			break
@@ -403,6 +405,10 @@ func (t *Thread) Execute() ([]*Process, bool) {
 }
 
 func (t *Thread) executeAction() {
+	t.currentFrame().pc = t.currentFrame().pc + ".Block"
+}
+
+func (t *Thread) executeInvariant() {
 	t.currentFrame().pc = t.currentFrame().pc + ".Block"
 }
 
@@ -584,8 +590,17 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		if t.Stack.Len() == 0 {
 			t.Process.removeCurrentThread()
 			if val != starlark.None {
-				t.Process.Returns[convertToAction(action).Name] = val
-				t.Process.Enable()
+				if action1, ok := action.(*ast.Action); ok {
+					t.Process.Returns[convertToAction(action1).Name] = val
+					t.Process.Enable()
+				} else if invariant, ok := action.(*ast.Invariant); ok {
+					//fmt.Println("Handling invariant returns")
+					t.Process.Returns[convertToInvariant(invariant).Name] = val
+					//t.Process.Enable()
+				} else {
+					panic("Unknown protobuf type")
+				}
+
 			}
 			return nil, true
 		} else {
@@ -913,6 +928,10 @@ func (t *Thread) FindNextProgramCounter() string {
 
 func convertToAction(message proto.Message) *ast.Action {
 	return message.(*ast.Action)
+}
+
+func convertToInvariant(message proto.Message) *ast.Invariant {
+	return message.(*ast.Invariant)
 }
 
 func convertToBlock(message proto.Message) *ast.Block {

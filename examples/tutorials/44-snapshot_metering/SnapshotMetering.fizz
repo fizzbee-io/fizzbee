@@ -1,0 +1,23 @@
+
+always eventually assertion MeteringMatchesLiveBackups:
+  return metered_size == len(backups)
+
+action Init:
+    MAX_BACKUPS = 2
+    next_id = 0
+    backups = set([])
+
+    metered_size = 0
+
+atomic action Backup:
+    if next_id >= MAX_BACKUPS:
+        return
+    backups.add(next_id)
+    next_id += 1
+
+atomic action Expire:
+    any b in backups:
+        backups.remove(b)
+
+atomic fair action MeterBackups:
+    metered_size = len(backups)
