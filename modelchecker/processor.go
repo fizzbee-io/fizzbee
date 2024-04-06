@@ -202,6 +202,34 @@ func (p *Process) Fork() *Process {
 	return p2
 }
 
+func (p *Process) CloneForAssert() *Process {
+	p2 := &Process{
+		Name:        p.Name,
+		Heap:        p.Heap.Clone(),
+		Current:     p.Current,
+		Parent:      p,
+		Evaluator:   p.Evaluator,
+		Children:    []*Process{},
+		Files:       p.Files,
+		Returns:     make(starlark.StringDict),
+		SymbolTable: p.SymbolTable,
+		Labels:      make([]string, 0),
+		Stats:       p.Stats.Clone(),
+	}
+	p2.Witness = make([][]bool, len(p.Files))
+	for i, file := range p.Files {
+		p2.Witness[i] = make([]bool, len(file.Invariants))
+	}
+
+	clonedThreads := make([]*Thread, len(p.Threads))
+	for i, thread := range p.Threads {
+		clonedThreads[i] = thread.Clone()
+		clonedThreads[i].Process = p2
+	}
+	p2.Threads = clonedThreads
+	return p2
+}
+
 func (p *Process) Enable() {
 	if !p.Enabled {
 		parent := p.Parent

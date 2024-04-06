@@ -1,0 +1,2 @@
+deadlock_detection: true
+liveness: strict
