@@ -32,14 +32,14 @@ func CheckInvariants(process *Process) map[int][]int {
 			passed := false
 			if invariant.Block == nil {
 				passed = CheckInvariant(process, invariant)
-				if invariant.Eventually && passed && len(process.Threads) == 0 {
+				if invariant.Eventually && passed /*&& (len(process.Threads) == 0 || process.Name == "yield")*/ {
 					process.Witness[i][j] = true
 				} else if !invariant.Eventually && !passed {
 					results[i] = append(results[i], j)
 				}
 			} else {
 				passed = CheckAssertion(process, invariant, j)
-				if slices.Contains(invariant.TemporalOperators, "eventually") && passed && len(process.Threads) == 0  {
+				if slices.Contains(invariant.TemporalOperators, "eventually") && passed /*&& (len(process.Threads) == 0 || process.Name == "yield")*/ {
 					process.Witness[i][j] = true
 				} else if !slices.Contains(invariant.TemporalOperators, "eventually") && !passed {
 					results[i] = append(results[i], j)
@@ -98,7 +98,7 @@ func CheckStrictLiveness(node *Node) ([]*Link, *InvariantPosition) {
 	for i, file := range process.Files {
 		for j, invariant := range file.Invariants {
 			predicate := func(n *Node) (bool, bool) {
-				return len(n.Process.Threads) == 0, n.Process.Witness[i][j]
+				return len(n.Process.Threads) == 0 || n.Name == "yield", n.Process.Witness[i][j]
 			}
 			eventuallyAlways := false
 			alwaysEventually := false

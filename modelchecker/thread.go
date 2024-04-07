@@ -372,6 +372,7 @@ func (t *Thread) Execute() ([]*Process, bool) {
 		switch msg := protobuf.(type) {
 		case *ast.Action:
 			t.Fairness = msg.GetFairness().GetLevel()
+			t.Process.Fairness = t.Fairness
 			t.executeAction()
 		case *ast.Invariant:
 			t.executeInvariant()
