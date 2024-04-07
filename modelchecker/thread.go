@@ -467,9 +467,9 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		forks := t.executeBlock()
 		return forks, false
 	} else if stmt.IfStmt != nil {
-		if stmt.IfStmt.Flow != ast.Flow_FLOW_ATOMIC && currentFrame.scope.flow != ast.Flow_FLOW_ATOMIC {
-			panic("Only atomic flow is supported for if statements")
-		}
+		// For IfStmt, the condition expression is evaluated atomically.
+		// So there is no yield in between an if condition evaluation and elif
+		// or if/elif/else and the first statement of the block.
 		for i, branch := range stmt.IfStmt.Branches {
 			vars := t.Process.GetAllVariables()
 			cond, err := t.Process.Evaluator.EvalPyExpr("filename.fizz", branch.Condition, vars)
