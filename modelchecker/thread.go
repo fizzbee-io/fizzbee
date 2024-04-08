@@ -385,7 +385,7 @@ func (t *Thread) Execute() ([]*Process, bool) {
 		case *ast.WhileStmt:
 			forks, yield = t.executeWhileStatement()
 		default:
-			panic(fmt.Sprintf("Unknown protobuf type: %T, value %v", protobuf, protobuf))
+			panic(fmt.Sprintf("Unknown protobuf type: %T, value %v at path %s", protobuf, protobuf, frame.pc))
 		}
 		if len(forks) > 0 {
 			break
