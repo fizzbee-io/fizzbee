@@ -449,7 +449,10 @@ func NewNode(process *Process) *Node {
 	}
 }
 
-func (n *Node) Duplicate(other *Node) {
+func (n *Node) Duplicate(other *Node, yield bool) {
+	if yield && !n.Enabled {
+		return
+	}
 	parent := n.Inbound[0].Node
 	other.Inbound = append(other.Inbound, n.Inbound[0])
 	parent.Outbound = append(parent.Outbound, &Link{
@@ -650,7 +653,7 @@ func (p *Processor) processNode(node *Node) bool {
 	// this may not be an issue.
 	if other, ok := p.visited[node.HashCode()]; ok {
 		// Check if visited before scheduling children
-		node.Duplicate(other)
+		node.Duplicate(other, yield)
 		//if other.ancestors[node.Inbound[0].Node.HashCode()] {
 		//	fmt.Println("Cycle detected")
 		//	// TODO: Check if we can find the liveness here, incrementally.
@@ -706,7 +709,7 @@ func (p *Processor) processNode(node *Node) bool {
 			crashNode.Enable()
 		}
 		if other, ok := p.visited[crashNode.HashCode()]; ok {
-			crashNode.Duplicate(other)
+			crashNode.Duplicate(other, true)
 			return false
 		}
 		crashNode.Attach()
