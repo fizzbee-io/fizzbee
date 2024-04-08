@@ -450,9 +450,6 @@ func NewNode(process *Process) *Node {
 }
 
 func (n *Node) Duplicate(other *Node) {
-	if !n.Enabled {
-		return
-	}
 	parent := n.Inbound[0].Node
 	other.Inbound = append(other.Inbound, n.Inbound[0])
 	parent.Outbound = append(parent.Outbound, &Link{
