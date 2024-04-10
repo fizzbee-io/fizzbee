@@ -652,15 +652,24 @@ func (p *Processor) processNode(node *Node) bool {
 	// determined by the statement, and we include program counter in the hash code,
 	// this may not be an issue.
 	if other, ok := p.visited[node.HashCode()]; ok {
-		// Check if visited before scheduling children
-		node.Duplicate(other, yield)
-		//if other.ancestors[node.Inbound[0].Node.HashCode()] {
-		//	fmt.Println("Cycle detected")
-		//	// TODO: Check if we can find the liveness here, incrementally.
-		//	// Naively calling the liveness checker here will make it very
-		//	// slow and expensive.
-		//}
-		return false
+		// This is a bit inefficient.
+		// TODO: Enabled should be a property of the link/transition, not the node.
+		// We will keep the enabled state in the node, during execution but have to be
+		// copied to the link/transition when attaching/merging similar to Fairness.
+		if other.Enabled || !node.Enabled {
+			node.Duplicate(other, yield)
+			//if other.ancestors[node.Inbound[0].Node.HashCode()] {
+			//	fmt.Println("Cycle detected")
+			//	// TODO: Check if we can find the liveness here, incrementally.
+			//	// Naively calling the liveness checker here will make it very
+			//	// slow and expensive.
+			//}
+			return false
+		} else {
+			node.Attach()
+			p.visited[node.HashCode()] = node
+		}
+
 	} else {
 		node.Attach()
 	}
