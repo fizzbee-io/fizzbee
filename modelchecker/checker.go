@@ -143,11 +143,11 @@ func (e *Evaluator) ExecInit(variables *ast.StateVars) (starlark.StringDict, err
 	return predeclared, err
 
 	//glog.Info("Running Init")
-	//globals, err := starlark.ExecFileOptions(e.options, e.thread, "apparent/filename.star", initStr, predeclared)
+	//state, err := starlark.ExecFileOptions(e.options, e.thread, "apparent/filename.star", initStr, predeclared)
 	//if err != nil {
 	//	glog.Error("Error in init: %+v", err)
 	//}
-	//return globals, err
+	//return state, err
 }
 
 func (e *Evaluator) ExecInitOld(variables *ast.StateVars) (starlark.StringDict, error) {

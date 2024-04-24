@@ -10,9 +10,10 @@ func deepCloneStarlarkValue(value starlark.Value) (starlark.Value, error) {
     // "builtin_function_or_method".
     switch value.Type() {
 
-    case "NoneType", "int", "float", "bool", "string", "bytes", "range":
+    case "NoneType", "int", "float", "bool", "string", "bytes", "range", "struct":
     //case starlark.Bool, starlark.String, starlark.Int:
         // For simple values, just return a copy
+        // Also starlark struct is immutable
         return value, nil
 
     case "list":

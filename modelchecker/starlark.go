@@ -29,7 +29,7 @@ func (e *Evaluator) ExecPyStmt(filename string, stmt *ast.PyStmt, prevState star
 
 	err = starlark.ExecREPLChunk(f, e.thread, prevState)
 	globals := prevState
-	//globals, err := starlark.ExecFileOptions(e.options, e.thread, filename, starCode, prevState)
+	//state, err := starlark.ExecFileOptions(e.options, e.thread, filename, starCode, prevState)
 	if err != nil {
 		glog.Errorf("Error executing stmt: %+v", err)
 		return false, err

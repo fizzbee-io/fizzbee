@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 	"maps"
 	"os"
 	"runtime"
@@ -127,7 +128,7 @@ func NewProcess(name string, files []*ast.File, parent *Process) *Process {
 	}
 	p := &Process{
 		Name:        name,
-		Heap:        &Heap{starlark.StringDict{}},
+		Heap:        &Heap{starlark.StringDict{}, starlark.StringDict{}},
 		Threads:     []*Thread{},
 		Current:     0,
 		Files:       files,
@@ -291,7 +292,7 @@ func (n *Node) GetStateString() string {
 	return buf.String()
 }
 func (n *Node) appendState(p *Process, buf *strings.Builder) {
-	if len(p.Heap.globals) > 0 {
+	if len(p.Heap.state) > 0 {
 		jsonString := p.Heap.String()
 		// Escape double quotes
 		escapedString := strings.ReplaceAll(jsonString, "\"", "\\\"")
@@ -361,11 +362,22 @@ func (p *Process) removeCurrentThread() {
 // GetAllVariables returns all variables visible in the Current thread.
 // This includes state variables and variables from the Current thread's variables in the top call frame
 func (p *Process) GetAllVariables() starlark.StringDict {
-	dict := CloneDict(p.Heap.globals)
+	// Shallow clone the globals
+	dict := maps.Clone(p.Heap.globals)
+	CopyDict(p.Heap.state, dict)
 	frame := p.currentThread().currentFrame()
 	CopyDict(frame.vars, dict)
 	frame.scope.getAllVisibleVariablesToDict(dict)
+	dict["struct"] = starlark.NewBuiltin("struct", starlarkstruct.Make)
+	dict["enum"] = starlark.NewBuiltin("enum", MakeEnum)
 	return dict
+}
+
+func MakeEnum(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	for _, arg := range args {
+		kwargs = append(kwargs, starlark.Tuple{arg, arg})
+	}
+	return starlarkstruct.FromKeywords(starlark.String("enum"), kwargs), nil
 }
 
 func (p *Process) updateAllVariablesInScope(dict starlark.StringDict) {
@@ -380,6 +392,9 @@ func (p *Process) updateAllVariablesInScope(dict starlark.StringDict) {
 		if p.Heap.update(k, v) {
 			// if no scoped variable exists, check if it is state
 			// variable, then update the state variable
+			continue
+		}
+		if p.Heap.globals.Has(k) {
 			continue
 		}
 		// Declare the variable to the Current scope
@@ -564,6 +579,10 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 	p.Init = NewNode(process)
 	init = p.Init
 
+	if len(p.Files[0].Stmts) > 0 {
+		processPreInit(init, p.Files[0].Stmts)
+	}
+
 	if p.Files[0].Actions[0].Name != "Init" {
 		globals, err := process.Evaluator.ExecInit(p.Files[0].States)
 		if err != nil {
@@ -571,7 +590,7 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 			panic(err)
 		}
 		process.Enable()
-		process.Heap.globals = globals
+		process.Heap.state = globals
 		failed := CheckInvariants(process)
 		if len(failed[0]) > 0 {
 			p.Init.Process.FailedInvariants = failed
@@ -626,6 +645,25 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 	}
 	fmt.Printf("Nodes: %d, elapsed: %s\n", len(p.visited), time.Since(startTime))
 	return p.Init, failedNode, err
+}
+
+func processPreInit(init *Node, stmts []*ast.Statement) {
+	thread := init.NewThread()
+	thread.currentFrame().pc = fmt.Sprintf("Stmts[%d]", 0)
+	thread.currentFrame().Name = "toplevel"
+
+	thread.InsertNewScope()
+	thread.currentFrame().scope.flow = ast.Flow_FLOW_ATOMIC
+	for _, stmt := range stmts {
+		forks, yield := thread.executeStatement()
+		if yield || len(forks) > 0 {
+			panic("Not supported: No non-determinism at top level in stmt" + stmt.String())
+		}
+	}
+	globals := thread.currentFrame().scope.GetAllVisibleVariables()
+	globals.Freeze()
+	init.Process.Heap.globals = globals
+	init.removeCurrentThread()
 }
 
 func (p *Processor) processNode(node *Node) bool {

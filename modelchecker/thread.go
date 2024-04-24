@@ -14,11 +14,12 @@ import (
 )
 
 type Heap struct {
+	state   starlark.StringDict
 	globals starlark.StringDict
 }
 
 func (h *Heap) MarshalJSON() ([]byte, error) {
-	return StringDictToJson(h.globals)
+	return StringDictToJson(h.state)
 }
 
 func StringDictToMap(stringDict starlark.StringDict) map[string]string {
@@ -68,7 +69,7 @@ func StringDictToMap(stringDict starlark.StringDict) map[string]string {
 }
 
 func (h *Heap) ToJson() string {
-	return StringDictToJsonString(h.globals)
+	return StringDictToJsonString(h.state)
 }
 
 func StringDictToJsonString(stringDict starlark.StringDict) string {
@@ -97,20 +98,20 @@ func (h *Heap) HashCode() string {
 }
 
 func (h *Heap) update(k string, v starlark.Value) bool {
-	if _, ok := h.globals[k]; ok {
-		h.globals[k] = v
+	if _, ok := h.state[k]; ok {
+		h.state[k] = v
 		return true
 	}
 	return false
 }
 
 func (h *Heap) insert(k string, v starlark.Value) bool {
-	h.globals[k] = v
+	h.state[k] = v
 	return true
 }
 
 func (h *Heap) Clone() *Heap {
-	return &Heap{CloneDict(h.globals)}
+	return &Heap{state:CloneDict(h.state), globals:h.globals}
 }
 
 type Scope struct {
@@ -206,6 +207,9 @@ func CopyDict(from starlark.StringDict, to starlark.StringDict) starlark.StringD
 		to = make(starlark.StringDict)
 	}
 	for k, v := range from {
+		if v.Type() == "builtin_function_or_method" {
+			continue
+		}
 		newValue, err := deepCloneStarlarkValue(v)
 		PanicOnError(err)
 		to[k] = newValue
@@ -842,7 +846,9 @@ func (t *Thread) executeEndOfBlock() bool {
 				if action.Name == "Init" {
 					variables := oldScope.GetAllVisibleVariables()
 					for s, value := range variables {
-						t.Process.Heap.insert(s, value)
+						if !t.Process.Heap.globals.Has(s) {
+							t.Process.Heap.insert(s, value)
+						}
 					}
 				}
 			}
