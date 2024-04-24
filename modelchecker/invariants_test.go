@@ -56,7 +56,7 @@ func TestCheckInvariants(t *testing.T) {
 		}
 
 		process := NewProcess("example", []*ast.File{file0}, nil)
-		process.Heap.globals["x"] = starlark.MakeInt(1)
+		process.Heap.state["x"] = starlark.MakeInt(1)
 		failed := CheckInvariants(process)
 		assert.Len(t, failed[0], 1)
 		assert.Equal(t, 0, failed[0][0])

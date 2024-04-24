@@ -46,7 +46,7 @@ func TestHash(t *testing.T) {
 	require.Nil(t, err)
 	files := []*ast.File{file}
 	process := NewProcess("", files, nil)
-	process.Heap.globals = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
+	process.Heap.state = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
 	assert.Len(t, process.Threads, 0)
 	process.NewThread()
 	thread := process.currentThread()
@@ -71,7 +71,7 @@ func TestHash(t *testing.T) {
 		},
 		Current: 1,
 		Heap: &Heap{
-			globals: starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)},
+			state: starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)},
 		},
 	}
 	p2 := &Process{
@@ -83,7 +83,7 @@ func TestHash(t *testing.T) {
 		},
 		Current: 3,
 		Heap: &Heap{
-			globals: starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)},
+			state: starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)},
 		},
 	}
 

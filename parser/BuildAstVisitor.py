@@ -52,6 +52,8 @@ class BuildAstVisitor(FizzParserVisitor):
                     file.invariants.append(childProto)
                 elif BuildAstVisitor.is_list_of_type(childProto, ast.Invariant):
                     file.invariants.extend(childProto)
+                elif isinstance(childProto, ast.Statement):
+                    file.stmts.append(childProto)
                 else:
                     print("visitFile_input childProto (unknown) type",childProto.__class__.__name__, dir(child), dir(child.start), childProto)
                     errorStr = f"Error: Line: {child.start.line}: Unexpected {self.get_py_str(child)}"

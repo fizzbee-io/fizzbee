@@ -174,7 +174,7 @@ func TestThread_ExecuteStatement(t *testing.T) {
 	t.Run("atomic", func(t *testing.T) {
 		process := NewProcess("", files, nil)
 		process.NewThread()
-		process.Heap.globals = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
+		process.Heap.state = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
 		thread := process.currentThread()
 		assert.Equal(t, thread.Stack.Len(), 1)
 
@@ -205,7 +205,7 @@ func TestThread_ExecuteStatement(t *testing.T) {
 	t.Run("serial", func(t *testing.T) {
 		process := NewProcess("", files, nil)
 		process.NewThread()
-		process.Heap.globals = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
+		process.Heap.state = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
 		thread := process.currentThread()
 		assert.Equal(t, thread.Stack.Len(), 1)
 
@@ -235,7 +235,7 @@ func TestThread_ExecuteStatement(t *testing.T) {
 	t.Run("oneof", func(t *testing.T) {
 		process := NewProcess("", files, nil)
 		process.NewThread()
-		process.Heap.globals = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
+		process.Heap.state = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
 		thread := process.currentThread()
 		assert.Equal(t, thread.Stack.Len(), 1)
 
@@ -262,7 +262,7 @@ func TestThread_ExecuteStatement(t *testing.T) {
 	t.Run("parallel", func(t *testing.T) {
 		process := NewProcess("", files, nil)
 		process.NewThread()
-		process.Heap.globals = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
+		process.Heap.state = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
 		thread := process.currentThread()
 		assert.Equal(t, thread.Stack.Len(), 1)
 
@@ -300,7 +300,7 @@ func TestThread_ExecuteStatement(t *testing.T) {
 	t.Run("parallel_final_stmt", func(t *testing.T) {
 		process := NewProcess("", files, nil)
 		process.NewThread()
-		process.Heap.globals = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
+		process.Heap.state = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
 		thread := process.currentThread()
 		assert.Equal(t, thread.Stack.Len(), 1)
 
@@ -336,7 +336,7 @@ func TestThread_ExecuteEndOfBlock(t *testing.T) {
 	t.Run("topblock", func(t *testing.T) {
 		process := NewProcess("", files, nil)
 		process.NewThread()
-		process.Heap.globals = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
+		process.Heap.state = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
 		thread := process.currentThread()
 		assert.Equal(t, thread.Stack.Len(), 1)
 
@@ -355,7 +355,7 @@ func TestThread_ExecuteEndOfBlock(t *testing.T) {
 	t.Run("nested-atomic", func(t *testing.T) {
 		process := NewProcess("", files, nil)
 		process.NewThread()
-		process.Heap.globals = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
+		process.Heap.state = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
 		thread := process.currentThread()
 		assert.Equal(t, thread.Stack.Len(), 1)
 
@@ -380,7 +380,7 @@ func TestThread_ExecuteEndOfBlock(t *testing.T) {
 	t.Run("nested-serial", func(t *testing.T) {
 		process := NewProcess("", files, nil)
 		process.NewThread()
-		process.Heap.globals = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
+		process.Heap.state = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
 		thread := process.currentThread()
 		assert.Equal(t, thread.Stack.Len(), 1)
 
@@ -410,7 +410,7 @@ func TestThread_Execute(t *testing.T) {
 	t.Run("atomic", func(t *testing.T) {
 		process := NewProcess("", files, nil)
 		process.NewThread()
-		process.Heap.globals = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
+		process.Heap.state = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
 
 		thread := process.currentThread()
 		assert.Equal(t, thread.Stack.Len(), 1)
@@ -422,13 +422,13 @@ func TestThread_Execute(t *testing.T) {
 		assert.True(t, yield)
 		assert.Len(t, process.Threads, 0)
 
-		assert.Equal(t, starlark.MakeInt(13), process.Heap.globals["a"])
-		assert.Equal(t, starlark.MakeInt(26), process.Heap.globals["b"])
+		assert.Equal(t, starlark.MakeInt(13), process.Heap.state["a"])
+		assert.Equal(t, starlark.MakeInt(26), process.Heap.state["b"])
 	})
 	t.Run("oneof", func(t *testing.T) {
 		process := NewProcess("", files, nil)
 		process.NewThread()
-		process.Heap.globals = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
+		process.Heap.state = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
 
 		thread := process.currentThread()
 		assert.Equal(t, thread.Stack.Len(), 1)
@@ -440,8 +440,8 @@ func TestThread_Execute(t *testing.T) {
 		assert.False(t, yield)
 		assert.Len(t, process.Threads, 1)
 
-		assert.Equal(t, starlark.MakeInt(10), process.Heap.globals["a"])
-		assert.Equal(t, starlark.MakeInt(20), process.Heap.globals["b"])
+		assert.Equal(t, starlark.MakeInt(10), process.Heap.state["a"])
+		assert.Equal(t, starlark.MakeInt(20), process.Heap.state["b"])
 
 		fork := oneofForks[0]
 		forks, yield := fork.currentThread().Execute()
@@ -449,8 +449,8 @@ func TestThread_Execute(t *testing.T) {
 		assert.Len(t, forks, 0)
 		assert.True(t, yield)
 
-		assert.Equal(t, starlark.MakeInt(11), fork.Heap.globals["a"])
-		assert.Equal(t, starlark.MakeInt(20), fork.Heap.globals["b"])
+		assert.Equal(t, starlark.MakeInt(11), fork.Heap.state["a"])
+		assert.Equal(t, starlark.MakeInt(20), fork.Heap.state["b"])
 
 		fork = oneofForks[1]
 		forks, yield = fork.currentThread().Execute()
@@ -458,24 +458,24 @@ func TestThread_Execute(t *testing.T) {
 		assert.Len(t, forks, 0)
 		assert.True(t, yield)
 
-		assert.Equal(t, starlark.MakeInt(10), fork.Heap.globals["a"])
-		assert.Equal(t, starlark.MakeInt(22), fork.Heap.globals["b"])
+		assert.Equal(t, starlark.MakeInt(10), fork.Heap.state["a"])
+		assert.Equal(t, starlark.MakeInt(22), fork.Heap.state["b"])
 
 		// oneOfForks[2] is the nested block. check it separately
 		//oneOfFork[2]
 
 		nestedForks, yield := oneofForks[2].currentThread().Execute()
 		assert.Len(t, nestedForks, 2)
-		assert.Equal(t, starlark.MakeInt(10), oneofForks[2].Heap.globals["a"])
-		assert.Equal(t, starlark.MakeInt(20), oneofForks[2].Heap.globals["b"])
+		assert.Equal(t, starlark.MakeInt(10), oneofForks[2].Heap.state["a"])
+		assert.Equal(t, starlark.MakeInt(20), oneofForks[2].Heap.state["b"])
 		for _, fork := range nestedForks {
 			thread = fork.currentThread()
 			assert.Equal(t, 1, thread.Stack.Len())
 			assert.False(t, yield)
 			assert.Len(t, fork.Threads, 1)
 
-			assert.Equal(t, starlark.MakeInt(10), fork.Heap.globals["a"])
-			assert.Equal(t, starlark.MakeInt(20), fork.Heap.globals["b"])
+			assert.Equal(t, starlark.MakeInt(10), fork.Heap.state["a"])
+			assert.Equal(t, starlark.MakeInt(20), fork.Heap.state["b"])
 		}
 		fork = nestedForks[0]
 		forks, yield = fork.currentThread().Execute()
@@ -483,8 +483,8 @@ func TestThread_Execute(t *testing.T) {
 		assert.Len(t, forks, 0)
 		assert.True(t, yield)
 
-		assert.Equal(t, starlark.MakeInt(11), fork.Heap.globals["a"])
-		assert.Equal(t, starlark.MakeInt(20), fork.Heap.globals["b"])
+		assert.Equal(t, starlark.MakeInt(11), fork.Heap.state["a"])
+		assert.Equal(t, starlark.MakeInt(20), fork.Heap.state["b"])
 
 		fork = nestedForks[1]
 		forks, yield = fork.currentThread().Execute()
@@ -492,8 +492,8 @@ func TestThread_Execute(t *testing.T) {
 		assert.Len(t, forks, 0)
 		assert.True(t, yield)
 
-		assert.Equal(t, starlark.MakeInt(10), fork.Heap.globals["a"])
-		assert.Equal(t, starlark.MakeInt(22), fork.Heap.globals["b"])
+		assert.Equal(t, starlark.MakeInt(10), fork.Heap.state["a"])
+		assert.Equal(t, starlark.MakeInt(22), fork.Heap.state["b"])
 
 		// oneOfForks[3]
 
@@ -503,8 +503,8 @@ func TestThread_Execute(t *testing.T) {
 		assert.Len(t, forks, 0)
 		assert.True(t, yield)
 
-		assert.Equal(t, starlark.MakeInt(11), fork.Heap.globals["a"])
-		assert.Equal(t, starlark.MakeInt(20), fork.Heap.globals["b"])
+		assert.Equal(t, starlark.MakeInt(11), fork.Heap.state["a"])
+		assert.Equal(t, starlark.MakeInt(20), fork.Heap.state["b"])
 
 		fork = oneofForks[4]
 		forks, yield = fork.currentThread().Execute()
@@ -512,8 +512,8 @@ func TestThread_Execute(t *testing.T) {
 		assert.Len(t, forks, 0)
 		assert.True(t, yield)
 
-		assert.Equal(t, starlark.MakeInt(10), fork.Heap.globals["a"])
-		assert.Equal(t, starlark.MakeInt(22), fork.Heap.globals["b"])
+		assert.Equal(t, starlark.MakeInt(10), fork.Heap.state["a"])
+		assert.Equal(t, starlark.MakeInt(22), fork.Heap.state["b"])
 	})
 
 }

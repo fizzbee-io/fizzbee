@@ -26,6 +26,7 @@ go_library(
         "@com_github_golang_glog//:glog",
         "@com_github_golang_protobuf//proto:go_default_library",
         "@net_starlark_go//starlark",
+        "@net_starlark_go//starlarkstruct",
         "@net_starlark_go//syntax",
     ],
 )

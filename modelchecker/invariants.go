@@ -62,7 +62,7 @@ func CheckInvariant(process *Process, invariant *ast.Invariant) bool {
 	if eventuallyAlways && invariant.Nested != nil {
 		pyExpr = invariant.Nested.PyExpr
 	}
-	vars := CloneDict(process.Heap.globals)
+	vars := CloneDict(process.Heap.state)
 	vars["__returns__"] = NewDictFromStringDict(process.Returns)
 	cond, err := process.Evaluator.EvalPyExpr("filename.fizz", pyExpr, vars)
 	PanicOnError(err)
@@ -74,7 +74,7 @@ func CheckAssertion(process *Process, invariant *ast.Invariant, index int) bool 
 		panic("Invariant checking supported only for always/always-eventually/eventually-always invariants")
 	}
 	cloned := process.CloneForAssert()
-	cloned.Heap.globals["__returns__"] = NewDictFromStringDict(cloned.Returns)
+	cloned.Heap.state["__returns__"] = NewDictFromStringDict(cloned.Returns)
 
 	numThreads := len(cloned.Threads)
 	assertThread := cloned.NewThread()
