@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
 	"maps"
 	"os"
 	"runtime"
@@ -368,16 +367,8 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 	frame := p.currentThread().currentFrame()
 	CopyDict(frame.vars, dict)
 	frame.scope.getAllVisibleVariablesToDict(dict)
-	dict["struct"] = starlark.NewBuiltin("struct", starlarkstruct.Make)
-	dict["enum"] = starlark.NewBuiltin("enum", MakeEnum)
+	maps.Copy(dict, lib.Builtins)
 	return dict
-}
-
-func MakeEnum(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	for _, arg := range args {
-		kwargs = append(kwargs, starlark.Tuple{arg, arg})
-	}
-	return starlarkstruct.FromKeywords(starlark.String("enum"), kwargs), nil
 }
 
 func (p *Process) updateAllVariablesInScope(dict starlark.StringDict) {
