@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "queue.go",
         "stack.go",
+        "starlark_types.go",
         "tri_state.go",
         "yaml.go",
     ],
@@ -13,6 +14,9 @@ go_library(
     deps = [
         "@com_github_huandu_go_clone//:go-clone",
         "@in_gopkg_yaml_v3//:yaml_v3",
+        "@net_starlark_go//starlark",
+        "@net_starlark_go//starlarkstruct",
+        "@net_starlark_go//syntax",
         "@org_golang_google_protobuf//encoding/protojson:go_default_library",
         "@org_golang_google_protobuf//proto:go_default_library",
         "@org_golang_x_sys//cpu:go_default_library",
