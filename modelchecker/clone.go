@@ -114,6 +114,8 @@ func deepCloneStarlarkValue(value starlark.Value) (starlark.Value, error) {
             newBag.Insert(clonedElem)
         }
         return newBag, nil
+    case "role":
+        return value, nil
     default:
         return nil, fmt.Errorf("unsupported type: %T, %s", value, value.Type())
     }

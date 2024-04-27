@@ -61,7 +61,7 @@ var (
 
 
 type MutableRecord struct {
-    *starlarkstruct.Struct
+    *Struct
 }
 var _ starlark.HasSetField = (*MutableRecord)(nil)
 
@@ -74,22 +74,17 @@ func (m *MutableRecord) Type() string         { return "record" }
 func (m *MutableRecord) Hash() (uint32, error)                  {
     return 0, fmt.Errorf("unhashable type: record")
 }
+
 func (m *MutableRecord) SetField(name string, val starlark.Value) error {
-    entries := reflect.ValueOf(m.Struct).Elem().FieldByName("entries")
-    for i := 0; i < entries.Len(); i++ {
-        element := entries.Index(i)
-        // Get the name field of the element.
-        nameField := element.FieldByName("name")
-
-        // Get the value field of the element.
-        valueField := element.FieldByName("value")
-
-        // Check if the name matches what you want.
-        if nameField.String() == name {
-            // Set the value of the value field.
-            SetUnexportedField(valueField, val)
+    for _, e := range m.entries {
+        if e.name == name {
+            e.value = val
+            return nil
         }
     }
+
+    m.entries = append(m.entries, entry{name, val})
+    sort.Sort(m.entries)
     return nil
 }
 
@@ -97,7 +92,7 @@ func MakeRecord(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
     if len(args) > 0 {
         return nil, fmt.Errorf("record: unexpected positional arguments")
     }
-    record := starlarkstruct.FromKeywords(starlark.String("record"), kwargs)
+    record := FromKeywords(starlark.String("record"), kwargs)
 
     mutable := &MutableRecord{
         Struct: record,
@@ -107,7 +102,7 @@ func MakeRecord(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 
 func MutableRecordFromStringDict( d starlark.StringDict) *MutableRecord {
     s := &MutableRecord{
-        Struct: starlarkstruct.FromStringDict(starlark.String("record"), d),
+        Struct: FromStringDict(starlark.String("record"), d),
     }
     return s
 }
@@ -119,7 +114,7 @@ func MakeEnum(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwar
     return starlarkstruct.FromKeywords(starlark.String("enum"), kwargs), nil
 }
 
-func builtinAttr(recv starlark.Value, name string, methods map[string]*starlark.Builtin) (starlark.Value, error) {
+func BuiltinAttr(recv starlark.Value, name string, methods map[string]*starlark.Builtin) (starlark.Value, error) {
     b := methods[name]
     if b == nil {
         return nil, nil // no such method
@@ -127,7 +122,7 @@ func builtinAttr(recv starlark.Value, name string, methods map[string]*starlark.
     return b.BindReceiver(recv), nil
 }
 
-func builtinAttrNames(methods map[string]*starlark.Builtin) []string {
+func BuiltinAttrNames(methods map[string]*starlark.Builtin) []string {
     names := make([]string, 0, len(methods))
     for name := range methods {
         names = append(names, name)
@@ -258,11 +253,11 @@ func (g *GenericMap) SetKey(key, value starlark.Value) error {
 }
 
 func (g *GenericMap) Attr(name string) (starlark.Value, error) {
-    return builtinAttr(g, name, mapMethods)
+    return BuiltinAttr(g, name, mapMethods)
 }
 
 func (g *GenericMap) AttrNames() []string {
-    return builtinAttrNames(mapMethods)
+    return BuiltinAttrNames(mapMethods)
 }
 
 func sortByKeys(entries []starlark.Tuple) []starlark.Tuple {
@@ -585,11 +580,11 @@ func (g *GenericSet) IsSubset(other *GenericSet) (bool, error) {
 }
 
 func (g *GenericSet) Attr(name string) (starlark.Value, error) {
-    return builtinAttr(g, name, setMethods)
+    return BuiltinAttr(g, name, setMethods)
 }
 
 func (g *GenericSet) AttrNames() []string {
-    return builtinAttrNames(setMethods)
+    return BuiltinAttrNames(setMethods)
 }
 
 func (g *GenericSet) Iterate() starlark.Iterator {
@@ -958,11 +953,11 @@ func bagEqual(elems []starlark.Value, elems2 []starlark.Value, depth int) (bool,
 }
 
 func (b *Bag) Attr(name string) (starlark.Value, error) {
-    return builtinAttr(b, name, bagMethods)
+    return BuiltinAttr(b, name, bagMethods)
 }
 
 func (b *Bag) AttrNames() []string {
-    return builtinAttrNames(bagMethods)
+    return BuiltinAttrNames(bagMethods)
 }
 
 

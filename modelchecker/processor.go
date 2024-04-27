@@ -368,6 +368,8 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 	CopyDict(frame.vars, dict)
 	frame.scope.getAllVisibleVariablesToDict(dict)
 	maps.Copy(dict, lib.Builtins)
+	//dict["Participant"] = CreateRoleBuiltin("Participant")
+	//dict["Coordinator"] = CreateRoleBuiltin("Coordinator")
 	return dict
 }
 

@@ -6,6 +6,7 @@ go_library(
         "queue.go",
         "stack.go",
         "starlark_types.go",
+        "starlarkstruct.go",
         "tri_state.go",
         "yaml.go",
     ],
