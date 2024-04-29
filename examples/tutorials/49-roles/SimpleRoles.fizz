@@ -1,0 +1,67 @@
+
+role Coordinator:
+    PARTICIPANTS = []
+
+    action Init:
+        state = 'init'
+        participants = PARTICIPANTS
+
+    action Write:
+        if state != 'init':
+          return
+        else:
+          state = 'working'
+
+        prepared = set()
+        parallel for rm in participants:
+          serial:
+            vote = None
+            atomic:
+              vote = rm.Prepare()
+
+            if vote == 'prepared':
+              prepared.add(rm)
+            elif vote == 'aborted':
+              atomic:
+                Abort()
+              return
+
+        if len(prepared) == len(participants):
+          atomic:
+            Commit()
+
+    func Abort():
+        state = 'aborted'
+        parallel for rm in participants:
+          atomic:
+            rm.Abort()
+
+    func Commit():
+        state = 'committed'
+        parallel for rm in participants:
+          atomic:
+            rm.Commit()
+
+
+role Participant:
+    action Init:
+        state = 'init'
+
+    func Prepare():
+        oneof:
+          state = 'prepared'
+          state = 'abort'
+        return state
+
+    func Abort():
+          state = 'aborted'
+
+    func Commit():
+          state = 'committed'
+
+
+action Init:
+  pass
+
+action Next:
+  pass

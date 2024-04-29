@@ -13,6 +13,17 @@ message File {
   repeated Action actions = 7;
   repeated Function functions = 8;
   repeated Statement stmts = 9;
+  repeated Role roles = 10;
+}
+
+message Role {
+  SourceInfo source_info = 1;
+  string name = 2;
+  StateVars states = 4;
+  repeated Invariant invariants = 6;
+  repeated Action actions = 7;
+  repeated Function functions = 8;
+  repeated Statement stmts = 9;
 }
 
 enum FairnessLevel {

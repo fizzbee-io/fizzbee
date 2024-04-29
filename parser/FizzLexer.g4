@@ -97,6 +97,7 @@ FAIR     : 'fair';
 
 PARAMS   : 'params';
 INIT     : 'init';
+ROLE     : 'role';
 
 ASSERTION      : 'assertion';
 INVARIANTS     : 'invariants';

@@ -77,6 +77,7 @@ compound_stmt
     | TRY COLON suite (except_clause+ else_clause? finally_clause? | finally_clause) # try_stmt
     | ASYNC? WITH with_item (COMMA with_item)* COLON suite                           # with_stmt
     | decorator* (classdef | funcdef)                                                # class_or_func_def_stmt
+    | roledef                                                                        # role_def_stmt
 
     | ANY exprlist IN testlist COLON suite                                           # any_stmt
     | INIT COLON suite                                                               # init_stmt
@@ -128,6 +129,10 @@ except_clause
             | {self.CheckVersion(3)}? AS name {self.SetVersion(3);}
         )?
     )? COLON suite
+    ;
+
+roledef
+    : ROLE name COLON LINE_BREAK INDENT stmt+ DEDENT
     ;
 
 classdef

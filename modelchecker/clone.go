@@ -62,11 +62,11 @@ func deepCloneStarlarkValue(value starlark.Value) (starlark.Value, error) {
         }
         return newDict, nil
     case "record":
-        v := value.(*lib.MutableRecord)
+        v := value.(*lib.Struct)
         dict := starlark.StringDict{}
         v.ToStringDict(dict)
         newDict := CloneDict(dict)
-        return lib.MutableRecordFromStringDict(newDict), nil
+        return lib.FromStringDict(lib.Default, newDict), nil
 
     case "genericset":
         s := value.(*lib.GenericSet)
