@@ -54,6 +54,8 @@ class BuildAstVisitor(FizzParserVisitor):
                     file.invariants.extend(childProto)
                 elif isinstance(childProto, ast.Statement):
                     file.stmts.append(childProto)
+                elif isinstance(childProto, ast.Role):
+                    file.roles.append(childProto)
                 else:
                     print("visitFile_input childProto (unknown) type",childProto.__class__.__name__, dir(child), dir(child.start), childProto)
                     errorStr = f"Error: Line: {child.start.line}: Unexpected {self.get_py_str(child)}"
@@ -70,6 +72,59 @@ class BuildAstVisitor(FizzParserVisitor):
 #         print('visitFile_inputs children', x)
         print("file", file)
         return file
+
+
+    # Visit a parse tree produced by FizzParser#roledef.
+    def visitRoledef(self, ctx:FizzParser.RoledefContext):
+        # Almost the same as vistRole_def_stmt
+        print("\n\nvisitRoledef",ctx.__class__.__name__)
+        print("visitRoledef",ctx.getText())
+        print("visitRoledef",dir(ctx))
+        print("visitRoledef children count",ctx.getChildCount())
+
+        role = ast.Role()
+
+        for i, child in enumerate(ctx.getChildren()):
+            print()
+            print("visitRoledef child index",i,child.getText())
+            if hasattr(child, 'toStringTree'):
+                if isinstance(child, FizzParser.NameContext):
+                    role.name = child.getText()
+                    continue
+                childProto = self.visit(child)
+                if isinstance(childProto, ast.StateVars):
+                    role.states.CopyFrom(childProto)
+                elif isinstance(childProto, ast.Action):
+                    if childProto.name == "Init":
+                        role.actions.insert(0, childProto)
+                    else:
+                        role.actions.append(childProto)
+                elif isinstance(childProto, ast.Function):
+                    role.functions.append(childProto)
+                elif isinstance(childProto, ast.Invariant):
+                    role.invariants.append(childProto)
+                elif BuildAstVisitor.is_list_of_type(childProto, ast.Invariant):
+                    role.invariants.extend(childProto)
+                elif isinstance(childProto, ast.Statement):
+                    role.stmts.append(childProto)
+                elif BuildAstVisitor.is_list_of_type(childProto, ast.Action):
+                    role.actions.extend(childProto)
+                else:
+                    print("visitRoledef childProto (unknown) type",childProto.__class__.__name__, dir(child), dir(child.start), childProto)
+                    errorStr = f"Error: Line: {child.start.line}: Unexpected {self.get_py_str(child)}"
+                    print(errorStr, file=sys.stderr)
+                    raise Exception(errorStr)
+            elif hasattr(child, 'getSymbol'):
+                if child.getSymbol().type == FizzParser.LINE_BREAK:
+                    continue
+                self.log_symbol(child)
+            else:
+                print("visitRoledef child (unknown) type",child.__class__.__name__, dir(child))
+                raise Exception("visitRoledef child (unknown) type")
+
+        print("role", role)
+        return role
+
 
     def is_list_of_type(lst, item_type):
         if not isinstance(lst, list):
@@ -254,6 +309,7 @@ class BuildAstVisitor(FizzParserVisitor):
         invariant.py_code = py_code
         print("assertion", invariant)
         return invariant
+
 
     # Visit a parse tree produced by FizzParser#functiondef.
     def visitFunctiondef(self, ctx:FizzParser.FunctiondefContext):
@@ -638,6 +694,8 @@ class BuildAstVisitor(FizzParserVisitor):
         elif isinstance(childProto, ast.Invariant):
             return childProto
         elif isinstance(childProto, ast.Statement):
+            return childProto
+        elif isinstance(childProto, ast.Role):
             return childProto
         elif BuildAstVisitor.is_list_of_type(childProto, ast.Invariant):
             return childProto

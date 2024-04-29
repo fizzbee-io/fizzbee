@@ -103,9 +103,24 @@ type Struct struct {
     entries     entries // sorted by name
 }
 
+func (s *Struct) SetField(name string, val starlark.Value) error {
+    for _, e := range s.entries {
+        if e.name == name {
+            e.value = val
+            return nil
+        }
+    }
+
+    s.entries = append(s.entries, entry{name, val})
+    sort.Sort(s.entries)
+    return nil
+}
+
+var _ starlark.HasSetField = (*Struct)(nil)
+
 // Default is the default constructor for structs.
-// It is merely the string "struct".
-const Default = starlark.String("struct")
+// It is merely the string "record".
+const Default = starlark.String("record")
 
 type entries []entry
 
@@ -156,22 +171,10 @@ func (s *Struct) String() string {
 // Constructor returns the constructor used to create this struct.
 func (s *Struct) Constructor() starlark.Value { return s.constructor }
 
-func (s *Struct) Type() string         { return "struct" }
+func (s *Struct) Type() string         { return "record" }
 func (s *Struct) Truth() starlark.Bool { return true } // even when empty
 func (s *Struct) Hash() (uint32, error) {
-    // Same algorithm as Tuple.hash, but with different primes.
-    var x, m uint32 = 8731, 9839
-    for _, e := range s.entries {
-        namehash, _ := starlark.String(e.name).Hash()
-        x = x ^ 3*namehash
-        y, err := e.value.Hash()
-        if err != nil {
-            return 0, err
-        }
-        x = x ^ y*m
-        m += 7349
-    }
-    return x, nil
+    return 0, fmt.Errorf("unhashable type: record")
 }
 func (s *Struct) Freeze() {
     for _, e := range s.entries {

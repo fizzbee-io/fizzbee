@@ -6,17 +6,15 @@ import (
     "go.starlark.net/starlark"
     "go.starlark.net/starlarkstruct"
     "go.starlark.net/syntax"
-    "reflect"
     "slices"
     "sort"
     "strings"
-    "unsafe"
 )
 
 var (
     Builtins = starlark.StringDict{
         "struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
-        "record": starlark.NewBuiltin("record", MakeRecord),
+        "record": starlark.NewBuiltin("record", Make),
         "enum":   starlark.NewBuiltin("enum", MakeEnum),
         "genericmap": starlark.NewBuiltin("genericmap", MakeGenericMap),
         "genericset": starlark.NewBuiltin("genericset", MakeGenericSet),
@@ -58,54 +56,6 @@ var (
         "remove":               starlark.NewBuiltin("remove", bag_remove),
     }
 )
-
-
-type MutableRecord struct {
-    *Struct
-}
-var _ starlark.HasSetField = (*MutableRecord)(nil)
-
-func SetUnexportedField(field reflect.Value, value interface{}) {
-    reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).
-        Elem().
-        Set(reflect.ValueOf(value))
-}
-func (m *MutableRecord) Type() string         { return "record" }
-func (m *MutableRecord) Hash() (uint32, error)                  {
-    return 0, fmt.Errorf("unhashable type: record")
-}
-
-func (m *MutableRecord) SetField(name string, val starlark.Value) error {
-    for _, e := range m.entries {
-        if e.name == name {
-            e.value = val
-            return nil
-        }
-    }
-
-    m.entries = append(m.entries, entry{name, val})
-    sort.Sort(m.entries)
-    return nil
-}
-
-func MakeRecord(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-    if len(args) > 0 {
-        return nil, fmt.Errorf("record: unexpected positional arguments")
-    }
-    record := FromKeywords(starlark.String("record"), kwargs)
-
-    mutable := &MutableRecord{
-        Struct: record,
-    }
-    return mutable, nil
-}
-
-func MutableRecordFromStringDict( d starlark.StringDict) *MutableRecord {
-    s := &MutableRecord{
-        Struct: FromStringDict(starlark.String("record"), d),
-    }
-    return s
-}
 
 func MakeEnum(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
     for _, arg := range args {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 )
 
 var (
@@ -18,8 +19,8 @@ var (
 type Role struct {
 	ref int
 	Name string
-	Params *lib.Struct
-	Fields *lib.MutableRecord
+	Params *starlarkstruct.Struct
+	Fields *lib.Struct
 }
 
 func (r *Role) SetField(name string, val starlark.Value) error {
@@ -79,17 +80,14 @@ var _ starlark.Value = (*Role)(nil)
 func CreateRoleBuiltin(name string) *starlark.Builtin {
 	return starlark.NewBuiltin(name, func(t *starlark.Thread, b *starlark.Builtin,
 		args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		params := lib.FromKeywords(starlark.String("params"), kwargs)
+		params := starlarkstruct.FromKeywords(starlark.String("params"), kwargs)
 		nextRef := roleRefs[name]
 		if roleRefs[name] > 0 {
 			roleRefs[name]++
 		} else {
 			roleRefs[name] = 1
 		}
-		fields := &lib.MutableRecord{
-			Struct: lib.FromStringDict(starlark.String("fields"), starlark.StringDict{}),
-		}
-
+		fields := lib.FromStringDict(starlark.String("fields"), starlark.StringDict{})
 		return &Role{ref: nextRef+1, Name: name, Params: params, Fields: fields}, nil
 	})
 }

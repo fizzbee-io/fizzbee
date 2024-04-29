@@ -69,6 +69,11 @@ class FizzParserVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by FizzParser#role_def_stmt.
+    def visitRole_def_stmt(self, ctx:FizzParser.Role_def_stmtContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by FizzParser#any_stmt.
     def visitAny_stmt(self, ctx:FizzParser.Any_stmtContext):
         return self.visitChildren(ctx)
@@ -146,6 +151,11 @@ class FizzParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by FizzParser#except_clause.
     def visitExcept_clause(self, ctx:FizzParser.Except_clauseContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by FizzParser#roledef.
+    def visitRoledef(self, ctx:FizzParser.RoledefContext):
         return self.visitChildren(ctx)
 
 

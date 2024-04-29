@@ -116,6 +116,15 @@ class FizzParserListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by FizzParser#role_def_stmt.
+    def enterRole_def_stmt(self, ctx:FizzParser.Role_def_stmtContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#role_def_stmt.
+    def exitRole_def_stmt(self, ctx:FizzParser.Role_def_stmtContext):
+        pass
+
+
     # Enter a parse tree produced by FizzParser#any_stmt.
     def enterAny_stmt(self, ctx:FizzParser.Any_stmtContext):
         pass
@@ -257,6 +266,15 @@ class FizzParserListener(ParseTreeListener):
 
     # Exit a parse tree produced by FizzParser#except_clause.
     def exitExcept_clause(self, ctx:FizzParser.Except_clauseContext):
+        pass
+
+
+    # Enter a parse tree produced by FizzParser#roledef.
+    def enterRoledef(self, ctx:FizzParser.RoledefContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#roledef.
+    def exitRoledef(self, ctx:FizzParser.RoledefContext):
         pass
 
 
