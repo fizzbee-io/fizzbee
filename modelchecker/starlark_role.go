@@ -77,7 +77,7 @@ var _ starlark.HasAttrs = (*Role)(nil)
 var _ starlark.HasSetField = (*Role)(nil)
 var _ starlark.Value = (*Role)(nil)
 
-func CreateRoleBuiltin(name string) *starlark.Builtin {
+func CreateRoleBuiltin(name string, roles *[]*Role) *starlark.Builtin {
 	return starlark.NewBuiltin(name, func(t *starlark.Thread, b *starlark.Builtin,
 		args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		params := starlarkstruct.FromKeywords(starlark.String("params"), kwargs)
@@ -88,6 +88,8 @@ func CreateRoleBuiltin(name string) *starlark.Builtin {
 			roleRefs[name] = 1
 		}
 		fields := lib.FromStringDict(starlark.String("fields"), starlark.StringDict{})
-		return &Role{ref: nextRef+1, Name: name, Params: params, Fields: fields}, nil
+		r := &Role{ref: nextRef + 1, Name: name, Params: params, Fields: fields}
+		*roles = append(*roles, r)
+		return r, nil
 	})
 }

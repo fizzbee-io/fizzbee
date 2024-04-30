@@ -1,0 +1,26 @@
+NUM_PARTICIPANTS = 3
+
+role Coordinator:
+  PARTICIPANTS = []
+
+  action Init:
+    self.state = "init"
+
+
+role Participants:
+  action Init:
+    self.state = "working"
+
+
+action Init:
+  participants = []
+  for i in range(NUM_PARTICIPANTS):
+    p = Participants()
+    participants.append(p)
+
+  coordinator = Coordinator()
+
+
+atomic action Abort:
+  any p in participants:
+    p.state = "aborted"

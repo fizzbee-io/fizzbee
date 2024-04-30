@@ -100,6 +100,8 @@ type Process struct {
 	Fairness    ast.FairnessLevel      `json:"-"`
 
 	Enabled		bool                   `json:"-"`
+
+	Roles 	    []*Role                  `json:"-"`
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
@@ -363,13 +365,23 @@ func (p *Process) removeCurrentThread() {
 func (p *Process) GetAllVariables() starlark.StringDict {
 	// Shallow clone the globals
 	dict := maps.Clone(p.Heap.globals)
+
+	roleRefs := make(map[string]*Role)
+
 	CopyDict(p.Heap.state, dict)
 	frame := p.currentThread().currentFrame()
+	if frame.obj != nil {
+		dict["self"] = frame.obj
+	}
 	CopyDict(frame.vars, dict)
-	frame.scope.getAllVisibleVariablesToDict(dict)
+	frame.scope.getAllVisibleVariablesResolveRoles(dict, roleRefs)
 	maps.Copy(dict, lib.Builtins)
-	//dict["Participant"] = CreateRoleBuiltin("Participant")
-	//dict["Coordinator"] = CreateRoleBuiltin("Coordinator")
+
+	for _, file := range p.Files {
+		for _, role := range file.Roles {
+			dict[role.Name] = CreateRoleBuiltin(role.Name, &p.Roles)
+		}
+	}
 	return dict
 }
 
