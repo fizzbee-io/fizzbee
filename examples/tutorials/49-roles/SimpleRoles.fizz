@@ -2,15 +2,14 @@
 role Coordinator:
     PARTICIPANTS = []
 
-    action Init:
-        state = 'init'
-        participants = PARTICIPANTS
+    atomic action Init:
+        self.state = 'init'
 
     action Write:
-        if state != 'init':
+        if self.state != 'init':
           return
         else:
-          state = 'working'
+          self.state = 'working'
 
         prepared = set()
         parallel for rm in participants:
@@ -23,22 +22,22 @@ role Coordinator:
               prepared.add(rm)
             elif vote == 'aborted':
               atomic:
-                Abort()
+                self.Abort()
               return
 
-        if len(prepared) == len(participants):
+        if len(prepared) == len(self.PARTICIPANTS):
           atomic:
-            Commit()
+            self.Commit()
 
     func Abort():
-        state = 'aborted'
-        parallel for rm in participants:
+        self.state = 'aborted'
+        parallel for rm in self.PARTICIPANTS:
           atomic:
             rm.Abort()
 
     func Commit():
-        state = 'committed'
-        parallel for rm in participants:
+        self.state = 'committed'
+        parallel for rm in self.PARTICIPANTS:
           atomic:
             rm.Commit()
 
@@ -47,7 +46,8 @@ role Participant:
     action Init:
         state = 'init'
 
-    func Prepare():
+
+    atomic func Prepare():
         oneof:
           state = 'prepared'
           state = 'abort'
@@ -61,7 +61,13 @@ role Participant:
 
 
 action Init:
-  pass
+  participants = []
+  for i in range(2):
+    p = Participant()
+    participants.append(p)
 
-action Next:
-  pass
+  coordinator = Coordinator(PARTICIPANTS=participants)
+
+
+atomic action Next:
+  coordinator.state = 'working'

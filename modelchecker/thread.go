@@ -190,11 +190,16 @@ func (s *Scope) GetAllVisibleVariables() starlark.StringDict {
 	return dict
 }
 
-func (s *Scope) getAllVisibleVariablesToDict(dict starlark.StringDict) {
+func (s *Scope) getAllVisibleVariablesResolveRoles(dict starlark.StringDict, roleRefs map[string]*Role) {
 	if s.parent != nil {
-		s.parent.getAllVisibleVariablesToDict(dict)
+		s.parent.getAllVisibleVariablesResolveRoles(dict, roleRefs)
 	}
+	// TODO: Resolve roles
 	CopyDict(s.vars, dict)
+}
+
+func (s *Scope) getAllVisibleVariablesToDict(dict starlark.StringDict) {
+	s.getAllVisibleVariablesResolveRoles(dict, make(map[string]*Role))
 }
 
 func CloneDict(oldDict starlark.StringDict) starlark.StringDict {
@@ -233,6 +238,7 @@ type CallFrame struct {
 	vars starlark.StringDict
 
 	callerAssignVarNames []string
+	obj                  *Role
 }
 
 func (c *CallFrame) MarshalJSON() ([]byte, error) {
@@ -461,6 +467,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		t.Process.Labels = append(t.Process.Labels, currentFrame.Name + "." + stmt.Label)
 	}
 	t.Process.Fairness = t.Fairness
+	oldRolesCount := len(t.Process.Roles)
 	if stmt.PyStmt != nil {
 		vars := t.Process.GetAllVariables()
 		_, err := t.Process.Evaluator.ExecPyStmt("filename.fizz", stmt.PyStmt, vars)
@@ -707,7 +714,40 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 	} else {
 		panic(fmt.Sprintf("Unknown statement type: %v at path %s", stmt, t.currentPc()))
 	}
+
+	if len(t.Process.Roles) > oldRolesCount {
+		if len(t.Process.Roles) - oldRolesCount > 1 {
+			panic("Creating multiple roles in single step is not supported yet")
+		}
+		newRole := t.Process.Roles[len(t.Process.Roles)-1]
+		fileIndex, nextPc := findRoleInitAction(t.Process, newRole)
+		if nextPc != "" {
+			newFrame := &CallFrame{FileIndex: fileIndex, pc: nextPc, Name: "Init"}
+			newFrame.vars = starlark.StringDict{}
+			newFrame.obj = newRole
+			t.pushFrame(newFrame)
+			//t.currentFrame().pc = nextPc
+			return nil, false
+		}
+	}
 	return t.executeEndOfStatement()
+}
+
+func findRoleInitAction(process *Process, role *Role) (int, string) {
+	for i, file := range process.Files {
+		for j, r := range file.Roles {
+			if r.Name == role.Name {
+				for k, action := range r.Actions {
+					if action.Name == "Init" {
+						nextPath := fmt.Sprintf("Roles[%d].Actions[%d].Block", j, k)
+						return i,nextPath
+					}
+
+				}
+			}
+		}
+	}
+	return -1,""
 }
 
 func (t *Thread) executeForStatement() ([]*Process, bool) {
@@ -840,8 +880,10 @@ func (t *Thread) executeEndOfBlock() bool {
 		frame.scope = frame.scope.parent
 		if frame.scope == nil {
 			//t.popFrame()
-			actionPath := strings.Split(frame.pc, ".")[0]
+			pathComp := strings.Split(frame.pc, ".")
+			actionPath := pathComp[0]
 			protobuf := GetProtoFieldByPath(t.currentFileAst(), actionPath)
+
 			if action, ok := protobuf.(*ast.Action); ok {
 				if action.Name == "Init" {
 					variables := oldScope.GetAllVisibleVariables()
@@ -852,6 +894,12 @@ func (t *Thread) executeEndOfBlock() bool {
 					}
 				}
 			}
+			isRole := false
+			if _, ok := protobuf.(*ast.Role); ok {
+				actionPath = pathComp[0] + "." + pathComp[1]
+				protobuf = GetProtoFieldByPath(t.currentFileAst(), actionPath)
+				isRole = true
+			}
 			oldFrame := t.popFrame()
 
 			if t.Stack.Len() == 0 {
@@ -860,7 +908,17 @@ func (t *Thread) executeEndOfBlock() bool {
 			} else {
 				frame = t.currentFrame()
 				// if protobuf is of type Function then it is a function call.
+				isFunction := false
+				isInitAction := false
 				if _, ok := protobuf.(*ast.Function); ok {
+					isFunction = true
+				}
+				if action, ok := protobuf.(*ast.Action); ok {
+					if action.Name == "Init" {
+						isInitAction = true
+					}
+				}
+				if isFunction || (isRole && isInitAction) {
 					if len(oldFrame.callerAssignVarNames) > 1 {
 						panic("Multiple return values not supported yet")
 					}
@@ -873,6 +931,7 @@ func (t *Thread) executeEndOfBlock() bool {
 					_,yield := t.executeEndOfStatement()
 					return yield
 				}
+
 			}
 		}
 		frame.pc = RemoveLastBlock(t.currentPc())

@@ -104,13 +104,12 @@ type Struct struct {
 }
 
 func (s *Struct) SetField(name string, val starlark.Value) error {
-    for _, e := range s.entries {
+    for i, e := range s.entries {
         if e.name == name {
-            e.value = val
+            s.entries[i] = entry{name, val}
             return nil
         }
     }
-
     s.entries = append(s.entries, entry{name, val})
     sort.Sort(s.entries)
     return nil
