@@ -57,6 +57,10 @@ func (r *Role) String() string {
 	return fmt.Sprintf("role %s#%d (%s,%s)", r.Name, r.ref, r.Params.String(), r.Fields.String())
 }
 
+func (r *Role) RefString() string {
+	return fmt.Sprintf("role %s#%d", r.Name, r.ref)
+}
+
 func (r *Role) Type() string {
 	return "role"
 }

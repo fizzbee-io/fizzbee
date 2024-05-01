@@ -62,7 +62,8 @@ func CheckInvariant(process *Process, invariant *ast.Invariant) bool {
 	if eventuallyAlways && invariant.Nested != nil {
 		pyExpr = invariant.Nested.PyExpr
 	}
-	vars := CloneDict(process.Heap.state)
+	ref := make(map[string]*Role)
+	vars := CloneDict(process.Heap.state, ref)
 	vars["__returns__"] = NewDictFromStringDict(process.Returns)
 	cond, err := process.Evaluator.EvalPyExpr("filename.fizz", pyExpr, vars)
 	PanicOnError(err)
