@@ -65,10 +65,9 @@ go_repository(
 )
 
 go_repository(
-    name = "com_github_huandu_go_clone",
-    importpath = "github.com/huandu/go-clone",
-    sum = "h1:3+Aq0Ed8XK+zKkLjE2dfHg0XrpIfcohBE1K+c8Usxoo=",
-    version = "v1.7.2",
+    name = "com_github_jayaprabhakar_go_clone",
+    importpath = "github.com/jayaprabhakar/go-clone",
+    commit = "177708839df446d83f1a721c099b481a8e1ce59a",
 )
 
 go_repository(

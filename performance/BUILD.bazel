@@ -10,8 +10,8 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         "//proto:ast_py_proto",
-        "//proto:perf_py_proto",
         "//proto:graph_py_proto",
+        "//proto:perf_py_proto",
         requirement("PyYAML"),
         requirement("numpy"),
         requirement("matplotlib"),

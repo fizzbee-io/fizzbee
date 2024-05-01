@@ -110,8 +110,8 @@ func (h *Heap) insert(k string, v starlark.Value) bool {
 	return true
 }
 
-func (h *Heap) Clone() *Heap {
-	return &Heap{state:CloneDict(h.state), globals:h.globals}
+func (h *Heap) Clone(refs map[string]*Role) *Heap {
+	return &Heap{state:CloneDict(h.state, refs), globals:h.globals}
 }
 
 type Scope struct {
@@ -195,19 +195,19 @@ func (s *Scope) getAllVisibleVariablesResolveRoles(dict starlark.StringDict, rol
 		s.parent.getAllVisibleVariablesResolveRoles(dict, roleRefs)
 	}
 	// TODO: Resolve roles
-	CopyDict(s.vars, dict)
+	CopyDict(s.vars, dict, roleRefs)
 }
 
 func (s *Scope) getAllVisibleVariablesToDict(dict starlark.StringDict) {
 	s.getAllVisibleVariablesResolveRoles(dict, make(map[string]*Role))
 }
 
-func CloneDict(oldDict starlark.StringDict) starlark.StringDict {
-	return CopyDict(oldDict, nil)
+func CloneDict(oldDict starlark.StringDict, refs map[string]*Role) starlark.StringDict {
+	return CopyDict(oldDict, nil, refs)
 }
 
 // CopyDict copies values `from` to `to` overriding existing values. If the `to` is nil, creates a new dict.
-func CopyDict(from starlark.StringDict, to starlark.StringDict) starlark.StringDict {
+func CopyDict(from starlark.StringDict, to starlark.StringDict, refs map[string]*Role) starlark.StringDict {
 	if to == nil {
 		to = make(starlark.StringDict)
 	}
@@ -215,7 +215,7 @@ func CopyDict(from starlark.StringDict, to starlark.StringDict) starlark.StringD
 		if v.Type() == "builtin_function_or_method" {
 			continue
 		}
-		newValue, err := deepCloneStarlarkValue(v)
+		newValue, err := deepCloneStarlarkValue(v, refs)
 		PanicOnError(err)
 		to[k] = newValue
 	}

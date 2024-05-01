@@ -2,7 +2,7 @@ package lib
 
 import (
 	"encoding/json"
-	"github.com/huandu/go-clone"
+        "github.com/jayaprabhakar/go-clone"
 	"sync"
 )
 

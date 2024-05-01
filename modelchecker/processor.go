@@ -19,9 +19,11 @@ import (
 	ast "fizz/proto"
 	"fmt"
 	"github.com/fizzbee-io/fizzbee/lib"
+	"github.com/jayaprabhakar/go-clone"
 	"go.starlark.net/starlark"
 	"maps"
 	"os"
+	"reflect"
 	"runtime"
 	"sort"
 	"strings"
@@ -176,9 +178,11 @@ func (p *Process) HasFailedInvariants() bool {
 }
 
 func (p *Process) Fork() *Process {
+	refs := make(map[string]*Role)
+	clone.SetCustomPtrFunc(reflect.TypeOf(&Role{}), roleResolveCloneFn(refs))
 	p2 := &Process{
 		Name:        p.Name,
-		Heap:        p.Heap.Clone(),
+		Heap:        p.Heap.Clone(refs),
 		Current:     p.Current,
 		Parent:      p,
 		Evaluator:   p.Evaluator,
@@ -201,13 +205,17 @@ func (p *Process) Fork() *Process {
 		clonedThreads[i].Process = p2
 	}
 	p2.Threads = clonedThreads
+	roles := MapValues(refs)
+	p2.Roles = make([]*Role, len(roles))
 	return p2
 }
 
 func (p *Process) CloneForAssert() *Process {
+	refs := make(map[string]*Role)
+	clone.SetCustomPtrFunc(reflect.TypeOf(&Role{}), roleResolveCloneFn(refs))
 	p2 := &Process{
 		Name:        p.Name,
-		Heap:        p.Heap.Clone(),
+		Heap:        p.Heap.Clone(refs),
 		Current:     p.Current,
 		Parent:      p,
 		Evaluator:   p.Evaluator,
@@ -229,7 +237,31 @@ func (p *Process) CloneForAssert() *Process {
 		clonedThreads[i].Process = p2
 	}
 	p2.Threads = clonedThreads
+	roles := MapValues(refs)
+	p2.Roles = make([]*Role, len(roles))
 	return p2
+}
+
+// MapValues returns the values of the map m.
+// The values will be in an indeterminate order.
+func MapValues[M ~map[K]V, K comparable, V any](m M) []V {
+	r := make([]V, 0, len(m))
+	for _, v := range m {
+		r = append(r, v)
+	}
+	return r
+}
+
+func roleResolveCloneFn(refs map[string]*Role) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
+	return func(allocator *clone.Allocator, old, new reflect.Value) {
+		oldRole := old.Interface().(*Role)
+		newRolePtr := new.Addr().Interface().(**Role)
+		value, err := deepCloneStarlarkValue(oldRole, refs)
+		if err != nil {
+			panic(err)
+		}
+		*newRolePtr = value.(*Role)
+	}
 }
 
 func (p *Process) Enable() {
@@ -368,12 +400,12 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 
 	roleRefs := make(map[string]*Role)
 
-	CopyDict(p.Heap.state, dict)
+	CopyDict(p.Heap.state, dict, roleRefs)
 	frame := p.currentThread().currentFrame()
 	if frame.obj != nil {
 		dict["self"] = frame.obj
 	}
-	CopyDict(frame.vars, dict)
+	CopyDict(frame.vars, dict, roleRefs)
 	frame.scope.getAllVisibleVariablesResolveRoles(dict, roleRefs)
 	maps.Copy(dict, lib.Builtins)
 

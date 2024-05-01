@@ -6,7 +6,7 @@ import (
     "go.starlark.net/starlark"
 )
 
-func deepCloneStarlarkValue(value starlark.Value) (starlark.Value, error) {
+func deepCloneStarlarkValue(value starlark.Value, refs map[string]*Role) (starlark.Value, error) {
     // starlark has other types as well "string.elems", "string.codepoints", "function"
     // "builtin_function_or_method".
     switch value.Type() {
@@ -20,7 +20,7 @@ func deepCloneStarlarkValue(value starlark.Value) (starlark.Value, error) {
     case "list":
         // For lists, recursively clone each element
         iterable := value.(starlark.Iterable)
-        newList, err := deepCloneIterableToList(iterable)
+        newList, err := deepCloneIterableToList(iterable, refs)
         if err != nil {
             return nil, err
         }
@@ -29,7 +29,7 @@ func deepCloneStarlarkValue(value starlark.Value) (starlark.Value, error) {
     case "set":
         // For lists, recursively clone each element
         iterable := value.(starlark.Iterable)
-        newList, err := deepCloneIterableToList(iterable)
+        newList, err := deepCloneIterableToList(iterable, refs)
         if err != nil {
             return nil, err
         }
@@ -44,7 +44,7 @@ func deepCloneStarlarkValue(value starlark.Value) (starlark.Value, error) {
     case "tuple":
         // For lists, recursively clone each element
         iterable := value.(starlark.Iterable)
-        newList, err := deepCloneIterableToList(iterable)
+        newList, err := deepCloneIterableToList(iterable, refs)
         if err != nil {
             return nil, err
         }
@@ -56,7 +56,7 @@ func deepCloneStarlarkValue(value starlark.Value) (starlark.Value, error) {
     case "dict":
         v := value.(*starlark.Dict)
         // For dictionaries, recursively clone each key-value pair
-        newDict, err := deepCloneStringDict(v)
+        newDict, err := deepCloneStringDict(v, refs)
         if err != nil {
             return nil, err
         }
@@ -65,7 +65,7 @@ func deepCloneStarlarkValue(value starlark.Value) (starlark.Value, error) {
         v := value.(*lib.Struct)
         dict := starlark.StringDict{}
         v.ToStringDict(dict)
-        newDict := CloneDict(dict)
+        newDict := CloneDict(dict, refs)
         return lib.FromStringDict(lib.Default, newDict), nil
 
     case "genericset":
@@ -75,7 +75,7 @@ func deepCloneStarlarkValue(value starlark.Value) (starlark.Value, error) {
         defer iter.Done()
         var x starlark.Value
         for iter.Next(&x) {
-            clonedElem, err := deepCloneStarlarkValue(x)
+            clonedElem, err := deepCloneStarlarkValue(x, refs)
             if err != nil {
                 return nil, err
             }
@@ -88,11 +88,11 @@ func deepCloneStarlarkValue(value starlark.Value) (starlark.Value, error) {
         newMap := lib.NewGenericMap()
         for _, tuple := range m.Items() {
             key, value := tuple[0], tuple[1]
-            clonedKey, err := deepCloneStarlarkValue(key)
+            clonedKey, err := deepCloneStarlarkValue(key, refs)
             if err != nil {
                 return nil, err
             }
-            clonedValue, err := deepCloneStarlarkValue(value)
+            clonedValue, err := deepCloneStarlarkValue(value, refs)
             if err != nil {
                 return nil, err
             }
@@ -106,7 +106,7 @@ func deepCloneStarlarkValue(value starlark.Value) (starlark.Value, error) {
         defer iter.Done()
         var x starlark.Value
         for iter.Next(&x) {
-            clonedElem, err := deepCloneStarlarkValue(x)
+            clonedElem, err := deepCloneStarlarkValue(x, refs)
             if err != nil {
                 return nil, err
             }
@@ -115,21 +115,37 @@ func deepCloneStarlarkValue(value starlark.Value) (starlark.Value, error) {
         }
         return newBag, nil
     case "role":
-        return value, nil
+        r := value.(*Role)
+        if cached, ok := refs[r.RefString()]; ok {
+            return cached, nil
+        } else {
+            fields, err := deepCloneStarlarkValue(r.Fields, refs)
+            if err != nil {
+                return nil, err
+            }
+            newRole := &Role{
+                ref: r.ref,
+                Name: r.Name,
+                Params: r.Params,
+                Fields: fields.(*lib.Struct),
+            }
+            refs[r.RefString()] = newRole
+            return newRole, nil
+        }
     default:
         return nil, fmt.Errorf("unsupported type: %T, %s", value, value.Type())
     }
 }
 
-func deepCloneStringDict(v *starlark.Dict) (*starlark.Dict, error) {
+func deepCloneStringDict(v *starlark.Dict, refs map[string]*Role) (*starlark.Dict, error) {
     newDict := &starlark.Dict{}
     for _, item := range v.Items() {
         k, v := item[0], item[1]
-        clonedKey, err := deepCloneStarlarkValue(k)
+        clonedKey, err := deepCloneStarlarkValue(k, refs)
         if err != nil {
             return nil, err
         }
-        clonedValue, err := deepCloneStarlarkValue(v)
+        clonedValue, err := deepCloneStarlarkValue(v, refs)
         if err != nil {
             return nil, err
         }
@@ -138,12 +154,12 @@ func deepCloneStringDict(v *starlark.Dict) (*starlark.Dict, error) {
     return newDict, nil
 }
 
-func deepCloneIterableToList(iterable starlark.Iterable) ([]starlark.Value, error) {
+func deepCloneIterableToList(iterable starlark.Iterable, refs map[string]*Role) ([]starlark.Value, error) {
     var newList []starlark.Value
     iter := iterable.Iterate()
     var x starlark.Value
     for iter.Next(&x) {
-        clonedElem, err := deepCloneStarlarkValue(x)
+        clonedElem, err := deepCloneStarlarkValue(x, refs)
         if err != nil {
             return nil, err
         }
