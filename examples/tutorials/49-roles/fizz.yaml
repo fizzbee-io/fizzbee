@@ -1,2 +1,3 @@
+deadlock_detection: true
 options:
-  max_actions: 3
+  max_actions: 10

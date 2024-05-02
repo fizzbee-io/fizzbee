@@ -184,9 +184,9 @@ func (s *Scope) Lookup(name string) (starlark.Value, bool) {
 }
 
 // GetAllVisibleVariables returns all variables visible in this scope.
-func (s *Scope) GetAllVisibleVariables() starlark.StringDict {
+func (s *Scope) GetAllVisibleVariables(roleRefs map[string]*Role) starlark.StringDict {
 	dict := starlark.StringDict{}
-	s.getAllVisibleVariablesToDict(dict)
+	s.getAllVisibleVariablesResolveRoles(dict, roleRefs)
 	return dict
 }
 
@@ -258,6 +258,9 @@ func (c *CallFrame) HashCode() string {
 	// if program counter is at different stmts.
 	h := c.scope.Hash()
 	h.Write([]byte(c.pc))
+	if c.obj != nil {
+		h.Write([]byte(c.obj.RefString()))
+	}
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
@@ -886,7 +889,11 @@ func (t *Thread) executeEndOfBlock() bool {
 
 			if action, ok := protobuf.(*ast.Action); ok {
 				if action.Name == "Init" {
-					variables := oldScope.GetAllVisibleVariables()
+					roleRefs := make(map[string]*Role)
+					for i, role := range t.Process.Roles {
+						roleRefs[role.RefString()] = t.Process.Roles[i]
+					}
+					variables := oldScope.GetAllVisibleVariables(roleRefs)
 					for s, value := range variables {
 						if !t.Process.Heap.globals.Has(s) {
 							t.Process.Heap.insert(s, value)
