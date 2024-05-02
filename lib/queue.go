@@ -58,21 +58,3 @@ func (q *Queue[T]) Count() int {
     return q.count
 }
 
-// Pop Don't usePreviously used a different package
-// https://github.com/zeroflucs-given/generics/tree/main/collections
-// So temporarily keeping the old method names for backward compatibility
-// Deprecated: Use Dequeue instead
-func (q *Queue[T]) Pop() (bool, T) {
-    // This is left to be consistent with the stack interface
-    v, found := q.Dequeue()
-    return found, v
-}
-
-// Push Don't usePreviously used a different package
-// https://github.com/zeroflucs-given/generics/tree/main/collections
-// So temporarily keeping the old method names for backward compatibility
-// Deprecated: Use Enqueue instead
-func (q *Queue[T]) Push(v T) error {
-    q.Enqueue(v)
-    return nil
-}

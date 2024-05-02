@@ -672,10 +672,10 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 		p.Init.Name = action.Name
 	}
 
-	_ = p.queue.Push(p.Init)
+	p.queue.Enqueue(p.Init)
 	prevCount := 0
 	for p.queue.Count() != 0 {
-		found, node := p.queue.Pop()
+		node, found := p.queue.Dequeue()
 		if !found {
 			panic("queue should not be empty")
 		}
@@ -789,7 +789,7 @@ func (p *Processor) processNode(node *Node) bool {
 	if !yield {
 		for _, fork := range forks {
 			newNode := node.ForkForAlternatePaths(fork, "")
-			_ = p.queue.Push(newNode)
+			p.queue.Enqueue(newNode)
 		}
 		return false
 	}
@@ -849,7 +849,7 @@ func (p *Processor) processInit(node *Node) bool {
 		//thread := newNode.currentThread()
 		thread.currentFrame().pc = fmt.Sprintf("Actions[%d]", i)
 		thread.currentFrame().Name = action.Name
-		_ = p.queue.Push(newNode)
+		p.queue.Enqueue(newNode)
 	}
 	return false
 }
