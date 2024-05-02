@@ -119,6 +119,10 @@ func deepCloneStarlarkValue(value starlark.Value, refs map[string]*Role) (starla
         if cached, ok := refs[r.RefString()]; ok {
             return cached, nil
         } else {
+            params, err := deepCloneStarlarkValue(r.Params, refs)
+            if err != nil {
+                return nil, err
+            }
             fields, err := deepCloneStarlarkValue(r.Fields, refs)
             if err != nil {
                 return nil, err
@@ -126,7 +130,7 @@ func deepCloneStarlarkValue(value starlark.Value, refs map[string]*Role) (starla
             newRole := &Role{
                 ref: r.ref,
                 Name: r.Name,
-                Params: r.Params,
+                Params: params.(*lib.Struct),
                 Fields: fields.(*lib.Struct),
             }
             refs[r.RefString()] = newRole

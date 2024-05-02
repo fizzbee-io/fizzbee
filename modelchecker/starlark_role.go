@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
 	"strings"
 )
 
@@ -20,7 +19,7 @@ var (
 type Role struct {
 	ref int
 	Name string
-	Params *starlarkstruct.Struct
+	Params *lib.Struct
 	Fields *lib.Struct
 }
 
@@ -93,7 +92,7 @@ var _ starlark.Value = (*Role)(nil)
 func CreateRoleBuiltin(name string, roles *[]*Role) *starlark.Builtin {
 	return starlark.NewBuiltin(name, func(t *starlark.Thread, b *starlark.Builtin,
 		args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		params := starlarkstruct.FromKeywords(starlark.String("params"), kwargs)
+		params := lib.FromKeywords(starlark.String("params"), kwargs)
 		nextRef := roleRefs[name]
 		if roleRefs[name] > 0 {
 			roleRefs[name]++
