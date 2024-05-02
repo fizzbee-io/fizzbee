@@ -28,6 +28,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unsafe"
 )
 
 // DefType is a custom enum-like type
@@ -205,8 +206,7 @@ func (p *Process) Fork() *Process {
 		clonedThreads[i].Process = p2
 	}
 	p2.Threads = clonedThreads
-	roles := MapValues(refs)
-	p2.Roles = make([]*Role, len(roles))
+	p2.Roles = MapValues(refs)
 	return p2
 }
 
@@ -237,8 +237,7 @@ func (p *Process) CloneForAssert() *Process {
 		clonedThreads[i].Process = p2
 	}
 	p2.Threads = clonedThreads
-	roles := MapValues(refs)
-	p2.Roles = make([]*Role, len(roles))
+	p2.Roles = MapValues(refs)
 	return p2
 }
 
@@ -254,7 +253,14 @@ func MapValues[M ~map[K]V, K comparable, V any](m M) []V {
 
 func roleResolveCloneFn(refs map[string]*Role) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
 	return func(allocator *clone.Allocator, old, new reflect.Value) {
-		oldRole := old.Interface().(*Role)
+		//fmt.Println("CanInterface", old.CanInterface(), "CanSet", old.CanSet(), "CanAddr", old.CanAddr())
+		var oldRole *Role
+		if old.CanInterface() {
+			oldRole = old.Interface().(*Role)
+		} else if old.CanAddr() {
+			oldRole = reflect.NewAt(old.Type(), unsafe.Pointer(old.UnsafeAddr())).Elem().Interface().(*Role)
+		}
+
 		newRolePtr := new.Addr().Interface().(**Role)
 		value, err := deepCloneStarlarkValue(oldRole, refs)
 		if err != nil {
@@ -399,11 +405,18 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 	dict := maps.Clone(p.Heap.globals)
 
 	roleRefs := make(map[string]*Role)
+	for i, role := range p.Roles {
+		roleRefs[role.RefString()] = p.Roles[i]
+	}
 
 	CopyDict(p.Heap.state, dict, roleRefs)
 	frame := p.currentThread().currentFrame()
 	if frame.obj != nil {
-		dict["self"] = frame.obj
+		self, err := deepCloneStarlarkValue(frame.obj, roleRefs)
+		if err != nil {
+			panic(err)
+		}
+		dict["self"] = self
 	}
 	CopyDict(frame.vars, dict, roleRefs)
 	frame.scope.getAllVisibleVariablesResolveRoles(dict, roleRefs)
@@ -434,6 +447,15 @@ func (p *Process) updateAllVariablesInScope(dict starlark.StringDict) {
 		if p.Heap.globals.Has(k) {
 			continue
 		}
+
+		if k == "self" {
+			frame.obj = v.(*Role)
+			continue
+		}
+		if v.Type() == "builtin_function_or_method" {
+			continue
+		}
+
 		// Declare the variable to the Current scope
 		frame.scope.vars[k] = v
 	}
@@ -534,9 +556,13 @@ func (n *Node) Attach() {
 	})
 }
 
-func (n *Node) ForkForAction(process *Process, action *ast.Action) *Node {
+func (n *Node) ForkForAction(process *Process, role *Role, action *ast.Action) *Node {
 	if process == nil {
 		process = n.Process
+	}
+	actionName := action.Name
+	if role != nil {
+		actionName = role.Name + "." + actionName
 	}
 	// Creates a new node, that can potentially be a child node. There is a chance, after executing
 	// this node will lead to a duplicate state. To avoid adding and then replacing later, we will
@@ -552,9 +578,9 @@ func (n *Node) ForkForAction(process *Process, action *ast.Action) *Node {
 		stacktrace:  captureStackTrace(),
 		ancestors:   maps.Clone(n.ancestors),
 	}
-	forkNode.Process.Name = action.Name
-	forkNode.Inbound = append(forkNode.Inbound, &Link{Node: n, Name: action.Name})
-	forkNode.Process.Stats.Increment(action.Name)
+	forkNode.Process.Name = actionName
+	forkNode.Inbound = append(forkNode.Inbound, &Link{Node: n, Name: actionName})
+	forkNode.Process.Stats.Increment(actionName)
 	forkNode.ancestors[n.HashCode()] = true
 	return forkNode
 }
@@ -697,7 +723,7 @@ func processPreInit(init *Node, stmts []*ast.Statement) {
 			panic("Not supported: No non-determinism at top level in stmt" + stmt.String())
 		}
 	}
-	globals := thread.currentFrame().scope.GetAllVisibleVariables()
+	globals := thread.currentFrame().scope.GetAllVisibleVariables(nil)
 	globals.Freeze()
 	init.Process.Heap.globals = globals
 	init.removeCurrentThread()
@@ -817,7 +843,7 @@ func (p *Processor) processInit(node *Node) bool {
 	node.Process.removeCurrentThread()
 	// This is init node, generate a fork for each action in the file
 	for i, action := range p.Files[0].Actions {
-		newNode := node.ForkForAction(nil, action)
+		newNode := node.ForkForAction(nil, nil, action)
 		//newNode.Process.removeCurrentThread()
 		thread := newNode.Process.NewThread()
 		//thread := newNode.currentThread()
@@ -838,28 +864,39 @@ func (p *Processor) YieldNode(node *Node) {
 		newNode := node.ForkForAlternatePaths(thread.Process.Fork(), name)
 		newNode.Current = i
 
-		_ = p.queue.Push(newNode)
+		_ = p.queue.Enqueue(newNode)
 	}
 
 	if node.actionDepth >= int(p.config.Options.MaxActions) ||
 		len(node.Threads) >= int(p.config.Options.MaxConcurrentActions) {
 		return
 	}
-	for i, action := range p.Files[0].Actions {
-		if action.Name == "Init" {
-			continue
-		}
-		if p.config.ActionOptions[action.Name] != nil &&
-			node.Stats.Counts[action.Name] >= int(p.config.ActionOptions[action.Name].MaxActions) {
-			continue
-		}
-		newNode := node.ForkForAction(nil, action)
-		newNode.Process.NewThread()
-		newNode.Process.Current = len(newNode.Process.Threads) - 1
-		newNode.currentThread().currentFrame().pc = fmt.Sprintf("Actions[%d]", i)
-		newNode.currentThread().currentFrame().Name = action.Name
 
-		_ = p.queue.Push(newNode)
+	for i, action := range p.Files[0].Actions {
+		p.scheduleAction(node, nil, nil, 0, action, i)
+	}
+	if len(node.Roles) > 0 {
+		p.scheduleRoleActions(node, nil)
+	}
+
+}
+
+func (p *Processor) scheduleRoleActions(node *Node, process *Process) {
+	roleMap := make(map[string]int)
+	for i, role := range p.Files[0].Roles {
+		roleMap[role.Name] = i
+	}
+	for _, role := range node.Roles {
+		if _, ok := roleMap[role.Name]; !ok {
+			panic("Role not found: " + role.Name)
+		}
+		index := roleMap[role.Name]
+		roleAst := p.Files[0].Roles[index]
+		for i, action := range roleAst.Actions {
+			p.scheduleAction(node, process, role, index, action, i)
+
+		}
+
 	}
 }
 
@@ -872,7 +909,7 @@ func (p *Processor) YieldFork(node *Node, process *Process) {
 		newNode := node.ForkForAlternatePaths(thread.Process.Fork(), name)
 		newNode.Current = i
 
-		_ = p.queue.Push(newNode)
+		p.queue.Enqueue(newNode)
 	}
 	if node.actionDepth >= int(p.config.Options.MaxActions) ||
 		len(process.Threads) >= int(p.config.Options.MaxConcurrentActions) {
@@ -880,21 +917,42 @@ func (p *Processor) YieldFork(node *Node, process *Process) {
 		return
 	}
 	for i, action := range p.Files[0].Actions {
-		if action.Name == "Init" {
-			continue
-		}
-		if p.config.ActionOptions[action.Name] != nil &&
-			process.Stats.Counts[action.Name] >= int(p.config.ActionOptions[action.Name].MaxActions) {
-			continue
-		}
-		newNode := node.ForkForAction(process, action)
-		newNode.Process.NewThread()
-		newNode.Process.Current = len(newNode.Process.Threads) - 1
-		newNode.currentThread().currentFrame().pc = fmt.Sprintf("Actions[%d]", i)
-		newNode.currentThread().currentFrame().Name = action.Name
-
-		_ = p.queue.Push(newNode)
+		p.scheduleAction(node, process, nil, 0, action, i)
 	}
+
+	if len(node.Roles) > 0 {
+		p.scheduleRoleActions(node, process)
+	}
+}
+
+func (p *Processor) scheduleAction(node *Node, process *Process, role *Role, roleIndex int,
+	action *ast.Action, actionIndex int) {
+
+	statProcess := process
+	if process == nil {
+		statProcess = node.Process
+	}
+	if action.Name == "Init" {
+		return
+	}
+	if p.config.ActionOptions[action.Name] != nil &&
+		statProcess.Stats.Counts[action.Name] >= int(p.config.ActionOptions[action.Name].MaxActions) {
+		return
+	}
+	newNode := node.ForkForAction(process, role, action)
+	newNode.Process.NewThread()
+	newNode.Process.Current = len(newNode.Process.Threads) - 1
+
+	if role != nil {
+		newNode.currentThread().currentFrame().obj = role
+		newNode.currentThread().currentFrame().pc = fmt.Sprintf("Roles[%d].Actions[%d]", roleIndex, actionIndex)
+		newNode.currentThread().currentFrame().Name = role.Name + "." + action.Name
+	} else {
+		newNode.currentThread().currentFrame().pc = fmt.Sprintf("Actions[%d]", actionIndex)
+		newNode.currentThread().currentFrame().Name = action.Name
+	}
+
+	p.queue.Enqueue(newNode)
 }
 
 func captureStackTrace() string {

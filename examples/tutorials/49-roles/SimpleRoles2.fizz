@@ -1,26 +1,54 @@
-NUM_PARTICIPANTS = 3
+NUM_PARTICIPANTS = 2
 
 role Coordinator:
-  PARTICIPANTS = []
 
   action Init:
+    self.prepared = set()
     self.state = "init"
+    #self.participants = self.PARTICIPANTS
 
+  atomic action Abort:
+    if self.state == "working" or self.state == "init":
+      self.state = "aborted"
+      msgs.add(('Abort'))
 
-role Participants:
+  atomic action RcvPrepared:
+    any rm in self.PARTICIPANTS:
+      if self.state == 'init' and ('Prepared', rm.ID) in msgs and rm.ID not in self.prepared:
+        self.prepared.add(rm.ID)
+
+  atomic action Commit:
+    if self.state == 'init' and len(self.prepared) == len(self.PARTICIPANTS):
+      self.state = 'committed'
+      msgs.add(('Commit'))
+
+role Participant:
   action Init:
     self.state = "working"
 
+  atomic action Timeout:
+    if self.state == "working":
+      self.state = "aborted"
+      msgs.add(('Abort', self.ID))
+
+  atomic action Prepare:
+    if self.state == 'working':
+      self.state = 'prepared'
+      msgs.add(('Prepared', self.ID))
+
+  atomic action RcvCommitMsg:
+    if ('Commit') in msgs:
+      self.state = 'committed'
+
+  atomic action RcvAbortMsg:
+      if ('Abort') in msgs:
+        self.state = 'aborted'
 
 action Init:
   participants = []
   for i in range(NUM_PARTICIPANTS):
-    p = Participants()
+    p = Participant(ID=i)
     participants.append(p)
 
-  coordinator = Coordinator()
-
-
-atomic action Abort:
-  any p in participants:
-    p.state = "aborted"
+  coordinator = Coordinator(PARTICIPANTS=participants)
+  msgs = set()

@@ -5,6 +5,7 @@ import (
 	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
+	"strings"
 )
 
 var (
@@ -54,7 +55,15 @@ func (r *Role) AttrNames() []string {
 }
 
 func (r *Role) String() string {
-	return fmt.Sprintf("role %s#%d (%s,%s)", r.Name, r.ref, r.Params.String(), r.Fields.String())
+	b := strings.Builder{}
+	b.WriteString(fmt.Sprintf("role %s#%d (", r.Name, r.ref))
+	if len(r.Params.AttrNames()) > 0 {
+		b.WriteString(r.Params.String())
+		b.WriteString(",")
+	}
+	b.WriteString(r.Fields.String())
+	b.WriteString(")")
+	return b.String()
 }
 
 func (r *Role) RefString() string {
