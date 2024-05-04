@@ -826,7 +826,7 @@ func removeElement[T any](slice []T, index int) []T {
 }
 
 func (t *Thread) executeEndOfStatement() ([]*Process, bool) {
-
+	enabled := t.Process.Enabled
 	currentFrame := t.currentFrame()
 	switch currentFrame.scope.flow {
 	case ast.Flow_FLOW_ATOMIC:
@@ -834,14 +834,14 @@ func (t *Thread) executeEndOfStatement() ([]*Process, bool) {
 		return nil, false
 	case ast.Flow_FLOW_SERIAL:
 		currentFrame.pc = t.FindNextProgramCounter()
-		return nil, true
+		return nil, enabled
 	case ast.Flow_FLOW_ONEOF:
 		currentFrame.pc = EndOfBlock(t.currentPc())
 		return nil, false
 	case ast.Flow_FLOW_PARALLEL:
 		// if currentPc ends with .ForStmt do not execute end of statement.
 		if strings.HasSuffix(t.currentPc(), ".ForStmt") {
-			return nil, true
+			return nil, enabled
 		}
 		blockPath := ParentBlockPath(t.currentPc())
 		if blockPath == "" {
@@ -866,7 +866,7 @@ func (t *Thread) executeEndOfStatement() ([]*Process, bool) {
 			forks = append(forks, fork)
 		}
 		currentFrame.pc = ""
-		return forks, true
+		return forks, enabled
 	default:
 		panic(fmt.Sprintf("Unknown flow type at %s", t.currentPc()))
 	}
@@ -953,7 +953,8 @@ func (t *Thread) executeEndOfBlock() bool {
 	}
 	if frame.scope.flow == ast.Flow_FLOW_SERIAL ||
 		frame.scope.flow == ast.Flow_FLOW_PARALLEL {
-		return true
+		// Only yield if there was at least one executable statement
+		return t.Process.Enabled
 	}
 	return false
 }

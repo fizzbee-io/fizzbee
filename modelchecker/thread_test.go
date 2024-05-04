@@ -398,7 +398,7 @@ func TestThread_ExecuteEndOfBlock(t *testing.T) {
 		thread.currentFrame().pc = "Actions[2].Block.Stmts[2].Block.$"
 		yield := thread.executeEndOfBlock()
 		assert.Equal(t, thread.Stack.Len(), 1)
-		assert.True(t, yield)
+		assert.False(t, yield)
 	})
 }
 

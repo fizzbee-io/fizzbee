@@ -359,7 +359,7 @@ func TestProcessor_Tutorials(t *testing.T) {
 		{
 			filename:      "examples/tutorials/19-for-stmt-serial-check-again/ForLoop.json",
 			maxActions:    2,
-			expectedNodes: 13,
+			expectedNodes: 10,
 		},
 		{
 			filename:      "examples/tutorials/20-for-stmt-parallel-check-again/ForLoop.json",
@@ -369,7 +369,7 @@ func TestProcessor_Tutorials(t *testing.T) {
 		{
 			filename:      "examples/tutorials/20-for-stmt-parallel-check-again/ForLoop.json",
 			maxActions:    2,
-			expectedNodes: 162,
+			expectedNodes: 129,
 		},
 		{
 			filename:      "examples/tutorials/21-unfair-coin/FairCoin.json",
