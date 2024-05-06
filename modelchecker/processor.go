@@ -28,7 +28,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-	"unsafe"
 )
 
 // DefType is a custom enum-like type
@@ -46,6 +45,8 @@ type Definition struct {
 	fileIndex  int
 	path   string
 	params []*ast.Parameter
+	roleIndex int
+	roleName string
 }
 
 type Stats struct {
@@ -123,6 +124,20 @@ func NewProcess(name string, files []*ast.File, parent *Process) *Process {
 					params:    function.Params,
 					fileIndex: i,
 					path:      fmt.Sprintf("Functions[%d]", j),
+				}
+			}
+			for r, role := range file.Roles {
+				for j, function := range role.Functions {
+					symbolTable[role.Name + "." + function.Name] = &Definition{
+						DefType:   Function,
+						name:      function.Name,
+						params:    function.Params,
+						fileIndex: i,
+						roleIndex: r,
+						roleName:  role.Name,
+						path:      fmt.Sprintf("Roles[%d].Functions[%d]", r, j),
+					}
+
 				}
 			}
 		}
@@ -249,25 +264,6 @@ func MapValues[M ~map[K]V, K comparable, V any](m M) []V {
 		r = append(r, v)
 	}
 	return r
-}
-
-func roleResolveCloneFn(refs map[string]*Role) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
-	return func(allocator *clone.Allocator, old, new reflect.Value) {
-		//fmt.Println("CanInterface", old.CanInterface(), "CanSet", old.CanSet(), "CanAddr", old.CanAddr())
-		var oldRole *Role
-		if old.CanInterface() {
-			oldRole = old.Interface().(*Role)
-		} else if old.CanAddr() {
-			oldRole = reflect.NewAt(old.Type(), unsafe.Pointer(old.UnsafeAddr())).Elem().Interface().(*Role)
-		}
-
-		newRolePtr := new.Addr().Interface().(**Role)
-		value, err := deepCloneStarlarkValue(oldRole, refs)
-		if err != nil {
-			panic(err)
-		}
-		*newRolePtr = value.(*Role)
-	}
 }
 
 func (p *Process) Enable() {
@@ -773,6 +769,7 @@ func (p *Processor) processNode(node *Node) bool {
 
 	} else {
 		node.Attach()
+		p.visited[node.HashCode()] = node
 	}
 
 	var failedInvariants map[int][]int

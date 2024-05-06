@@ -382,6 +382,8 @@ class BuildAstVisitor(FizzParserVisitor):
 
         func_call = ast.CallStmt()
         has_assign = False
+        has_receiver = False
+        # Iterating in the reverse direction to make it easy
         for i, child in reversed(list(enumerate(ctx.getChildren()))):
             print()
             print("visitFunc_call_stmt child index",i,child.getText())
@@ -398,9 +400,13 @@ class BuildAstVisitor(FizzParserVisitor):
                 if child.getSymbol().type == FizzParser.NAME:
                     if has_assign:
                         func_call.vars.insert(0, child.getText())
+                    elif has_receiver:
+                        func_call.receiver = child.getText()
                     else:
                         func_call.name = child.getText()
                     continue
+                if child.getSymbol().type == FizzParser.DOT:
+                    has_receiver = True
                 if child.getSymbol().type == FizzParser.ASSIGN:
                     has_assign = True
                     continue

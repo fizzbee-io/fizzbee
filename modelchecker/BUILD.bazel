@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "checker.go",
         "clone.go",
+        "clonehelper.go",
         "error.go",
         "graph.go",
         "invariants.go",

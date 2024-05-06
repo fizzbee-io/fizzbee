@@ -198,7 +198,7 @@ simple_stmt
 // TODO 3: Hack to identify function call in Fizz. At present only support,
 //         function calls of the simplest form like ret = fn(arg1,arg2)
 small_stmt
-    : (NAME ASSIGN)? NAME OPEN_PAREN arglist? CLOSE_PAREN    # func_call_stmt  // Fizz specific shortcut
+    : (NAME ASSIGN)? (NAME DOT)? NAME OPEN_PAREN arglist? CLOSE_PAREN    # func_call_stmt  // Fizz specific shortcut
     | testlist_star_expr assign_part?                        # expr_stmt
     | {self.CheckVersion(2)}? PRINT (
         (test (COMMA test)* COMMA?)
