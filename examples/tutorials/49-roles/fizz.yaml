@@ -1,3 +1,5 @@
 deadlock_detection: true
+liveness: strict
 options:
-  max_actions: 10
+  max_actions: 100
+  max_concurrent_actions: 2

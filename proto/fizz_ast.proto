@@ -129,6 +129,7 @@ message CallStmt {
   repeated string vars = 2;
   string name = 3;
   repeated Argument args = 4;
+  string receiver = 5;
 }
 
 // The actual arguments to a function/method call.

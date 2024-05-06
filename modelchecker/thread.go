@@ -634,16 +634,14 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 	} else if stmt.CallStmt != nil {
 
 		frame := currentFrame
+		parentScope := frame.scope
 		if frame.scope.flow != ast.Flow_FLOW_ATOMIC {
-			parentScope := frame.scope
+
 			for parentScope != nil && parentScope.flow == ast.Flow_FLOW_ONEOF {
 				parentScope = parentScope.parent
 			}
-			if parentScope != nil && parentScope.flow != ast.Flow_FLOW_ATOMIC {
-				panic("Only atomic flow is supported for call statements for now")
-			}
 		}
-		def := t.Process.SymbolTable[stmt.CallStmt.Name]
+		receiver, def := t.getDefinition(stmt)
 		if def == nil {
 			// Handle builtin functions. A slightly better way is to use the exact code from the input file
 			// and execute. For now, we will generate the code. This will mess up with error messages later
@@ -651,6 +649,10 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			if len(stmt.CallStmt.Vars) > 0 {
 				code.WriteString(strings.Join(stmt.CallStmt.Vars, ", "))
 				code.WriteString(" = ")
+			}
+			if stmt.CallStmt.Receiver != "" {
+				code.WriteString(stmt.CallStmt.Receiver)
+				code.WriteString(".")
 			}
 			code.WriteString(stmt.CallStmt.Name)
 			code.WriteString("(")
@@ -671,6 +673,9 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			t.Process.updateAllVariablesInScope(vars)
 			t.Process.Enable()
 		} else {
+			if parentScope != nil && parentScope.flow != ast.Flow_FLOW_ATOMIC {
+				panic(fmt.Sprintf("Only atomic flow is supported for call statements for now. %s", stmt.CallStmt.Name))
+			}
 			// Handle function calls
 			newFrame := &CallFrame{FileIndex: def.fileIndex, pc: def.path + ".Block", Name: stmt.CallStmt.Name}
 			newFrame.vars = starlark.StringDict{}
@@ -706,7 +711,9 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 				}
 			}
 			//fmt.Println("CallStmt: ", stmt.CallStmt.Name, newFrame.vars)
-
+			if stmt.CallStmt.Receiver != "" {
+				newFrame.obj = receiver
+			}
 			newFrame.callerAssignVarNames = stmt.CallStmt.Vars
 			t.Process.Labels = append(t.Process.Labels, newFrame.Name+".call")
 			// TODO: Handle args
@@ -734,6 +741,22 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		}
 	}
 	return t.executeEndOfStatement()
+}
+
+func (t *Thread) getDefinition(stmt *ast.Statement) (*Role, *Definition) {
+	vars := t.Process.GetAllVariables()
+	if stmt.CallStmt.Receiver != "" {
+		if receiver, ok := vars[stmt.CallStmt.Receiver]; ok {
+			if receiver.Type() == "role" {
+				role := receiver.(*Role)
+				return role, t.Process.SymbolTable[role.Name + "." + stmt.CallStmt.Name]
+			} else {
+				return nil, nil
+			}
+		}
+		panic(fmt.Sprintf("Receiver %s not found in vars", stmt.CallStmt.Receiver))
+	}
+	return nil, t.Process.SymbolTable[stmt.CallStmt.Name]
 }
 
 func findRoleInitAction(process *Process, role *Role) (int, string) {
