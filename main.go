@@ -92,8 +92,8 @@ func main() {
             return
         }
         if !isPlayground {
-            fmt.Printf("Writen graph dotfile: %s\nTo generate png, run: \n" +
-                "dot -Tpng %s -o graph.png && open graph.png\n", dotFileName, dotFileName)
+            fmt.Printf("Writen graph dotfile: %s\nTo generate svg, run: \n" +
+                "dot -Tsvg %s -o graph.svg && open graph.svg\n", dotFileName, dotFileName)
         }
     } else {
         fmt.Printf("Skipping dotfile generation. Too many nodes: %d\n", p1.GetVisitedNodesCount())
@@ -217,8 +217,8 @@ func GenerateFailurePath(failurePath []*modelchecker.Link, invariant *modelcheck
         return
     }
     if !isPlayground {
-        fmt.Printf("Writen graph dotfile: %s\nTo generate png, run: \n"+
-            "dot -Tpng %s -o error-graph.png && open error-graph.png\n", dotFileName, dotFileName)
+        fmt.Printf("Writen graph dotfile: %s\nTo generate an image file, run: \n"+
+            "dot -Tsvg %s -o error-graph.svg && open error-graph.svg\n", dotFileName, dotFileName)
     }
 }
 
