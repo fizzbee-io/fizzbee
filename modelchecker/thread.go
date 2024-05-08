@@ -673,8 +673,10 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			t.Process.updateAllVariablesInScope(vars)
 			t.Process.Enable()
 		} else {
-			if parentScope != nil && parentScope.flow != ast.Flow_FLOW_ATOMIC {
-				panic(fmt.Sprintf("Only atomic flow is supported for call statements for now. %s", stmt.CallStmt.Name))
+			if frame.obj == nil && parentScope != nil && parentScope.flow != ast.Flow_FLOW_ATOMIC {
+				msg := fmt.Sprintf("Call stmts can be made only in atomic context or from within roles. %s",
+					stmt.CallStmt.Name)
+				panic(msg)
 			}
 			// Handle function calls
 			newFrame := &CallFrame{FileIndex: def.fileIndex, pc: def.path + ".Block", Name: stmt.CallStmt.Name}

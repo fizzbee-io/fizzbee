@@ -66,7 +66,7 @@ func deepCloneStarlarkValue(value starlark.Value, refs map[string]*Role) (starla
         dict := starlark.StringDict{}
         v.ToStringDict(dict)
         newDict := CloneDict(dict, refs)
-        return lib.FromStringDict(lib.Default, newDict), nil
+        return lib.FromStringDict(v.Constructor(), newDict), nil
 
     case "genericset":
         s := value.(*lib.GenericSet)
