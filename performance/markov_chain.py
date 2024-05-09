@@ -114,10 +114,10 @@ def create_transition_matrix_sparse(links, model):
         else:
             matrix[link.src,link.dest] += missing_prob[link.src]
 
-    print('total_prob\n', total_prob)
-    print('missing_prob\n', missing_prob)
-    print('missing_count\n', missing_count)
-    print('out_degree\n', out_degree)
+    #print('total_prob\n', total_prob)
+    #print('missing_prob\n', missing_prob)
+    #print('missing_count\n', missing_count)
+    #print('out_degree\n', out_degree)
 
     return matrix.tocsr()
 
@@ -145,7 +145,7 @@ def create_cost_matrices_sparse(links, model):
                 # print(counter, link.src, link.dest, config.counters[counter])
                 cost_matrices[counter][link.src,link.dest] += config.counters[counter].numeric
 
-    print('cost_matrices', cost_matrices)
+    #print('cost_matrices', cost_matrices)
     csr_matrices = {}
     for counter in cost_matrices:
         csr_matrices[counter] = cost_matrices[counter].tocsr()
@@ -291,8 +291,8 @@ def analyze_sparse(matrix, cost_matrices, initial_distribution, num_iterations=2
     raw_counters = {}
     metrics = Metrics()
     for counter in cost_matrices:
-        print("counter", counter)
-        print(cost_matrices[counter])
+        #print("counter", counter)
+        #print(cost_matrices[counter])
 
         expected_cost_matrices[counter] = sp.csr_matrix(cost_matrices[counter]).multiply(matrix)
         # expected_cost_matrices[counter] = cost_matrices[counter] * matrix.toarray()
@@ -315,8 +315,8 @@ def analyze_sparse(matrix, cost_matrices, initial_distribution, num_iterations=2
 
         new_dist = dist.dot(matrix)
         alt_dist = alt_dist.dot(matrix)
-        if i == 0:
-            print("new_dist.getformat()", new_dist.getformat())
+        #if i == 0:
+        #    print("new_dist.getformat()", new_dist.getformat())
         # print("new_dist", new_dist)
         # print("new_dist.shape", alt_dist.shape)
         # new_dist = np.dot(dist, matrix)
@@ -395,9 +395,9 @@ def steady_state_sparse(links, perf_model,matrix=None, cost_matrices=None):
         cost_matrices = create_cost_matrices_sparse(links, perf_model)
 
     initial_distribution = initial_distribution_from_init_state(links.total_nodes)
-    if links.total_nodes < 30:
-        print(matrix)
-        print(initial_distribution)
+    #if links.total_nodes < 30:
+    #    print(matrix)
+    #    print(initial_distribution)
     prob,metrics = analyze_sparse(matrix, cost_matrices, initial_distribution)
     return prob,metrics
 
