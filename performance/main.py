@@ -81,7 +81,7 @@ def main(argv):
     if args.source:
         print("source file", args.source)
         source_model = files.load_behavior_model_from_file(args.source)
-        print(source_model)
+        #print(source_model)
     # print(perf_model)
 
     nodespb = files.load_nodes_from_proto_files(args.states)
@@ -94,16 +94,17 @@ def main(argv):
 
     trans_matrix = markov_chain.create_transition_matrix_sparse(links, perf_model)
     cost_matrices = markov_chain.create_cost_matrices_sparse(links, perf_model)
-    print('perf_model', perf_model)
+    #print('perf_model', perf_model)
     steady_state,metrics = markov_chain.steady_state_sparse(links, perf_model)
-    print(steady_state)
+    #print(steady_state)
     print(metrics)
 
-    steady_state_nodes = []
-    for i,prob in enumerate(steady_state):
-        if prob > 1e-6:
-            print(f'{i:4d}: {prob:.8f} {fmt.get_state_string(nodes[i])}')
-            steady_state_nodes.append((i, prob, nodes[i]))
+    steady_state_nodes = [(i, prob, nodes[i]) for i, prob in enumerate(steady_state) if prob > 1e-6]
+    if len(steady_state_nodes) <30:
+        for i, prob, node in steady_state_nodes:
+            print(f'{i:4d}: {prob:.8f} {fmt.get_state_string(node)}')
+    else:
+        print(f'{len(steady_state_nodes)} states in steady state')
 
     # plot_histogram(metrics.histogram)
     plot_cdf(metrics)
