@@ -49,7 +49,7 @@ def load_nodes_from_proto_files(path_prefix):
 
 
 def load_proto_files(pattern, pb):
-    file_paths = glob.glob(pattern)
+    file_paths = sorted(glob.glob(pattern))
     for file_path in file_paths:
         with open(file_path, "rb") as f:
             pb.MergeFromString(f.read())

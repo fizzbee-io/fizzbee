@@ -99,10 +99,10 @@ def main(argv):
     #print(steady_state)
     print(metrics)
 
-    steady_state_nodes = [(i, prob, nodes[i]) for i, prob in enumerate(steady_state) if prob > 1e-6]
-    if len(steady_state_nodes) <30:
+    steady_state_nodes = [(i, prob, nodes[i]) for i, prob in enumerate(steady_state) if prob > 1e-5]
+    if len(steady_state_nodes) < 30:
         for i, prob, node in steady_state_nodes:
-            print(f'{i:4d}: {prob:.8f} {fmt.get_state_string(node)}')
+            print(f'{i:4d}: {prob:.4f} {fmt.get_state_string(node)}')
     else:
         print(f'{len(steady_state_nodes)} states in steady state')
 
@@ -145,13 +145,13 @@ def main(argv):
             plot_cdf(metrics)
             dead_nodes = []
             for j,prob in enumerate(live_prob):
-                if prob > 1e-6:
+                if prob > 1e-4:
                     state = "LIVE"
                     if not nodes[j]['witness'][0][i]:
                         dead_nodes.append((j, prob, nodes[j]))
                         state = "DEAD"
 
-                    print(f'{state} {j:4d}: {prob:.8f} {fmt.get_state_string(nodes[j])}')
+                    print(f'{state} {j:4d}: {prob:.4f} {fmt.get_state_string(nodes[j])}')
             # for j,prob,node in steady_state_nodes:
             #     if node['witness'][0][i]:
             #         print("LIVE", i,j,prob,node)
