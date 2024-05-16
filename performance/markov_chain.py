@@ -178,7 +178,7 @@ def create_cost_matrices(links, model):
     return cost_matrices
 
 
-def analyze(matrix, cost_matrices, initial_distribution, num_iterations=2000, tolerance=1e-12):
+def analyze(matrix, cost_matrices, initial_distribution, num_iterations=2000, tolerance=1e-5):
     """
     Runs the power iteration algorithm to analyze the markov chain. Specifically, it does two things:
     1. It computes the steady state distribution of the markov chain.
@@ -255,7 +255,7 @@ def analyze(matrix, cost_matrices, initial_distribution, num_iterations=2000, to
     return dist,metrics
 
 
-def analyze_sparse(matrix, cost_matrices, initial_distribution, num_iterations=2000, tolerance=1e-12):
+def analyze_sparse(matrix, cost_matrices, initial_distribution, num_iterations=2000, tolerance=1e-5):
     """
     Runs the power iteration algorithm to analyze the markov chain. Specifically, it does two things:
     1. It computes the steady state distribution of the markov chain.
@@ -353,6 +353,9 @@ def analyze_sparse(matrix, cost_matrices, initial_distribution, num_iterations=2
         dist = new_dist
         if change < tolerance:
             print(f"Convergence reached after {i+1} iterations.")
+            # dist.data[new_dist.data < tolerance] = 0
+            # non_zero_sum = np.sum(dist.data)
+            # dist.data /= non_zero_sum
             break
 
     if change >= tolerance:
