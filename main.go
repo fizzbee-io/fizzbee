@@ -59,7 +59,7 @@ func main() {
                 }
             } else {
                 fmt.Println("fizz.yaml not found. Using default options")
-                stateConfig = &ast.StateSpaceOptions{Options: &ast.Options{MaxActions: 100, MaxConcurrentActions: 5}}
+                stateConfig = &ast.StateSpaceOptions{Options: &ast.Options{MaxActions: 100, MaxConcurrentActions: 2}}
             }
         } else {
             fmt.Println("Error reading fizz.yaml:", err)
@@ -69,7 +69,7 @@ func main() {
     }
     fmt.Printf("StateSpaceOptions: %+v\n", stateConfig)
     if stateConfig.Options.MaxConcurrentActions == 0 {
-        stateConfig.Options.MaxConcurrentActions = stateConfig.Options.MaxActions
+        stateConfig.Options.MaxConcurrentActions = 2
     }
 
     p1 := modelchecker.NewProcessor([]*ast.File{f}, stateConfig)

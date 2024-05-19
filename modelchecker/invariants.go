@@ -409,8 +409,9 @@ func AlwaysEventuallyFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 			}
 		}
 		//fmt.Println("Live node NOT FOUND in the path")
-		if isFairCycle(path[mergeIndex:]) {
+		if isFairCycle(path[mergeIndex:], false) {
 			//fmt.Println("Fair cycle found")
+			//isFairCycle(path[mergeIndex:], true)
 			return false
 		} else {
 			//fmt.Println("Not a fair cycle, and has fair exit link")
@@ -438,7 +439,7 @@ func EventuallyAlwaysFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 				break
 			}
 		}
-		if deadNodeFound && isFairCycle(path[mergeIndex:]) {
+		if deadNodeFound && isFairCycle(path[mergeIndex:], false) {
 			////fmt.Println("Fair cycle found")
 			return false
 		} else {
@@ -450,7 +451,7 @@ func EventuallyAlwaysFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 	return CycleFinderFinal(root, f)
 }
 
-func isFairCycle(path []*Link) bool {
+func isFairCycle(path []*Link, debugLog bool) bool {
 	strongFairLinksInChain := map[string]bool{}
 	strongFairLinksOutOfChain := map[string]bool{}
 
@@ -458,29 +459,70 @@ func isFairCycle(path []*Link) bool {
 	weakFairLinksOutOfChain := map[string]bool{}
 
 	chainLen := len(path)
+	firstYield := -1
+	prevNodeHasNonCrashLink := false
+	nextNodeIsCrash := false
 	for i, link := range path {
 		node := link.Node
 		unvisitedWeakFairLinksOutOfChain := map[string]bool{}
+
+		if debugLog {
+			fmt.Println("Node:", node.String())
+		}
+		if nextNodeIsCrash && prevNodeHasNonCrashLink {
+			if debugLog {
+				fmt.Println("Loop with a crash node, but previous node has non-crash link")
+			}
+			return false
+		}
+		if node.Name != "init" && node.Name != "yield" {
+			if debugLog {
+				fmt.Println("Node is not init or yield")
+			}
+			continue
+		}
+
+		if firstYield == -1 {
+			firstYield = i
+		}
+		prevNodeHasNonCrashLink = false
 		for _, outLink := range node.Outbound {
+			if debugLog {
+				fmt.Println("Outlink:", outLink.Name, outLink.Fairness, outLink.Labels, outLink.Node.Name)
+			}
+			if outLink.Name != "crash" {
+				prevNodeHasNonCrashLink = true
+			}
 			if outLink.Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_STRONG {
 				if outLink.Node == path[(i+1)%chainLen].Node {
 					// outlink points to the next node in the chain
 					// It satisfies the strong fairness condition for that action
 					strongFairLinksInChain[outLink.Name] = true
 					delete(strongFairLinksOutOfChain, outLink.Name)
+					nextNodeIsCrash = true
 				} else if _, ok := strongFairLinksInChain[outLink.Name]; !ok {
 					strongFairLinksOutOfChain[outLink.Name] = true
 				}
 			} else if outLink.Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_WEAK {
 				if outLink.Node == path[(i+1)%chainLen].Node {
+					if debugLog {
+						fmt.Println("Weak Fair link in chain", outLink.Name, outLink.Node.Name)
+					}
 					weakFairLinksInChain[outLink.Name] = true
 					delete(unvisitedWeakFairLinksOutOfChain, outLink.Name)
+					nextNodeIsCrash = true
 				} else if _, ok := weakFairLinksInChain[outLink.Name]; !ok {
+					if debugLog {
+						fmt.Println("Weak Fair link out of chain", outLink.Name, outLink.Node.Name)
+					}
 					unvisitedWeakFairLinksOutOfChain[outLink.Name] = true
 				}
 			}
 		}
-		if i == 0 {
+		if debugLog {
+			fmt.Println("Unvisited weak fair links out of chain", unvisitedWeakFairLinksOutOfChain)
+		}
+		if i == firstYield {
 			weakFairLinksOutOfChain = unvisitedWeakFairLinksOutOfChain
 		} else {
 			for k, _ := range weakFairLinksOutOfChain {
@@ -490,6 +532,19 @@ func isFairCycle(path []*Link) bool {
 			}
 
 		}
+		if debugLog {
+			fmt.Println("weakFairLinksOutOfChain", weakFairLinksOutOfChain)
+		}
+	}
+	if debugLog {
+		fmt.Println("strong out", len(strongFairLinksOutOfChain),
+			"strong in", len(strongFairLinksInChain),
+			"weak out", len(weakFairLinksOutOfChain),
+			"weak in", len(weakFairLinksInChain))
+		fmt.Println("Strong Fair Links in chain:", strongFairLinksInChain)
+		fmt.Println("Strong Fair Links out of chain:", strongFairLinksOutOfChain)
+		fmt.Println("Weak Fair Links in chain:", weakFairLinksInChain)
+		fmt.Println("Weak Fair Links out of chain:", weakFairLinksOutOfChain)
 	}
 	if len(strongFairLinksOutOfChain) > 0 || len(weakFairLinksOutOfChain) > 0 {
 		return false
