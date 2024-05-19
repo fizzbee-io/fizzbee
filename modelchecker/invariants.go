@@ -492,6 +492,8 @@ func isFairCycle(path []*Link, debugLog bool) bool {
 			}
 			if outLink.Name != "crash" {
 				prevNodeHasNonCrashLink = true
+			} else if outLink.Node == path[(i+1)%chainLen].Node {
+				nextNodeIsCrash = true
 			}
 			if outLink.Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_STRONG {
 				if outLink.Node == path[(i+1)%chainLen].Node {
@@ -499,7 +501,6 @@ func isFairCycle(path []*Link, debugLog bool) bool {
 					// It satisfies the strong fairness condition for that action
 					strongFairLinksInChain[outLink.Name] = true
 					delete(strongFairLinksOutOfChain, outLink.Name)
-					nextNodeIsCrash = true
 				} else if _, ok := strongFairLinksInChain[outLink.Name]; !ok {
 					strongFairLinksOutOfChain[outLink.Name] = true
 				}
@@ -510,7 +511,6 @@ func isFairCycle(path []*Link, debugLog bool) bool {
 					}
 					weakFairLinksInChain[outLink.Name] = true
 					delete(unvisitedWeakFairLinksOutOfChain, outLink.Name)
-					nextNodeIsCrash = true
 				} else if _, ok := weakFairLinksInChain[outLink.Name]; !ok {
 					if debugLog {
 						fmt.Println("Weak Fair link out of chain", outLink.Name, outLink.Node.Name)
