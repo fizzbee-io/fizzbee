@@ -372,13 +372,20 @@ func (t *Thread) Clone() *Thread {
 func (t *Thread) Execute() ([]*Process, bool) {
 	var forks []*Process
 	yield := false
+	hasNonEndOfBlockStmts := false
+	initialThreads := len(t.Process.Threads)
 	for t.Stack.Len() > 0 {
 		for t.currentFrame().pc == "" || strings.HasSuffix(t.currentFrame().pc, ".Block.$") {
 			yield = t.executeEndOfBlock()
 			if yield {
+				if !hasNonEndOfBlockStmts && len(t.Process.Threads) < initialThreads && t.Process.Parent != nil && t.Process.Parent.Enabled {
+					t.Process.Fairness = t.Fairness
+					t.Process.Enable()
+				}
 				return forks, yield
 			}
 		}
+		hasNonEndOfBlockStmts = true
 		frame := t.currentFrame()
 		protobuf := GetProtoFieldByPath(t.currentFileAst(), frame.pc)
 
