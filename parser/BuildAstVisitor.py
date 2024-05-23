@@ -842,10 +842,13 @@ class BuildAstVisitor(FizzParserVisitor):
         print("\n\nvisitAny_assign_stmt",ctx.__class__.__name__)
         print("visitAny_assign_stmt\n",ctx.getText())
         any_stmt = ast.AnyStmt()
-
+        has_condition = False
         for i, child in enumerate(ctx.getChildren()):
             print()
             print("visitAny_assign_stmt child index",i,child.getText())
+            if has_condition:
+                any_stmt.condition = self.get_py_str(child)
+                continue
             if hasattr(child, 'toStringTree'):
                 if isinstance(child, FizzParser.ExprlistContext):
                     any_stmt.loop_vars.extend(self.visitExprlist(child))
@@ -863,8 +866,11 @@ class BuildAstVisitor(FizzParserVisitor):
                     print("visitAny_assign_stmt childProto",childProto, child)
                     raise Exception("visitAny_assign_stmt childProto (unknown) type", childProto.__class__.__name__, dir(childProto), childProto)
             elif hasattr(child, 'getSymbol'):
+                if child.getSymbol().type == FizzParser.COLON:
+                    has_condition = True
+                    print("visitAny_assign_stmt has_condition", has_condition)
+                    continue
                 if (child.getSymbol().type == FizzParser.LINE_BREAK
-                        or child.getSymbol().type == FizzParser.COLON
                         or child.getSymbol().type == FizzParser.INDENT
                 ):
                     continue
