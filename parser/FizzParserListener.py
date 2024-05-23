@@ -404,6 +404,24 @@ class FizzParserListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by FizzParser#any_assign_stmt.
+    def enterAny_assign_stmt(self, ctx:FizzParser.Any_assign_stmtContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#any_assign_stmt.
+    def exitAny_assign_stmt(self, ctx:FizzParser.Any_assign_stmtContext):
+        pass
+
+
+    # Enter a parse tree produced by FizzParser#require_stmt.
+    def enterRequire_stmt(self, ctx:FizzParser.Require_stmtContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#require_stmt.
+    def exitRequire_stmt(self, ctx:FizzParser.Require_stmtContext):
+        pass
+
+
     # Enter a parse tree produced by FizzParser#expr_stmt.
     def enterExpr_stmt(self, ctx:FizzParser.Expr_stmtContext):
         pass

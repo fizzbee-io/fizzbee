@@ -229,6 +229,16 @@ class FizzParserVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by FizzParser#any_assign_stmt.
+    def visitAny_assign_stmt(self, ctx:FizzParser.Any_assign_stmtContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by FizzParser#require_stmt.
+    def visitRequire_stmt(self, ctx:FizzParser.Require_stmtContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by FizzParser#expr_stmt.
     def visitExpr_stmt(self, ctx:FizzParser.Expr_stmtContext):
         return self.visitChildren(ctx)

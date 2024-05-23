@@ -70,6 +70,8 @@ message Statement {
   ReturnStmt return_stmt = 11;
 
   CallStmt call_stmt = 12;
+
+  RequireStmt require_stmt = 13;
 }
 
 message IfStmt {
@@ -143,6 +145,11 @@ message Argument {
 message PyStmt {
   SourceInfo source_info = 1;
   string code = 2; 
+}
+
+message RequireStmt {
+  SourceInfo source_info = 1;
+  string condition = 2;
 }
 
 message Action {

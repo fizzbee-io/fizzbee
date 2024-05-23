@@ -268,14 +268,21 @@ func MapValues[M ~map[K]V, K comparable, V any](m M) []V {
 
 func (p *Process) Enable() {
 	if !p.Enabled {
-		parent := p.Parent
-		for parent != nil && len(parent.Threads) != 0 && !parent.Enabled {
-			parent.Enabled = true
-			parent = parent.Parent
-
-		}
+		p.propagateEnabled()
 	}
 	p.Enabled = true
+}
+
+func (p *Process) propagateEnabled() {
+	if !p.Enabled {
+		return
+	}
+	parent := p.Parent
+	for parent != nil && len(parent.Threads) != 0 && !parent.Enabled {
+		parent.Enabled = true
+		parent = parent.Parent
+
+	}
 }
 
 func (p *Process) NewThread() *Thread {

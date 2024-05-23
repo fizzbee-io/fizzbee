@@ -291,11 +291,12 @@ func (s *CallStack) HashCode() string {
 
 // Thread represents a thread of execution.
 type Thread struct {
-	Process *Process      `json:"-"`
-	Files   []*ast.File   `json:"-"`
-	Stack   *CallStack	  `json:"stack"`
+	Process *Process    `json:"-"`
+	Files   []*ast.File `json:"-"`
+	Stack   *CallStack  `json:"stack"`
 
 	Fairness ast.FairnessLevel `json:"fairness"`
+	Aborted  bool       `json:"-"`
 }
 
 func NewThread(Process *Process, files []*ast.File, fileIndex int, action string) *Thread {
@@ -374,6 +375,7 @@ func (t *Thread) Execute() ([]*Process, bool) {
 	yield := false
 	hasNonEndOfBlockStmts := false
 	initialThreads := len(t.Process.Threads)
+	defer t.Process.propagateEnabled()
 	for t.Stack.Len() > 0 {
 		for t.currentFrame().pc == "" || strings.HasSuffix(t.currentFrame().pc, ".Block.$") {
 			yield = t.executeEndOfBlock()
@@ -406,6 +408,9 @@ func (t *Thread) Execute() ([]*Process, bool) {
 			forks, yield = t.executeWhileStatement()
 		default:
 			panic(fmt.Sprintf("Unknown protobuf type: %T, value %v at path %s", protobuf, protobuf, frame.pc))
+		}
+		if t.Aborted {
+			return nil, false
 		}
 		if len(forks) > 0 {
 			break
@@ -523,27 +528,37 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		iter := rangeVal.Iterate()
 		defer iter.Done()
 
-		scope := t.InsertNewScope()
-		if stmt.AnyStmt.Flow != ast.Flow_FLOW_UNKNOWN {
-			scope.flow = stmt.AnyStmt.Flow
-		} else {
-			scope.flow = currentFrame.scope.flow
+		if stmt.AnyStmt.Block != nil {
+			scope := t.InsertNewScope()
+			if stmt.AnyStmt.Flow != ast.Flow_FLOW_UNKNOWN {
+				scope.flow = stmt.AnyStmt.Flow
+			} else {
+				scope.flow = currentFrame.scope.flow
+			}
 		}
+
 		forks := make([]*Process, 0)
 		var x starlark.Value
 		for iter.Next(&x) {
 			//fmt.Printf("anyVariable: x: %s\n", x.String())
 			fork := t.Process.Fork()
 			fork.Name = fmt.Sprintf("Any:%s", x.String())
-			fork.currentThread().currentFrame().pc = fmt.Sprintf("%s.AnyStmt.Block", currentFrame.pc)
 			fork.currentThread().currentFrame().scope.vars[stmt.AnyStmt.LoopVars[0]] = x
+			if stmt.AnyStmt.Block != nil {
+				fork.currentThread().currentFrame().pc = fmt.Sprintf("%s.AnyStmt.Block", currentFrame.pc)
+			} else {
+				fork.currentThread().currentFrame().pc = t.FindNextProgramCounter()
+			}
 			forks = append(forks, fork)
-
 		}
 		if len(forks) > 0 {
 			return forks, false
-		} else {
+		} else if stmt.AnyStmt.Block != nil {
 			t.ExitScope()
+		} else {
+			t.Process.Enabled = false
+			t.Aborted = true
+			return nil, false
 		}
 
 		//scope.vars[stmt.AnyStmt.LoopVars[0]] = val
@@ -597,6 +612,17 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		}
 		currentFrame.pc = currentFrame.pc + ".Block.$"
 		return nil, false
+	} else if stmt.RequireStmt != nil {
+		vars := t.Process.GetAllVariables()
+		cond, err := t.Process.Evaluator.EvalPyExpr("filename.fizz", stmt.RequireStmt.Condition, vars)
+		//PanicOnError(err)
+		t.Process.PanicOnError(fmt.Sprintf("Error checking condition: %s", stmt.RequireStmt.Condition), err)
+		t.Process.updateAllVariablesInScope(vars)
+		if !cond.Truth() {
+			t.Process.Enabled = false
+			t.Aborted = true
+			return nil, false
+		}
 	} else if stmt.ReturnStmt != nil {
 		vars := t.Process.GetAllVariables()
 		var val starlark.Value = starlark.None
