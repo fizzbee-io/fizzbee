@@ -543,8 +543,20 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			//fmt.Printf("anyVariable: x: %s\n", x.String())
 			fork := t.Process.Fork()
 			fork.Name = fmt.Sprintf("Any:%s", x.String())
-			fork.currentThread().currentFrame().scope.vars[stmt.AnyStmt.LoopVars[0]] = x
+			if stmt.AnyStmt.Condition != "" {
+				vars := fork.GetAllVariables()
+				vars[stmt.AnyStmt.LoopVars[0]] = x
+				cond, err := fork.Evaluator.EvalPyExpr("filename.fizz", stmt.AnyStmt.Condition, vars)
+				//PanicOnError(err)
+				fork.PanicOnError(fmt.Sprintf("Error checking condition: %s", stmt.AnyStmt.Condition), err)
+				fork.updateAllVariablesInScope(vars)
+				if !cond.Truth() {
+					continue
+				}
+			}
+
 			if stmt.AnyStmt.Block != nil {
+				fork.currentThread().currentFrame().scope.vars[stmt.AnyStmt.LoopVars[0]] = x
 				fork.currentThread().currentFrame().pc = fmt.Sprintf("%s.AnyStmt.Block", currentFrame.pc)
 			} else {
 				fork.currentThread().currentFrame().pc = t.FindNextProgramCounter()
@@ -552,6 +564,9 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			forks = append(forks, fork)
 		}
 		if len(forks) > 0 {
+			if stmt.AnyStmt.Block == nil {
+				t.Process.Enable()
+			}
 			return forks, false
 		} else if stmt.AnyStmt.Block != nil {
 			t.ExitScope()

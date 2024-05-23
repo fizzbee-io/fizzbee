@@ -103,6 +103,7 @@ message AnyStmt {
   repeated string loop_vars = 3;
   string py_expr = 4;
   Block block = 5;
+  string condition = 6;
 }
 
 message WhileStmt {
