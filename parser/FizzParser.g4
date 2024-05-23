@@ -199,6 +199,8 @@ simple_stmt
 //         function calls of the simplest form like ret = fn(arg1,arg2)
 small_stmt
     : (NAME ASSIGN)? (NAME DOT)? NAME OPEN_PAREN arglist? CLOSE_PAREN    # func_call_stmt  // Fizz specific shortcut
+    | exprlist ASSIGN ANY testlist                                       # any_assign_stmt
+    | REQUIRE test                                                       # require_stmt
     | testlist_star_expr assign_part?                        # expr_stmt
     | {self.CheckVersion(2)}? PRINT (
         (test (COMMA test)* COMMA?)

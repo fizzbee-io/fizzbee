@@ -690,6 +690,8 @@ class BuildAstVisitor(FizzParserVisitor):
             return ast.Statement(return_stmt=childProto)
         elif isinstance(childProto, ast.CallStmt):
             return ast.Statement(call_stmt=childProto)
+        elif isinstance(childProto, ast.RequireStmt):
+            return ast.Statement(require_stmt=childProto)
 
         elif isinstance(childProto, ast.StateVars):
             return childProto
@@ -834,6 +836,46 @@ class BuildAstVisitor(FizzParserVisitor):
         print("visitAny_stmt any_stmt", any_stmt)
         return any_stmt
 
+
+    # Visit a parse tree produced by FizzParser#any_assign_stmt.
+    def visitAny_assign_stmt(self, ctx:FizzParser.Any_assign_stmtContext):
+        print("\n\nvisitAny_assign_stmt",ctx.__class__.__name__)
+        print("visitAny_assign_stmt\n",ctx.getText())
+        any_stmt = ast.AnyStmt()
+
+        for i, child in enumerate(ctx.getChildren()):
+            print()
+            print("visitAny_assign_stmt child index",i,child.getText())
+            if hasattr(child, 'toStringTree'):
+                if isinstance(child, FizzParser.ExprlistContext):
+                    any_stmt.loop_vars.extend(self.visitExprlist(child))
+                    continue
+                if isinstance(child, FizzParser.TestlistContext):
+                    any_stmt.py_expr = self.get_py_str(child)
+                    continue
+
+                self.log_childtree(child)
+                childProto = self.visit(child)
+                print("visitAny_assign_stmt childProto",childProto)
+                if isinstance(childProto, ast.Block):
+                    any_stmt.block.CopyFrom(childProto)
+                else:
+                    print("visitAny_assign_stmt childProto",childProto, child)
+                    raise Exception("visitAny_assign_stmt childProto (unknown) type", childProto.__class__.__name__, dir(childProto), childProto)
+            elif hasattr(child, 'getSymbol'):
+                if (child.getSymbol().type == FizzParser.LINE_BREAK
+                        or child.getSymbol().type == FizzParser.COLON
+                        or child.getSymbol().type == FizzParser.INDENT
+                ):
+                    continue
+                self.log_symbol(child)
+            else:
+                print("visitAny_assign_stmt child (unknown) type",child.__class__.__name__, dir(child))
+                raise Exception("visitAny_assign_stmt child (unknown) type")
+
+        print("visitAny_assign_stmt any_stmt", any_stmt)
+        return any_stmt
+
     # Visit a parse tree produced by FizzParser#for_stmt.
     def visitFor_stmt(self, ctx:FizzParser.For_stmtContext):
         print("\n\nvisitFor_stmt",ctx.__class__.__name__)
@@ -943,6 +985,13 @@ class BuildAstVisitor(FizzParserVisitor):
     def visitBreak_stmt(self, ctx:FizzParser.Break_stmtContext):
         return ast.BreakStmt()
 
+    # Visit a parse tree produced by FizzParser#require_stmt.
+    def visitRequire_stmt(self, ctx:FizzParser.Require_stmtContext):
+        print("\n\nvisitRequire_stmt",ctx.__class__.__name__)
+        print("visitRequire_stmt\n",ctx.getText())
+        require_stmt = ast.RequireStmt()
+        require_stmt.condition = self.get_py_str(ctx.getChild(1))
+        return require_stmt
 
     # Visit a parse tree produced by FizzParser#continue_stmt.
     def visitContinue_stmt(self, ctx:FizzParser.Continue_stmtContext):

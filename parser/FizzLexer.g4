@@ -93,7 +93,7 @@ ANY      : 'any';
 ACTION   : 'action';
 FUNC     : 'func';
 FAIR     : 'fair';
-
+REQUIRE  : 'require';
 
 PARAMS   : 'params';
 INIT     : 'init';
