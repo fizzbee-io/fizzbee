@@ -26,9 +26,24 @@ message Link {
   string name = 3;
   repeated string labels = 4;
   double weight = 5;
+  repeated Message messages = 6;
 }
 
 message Links {
   int64 total_nodes = 1;
   repeated Link links = 2;
+}
+
+message Message {
+  string sender = 1;
+  repeated string receivers = 2;
+  string name = 3;
+  repeated NameValue values = 4;
+  bool is_return = 5;
+  bool lossy = 6;
+}
+
+message NameValue {
+  string name = 1;
+  string value = 2;
 }

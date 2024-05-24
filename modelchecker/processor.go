@@ -95,6 +95,7 @@ type Process struct {
 	Returns     starlark.StringDict    `json:"returns"`
 	SymbolTable map[string]*Definition `json:"-"`
 	Labels 		[]string               `json:"-"`
+	Messages    []*ast.Message          `json:"-"`
 
 	// Fairness is actually a property of the transition/link. But to determine whether
 	// the link is fair, we need to know if the process stepped through at least one
@@ -105,7 +106,7 @@ type Process struct {
 
 	Enabled		bool                   `json:"-"`
 
-	Roles 	    []*Role                  `json:"-"`
+	Roles 	    []*Role                `json:"roles"`
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
@@ -157,6 +158,7 @@ func NewProcess(name string, files []*ast.File, parent *Process) *Process {
 		Returns:     make(starlark.StringDict),
 		SymbolTable: symbolTable,
 		Labels:      make([]string, 0),
+		Messages:    make([]*ast.Message, 0),
 		Stats:       NewStats(),
 	}
 	p.Witness = make([][]bool, len(files))
@@ -178,6 +180,7 @@ func (p *Process) MarshalJSON() ([]byte, error) {
 		"stats":     p.Stats,
 		"witness":   p.Witness,
 		"returns":   StringDictToJsonString(p.Returns),
+		"roles":     p.Roles,
 	})
 }
 
@@ -207,6 +210,7 @@ func (p *Process) Fork() *Process {
 		Returns:     make(starlark.StringDict),
 		SymbolTable: p.SymbolTable,
 		Labels:      make([]string, 0),
+		Messages: 	 make([]*ast.Message, 0),
 		Stats:       p.Stats.Clone(),
 	}
 	p2.Witness = make([][]bool, len(p.Files))
@@ -239,6 +243,7 @@ func (p *Process) CloneForAssert() *Process {
 		Returns:     make(starlark.StringDict),
 		SymbolTable: p.SymbolTable,
 		Labels:      make([]string, 0),
+		Messages: 	 make([]*ast.Message, 0),
 		Stats:       p.Stats.Clone(),
 	}
 	p2.Witness = make([][]bool, len(p.Files))
@@ -485,6 +490,52 @@ func (p *Process) PanicOnError(msg string, nestedError error)  {
 	}
 }
 
+func (p *Process) RecordCall(callerFrame *CallFrame, receiverFrame *CallFrame, flow ast.Flow) {
+	if callerFrame.obj == nil && receiverFrame.obj == nil {
+		return
+	}
+	msg := &ast.Message{
+		Name: receiverFrame.Name,
+	}
+	if callerFrame.obj != nil {
+		msg.Sender = callerFrame.obj.RefStringShort()
+	}
+	if receiverFrame.obj != nil {
+		msg.Receivers = []string{receiverFrame.obj.RefStringShort()}
+	}
+	for name, value := range receiverFrame.vars {
+		msg.Values = append(msg.Values, &ast.NameValue{Name: name, Value: value.String()})
+	}
+	if flow != ast.Flow_FLOW_ATOMIC {
+		msg.Lossy = true
+	}
+	p.Messages = append(p.Messages, msg)
+}
+
+func (p *Process) RecordReturn(callerFrame *CallFrame, receiverFrame *CallFrame, val starlark.Value, flow ast.Flow) {
+	if callerFrame.obj == nil && receiverFrame.obj == nil {
+		return
+	}
+	msg := &ast.Message{
+		Name: receiverFrame.Name,
+		IsReturn: true,
+	}
+
+	if callerFrame.obj != nil {
+		msg.Sender = callerFrame.obj.RefStringShort()
+	}
+	if receiverFrame.obj != nil {
+		msg.Receivers = []string{receiverFrame.obj.RefStringShort()}
+	}
+	if val != nil {
+		msg.Values = append(msg.Values, &ast.NameValue{Value: val.String()})
+	}
+	if flow != ast.Flow_FLOW_ATOMIC {
+		msg.Lossy = true
+	}
+	p.Messages = append(p.Messages, msg)
+}
+
 type Node struct {
 	*Process            `json:"process"`
 
@@ -508,10 +559,11 @@ type Node struct {
 }
 
 type Link struct {
-	Node *Node
-	Name string
+	Node     *Node
+	Name     string
 	Labels   []string
 	Fairness ast.FairnessLevel
+	Messages []*ast.Message
 }
 
 func NewNode(process *Process) *Node {
@@ -537,6 +589,7 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 		Name:     n.Inbound[0].Name,
 		Labels:   n.Inbound[0].Labels,
 		Fairness: n.Inbound[0].Fairness,
+		Messages: n.Inbound[0].Messages,
 	})
 	maps.Copy(other.ancestors, n.ancestors)
 }
@@ -556,6 +609,7 @@ func (n *Node) Attach() {
 		Name:     n.Inbound[0].Name,
 		Labels:   n.Inbound[0].Labels,
 		Fairness: n.Inbound[0].Fairness,
+		Messages: n.Inbound[0].Messages,
 	})
 }
 
@@ -565,7 +619,7 @@ func (n *Node) ForkForAction(process *Process, role *Role, action *ast.Action) *
 	}
 	actionName := action.Name
 	if role != nil {
-		actionName = role.Name + "." + actionName
+		actionName = role.RefStringShort() + "." + actionName
 	}
 	// Creates a new node, that can potentially be a child node. There is a chance, after executing
 	// this node will lead to a duplicate state. To avoid adding and then replacing later, we will
@@ -746,6 +800,7 @@ func (p *Processor) processNode(node *Node) bool {
 	if len(node.Inbound) > 0 {
 		node.Inbound[0].Labels = append(node.Inbound[0].Labels, node.Process.Labels...)
 		node.Inbound[0].Fairness = node.Process.Fairness
+		node.Inbound[0].Messages = append(node.Inbound[0].Messages, node.Process.Messages...)
 	}
 
 	// If the node is already visited, merge the nodes and return
