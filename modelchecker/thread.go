@@ -676,6 +676,15 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 				t.Process.Enable()
 			}
 			t.Process.updateAllVariablesInScope(returnedVars)
+
+			parentScope := oldFrame.scope
+			if oldFrame.scope.flow != ast.Flow_FLOW_ATOMIC {
+
+				for parentScope != nil && parentScope.flow == ast.Flow_FLOW_ONEOF {
+					parentScope = parentScope.parent
+				}
+			}
+			t.Process.RecordReturn(t.currentFrame(), oldFrame, val, parentScope.flow)
 			return t.executeEndOfStatement()
 		}
 		return nil, false
@@ -766,6 +775,8 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			}
 			newFrame.callerAssignVarNames = stmt.CallStmt.Vars
 			t.Process.Labels = append(t.Process.Labels, newFrame.Name+".call")
+			t.Process.RecordCall(frame, newFrame, parentScope.flow)
+
 			// TODO: Handle args
 			t.pushFrame(newFrame)
 			return nil, false
@@ -1008,6 +1019,7 @@ func (t *Thread) executeEndOfBlock() bool {
 						t.Process.Enable()
 					}
 					t.Process.updateAllVariablesInScope(returnedVars)
+					t.Process.RecordReturn(t.currentFrame(), oldFrame, starlark.None, oldScope.flow)
 					_,yield := t.executeEndOfStatement()
 					return yield
 				}

@@ -76,6 +76,7 @@ func GenerateProtoOfJson(nodes []*Node, pathPrefix string) ([]string, []string, 
 				Dest:   int64(indexMap[outboundLink.Node]),
 				Name:   outboundLink.Name,
 				Labels: outboundLink.Labels,
+				Messages: outboundLink.Messages,
 				Weight: 1.0 / float64(numLinks),
 			})
 			if len(links) >= linksShardSize {

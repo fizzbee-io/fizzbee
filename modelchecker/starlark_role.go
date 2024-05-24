@@ -69,6 +69,10 @@ func (r *Role) RefString() string {
 	return fmt.Sprintf("role %s#%d", r.Name, r.ref)
 }
 
+func (r *Role) RefStringShort() string {
+	return fmt.Sprintf("%s#%d", r.Name, r.ref)
+}
+
 func (r *Role) Type() string {
 	return "role"
 }
