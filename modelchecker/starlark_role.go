@@ -65,6 +65,30 @@ func (r *Role) String() string {
 	return b.String()
 }
 
+func (r *Role) MarshalJSON() ([]byte, error) {
+	b := strings.Builder{}
+	b.WriteString("{")
+	b.WriteString(fmt.Sprintf("\"name\": \"%s\",", r.Name))
+	b.WriteString(fmt.Sprintf("\"ref\": %d,", r.ref))
+	b.WriteString(fmt.Sprintf("\"ref_string\": \"%s\",", r.RefStringShort()))
+	b.WriteString("\"params\": ")
+	params, err := r.Params.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	b.Write(params)
+	b.WriteString(",")
+	b.WriteString("\"fields\": ")
+	fields, err := r.Fields.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	b.Write(fields)
+	b.WriteString("}")
+	s := b.String()
+	return []byte(s), nil
+}
+
 func (r *Role) RefString() string {
 	return fmt.Sprintf("role %s#%d", r.Name, r.ref)
 }
