@@ -23,6 +23,7 @@ package lib // import "go.starlark.net/starlarkstruct"
 //    would be, and, like the Go struct, requires only a single allocation.
 
 import (
+    "encoding/json"
     "fmt"
     "sort"
     "strings"
@@ -165,6 +166,30 @@ func (s *Struct) String() string {
     }
     buf.WriteByte(')')
     return buf.String()
+}
+
+func (s *Struct) MarshalJSON() ([]byte, error) {
+    buf := new(strings.Builder)
+    buf.WriteString("{")
+    for i, e := range s.entries {
+        if i > 0 {
+            buf.WriteString(", ")
+        }
+        buf.WriteString(fmt.Sprintf("\"%s\"", e.name))
+        buf.WriteString(" : ")
+        if e.value.Type() == "role" {
+            marshalled, err := json.Marshal(e.value)
+            if err != nil {
+                return nil, err
+            }
+            buf.Write(marshalled)
+        } else {
+            buf.WriteString(fmt.Sprintf("%s", e.value.String()))
+        }
+
+    }
+    buf.WriteString("}")
+    return []byte(buf.String()), nil
 }
 
 // Constructor returns the constructor used to create this struct.
