@@ -684,7 +684,11 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 					parentScope = parentScope.parent
 				}
 			}
-			t.Process.RecordReturn(t.currentFrame(), oldFrame, val, parentScope.flow)
+			flow := ast.Flow_FLOW_ATOMIC
+			if parentScope != nil {
+				flow = parentScope.flow
+			}
+			t.Process.RecordReturn(t.currentFrame(), oldFrame, val, flow)
 			return t.executeEndOfStatement()
 		}
 		return nil, false
