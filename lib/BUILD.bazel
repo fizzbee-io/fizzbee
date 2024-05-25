@@ -1,8 +1,9 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "lib",
     srcs = [
+        "jsonmarshaller.go",
         "queue.go",
         "stack.go",
         "starlark_types.go",
@@ -21,5 +22,20 @@ go_library(
         "@org_golang_google_protobuf//encoding/protojson:go_default_library",
         "@org_golang_google_protobuf//proto:go_default_library",
         "@org_golang_x_sys//cpu:go_default_library",
+    ],
+)
+
+
+go_test(
+    name = "lib_test",
+    srcs = [
+        "jsonmarshaller_test.go",
+    ],
+    embed = [":lib"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@net_starlark_go//starlark",
+        "@net_starlark_go//syntax",
     ],
 )
