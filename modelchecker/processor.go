@@ -321,11 +321,11 @@ func (n *Node) String() string {
 }
 
 func (n *Node) MarshalJSON() ([]byte, error) {
-	return json.Marshal(n.Process)
+	return lib.MarshalJSON(n.Process)
 }
 
 func (n *Node) GetJsonString() string {
-	bytes, err := json.Marshal(n.Process)
+	bytes, err := lib.MarshalJSON(n.Process)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return ""
