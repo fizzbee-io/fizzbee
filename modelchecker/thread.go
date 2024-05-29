@@ -212,7 +212,7 @@ func CopyDict(from starlark.StringDict, to starlark.StringDict, refs map[string]
 		to = make(starlark.StringDict)
 	}
 	for k, v := range from {
-		if v.Type() == "builtin_function_or_method" {
+		if v.Type() == "builtin_function_or_method" || v.Type() == "module" {
 			continue
 		}
 		newValue, err := deepCloneStarlarkValue(v, refs)

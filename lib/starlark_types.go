@@ -3,6 +3,7 @@ package lib
 import (
     "cmp"
     "fmt"
+    "go.starlark.net/lib/math"
     "go.starlark.net/starlark"
     "go.starlark.net/starlarkstruct"
     "go.starlark.net/syntax"
@@ -19,6 +20,7 @@ var (
         "genericmap": starlark.NewBuiltin("genericmap", MakeGenericMap),
         "genericset": starlark.NewBuiltin("genericset", MakeGenericSet),
         "bag": starlark.NewBuiltin("bag", MakeBag),
+        "mathx": math.Module,
     }
 
     mapMethods = map[string]*starlark.Builtin{
