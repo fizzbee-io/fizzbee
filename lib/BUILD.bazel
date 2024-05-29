@@ -16,6 +16,7 @@ go_library(
     deps = [
         "@com_github_jayaprabhakar_go_clone//:go-clone",
         "@in_gopkg_yaml_v3//:yaml_v3",
+        "@net_starlark_go//lib/math",
         "@net_starlark_go//starlark",
         "@net_starlark_go//starlarkstruct",
         "@net_starlark_go//syntax",
@@ -25,17 +26,12 @@ go_library(
     ],
 )
 
-
 go_test(
     name = "lib_test",
-    srcs = [
-        "jsonmarshaller_test.go",
-    ],
+    srcs = ["jsonmarshaller_test.go"],
     embed = [":lib"],
     deps = [
         "@com_github_stretchr_testify//assert",
-        "@com_github_stretchr_testify//require",
         "@net_starlark_go//starlark",
-        "@net_starlark_go//syntax",
     ],
 )
