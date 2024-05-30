@@ -483,25 +483,36 @@ func traverseDFS(node *Node, visited map[*Node]bool, result *[]*Node, yield *int
 }
 
 func traverseBFS(rootNode *Node) ([]*Node, *Node, int) {
-	var deadlock *Node
-	visited := make(map[*Node]bool)
+	type stat struct {
+		index int
+		deadNode *Node
+		livePaths int
+	}
+	visited := make(map[*Node]*stat)
 	var result []*Node
-	queue := lib.NewQueue[*Node]()
-	queue.Enqueue(rootNode)
+	type queuedEntry struct {
+		node *Node
+		yieldNode *Node
+	}
+	queue := lib.NewQueue[*queuedEntry]()
+	queue.Enqueue(&queuedEntry{
+		node:      rootNode,
+		yieldNode: rootNode,
+	})
 	yield := 0
 	maxDepth := 0
 	for queue.Count() > 0 {
-		node, _ := queue.Dequeue()
-
-		if visited[node] {
+		entry, _ := queue.Dequeue()
+		node := entry.node
+		if _, ok := visited[node]; ok {
 			continue
 		}
-		visited[node] = true
+		visited[node] = &stat{}
 
 		if node.Process != nil && !node.Process.Enabled {
 			continue
 		}
-
+		visited[node].index = len(result)
 		result = append(result, node)
 		if node.Name == "yield" {
 			yield++
@@ -517,14 +528,31 @@ func traverseBFS(rootNode *Node) ([]*Node, *Node, int) {
 			enabledLinks = append(enabledLinks, link)
 		}
 		node.Outbound = enabledLinks
-		if len(enabledLinks) == 0 && deadlock == nil {
-			deadlock = node
+		if len(enabledLinks) == 0 && visited[entry.yieldNode].deadNode == nil {
+			visited[entry.yieldNode].deadNode = node
 		}
 
 		for _, link := range node.Outbound {
-			queue.Enqueue(link.Node)
+			yieldNode := entry.yieldNode
+			if link.Node.Name == "yield" || link.Node.Name == "init" || link.Node.Name == "crash" {
+				visited[yieldNode].livePaths++
+				yieldNode = link.Node
+			}
+			queue.Enqueue(&queuedEntry{
+				node:      link.Node,
+				yieldNode: yieldNode,
+			})
 		}
 	}
 	fmt.Println("Max Depth", maxDepth)
+	var deadlock *Node
+	for _, node := range result {
+		entry := visited[node]
+		if entry.deadNode != nil && entry.livePaths == 0 {
+			// TODO: Remove these internal node path. These will mess with probabilistic analysis
+			deadlock = entry.deadNode
+			break
+		}
+	}
 	return result, deadlock, yield
 }
