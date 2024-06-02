@@ -20,7 +20,7 @@ var (
         "genericmap": starlark.NewBuiltin("genericmap", MakeGenericMap),
         "genericset": starlark.NewBuiltin("genericset", MakeGenericSet),
         "bag": starlark.NewBuiltin("bag", MakeBag),
-        "mathx": math.Module,
+        "math": math.Module,
     }
 
     mapMethods = map[string]*starlark.Builtin{

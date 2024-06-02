@@ -127,25 +127,41 @@ def create_cost_matrices_sparse(links, model):
         return {}
 
     cost_matrices = {}
-    # print('model', model)
     for label in model.configs:
-        # print(label, model.configs[label])
         for counter in model.configs[label].counters:
             if counter not in cost_matrices:
-                # cost_matrices[counter] = np.zeros((links.total_nodes, links.total_nodes), dtype=np.double)
                 cost_matrices[counter] = sp.dok_array((links.total_nodes, links.total_nodes), dtype=np.double)
 
-    # for each link, iterate over each label, and add the cost to the cost matrix
+    node_links = {}
     for link in links.links:
-        for label in link.labels:
-            if label not in model.configs:
-                continue
-            config = model.configs[label]
-            for counter in config.counters:
-                # print(counter, link.src, link.dest, config.counters[counter])
-                cost_matrices[counter][link.src,link.dest] += config.counters[counter].numeric
+        if (link.src,link.dest) in node_links:
+            node_links[(link.src,link.dest)].append(link)
+        else:
+            node_links[(link.src,link.dest)] = [link]
 
-    #print('cost_matrices', cost_matrices)
+    for src_dest in node_links:
+        sibling_links = node_links[src_dest]
+        total_prob = 0.0
+        relative_probs = []
+        for link in sibling_links:
+            link_prob = 1.0
+            for label in link.labels:
+                if label not in model.configs:
+                    continue
+                config = model.configs[label]
+                for counter in config.counters:
+                    link_prob *= config.counters[counter].numeric
+            total_prob += link_prob
+            relative_probs.append(link_prob)
+
+        for i,link in enumerate(sibling_links):
+            for label in link.labels:
+                if label not in model.configs:
+                    continue
+                config = model.configs[label]
+                for counter in config.counters:
+                    cost_matrices[counter][link.src,link.dest] += (relative_probs[i] / total_prob) * config.counters[counter].numeric
+
     csr_matrices = {}
     for counter in cost_matrices:
         csr_matrices[counter] = cost_matrices[counter].tocsr()
