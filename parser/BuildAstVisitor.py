@@ -619,6 +619,11 @@ class BuildAstVisitor(FizzParserVisitor):
                 self.log_childtree(child)
                 childProto = self.visit(child)
                 if isinstance(childProto, ast.Statement):
+                    if childProto.py_stmt is not None and (
+                            (childProto.py_stmt.code.startswith("'''") and childProto.py_stmt.code.endswith("'''"))
+                        or (childProto.py_stmt.code.startswith('"""') and childProto.py_stmt.code.endswith('"""'))
+                    ):
+                        continue
                     block.stmts.append(childProto)
                     continue
 
