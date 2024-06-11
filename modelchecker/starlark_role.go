@@ -19,6 +19,7 @@ var (
 type Role struct {
 	ref int
 	Name string
+	Symmetric bool
 	Params *lib.Struct
 	Fields *lib.Struct
 }
@@ -37,16 +38,26 @@ func (r *Role) SetField(name string, val starlark.Value) error {
 }
 
 func (r *Role) Attr(name string) (starlark.Value, error) {
+	if name == "__id__" {
+		return r.GetId(), nil
+	}
 	if v, err := r.Fields.Attr(name); err == nil {
 		return v, nil
 	} else if _, ok := err.(starlark.NoSuchAttrError); !ok {
 		return v, err
-	} else if v, err := r.Params.Attr(name); err == nil{
+	} else if v, err := r.Params.Attr(name); err == nil {
 		return v, nil
 	} else if _, ok := err.(starlark.NoSuchAttrError); !ok {
 		return v, err
 	}
 	return lib.BuiltinAttr(r, name, roleMethods)
+}
+
+func (r *Role) GetId() starlark.Value {
+	if r.Symmetric {
+		return lib.NewSymmetricValue(r.Name, r.ref)
+	}
+	return lib.NewModelValue(r.Name, r.ref)
 }
 
 func (r *Role) AttrNames() []string {
@@ -90,7 +101,11 @@ func (r *Role) MarshalJSON() ([]byte, error) {
 }
 
 func (r *Role) RefString() string {
-	return fmt.Sprintf("role %s#%d", r.Name, r.ref)
+	return GenerateRefString(r.Name, r.ref)
+}
+
+func GenerateRefString(name string, ref int) string {
+	return fmt.Sprintf("role %s#%d", name, ref)
 }
 
 func (r *Role) RefStringShort() string {
@@ -113,11 +128,15 @@ func (r *Role) Hash() (uint32, error) {
 	return 0, fmt.Errorf("unhashable type: role")
 }
 
+func (r *Role) IsSymmetric() bool {
+	return r.Symmetric
+}
+
 var _ starlark.HasAttrs = (*Role)(nil)
 var _ starlark.HasSetField = (*Role)(nil)
 var _ starlark.Value = (*Role)(nil)
 
-func CreateRoleBuiltin(name string, roles *[]*Role) *starlark.Builtin {
+func CreateRoleBuiltin(name string, symmetric bool, roles *[]*Role) *starlark.Builtin {
 	return starlark.NewBuiltin(name, func(t *starlark.Thread, b *starlark.Builtin,
 		args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		params := lib.FromKeywords(starlark.String("params"), kwargs)
@@ -128,7 +147,7 @@ func CreateRoleBuiltin(name string, roles *[]*Role) *starlark.Builtin {
 			roleRefs[name] = 1
 		}
 		fields := lib.FromStringDict(starlark.String("fields"), starlark.StringDict{})
-		r := &Role{ref: nextRef + 1, Name: name, Params: params, Fields: fields}
+		r := &Role{ref: nextRef, Name: name, Symmetric: symmetric, Params: params, Fields: fields}
 		*roles = append(*roles, r)
 		return r, nil
 	})

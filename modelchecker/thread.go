@@ -18,6 +18,17 @@ type Heap struct {
 	globals starlark.StringDict
 }
 
+func (h *Heap) GetSymmetryDefs() []*lib.SymmetricValues {
+	symmetryDefs := make([]*lib.SymmetricValues, 0)
+	// If the value is of type *lib.SymmetricValues, then add it to the symmetryDefs, list
+	for _, value := range h.globals {
+		if sym, ok := value.(lib.SymmetricValues); ok {
+			symmetryDefs = append(symmetryDefs, &sym)
+		}
+	}
+	return symmetryDefs
+}
+
 func (h *Heap) MarshalJSON() ([]byte, error) {
 	return StringDictToJson(h.state)
 }
@@ -110,8 +121,8 @@ func (h *Heap) insert(k string, v starlark.Value) bool {
 	return true
 }
 
-func (h *Heap) Clone(refs map[string]*Role) *Heap {
-	return &Heap{state:CloneDict(h.state, refs), globals:h.globals}
+func (h *Heap) Clone(refs map[string]*Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Heap {
+	return &Heap{state:CloneDict(h.state, refs, permutations, alt), globals:h.globals}
 }
 
 type Scope struct {
@@ -164,10 +175,6 @@ func (s *Scope) Hash() hash.Hash {
 	return h
 }
 
-func (s *Scope) HashCode() string {
-	return fmt.Sprintf("%x", s.Hash().Sum(nil))
-}
-
 func sortedCopy(slice []int) []int {
 	sorted := make([]int, len(slice))
 	copy(sorted, slice)
@@ -195,19 +202,19 @@ func (s *Scope) getAllVisibleVariablesResolveRoles(dict starlark.StringDict, rol
 		s.parent.getAllVisibleVariablesResolveRoles(dict, roleRefs)
 	}
 	// TODO: Resolve roles
-	CopyDict(s.vars, dict, roleRefs)
+	CopyDict(s.vars, dict, roleRefs, nil, 0)
 }
 
 func (s *Scope) getAllVisibleVariablesToDict(dict starlark.StringDict) {
 	s.getAllVisibleVariablesResolveRoles(dict, make(map[string]*Role))
 }
 
-func CloneDict(oldDict starlark.StringDict, refs map[string]*Role) starlark.StringDict {
-	return CopyDict(oldDict, nil, refs)
+func CloneDict(oldDict starlark.StringDict, refs map[string]*Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) starlark.StringDict {
+	return CopyDict(oldDict, nil, refs, permutations, alt)
 }
 
 // CopyDict copies values `from` to `to` overriding existing values. If the `to` is nil, creates a new dict.
-func CopyDict(from starlark.StringDict, to starlark.StringDict, refs map[string]*Role) starlark.StringDict {
+func CopyDict(from starlark.StringDict, to starlark.StringDict, refs map[string]*Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) starlark.StringDict {
 	if to == nil {
 		to = make(starlark.StringDict)
 	}
@@ -215,7 +222,7 @@ func CopyDict(from starlark.StringDict, to starlark.StringDict, refs map[string]
 		if v.Type() == "builtin_function_or_method" || v.Type() == "module" {
 			continue
 		}
-		newValue, err := deepCloneStarlarkValue(v, refs)
+		newValue, err := deepCloneStarlarkValueWithPermutations(v, refs, permutations, alt)
 		PanicOnError(err)
 		to[k] = newValue
 	}
@@ -272,7 +279,8 @@ func NewCallStack() *CallStack {
 	return &CallStack{lib.NewStack[*CallFrame]()}
 }
 
-func (s *CallStack) Clone() *CallStack {
+func (s *CallStack) Clone(map[lib.SymmetricValue][]lib.SymmetricValue, int) *CallStack {
+	// TODO: handle symmetry in stack.Clone()
 	return &CallStack{s.Stack.Clone()}
 }
 
@@ -280,7 +288,7 @@ func (s *CallStack) HashCode() string {
 	if s == nil {
 		return ""
 	}
-	arr := s.RawArrayCopy()
+	arr := s.RawArray()
 	h := sha256.New()
 
 	for _, frame := range arr {
@@ -366,8 +374,9 @@ func (t *Thread) popFrame() *CallFrame {
 	return frame
 }
 
-func (t *Thread) Clone() *Thread {
-	return &Thread{Process: t.Process, Files: t.Files, Stack: t.Stack.Clone(), Fairness: t.Fairness}
+func (t *Thread) Clone(permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Thread {
+	// TODO: handle symmetry in stack.Clone()
+	return &Thread{Process: t.Process, Files: t.Files, Stack: t.Stack.Clone(permutations, alt), Fairness: t.Fairness}
 }
 
 func (t *Thread) Execute() ([]*Process, bool) {

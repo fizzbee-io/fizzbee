@@ -98,6 +98,7 @@ REQUIRE  : 'require';
 PARAMS   : 'params';
 INIT     : 'init';
 ROLE     : 'role';
+SYMMETRIC : 'symmetric';
 
 ASSERTION      : 'assertion';
 INVARIANTS     : 'invariants';

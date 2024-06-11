@@ -88,7 +88,9 @@ func (s *Stack[T]) Clone() *Stack[T] {
 func (s *Stack[T]) RawArrayCopy() []T {
 	return clone.Slowly(s.s).([]T)
 }
-
+func (s *Stack[T]) RawArray() []T {
+	return s.s
+}
 func (s *Stack[T]) Len() int {
 	s.lock.Lock()
 	defer s.lock.Unlock()

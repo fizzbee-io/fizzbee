@@ -1,6 +1,7 @@
 package modelchecker
 
 import (
+	"github.com/fizzbee-io/fizzbee/lib"
 	"github.com/jayaprabhakar/go-clone"
 	"reflect"
 	"unsafe"
@@ -78,11 +79,10 @@ func parseReflectValue(v reflect.Value) interfaceData {
 }
 
 
-
-func roleResolveCloneFn(refs map[string]*Role) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
+func roleResolveCloneFn(refs map[string]*Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
 	return func(allocator *clone.Allocator, old, new reflect.Value) {
+
 		var oldRole *Role
-		//fmt.Println("old.CanInterface", old.CanInterface(), "old.CanSet", old.CanSet(), "old.CanAddr", old.CanAddr())
 		if !old.CanInterface() {
 			old = forceClearROFlag(old)
 		}
@@ -96,10 +96,19 @@ func roleResolveCloneFn(refs map[string]*Role) func(allocator *clone.Allocator, 
 		}
 
 		newRolePtr := new.Addr().Interface().(**Role)
-		value, err := deepCloneStarlarkValue(oldRole, refs)
+		value, err := deepCloneStarlarkValueWithPermutations(oldRole, refs, permutations, alt)
 		if err != nil {
 			panic(err)
 		}
 		*newRolePtr = value.(*Role)
+	}
+}
+
+func symmetricValueResolveFn(refs map[string]*Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
+	return func(allocator *clone.Allocator, old, new reflect.Value) {
+		value := new.Addr().Interface().(*lib.SymmetricValue)
+		oldVal := old.Interface().(lib.SymmetricValue)
+		newVal, _ := deepCloneStarlarkValueWithPermutations(oldVal, refs, permutations, alt)
+		*value = newVal.(lib.SymmetricValue)
 	}
 }
