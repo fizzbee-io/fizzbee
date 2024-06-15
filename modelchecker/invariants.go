@@ -63,7 +63,7 @@ func CheckInvariant(process *Process, invariant *ast.Invariant) bool {
 		pyExpr = invariant.Nested.PyExpr
 	}
 	ref := make(map[string]*Role)
-	vars := CloneDict(process.Heap.state, ref)
+	vars := CloneDict(process.Heap.state, ref, nil, 0)
 	vars["__returns__"] = NewDictFromStringDict(process.Returns)
 	cond, err := process.Evaluator.EvalPyExpr("filename.fizz", pyExpr, vars)
 	PanicOnError(err)
@@ -74,7 +74,7 @@ func CheckAssertion(process *Process, invariant *ast.Invariant, index int) bool 
 	if !slices.Contains(invariant.TemporalOperators, "always") {
 		panic("Invariant checking supported only for always/always-eventually/eventually-always invariants")
 	}
-	cloned := process.CloneForAssert()
+	cloned := process.CloneForAssert(nil, 0)
 	cloned.Heap.state["__returns__"] = NewDictFromStringDict(cloned.Returns)
 
 	numThreads := len(cloned.Threads)

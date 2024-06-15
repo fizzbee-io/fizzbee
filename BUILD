@@ -27,6 +27,7 @@ go_library(
     importpath = "github.com/fizzbee-io/fizzbee",
     visibility = ["//visibility:private"],
     deps = [
+        "//lib",
         "//modelchecker",
         "//proto",
         "@org_golang_google_protobuf//encoding/protojson:go_default_library",

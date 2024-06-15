@@ -6,11 +6,13 @@ import (
     ast "fizz/proto"
     "flag"
     "fmt"
+    "github.com/fizzbee-io/fizzbee/lib"
     "github.com/fizzbee-io/fizzbee/modelchecker"
     "google.golang.org/protobuf/encoding/protojson"
     "os"
     "path/filepath"
     "slices"
+    "strings"
     "time"
 )
 
@@ -187,9 +189,11 @@ func GenerateFailurePath(failurePath []*modelchecker.Link, invariant *modelcheck
 
         fmt.Printf("------\n%s\n", stepName)
 
-        fmt.Printf("--\nstate: %s\n", node.Heap.ToJson())
+        nodeStr := node.Heap.ToJson()
+        nodeStr = strings.ReplaceAll(nodeStr, lib.SymmetryPrefix, "")
+        fmt.Printf("--\nstate: %s\n", nodeStr)
         if len(node.Returns) > 0 {
-            fmt.Printf("returns: %s\n", node.Returns.String())
+            fmt.Printf("returns: %s\n", strings.ReplaceAll(node.Returns.String(), lib.SymmetryPrefix, ""))
         }
     }
     fmt.Println("------")

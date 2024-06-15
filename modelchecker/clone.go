@@ -7,20 +7,33 @@ import (
 )
 
 func deepCloneStarlarkValue(value starlark.Value, refs map[string]*Role) (starlark.Value, error) {
+    return deepCloneStarlarkValueWithPermutations(value, refs, nil, 0)
+}
+
+func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[string]*Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) (starlark.Value, error) {
     // starlark has other types as well "string.elems", "string.codepoints", "function"
     // "builtin_function_or_method".
     switch value.Type() {
 
-    case "NoneType", "int", "float", "bool", "string", "bytes", "range", "struct":
+    case "NoneType", "int", "float", "bool", "string", "bytes", "range", "struct", "symmetric_values", "model_value":
     //case starlark.Bool, starlark.String, starlark.Int:
         // For simple values, just return a copy
         // Also starlark struct is immutable
         return value, nil
 
+    case "symmetric_value":
+        if permutations != nil && alt > 0 {
+            v := value.(lib.SymmetricValue)
+            if other, ok := permutations[v]; ok {
+                return other[alt], nil
+            }
+            panic(fmt.Sprintf("symmetric_value %v should have src %v and alt %v", v, permutations, alt))
+        }
+        return value, nil
     case "list":
         // For lists, recursively clone each element
         iterable := value.(starlark.Iterable)
-        newList, err := deepCloneIterableToList(iterable, refs)
+        newList, err := deepCloneIterableToList(iterable, refs, permutations, alt)
         if err != nil {
             return nil, err
         }
@@ -29,7 +42,7 @@ func deepCloneStarlarkValue(value starlark.Value, refs map[string]*Role) (starla
     case "set":
         // For lists, recursively clone each element
         iterable := value.(starlark.Iterable)
-        newList, err := deepCloneIterableToList(iterable, refs)
+        newList, err := deepCloneIterableToList(iterable, refs, permutations, alt)
         if err != nil {
             return nil, err
         }
@@ -44,7 +57,7 @@ func deepCloneStarlarkValue(value starlark.Value, refs map[string]*Role) (starla
     case "tuple":
         // For lists, recursively clone each element
         iterable := value.(starlark.Iterable)
-        newList, err := deepCloneIterableToList(iterable, refs)
+        newList, err := deepCloneIterableToList(iterable, refs, permutations, alt)
         if err != nil {
             return nil, err
         }
@@ -56,7 +69,7 @@ func deepCloneStarlarkValue(value starlark.Value, refs map[string]*Role) (starla
     case "dict":
         v := value.(*starlark.Dict)
         // For dictionaries, recursively clone each key-value pair
-        newDict, err := deepCloneStringDict(v, refs)
+        newDict, err := deepCloneStringDict(v, refs, permutations, alt)
         if err != nil {
             return nil, err
         }
@@ -65,7 +78,7 @@ func deepCloneStarlarkValue(value starlark.Value, refs map[string]*Role) (starla
         v := value.(*lib.Struct)
         dict := starlark.StringDict{}
         v.ToStringDict(dict)
-        newDict := CloneDict(dict, refs)
+        newDict := CloneDict(dict, refs, permutations, alt)
         return lib.FromStringDict(v.Constructor(), newDict), nil
 
     case "genericset":
@@ -75,7 +88,7 @@ func deepCloneStarlarkValue(value starlark.Value, refs map[string]*Role) (starla
         defer iter.Done()
         var x starlark.Value
         for iter.Next(&x) {
-            clonedElem, err := deepCloneStarlarkValue(x, refs)
+            clonedElem, err := deepCloneStarlarkValueWithPermutations(x, refs, permutations, alt)
             if err != nil {
                 return nil, err
             }
@@ -88,11 +101,11 @@ func deepCloneStarlarkValue(value starlark.Value, refs map[string]*Role) (starla
         newMap := lib.NewGenericMap()
         for _, tuple := range m.Items() {
             key, value := tuple[0], tuple[1]
-            clonedKey, err := deepCloneStarlarkValue(key, refs)
+            clonedKey, err := deepCloneStarlarkValueWithPermutations(key, refs, permutations, alt)
             if err != nil {
                 return nil, err
             }
-            clonedValue, err := deepCloneStarlarkValue(value, refs)
+            clonedValue, err := deepCloneStarlarkValueWithPermutations(value, refs, permutations, alt)
             if err != nil {
                 return nil, err
             }
@@ -106,7 +119,7 @@ func deepCloneStarlarkValue(value starlark.Value, refs map[string]*Role) (starla
         defer iter.Done()
         var x starlark.Value
         for iter.Next(&x) {
-            clonedElem, err := deepCloneStarlarkValue(x, refs)
+            clonedElem, err := deepCloneStarlarkValueWithPermutations(x, refs, permutations, alt)
             if err != nil {
                 return nil, err
             }
@@ -116,24 +129,40 @@ func deepCloneStarlarkValue(value starlark.Value, refs map[string]*Role) (starla
         return newBag, nil
     case "role":
         r := value.(*Role)
-        if cached, ok := refs[r.RefString()]; ok {
-            return cached, nil
-        } else {
-            params, err := deepCloneStarlarkValue(r.Params, refs)
+        prefix := r.Name
+        id := r.ref
+        if r.IsSymmetric() {
+            oldSymVal := lib.NewSymmetricValue(r.Name, r.ref)
+            newVal, err := deepCloneStarlarkValueWithPermutations(oldSymVal, refs, permutations, alt)
             if err != nil {
                 return nil, err
             }
-            fields, err := deepCloneStarlarkValue(r.Fields, refs)
+            newRoleId := newVal.(lib.SymmetricValue)
+            prefix = newRoleId.GetPrefix()
+            id = newRoleId.GetId()
+        }
+
+        newRefString := GenerateRefString(prefix, id)
+
+        if cached, ok := refs[newRefString]; ok {
+            return cached, nil
+        } else {
+            params, err := deepCloneStarlarkValueWithPermutations(r.Params, refs, permutations, alt)
+            if err != nil {
+                return nil, err
+            }
+            fields, err := deepCloneStarlarkValueWithPermutations(r.Fields, refs, permutations, alt)
             if err != nil {
                 return nil, err
             }
             newRole := &Role{
-                ref: r.ref,
-                Name: r.Name,
-                Params: params.(*lib.Struct),
-                Fields: fields.(*lib.Struct),
+                ref:       id,
+                Name:      prefix,
+                Symmetric: r.IsSymmetric(),
+                Params:    params.(*lib.Struct),
+                Fields:    fields.(*lib.Struct),
             }
-            refs[r.RefString()] = newRole
+            refs[newRole.RefString()] = newRole
             return newRole, nil
         }
     default:
@@ -141,15 +170,15 @@ func deepCloneStarlarkValue(value starlark.Value, refs map[string]*Role) (starla
     }
 }
 
-func deepCloneStringDict(v *starlark.Dict, refs map[string]*Role) (*starlark.Dict, error) {
+func deepCloneStringDict(v *starlark.Dict, refs map[string]*Role, src map[lib.SymmetricValue][]lib.SymmetricValue, alt int) (*starlark.Dict, error) {
     newDict := &starlark.Dict{}
     for _, item := range v.Items() {
         k, v := item[0], item[1]
-        clonedKey, err := deepCloneStarlarkValue(k, refs)
+        clonedKey, err := deepCloneStarlarkValueWithPermutations(k, refs, src, alt)
         if err != nil {
             return nil, err
         }
-        clonedValue, err := deepCloneStarlarkValue(v, refs)
+        clonedValue, err := deepCloneStarlarkValueWithPermutations(v, refs, src, alt)
         if err != nil {
             return nil, err
         }
@@ -158,12 +187,12 @@ func deepCloneStringDict(v *starlark.Dict, refs map[string]*Role) (*starlark.Dic
     return newDict, nil
 }
 
-func deepCloneIterableToList(iterable starlark.Iterable, refs map[string]*Role) ([]starlark.Value, error) {
+func deepCloneIterableToList(iterable starlark.Iterable, refs map[string]*Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) ([]starlark.Value, error) {
     var newList []starlark.Value
     iter := iterable.Iterate()
     var x starlark.Value
     for iter.Next(&x) {
-        clonedElem, err := deepCloneStarlarkValue(x, refs)
+        clonedElem, err := deepCloneStarlarkValueWithPermutations(x, refs, permutations, alt)
         if err != nil {
             return nil, err
         }

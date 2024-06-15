@@ -25,6 +25,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -198,10 +199,10 @@ func (p *Process) HasFailedInvariants() bool {
 
 func (p *Process) Fork() *Process {
 	refs := make(map[string]*Role)
-	clone.SetCustomPtrFunc(reflect.TypeOf(&Role{}), roleResolveCloneFn(refs))
+	clone.SetCustomPtrFunc(reflect.TypeOf(&Role{}), roleResolveCloneFn(refs, nil, 0))
 	p2 := &Process{
 		Name:        p.Name,
-		Heap:        p.Heap.Clone(refs),
+		Heap:        p.Heap.Clone(refs, nil, 0),
 		Current:     p.Current,
 		Parent:      p,
 		Evaluator:   p.Evaluator,
@@ -221,7 +222,7 @@ func (p *Process) Fork() *Process {
 	p.Children = append(p.Children, p2)
 	clonedThreads := make([]*Thread, len(p.Threads))
 	for i, thread := range p.Threads {
-		clonedThreads[i] = thread.Clone()
+		clonedThreads[i] = thread.Clone(nil, 0)
 		clonedThreads[i].Process = p2
 	}
 	p2.Threads = clonedThreads
@@ -229,12 +230,13 @@ func (p *Process) Fork() *Process {
 	return p2
 }
 
-func (p *Process) CloneForAssert() *Process {
+func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Process {
 	refs := make(map[string]*Role)
-	clone.SetCustomPtrFunc(reflect.TypeOf(&Role{}), roleResolveCloneFn(refs))
+	clone.SetCustomPtrFunc(reflect.TypeOf(&Role{}), roleResolveCloneFn(refs, permutations, alt))
+	clone.SetCustomFunc(reflect.TypeOf(lib.SymmetricValue{}), symmetricValueResolveFn(refs, permutations, alt))
 	p2 := &Process{
 		Name:        p.Name,
-		Heap:        p.Heap.Clone(refs),
+		Heap:        p.Heap.Clone(refs, permutations, alt),
 		Current:     p.Current,
 		Parent:      p,
 		Evaluator:   p.Evaluator,
@@ -253,7 +255,7 @@ func (p *Process) CloneForAssert() *Process {
 
 	clonedThreads := make([]*Thread, len(p.Threads))
 	for i, thread := range p.Threads {
-		clonedThreads[i] = thread.Clone()
+		clonedThreads[i] = thread.Clone(permutations, alt)
 		clonedThreads[i].Process = p2
 	}
 	p2.Threads = clonedThreads
@@ -316,8 +318,9 @@ func (n *Node) String() string {
 	} else {
 		//buf.WriteString("Threads: 0\n")
 	}
-
-	return buf.String()
+	str := buf.String()
+	str = strings.ReplaceAll(str, lib.SymmetryPrefix, "")
+	return str
 }
 
 func (n *Node) MarshalJSON() ([]byte, error) {
@@ -330,7 +333,9 @@ func (n *Node) GetJsonString() string {
 		fmt.Println("Error:", err)
 		return ""
 	}
-	return string(bytes)
+	str := string(bytes)
+	str = strings.ReplaceAll(str, lib.SymmetryPrefix, "")
+	return str
 }
 
 func (n *Node) GetStateString() string {
@@ -417,7 +422,7 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 		roleRefs[role.RefString()] = p.Roles[i]
 	}
 
-	CopyDict(p.Heap.state, dict, roleRefs)
+	CopyDict(p.Heap.state, dict, roleRefs, nil, 0)
 	frame := p.currentThread().currentFrame()
 	if frame.obj != nil {
 		self, err := deepCloneStarlarkValue(frame.obj, roleRefs)
@@ -426,13 +431,14 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 		}
 		dict["self"] = self
 	}
-	CopyDict(frame.vars, dict, roleRefs)
+	CopyDict(frame.vars, dict, roleRefs, nil, 0)
 	frame.scope.getAllVisibleVariablesResolveRoles(dict, roleRefs)
 	maps.Copy(dict, lib.Builtins)
 
 	for _, file := range p.Files {
 		for _, role := range file.Roles {
-			dict[role.Name] = CreateRoleBuiltin(role.Name, &p.Roles)
+			symmetric := slices.Contains(role.Modifiers, "symmetric")
+			dict[role.Name] = CreateRoleBuiltin(role.Name, symmetric, &p.Roles)
 		}
 	}
 	return dict
@@ -751,8 +757,8 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 			prevCount = len(p.visited)
 		}
 
-		invariantFailure := p.processNode(node)
-		if p.visited[node.HashCode()] == nil {
+		invariantFailure, symmetryFound := p.processNode(node)
+		if p.visited[node.HashCode()] == nil && !symmetryFound {
 			p.visited[node.HashCode()] = node
 		}
 
@@ -786,10 +792,10 @@ func processPreInit(init *Node, stmts []*ast.Statement) {
 	init.removeCurrentThread()
 }
 
-func (p *Processor) processNode(node *Node) bool {
+func (p *Processor) processNode(node *Node) (bool, bool) {
 	if node.Process.currentThread().currentPc() == "" && node.Name == "init" {
 		if node.Process.Files[0].Actions[0].Name != "Init" {
-			return p.processInit(node)
+			return p.processInit(node), false
 		}
 
 	}
@@ -810,7 +816,8 @@ func (p *Processor) processNode(node *Node) bool {
 	// So, we might miss some invariants. However, since the yield points are
 	// determined by the statement, and we include program counter in the hash code,
 	// this may not be an issue.
-	if other, ok := p.visited[node.HashCode()]; ok {
+	hashCode := node.HashCode()
+	if other, ok := p.visited[hashCode]; ok {
 		// This is a bit inefficient.
 		// TODO: Enabled should be a property of the link/transition, not the node.
 		// We will keep the enabled state in the node, during execution but have to be
@@ -823,15 +830,24 @@ func (p *Processor) processNode(node *Node) bool {
 			//	// Naively calling the liveness checker here will make it very
 			//	// slow and expensive.
 			//}
-			return false
+			return false, false
 		} else {
 			node.Attach()
-			p.visited[node.HashCode()] = node
+			p.visited[hashCode] = node
 		}
 
 	} else {
+		hashes := node.getSymmetryTranslations()
+		for _, hash := range hashes {
+			if other, ok := p.visited[hash]; ok {
+				if other.Enabled || !node.Enabled {
+					node.Duplicate(other, yield)
+					return false, true
+				}
+			}
+		}
 		node.Attach()
-		p.visited[node.HashCode()] = node
+		p.visited[hashCode] = node
 	}
 
 	var failedInvariants map[int][]int
@@ -842,7 +858,7 @@ func (p *Processor) processNode(node *Node) bool {
 		//panic(fmt.Sprintf("Invariant failed: %v", failedInvariants))
 		node.Process.FailedInvariants = failedInvariants
 		if !p.config.ContinuePathOnInvariantFailures {
-			return true
+			return true, false
 		}
 	}
 	if !yield {
@@ -850,7 +866,7 @@ func (p *Processor) processNode(node *Node) bool {
 			newNode := node.ForkForAlternatePaths(fork, "")
 			p.queue.Enqueue(newNode)
 		}
-		return false
+		return false, false
 	}
 
 	if yield {
@@ -865,7 +881,7 @@ func (p *Processor) processNode(node *Node) bool {
 		}
 		node.Stutter()
 		if len(node.Process.Threads) == 0 {
-			return false
+			return false, false
 		}
 		crashFork := node.Process.Fork()
 		crashFork.Name = "crash"
@@ -879,7 +895,7 @@ func (p *Processor) processNode(node *Node) bool {
 		}
 		if other, ok := p.visited[crashNode.HashCode()]; ok {
 			crashNode.Duplicate(other, true)
-			return false
+			return false, false
 		}
 		crashNode.Attach()
 
@@ -892,9 +908,73 @@ func (p *Processor) processNode(node *Node) bool {
 		//	node.Attach()
 		//}
 		p.YieldNode(crashNode)
-		return false
+		return false, false
 	}
-	return false
+	return false, false
+}
+
+func (p *Process) getSymmetryTranslations() []string {
+	permMap, count := getSymmetryPermutations(p)
+	//src := permutations[0]
+	hashes := make([]string, count-1)
+	for i := 1; i < count; i++ {
+		hashes[i-1] = p.symmetricHash(permMap, i)
+	}
+	return hashes
+}
+
+func (p *Process) symmetricHash(permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) string {
+	p2 := p.CloneForAssert(permutations, alt)
+	return p2.HashCode()
+}
+
+func (p *Process) GetSymmetryRoles() []*lib.SymmetricValues {
+	m := make(map[string][]lib.SymmetricValue)
+	for _, role := range p.Roles {
+		if role.IsSymmetric() {
+			m[role.Name] = append(m[role.Name], lib.NewSymmetricValue(role.Name, role.ref))
+		}
+	}
+	roleSymValues := make([]*lib.SymmetricValues, 0, len(m))
+	for _, values := range m {
+		roleSymValues = append(roleSymValues, lib.NewSymmetricValues(values))
+	}
+	return roleSymValues
+}
+
+func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.SymmetricValue, int) {
+	defs := process.Heap.GetSymmetryDefs()
+	values := make([][]lib.SymmetricValue, len(defs))
+	for i, def := range defs {
+		values[i] = make([]lib.SymmetricValue, def.Len())
+		for j := 0; j < def.Len(); j++ {
+			values[i][j] = def.Index(j)
+		}
+		slices.SortFunc(values[i], lib.CompareStringer[lib.SymmetricValue])
+	}
+
+	roles := process.GetSymmetryRoles()
+	for _, role := range roles {
+		v := make([]lib.SymmetricValue, role.Len())
+		for j := 0; j < role.Len(); j++ {
+			v[j] = role.Index(j)
+		}
+		slices.SortFunc(v, lib.CompareStringer[lib.SymmetricValue])
+		values = append(values, v)
+	}
+	permutations := lib.GenerateAllPermutations(values)
+	v := make([][]lib.SymmetricValue, len(permutations))
+	for i, permutation := range permutations {
+		v[i] = slices.Concat(permutation...)
+	}
+	permMap := make(map[lib.SymmetricValue][]lib.SymmetricValue)
+	for _, symVals := range v {
+		for j, symVal := range symVals {
+			permMap[v[0][j]] = append(permMap[v[0][j]], symVal)
+		}
+	}
+
+	return permMap, len(v)
 }
 
 func (p *Processor) processInit(node *Node) bool {

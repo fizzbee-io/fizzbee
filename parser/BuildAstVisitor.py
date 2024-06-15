@@ -117,6 +117,9 @@ class BuildAstVisitor(FizzParserVisitor):
             elif hasattr(child, 'getSymbol'):
                 if child.getSymbol().type == FizzParser.LINE_BREAK:
                     continue
+                if child.getSymbol().type == FizzParser.SYMMETRIC:
+                    role.modifiers.append(child.getText())
+                    continue
                 self.log_symbol(child)
             else:
                 print("visitRoledef child (unknown) type",child.__class__.__name__, dir(child))

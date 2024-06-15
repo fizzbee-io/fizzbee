@@ -132,7 +132,7 @@ except_clause
     ;
 
 roledef
-    : ROLE name COLON LINE_BREAK INDENT stmt+ DEDENT
+    : SYMMETRIC? ROLE name COLON LINE_BREAK INDENT stmt+ DEDENT
     ;
 
 classdef

@@ -2,23 +2,39 @@ package lib
 
 import (
     "cmp"
+    "encoding/base64"
+    "encoding/json"
     "fmt"
     "go.starlark.net/lib/math"
     "go.starlark.net/starlark"
     "go.starlark.net/starlarkstruct"
     "go.starlark.net/syntax"
+    "math/rand"
     "slices"
     "sort"
     "strings"
 )
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+
+func RandString(n int) string {
+    b := make([]byte, n)
+    dest := make([]byte, base64.URLEncoding.EncodedLen(n))
+    rand.Read(b)
+    base64.URLEncoding.Encode(dest, b)
+    return string(dest)
+}
 
 var (
+    SymmetryPrefix = RandString(9) + "-" // Replace this with a UUID
+
     Builtins = starlark.StringDict{
         "struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
         "record": starlark.NewBuiltin("record", Make),
         "enum":   starlark.NewBuiltin("enum", MakeEnum),
         "genericmap": starlark.NewBuiltin("genericmap", MakeGenericMap),
         "genericset": starlark.NewBuiltin("genericset", MakeGenericSet),
+        "symmetric_values": starlark.NewBuiltin("symmetric_values", MakeSymmetricValues),
         "bag": starlark.NewBuiltin("bag", MakeBag),
         "math": math.Module,
     }
@@ -58,6 +74,45 @@ var (
         "remove":               starlark.NewBuiltin("remove", bag_remove),
     }
 )
+
+type SymmetricValues struct {
+    starlark.Tuple
+}
+func (s SymmetricValues) Index(i int) SymmetricValue { return s.Tuple.Index(i).(SymmetricValue) }
+func (s SymmetricValues) Type() string   { return "symmetric_values" }
+
+func MakeSymmetricValues(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+    prefix := ""
+    var countValue starlark.Value
+    if len(args) == 1 {
+        countValue = args[0]
+    }
+    if len(args) == 2 {
+        if s, ok := args[0].(starlark.String); ok {
+            prefix = s.GoString()
+        } else {
+            return nil, fmt.Errorf("symmetric_values(int) or symmetric_values(string, int) expected. Unexpected: %v", args[0])
+        }
+        countValue = args[1]
+    }
+    count, err := starlark.AsInt32(countValue)
+    if err != nil {
+        return nil, fmt.Errorf("symmetric_values(int) or symmetric_values(string, int) expected. %v", err)
+    }
+    values := SymmetricValues{}
+    for i := 0; i < count; i++ {
+        values.Tuple = append(values.Tuple, NewSymmetricValue(prefix, i))
+    }
+    return values, nil
+}
+
+func NewSymmetricValues(values []SymmetricValue) *SymmetricValues {
+    sv := &SymmetricValues{}
+    for _, v := range values {
+        sv.Tuple = append(sv.Tuple, v)
+    }
+    return sv
+}
 
 func MakeEnum(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
     for _, arg := range args {
@@ -1116,3 +1171,104 @@ var _ starlark.Sequence = (*Bag)(nil)
 var _ starlark.Value = (*Bag)(nil)
 // There is a limit in the API, this is required to get 'in' keyword to work
 var _ starlark.Mapping = (*Bag)(nil)
+
+func NewModelValue(prefix string, i int) ModelValue {
+    return ModelValue{
+        prefix: prefix,
+        id:     i,
+    }
+}
+
+type ModelValue struct {
+    prefix string
+    id int
+}
+
+func (m ModelValue) GetPrefix() string {
+    return m.prefix
+}
+
+func (m ModelValue) GetId() int {
+    return m.id
+}
+
+func (m ModelValue) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
+    y := y_.(ModelValue)
+    switch op {
+    case syntax.EQL:
+        return modelValueEqual(m, y), nil
+    case syntax.NEQ:
+        return !modelValueEqual(m, y), nil
+    default:
+        return false, fmt.Errorf("%s %s %s not implemented", m.Type(), op, y.Type())
+    }
+}
+
+func modelValueEqual(s ModelValue, y ModelValue) bool {
+    return s.prefix == y.prefix && s.id == y.id
+}
+
+func (m ModelValue) String() string {
+    return fmt.Sprintf("%s%s%d", SymmetryPrefix, m.prefix, m.id)
+}
+
+func (m ModelValue) FullString() string {
+    return fmt.Sprintf("%s%s%d", SymmetryPrefix, m.prefix, m.id)
+}
+
+func (m ModelValue) ShortString() string {
+    return fmt.Sprintf("%s%d", m.prefix, m.id)
+}
+
+func (m ModelValue) MarshalJSON() ([]byte, error) {
+    return json.Marshal(m.FullString())
+}
+
+func (m ModelValue) Type() string {
+    return "model_value"
+}
+
+func (m ModelValue) Freeze() {}
+
+func (m ModelValue) Truth() starlark.Bool {
+    return true
+}
+
+func (m ModelValue) Hash() (uint32, error) {
+    return starlark.String(m.FullString()).Hash()
+}
+
+var _ starlark.Value = ModelValue{}
+var _ starlark.Comparable = ModelValue{}
+
+
+func NewSymmetricValue(prefix string, i int) SymmetricValue {
+    return SymmetricValue{ModelValue{prefix: prefix, id: i}}
+}
+
+type SymmetricValue struct {
+    ModelValue
+}
+
+func (s SymmetricValue) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
+    y := y_.(SymmetricValue)
+    switch op {
+    case syntax.EQL:
+        return modelValueEqual(s.ModelValue, y.ModelValue), nil
+    case syntax.NEQ:
+        return !modelValueEqual(s.ModelValue, y.ModelValue), nil
+    default:
+        return false, fmt.Errorf("%s %s %s not implemented", s.Type(), op, y.Type())
+    }
+}
+
+func (s SymmetricValue) Type() string {
+    return "symmetric_value"
+}
+
+var _ starlark.Value = SymmetricValue{}
+var _ starlark.Comparable = SymmetricValue{}
+
+func CompareStringer[E fmt.Stringer](a, b E) int {
+    return strings.Compare(a.String(), b.String())
+}

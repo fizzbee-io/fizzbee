@@ -106,7 +106,7 @@ func MarshalJSONStarlarkValue(m starlark.Value) ([]byte, error) {
         }
         buf.WriteString("}")
         return []byte(buf.String()), nil
-    case "record", "role":
+    case "record", "role", "model_value", "symmetric_value":
         return json.Marshal(m)
     default:
         fmt.Println("Warn: unknown type: ", m.Type(), " value: ", m.String(), " using default json.Marshal")
