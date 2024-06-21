@@ -125,7 +125,7 @@ func main() {
             dumpFailedNode(deadlock, rootNode, outDir)
             return
         }
-        if stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
+        if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
             failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode)
             fmt.Printf("IsLive: %t\n", failedInvariant == nil)
             fmt.Printf("Time taken to check liveness: %v\n", time.Now().Sub(endTime))

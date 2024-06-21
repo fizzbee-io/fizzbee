@@ -66,6 +66,9 @@ func MarshalJSONStarlarkValue(m starlark.Value) ([]byte, error) {
                 first = false
             }
             k, v := item[0], item[1]
+            if k.Type() != "string" {
+                k = starlark.String(k.String())
+            }
             kb, err := MarshalJSONStarlarkValue(k)
             if err != nil {
                 return nil, err
