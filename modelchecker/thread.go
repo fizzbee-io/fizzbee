@@ -552,7 +552,12 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			//fmt.Printf("anyVariable: x: %s\n", x.String())
 			fork := t.Process.Fork()
 			fork.Name = fmt.Sprintf("Any:%s", x.String())
-			fork.currentThread().currentFrame().scope.vars[stmt.AnyStmt.LoopVars[0]] = x
+			if stmt.AnyStmt.Block == nil {
+				fork.updateVariable(stmt.AnyStmt.LoopVars[0], x)
+			} else {
+				fork.currentThread().currentFrame().scope.vars[stmt.AnyStmt.LoopVars[0]] = x
+			}
+
 			if stmt.AnyStmt.Condition != "" {
 				vars := fork.GetAllVariables()
 				vars[stmt.AnyStmt.LoopVars[0]] = x
