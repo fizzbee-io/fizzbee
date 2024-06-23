@@ -493,13 +493,13 @@ func (p *Process) updateScopedVariable(scope *Scope, key string, val starlark.Va
 	return p.updateScopedVariable(scope.parent, key, val)
 }
 
-func (p *Process) NewModelError(msg string, nestedError error) *ModelError {
-	return NewModelError(msg, p, nestedError)
+func (p *Process) NewModelError(sourceInfo *ast.SourceInfo, msg string, nestedError error) *ModelError {
+	return NewModelError(sourceInfo, msg, p, nestedError)
 }
 
-func (p *Process) PanicOnError(msg string, nestedError error)  {
+func (p *Process) PanicOnError(sourceInfo *ast.SourceInfo, msg string, nestedError error)  {
 	if nestedError != nil {
-		panic(p.NewModelError(msg, nestedError))
+		panic(p.NewModelError(sourceInfo, msg, nestedError))
 	}
 }
 
@@ -776,7 +776,7 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 			break
 		}
 	}
-	fmt.Printf("Nodes: %d, elapsed: %s\n", len(p.visited), time.Since(startTime))
+	fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Count(), time.Since(startTime))
 	return p.Init, failedNode, err
 }
 

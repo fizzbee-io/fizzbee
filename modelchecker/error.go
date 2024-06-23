@@ -1,18 +1,21 @@
 package modelchecker
 
 import (
+    "fizz/proto"
     "fmt"
     "strings"
 )
 
 type ModelError struct {
+    SourceInfo *proto.SourceInfo
     Msg string
     Process *Process
     NestedError error
 }
 
-func NewModelError(msg string, process *Process, nestedError error) *ModelError {
+func NewModelError(sourceInfo *proto.SourceInfo, msg string, process *Process, nestedError error) *ModelError {
     return &ModelError{
+        SourceInfo: sourceInfo,
         Msg: msg,
         Process: process,
         NestedError: nestedError,
@@ -20,7 +23,15 @@ func NewModelError(msg string, process *Process, nestedError error) *ModelError 
 }
 
 func (e *ModelError) Error() string {
-    return e.Msg
+    prefix := ""
+    if e.SourceInfo != nil && e.SourceInfo.GetStart() != nil {
+        if e.SourceInfo.GetEnd() != nil && e.SourceInfo.GetEnd().GetLine() > e.SourceInfo.GetStart().GetLine(){
+            prefix = fmt.Sprintf("Between lines %d and %d: ", e.SourceInfo.GetStart().GetLine(), e.SourceInfo.GetEnd().GetLine())
+        } else {
+            prefix = fmt.Sprintf("Line %d: ", e.SourceInfo.GetStart().GetLine())
+        }
+    }
+    return prefix + e.Msg
 }
 
 func (e *ModelError) SprintStackTrace() string {

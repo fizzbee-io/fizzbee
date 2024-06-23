@@ -86,6 +86,7 @@ message Branch {
   SourceInfo source_info = 1;
   string condition = 2;
   Block block = 3;
+  Expr condition_expr = 4;
 }
 
 message ForStmt {
@@ -95,6 +96,7 @@ message ForStmt {
   repeated string loop_vars = 3;
   string py_expr = 4;
   Block block = 5;
+  Expr iter_expr = 6;
 }
 
 message AnyStmt {
@@ -105,6 +107,8 @@ message AnyStmt {
   string py_expr = 4;
   Block block = 5;
   string condition = 6;
+  Expr iter_expr = 7;
+  Expr condition_expr = 8;
 }
 
 message WhileStmt {
@@ -113,6 +117,7 @@ message WhileStmt {
 
   string py_expr = 3;
   Block block = 4;
+  Expr iter_expr = 5;
 }
 
 message BreakStmt {
@@ -126,6 +131,7 @@ message ContinueStmt {
 message ReturnStmt {
   SourceInfo source_info = 1;
   string py_expr = 2;
+  Expr expr = 3;
 }
 
 message CallStmt {
@@ -142,6 +148,7 @@ message Argument {
   SourceInfo source_info = 1;
   string name = 2;
   string py_expr = 3;
+  Expr expr = 4;
 }
 
 message PyStmt {
@@ -152,6 +159,7 @@ message PyStmt {
 message RequireStmt {
   SourceInfo source_info = 1;
   string condition = 2;
+  Expr condition_expr = 3;
 }
 
 message Action {
@@ -176,6 +184,7 @@ message Parameter {
   SourceInfo source_info = 1;
   string name = 2;
   string default_py_expr = 3;
+  Expr default_expr = 4;
 }
 
 message Invariant {
@@ -208,6 +217,18 @@ message Import {
 }
 
 message SourceInfo {
-
+  string file_name = 1;
+  Position start = 2;
+  Position end = 3;
 }
 
+message Position {
+  //int32 offset = 1;
+  int32 line = 2;
+  int32 column = 3;
+}
+
+message Expr {
+  SourceInfo source_info = 1;
+  string py_expr = 2;
+}
