@@ -32,7 +32,7 @@ class BuildAstVisitor(FizzParserVisitor):
         print("visitFile_input",dir(ctx))
         print("visitFile_input children count",ctx.getChildCount())
 
-        file = ast.File()
+        file = ast.File(source_info=get_source_info(ctx))
 
         for i, child in enumerate(ctx.getChildren()):
             print()
@@ -82,7 +82,7 @@ class BuildAstVisitor(FizzParserVisitor):
         print("visitRoledef",dir(ctx))
         print("visitRoledef children count",ctx.getChildCount())
 
-        role = ast.Role()
+        role = ast.Role(source_info=get_source_info(ctx))
 
         for i, child in enumerate(ctx.getChildren()):
             print()
@@ -138,7 +138,7 @@ class BuildAstVisitor(FizzParserVisitor):
     def visitInit_stmt(self, ctx:FizzParser.Init_stmtContext):
         init_str = self.get_py_str(ctx)
         py_str = BuildAstVisitor.transform_code(init_str, 1)
-        return ast.StateVars(code=py_str)
+        return ast.StateVars(code=py_str, source_info=get_source_info(ctx))
 
     def transform_code(input_code, lines_to_skip=0):
         # Split the input code into lines
@@ -163,7 +163,7 @@ class BuildAstVisitor(FizzParserVisitor):
         print("visitActiondef children count",ctx.getChildCount())
         print("visitActiondef full text\n", self.get_py_str(ctx))
 
-        action = ast.Action()
+        action = ast.Action(source_info=get_source_info(ctx))
         for i, child in enumerate(ctx.getChildren()):
             print()
             print("visitActiondef child index",i,child.getText())
@@ -228,7 +228,7 @@ class BuildAstVisitor(FizzParserVisitor):
 
     # Visit a parse tree produced by FizzParser#fairness.
     def visitFairness(self, ctx:FizzParser.FairnessContext):
-        fairness = ast.Fairness()
+        fairness = ast.Fairness(source_info=get_source_info(ctx))
         for i, child in enumerate(ctx.getChildren()):
             print()
             print("visitFairness child index",i,child.getText())
@@ -270,7 +270,7 @@ class BuildAstVisitor(FizzParserVisitor):
         print("visitAssertiondef children count",ctx.getChildCount())
         print("visitAssertiondef full text\n", self.get_py_str(ctx))
 
-        invariant = ast.Invariant()
+        invariant = ast.Invariant(source_info=get_source_info(ctx))
         py_code = "def "
         for i, child in enumerate(ctx.getChildren()):
             print()
@@ -322,7 +322,7 @@ class BuildAstVisitor(FizzParserVisitor):
         print("visitFunctiondef children count",ctx.getChildCount())
         print("visitFunctiondef full text\n", self.get_py_str(ctx))
 
-        function = ast.Function()
+        function = ast.Function(source_info=get_source_info(ctx))
 
         for i, child in enumerate(ctx.getChildren()):
             print()
@@ -383,7 +383,7 @@ class BuildAstVisitor(FizzParserVisitor):
         print("visitFunc_call_stmt children count",ctx.getChildCount())
         print("visitFunc_call_stmt full text\n", self.get_py_str(ctx))
 
-        func_call = ast.CallStmt()
+        func_call = ast.CallStmt(source_info=get_source_info(ctx))
         has_assign = False
         has_receiver = False
         # Iterating in the reverse direction to make it easy
@@ -447,7 +447,7 @@ class BuildAstVisitor(FizzParserVisitor):
     # Visit a parse tree produced by FizzParser#argument.
     def visitArgument(self, ctx:FizzParser.ArgumentContext):
         # TODO: Handle named arguments
-        argument = ast.Argument()
+        argument = ast.Argument(source_info=get_source_info(ctx))
         py_str = self.get_py_str(ctx)
         argument.py_expr = BuildAstVisitor.transform_code(py_str)
         return argument
@@ -460,7 +460,7 @@ class BuildAstVisitor(FizzParserVisitor):
         print("visitDef_parameter children count",ctx.getChildCount())
         print("visitDef_parameter full text\n", self.get_py_str(ctx))
 
-        param = ast.Parameter()
+        param = ast.Parameter(source_info=get_source_info(ctx))
         for i, child in enumerate(ctx.getChildren()):
             print()
             print("visitDef_parameter child index",i,child.getText())
@@ -522,9 +522,8 @@ class BuildAstVisitor(FizzParserVisitor):
         print("\n\nvisitNamed_parameter",ctx.__class__.__name__)
         print("visitNamed_parameter",ctx.getText())
         child = ctx.getChild(0)
-        param = ast.Parameter(name=child.getText())
+        param = ast.Parameter(name=child.getText(), source_info=get_source_info(ctx))
         return param
-
 
 
     # Visit a parse tree produced by FizzParser#expr_stmt.
@@ -532,7 +531,7 @@ class BuildAstVisitor(FizzParserVisitor):
         py_str = self.get_py_str(ctx)
         print("visitExpr_stmt full text\n",py_str)
         py_str = BuildAstVisitor.transform_code(py_str)
-        return ast.PyStmt(code=py_str)
+        return ast.PyStmt(code=py_str, source_info=get_source_info(ctx))
 
     # Visit a parse tree produced by FizzParser#flow_stmt.
     def visitFlow_stmt(self, ctx:FizzParser.Flow_stmtContext):
@@ -575,7 +574,7 @@ class BuildAstVisitor(FizzParserVisitor):
                 raise Exception("visitFlow_stmt child (unknown) type")
 
         if block is None:
-            block = ast.Block()
+            block = ast.Block(source_info=get_source_info(ctx))
         block.flow = flow
         print("visitFlow_stmt block", block)
         return block
@@ -614,7 +613,7 @@ class BuildAstVisitor(FizzParserVisitor):
     def visitSuite(self, ctx:FizzParser.SuiteContext):
         print("\n\nvisitSuite",ctx.__class__.__name__)
         print("visitSuite\n",ctx.getText())
-        block = ast.Block()
+        block = ast.Block(source_info=get_source_info(ctx))
         for i, child in enumerate(ctx.getChildren()):
             print()
             print("visitSuite child index",i,child.getText())
@@ -722,7 +721,7 @@ class BuildAstVisitor(FizzParserVisitor):
     def visitIf_stmt(self, ctx:FizzParser.If_stmtContext):
         print("\n\nvisitIf_stmt",ctx.__class__.__name__)
         print("visitIf_stmt\n",ctx.getText())
-        if_stmt = ast.IfStmt()
+        if_stmt = ast.IfStmt(source_info=get_source_info(ctx))
         branch = ast.Branch()
         if_stmt.branches.append(branch)
 
@@ -763,7 +762,7 @@ class BuildAstVisitor(FizzParserVisitor):
     def visitElif_clause(self, ctx:FizzParser.Elif_clauseContext):
         if ctx.getChildCount() != 4:
             raise Exception("visitElif_clause child count != 4", ctx.getChildCount(), ctx.getText())
-        branch = ast.Branch()
+        branch = ast.Branch(source_info=get_source_info(ctx))
         branch.condition = self.get_py_str(ctx.getChild(1))
         branch.block.CopyFrom(self.visit(ctx.getChild(3)))
         print("visitElif_clause branch", branch)
@@ -775,7 +774,7 @@ class BuildAstVisitor(FizzParserVisitor):
         for i, child in enumerate(ctx.getChildren()):
             print()
             print("visitElse_clause child index",i,child.getText())
-            branch = ast.Branch()
+            branch = ast.Branch(source_info=get_source_info(ctx))
             branch.condition = "True"
             if hasattr(child, 'toStringTree'):
                 self.log_childtree(child)
@@ -810,7 +809,7 @@ class BuildAstVisitor(FizzParserVisitor):
     def visitAny_stmt(self, ctx:FizzParser.Any_stmtContext):
         print("\n\nvisitAny_stmt",ctx.__class__.__name__)
         print("visitAny_stmt\n",ctx.getText())
-        any_stmt = ast.AnyStmt()
+        any_stmt = ast.AnyStmt(source_info=get_source_info(ctx))
         for i, child in enumerate(ctx.getChildren()):
             print()
             print("visitAny_stmt child index",i,child.getText())
@@ -849,7 +848,7 @@ class BuildAstVisitor(FizzParserVisitor):
     def visitAny_assign_stmt(self, ctx:FizzParser.Any_assign_stmtContext):
         print("\n\nvisitAny_assign_stmt",ctx.__class__.__name__)
         print("visitAny_assign_stmt\n",ctx.getText())
-        any_stmt = ast.AnyStmt()
+        any_stmt = ast.AnyStmt(source_info=get_source_info(ctx))
         has_condition = False
         for i, child in enumerate(ctx.getChildren()):
             print()
@@ -894,7 +893,7 @@ class BuildAstVisitor(FizzParserVisitor):
     def visitFor_stmt(self, ctx:FizzParser.For_stmtContext):
         print("\n\nvisitFor_stmt",ctx.__class__.__name__)
         print("visitFor_stmt\n",ctx.getText())
-        for_stmt = ast.ForStmt()
+        for_stmt = ast.ForStmt(source_info=get_source_info(ctx))
         flow = ast.Flow.FLOW_UNKNOWN
         for i, child in enumerate(ctx.getChildren()):
             print()
@@ -946,7 +945,7 @@ class BuildAstVisitor(FizzParserVisitor):
     def visitWhile_stmt(self, ctx:FizzParser.While_stmtContext):
         print("\n\nvisitWhile_stmt",ctx.__class__.__name__)
         print("visitWhile_stmt\n",ctx.getText())
-        while_stmt = ast.WhileStmt()
+        while_stmt = ast.WhileStmt(source_info=get_source_info(ctx))
         flow = ast.Flow.FLOW_UNKNOWN
         for i, child in enumerate(ctx.getChildren()):
             print()
@@ -993,28 +992,28 @@ class BuildAstVisitor(FizzParserVisitor):
 
     # Visit a parse tree produced by FizzParser#pass_stmt.
     def visitPass_stmt(self, ctx:FizzParser.Pass_stmtContext):
-        return ast.PyStmt(code="pass")
+        return ast.PyStmt(code="pass", source_info=get_source_info(ctx))
 
     # Visit a parse tree produced by FizzParser#break_stmt.
     def visitBreak_stmt(self, ctx:FizzParser.Break_stmtContext):
-        return ast.BreakStmt()
+        return ast.BreakStmt(source_info=get_source_info(ctx))
 
     # Visit a parse tree produced by FizzParser#require_stmt.
     def visitRequire_stmt(self, ctx:FizzParser.Require_stmtContext):
         print("\n\nvisitRequire_stmt",ctx.__class__.__name__)
         print("visitRequire_stmt\n",ctx.getText())
-        require_stmt = ast.RequireStmt()
+        require_stmt = ast.RequireStmt(source_info=get_source_info(ctx))
         require_stmt.condition = self.get_py_str(ctx.getChild(1))
         return require_stmt
 
     # Visit a parse tree produced by FizzParser#continue_stmt.
     def visitContinue_stmt(self, ctx:FizzParser.Continue_stmtContext):
-        return ast.ContinueStmt()
+        return ast.ContinueStmt(source_info=get_source_info(ctx))
 
 
     # Visit a parse tree produced by FizzParser#return_stmt.
     def visitReturn_stmt(self, ctx:FizzParser.Return_stmtContext):
-        return_stmt = ast.ReturnStmt()
+        return_stmt = ast.ReturnStmt(source_info=get_source_info(ctx))
         for i, child in enumerate(ctx.getChildren()):
             print()
             print("visitReturn_stmt child index",i,child.getText())
@@ -1063,7 +1062,7 @@ class BuildAstVisitor(FizzParserVisitor):
     def visitInvariant_stmt(self, ctx:FizzParser.Invariant_stmtContext):
         print("\n\nvisitInvariant_stmt",ctx.__class__.__name__)
         print("visitInvariant_stmt\n",ctx.getText())
-        invariant = ast.Invariant()
+        invariant = ast.Invariant(source_info=get_source_info(ctx))
         rootInvariant = invariant
         for i, child in enumerate(ctx.getChildren()):
             print()
@@ -1132,3 +1131,8 @@ class BuildAstVisitor(FizzParserVisitor):
         print("log_childtree child full text\n", self.get_py_str(child))
         print("---")
 
+def get_source_info(ctx):
+    start = ast.Position(line=ctx.start.line, column=ctx.start.column)
+    end = ast.Position(line=ctx.stop.line, column=ctx.stop.column)
+    source_info = ast.SourceInfo(start=start, end=end)
+    return source_info
