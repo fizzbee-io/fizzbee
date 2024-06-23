@@ -447,32 +447,39 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 func (p *Process) updateAllVariablesInScope(dict starlark.StringDict) {
 	frame := p.currentThread().currentFrame()
 	for k, v := range dict {
-		if p.updateScopedVariable(frame.scope, k, v) {
-			// Check local variables in the scope, starting from
-			// deepest to its parent. If present, update that
-			// and continue
-			continue
-		}
-		if p.Heap.update(k, v) {
-			// if no scoped variable exists, check if it is state
-			// variable, then update the state variable
-			continue
-		}
-		if p.Heap.globals.Has(k) {
-			continue
-		}
-
-		if k == "self" {
-			frame.obj = v.(*Role)
-			continue
-		}
-		if v.Type() == "builtin_function_or_method" {
-			continue
-		}
-
-		// Declare the variable to the Current scope
-		frame.scope.vars[k] = v
+		p.updateVariableInternal(k, v, frame)
 	}
+}
+
+func (p *Process) updateVariable(key string, val starlark.Value) {
+	frame := p.currentThread().currentFrame()
+	p.updateVariableInternal(key, val, frame)
+}
+
+func (p *Process) updateVariableInternal(key string, val starlark.Value, frame *CallFrame) {
+	if p.updateScopedVariable(frame.scope, key, val) {
+		// Check local variables in the scope, starting from
+		// deepest to its parent. If present, update that
+		// and continue
+		return
+	}
+	if p.Heap.update(key, val) {
+		// if no scoped variable exists, check if it is state
+		// variable, then update the state variable
+		return
+	}
+	if p.Heap.globals.Has(key) {
+		return
+	}
+	if key == "self" {
+		frame.obj = val.(*Role)
+		return
+	}
+	if val.Type() == "builtin_function_or_method" {
+		return
+	}
+	// Declare the variable to the Current scope
+	frame.scope.vars[key] = val
 }
 
 func (p *Process) updateScopedVariable(scope *Scope, key string, val starlark.Value) bool {
@@ -753,7 +760,7 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 			continue
 		}
 		if len(p.visited)%20000 == 0 && len(p.visited) != prevCount {
-			fmt.Printf("Nodes: %d, elapsed: %s\n", len(p.visited), time.Since(startTime))
+			fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Count(), time.Since(startTime))
 			prevCount = len(p.visited)
 		}
 
