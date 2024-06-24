@@ -46,9 +46,11 @@ class MyErrorListener( ErrorListener ):
 
 def main(argv):
     if len(sys.argv) > 1:
-        stream = FileStream(sys.argv[1])
+        filename = sys.argv[1]
+        stream = FileStream(filename)
     else:
         stream = InputStream(sys.stdin.readline())
+        filename = "stdin"
     lexer = FizzLexer(stream)
     tokens = CommonTokenStream(lexer)
 #    tokens.fill()
@@ -60,9 +62,8 @@ def main(argv):
     except RecognitionException as e:
         exit(1)
 
-
-    print('calling BuildAstVisitor() dir', dir(BuildAstVisitor(stream)))
-    answer = BuildAstVisitor(stream).visit(tree)
+    print('calling BuildAstVisitor() dir', dir(BuildAstVisitor(stream, file_path=filename)))
+    answer = BuildAstVisitor(stream, file_path=filename).visit(tree)
     print("proto:\n", answer)
     json_obj = MessageToJson(answer)
     print("json:\n", json_obj)
