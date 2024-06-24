@@ -1,5 +1,6 @@
 
 from antlr4 import *
+import os
 import sys
 
 from parser.FizzParser import FizzParser
@@ -8,8 +9,10 @@ import proto.fizz_ast_pb2 as ast
 
 
 class BuildAstVisitor(FizzParserVisitor):
-    def __init__(self, input_stream):
+    def __init__(self, input_stream, file_path=""):
         super().__init__()
+        self.file_path = file_path
+        self.file_name = os.path.basename(file_path)
         self.input_stream = input_stream
 
     def aggregateResult(self, aggregate, nextResult):
@@ -33,7 +36,7 @@ class BuildAstVisitor(FizzParserVisitor):
         print("visitFile_input children count",ctx.getChildCount())
 
         file = ast.File(source_info=get_source_info(ctx))
-
+        file.source_info.file_name = self.file_name
         for i, child in enumerate(ctx.getChildren()):
             print()
             print("visitFile_input child index",i,child.getText())
@@ -1157,7 +1160,7 @@ class BuildAstVisitor(FizzParserVisitor):
         print("---")
 
 def get_source_info(ctx):
-    start = ast.Position(line=ctx.start.line, column=ctx.start.column)
-    end = ast.Position(line=ctx.stop.line, column=ctx.stop.column)
+    start = ast.Position(line=ctx.start.line, column=ctx.start.column+1)
+    end = ast.Position(line=ctx.stop.line, column=ctx.stop.column+1)
     source_info = ast.SourceInfo(start=start, end=end)
     return source_info

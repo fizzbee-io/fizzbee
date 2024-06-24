@@ -494,7 +494,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 	oldRolesCount := len(t.Process.Roles)
 	if stmt.PyStmt != nil {
 		vars := t.Process.GetAllVariables()
-		_, err := t.Process.Evaluator.ExecPyStmt("filename.fizz", stmt.PyStmt, vars)
+		_, err := t.Process.Evaluator.ExecPyStmt(t.getFileName(), stmt.PyStmt, vars)
 		t.Process.PanicOnError(stmt.PyStmt.GetSourceInfo(), fmt.Sprintf("Error executing statement: %s", stmt.PyStmt.GetCode()), err)
 		t.Process.updateAllVariablesInScope(vars)
 		t.Process.Enable()
@@ -509,7 +509,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		for i, branch := range stmt.IfStmt.Branches {
 			vars := t.Process.GetAllVariables()
 			conditionExpr := branch.GetConditionExpr()
-			cond, err := t.Process.Evaluator.EvalExpr("filename.fizz", conditionExpr, vars)
+			cond, err := t.Process.Evaluator.EvalExpr(t.getFileName(), conditionExpr, vars)
 
 			t.Process.PanicOnError(conditionExpr.GetSourceInfo(), fmt.Sprintf("Error checking condition: %s", branch.Condition), err)
 			t.Process.updateAllVariablesInScope(vars)
@@ -531,7 +531,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			panic("Loop variables must be exactly one")
 		}
 		vars := t.Process.GetAllVariables()
-		val, err := t.Process.Evaluator.EvalExpr("filename.fizz", stmt.AnyStmt.IterExpr, vars)
+		val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.AnyStmt.IterExpr, vars)
 		// TODO: This source info should be for the pyExpr not the anyStmt
 		t.Process.PanicOnError(stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.AnyStmt.PyExpr), err)
 		//PanicOnError(err)
@@ -563,7 +563,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			if stmt.AnyStmt.Condition != "" {
 				vars := fork.GetAllVariables()
 				vars[stmt.AnyStmt.LoopVars[0]] = x
-				cond, err := fork.Evaluator.EvalExpr("filename.fizz", stmt.AnyStmt.ConditionExpr, vars)
+				cond, err := fork.Evaluator.EvalExpr(t.getFileName(), stmt.AnyStmt.ConditionExpr, vars)
 				//PanicOnError(err)
 				// TODO: This source info should be for the condition not the anyStmt
 				fork.PanicOnError(stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Error checking condition: %s", stmt.AnyStmt.Condition), err)
@@ -603,7 +603,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			panic("Loop variables must be exactly one. TODO: Support multiple loop variables")
 		}
 		vars := t.Process.GetAllVariables()
-		val, err := t.Process.Evaluator.EvalExpr("filename.fizz", stmt.ForStmt.IterExpr, vars)
+		val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.ForStmt.IterExpr, vars)
 		// TODO: This source info should be for the pyExpr not the forStmt
 		t.Process.PanicOnError(stmt.ForStmt.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.ForStmt.PyExpr), err)
 
@@ -647,7 +647,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		return nil, false
 	} else if stmt.RequireStmt != nil {
 		vars := t.Process.GetAllVariables()
-		cond, err := t.Process.Evaluator.EvalExpr("filename.fizz", stmt.RequireStmt.GetConditionExpr(), vars)
+		cond, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.RequireStmt.GetConditionExpr(), vars)
 		//PanicOnError(err)
 		t.Process.PanicOnError(stmt.RequireStmt.GetSourceInfo(), fmt.Sprintf("Error checking condition: %s", stmt.RequireStmt.Condition), err)
 		t.Process.updateAllVariablesInScope(vars)
@@ -660,7 +660,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		vars := t.Process.GetAllVariables()
 		var val starlark.Value = starlark.None
 		if stmt.ReturnStmt.PyExpr != "" {
-			v, err := t.Process.Evaluator.EvalExpr("filename.fizz", stmt.ReturnStmt.GetExpr(), vars)
+			v, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.ReturnStmt.GetExpr(), vars)
 			t.Process.PanicOnError(stmt.ReturnStmt.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.ReturnStmt.PyExpr), err)
 			//PanicOnError(err)
 			val = v
@@ -748,7 +748,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			code.WriteString(")")
 			pyEquivStmt := &ast.PyStmt{Code: code.String(), SourceInfo: stmt.CallStmt.GetSourceInfo()}
 			vars := t.Process.GetAllVariables()
-			_, err := t.Process.Evaluator.ExecPyStmt("filename.fizz", pyEquivStmt, vars)
+			_, err := t.Process.Evaluator.ExecPyStmt(t.getFileName(), pyEquivStmt, vars)
 			t.Process.PanicOnError(stmt.CallStmt.GetSourceInfo(), fmt.Sprintf("Error executing statement: %s", pyEquivStmt.GetCode()), err)
 			t.Process.updateAllVariablesInScope(vars)
 			t.Process.Enable()
@@ -764,7 +764,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			hasNamedArgs := false
 			for i, arg := range stmt.CallStmt.Args {
 				vars := t.Process.GetAllVariables()
-				val, err := t.Process.Evaluator.EvalExpr("filename.fizz", arg.Expr, vars)
+				val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), arg.Expr, vars)
 				// TODO: This source info should be for the pyExpr not the callStmt
 				t.Process.PanicOnError(arg.Expr.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", arg.PyExpr), err)
 				//PanicOnError(err)
@@ -786,7 +786,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 				if _, ok := newFrame.vars[param.Name]; !ok {
 					if param.DefaultPyExpr != "" {
 						vars := t.Process.GetAllVariables()
-						val, err := t.Process.Evaluator.EvalExpr("filename.fizz", param.DefaultExpr, vars)
+						val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), param.DefaultExpr, vars)
 						t.Process.PanicOnError(param.GetDefaultExpr().GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", param.DefaultPyExpr), err)
 						//PanicOnError(err)
 						t.Process.updateAllVariablesInScope(vars)
@@ -829,6 +829,13 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		}
 	}
 	return t.executeEndOfStatement()
+}
+
+func (t *Thread) getFileName() string {
+	if len(t.Process.Files) != 1 {
+		panic("Only single file execution is supported")
+	}
+	return t.Process.Files[0].GetSourceInfo().GetFileName()
 }
 
 func (t *Thread) getDefinition(stmt *ast.Statement) (*Role, *Definition) {
@@ -912,7 +919,7 @@ func (t *Thread) executeWhileStatement() ([]*Process, bool) {
 		panic("Only atomic/serial flow is supported for while statements")
 	}
 	vars := t.Process.GetAllVariables()
-	cond, err := t.Process.Evaluator.EvalExpr("filename.fizz", stmt.GetIterExpr(), vars)
+	cond, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.GetIterExpr(), vars)
 	t.Process.PanicOnError(stmt.GetIterExpr().GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.PyExpr), err)
 	//PanicOnError(err)
 	t.Process.updateAllVariablesInScope(vars)
