@@ -1,16 +1,64 @@
 {
+  "sourceInfo": {
+    "start": {
+      "line": 2
+    },
+    "end": {
+      "line": 20
+    }
+  },
   "invariants": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 2
+        },
+        "end": {
+          "line": 5
+        }
+      },
       "name": "Safety",
       "temporalOperators": [
         "always"
       ],
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 3,
+            "column": 4
+          },
+          "end": {
+            "line": 5
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "returnStmt": {
-              "pyExpr": "'FairToss' not in __returns__ or __returns__['FairToss'] in ['head', 'tail']"
+              "sourceInfo": {
+                "start": {
+                  "line": 3,
+                  "column": 4
+                },
+                "end": {
+                  "line": 3,
+                  "column": 86
+                }
+              },
+              "pyExpr": "'FairToss' not in __returns__ or __returns__['FairToss'] in ['head', 'tail']",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 3,
+                    "column": 11
+                  },
+                  "end": {
+                    "line": 3,
+                    "column": 86
+                  }
+                },
+                "pyExpr": "'FairToss' not in __returns__ or __returns__['FairToss'] in ['head', 'tail']"
+              }
             }
           }
         ]
@@ -18,17 +66,57 @@
       "pyCode": "def Safety():\n    return 'FairToss' not in __returns__ or __returns__['FairToss'] in ['head', 'tail']\n\n"
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 5
+        },
+        "end": {
+          "line": 8
+        }
+      },
       "name": "Liveness",
       "temporalOperators": [
         "always",
         "eventually"
       ],
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 6,
+            "column": 4
+          },
+          "end": {
+            "line": 8
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "returnStmt": {
-              "pyExpr": "'FairToss' in __returns__ and __returns__['FairToss'] in ['head', 'tail']"
+              "sourceInfo": {
+                "start": {
+                  "line": 6,
+                  "column": 4
+                },
+                "end": {
+                  "line": 6,
+                  "column": 83
+                }
+              },
+              "pyExpr": "'FairToss' in __returns__ and __returns__['FairToss'] in ['head', 'tail']",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 6,
+                    "column": 11
+                  },
+                  "end": {
+                    "line": 6,
+                    "column": 83
+                  }
+                },
+                "pyExpr": "'FairToss' in __returns__ and __returns__['FairToss'] in ['head', 'tail']"
+              }
             }
           }
         ]
@@ -38,21 +126,66 @@
   ],
   "actions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 13
+        },
+        "end": {
+          "line": 20
+        }
+      },
       "name": "FairToss",
       "flow": "FLOW_ATOMIC",
       "fairness": {
         "level": "FAIRNESS_LEVEL_UNFAIR"
       },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 14,
+            "column": 4
+          },
+          "end": {
+            "line": 20
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "whileStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 14,
+                  "column": 4
+                },
+                "end": {
+                  "line": 20
+                }
+              },
               "pyExpr": "True",
               "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 15,
+                    "column": 8
+                  },
+                  "end": {
+                    "line": 20
+                  }
+                },
                 "stmts": [
                   {
                     "callStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 15,
+                          "column": 8
+                        },
+                        "end": {
+                          "line": 15,
+                          "column": 27
+                        }
+                      },
                       "vars": [
                         "toss1"
                       ],
@@ -61,6 +194,16 @@
                   },
                   {
                     "callStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 16,
+                          "column": 8
+                        },
+                        "end": {
+                          "line": 16,
+                          "column": 27
+                        }
+                      },
                       "vars": [
                         "toss2"
                       ],
@@ -69,23 +212,99 @@
                   },
                   {
                     "ifStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 18,
+                          "column": 8
+                        },
+                        "end": {
+                          "line": 20
+                        }
+                      },
                       "branches": [
                         {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 18,
+                              "column": 11
+                            },
+                            "end": {
+                              "line": 20
+                            }
+                          },
                           "condition": "toss1 != toss2",
                           "block": {
+                            "sourceInfo": {
+                              "start": {
+                                "line": 19,
+                                "column": 12
+                              },
+                              "end": {
+                                "line": 20
+                              }
+                            },
                             "stmts": [
                               {
                                 "returnStmt": {
-                                  "pyExpr": "toss2"
+                                  "sourceInfo": {
+                                    "start": {
+                                      "line": 19,
+                                      "column": 12
+                                    },
+                                    "end": {
+                                      "line": 19,
+                                      "column": 19
+                                    }
+                                  },
+                                  "pyExpr": "toss2",
+                                  "expr": {
+                                    "sourceInfo": {
+                                      "start": {
+                                        "line": 19,
+                                        "column": 19
+                                      },
+                                      "end": {
+                                        "line": 19,
+                                        "column": 19
+                                      }
+                                    },
+                                    "pyExpr": "toss2"
+                                  }
                                 }
                               }
                             ]
+                          },
+                          "conditionExpr": {
+                            "sourceInfo": {
+                              "start": {
+                                "line": 18,
+                                "column": 11
+                              },
+                              "end": {
+                                "line": 18,
+                                "column": 20
+                              }
+                            },
+                            "pyExpr": "toss1 != toss2"
                           }
                         }
                       ]
                     }
                   }
                 ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 14,
+                    "column": 10
+                  },
+                  "end": {
+                    "line": 14,
+                    "column": 10
+                  }
+                },
+                "pyExpr": "True"
               }
             }
           }
@@ -95,21 +314,84 @@
   ],
   "functions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 8
+        },
+        "end": {
+          "line": 13
+        }
+      },
       "name": "UnfairToss",
       "flow": "FLOW_ATOMIC",
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 10,
+            "column": 8
+          },
+          "end": {
+            "line": 13
+          }
+        },
         "flow": "FLOW_ONEOF",
         "stmts": [
           {
             "label": "head",
             "returnStmt": {
-              "pyExpr": "\"head\""
+              "sourceInfo": {
+                "start": {
+                  "line": 10,
+                  "column": 15
+                },
+                "end": {
+                  "line": 10,
+                  "column": 22
+                }
+              },
+              "pyExpr": "\"head\"",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 10,
+                    "column": 22
+                  },
+                  "end": {
+                    "line": 10,
+                    "column": 22
+                  }
+                },
+                "pyExpr": "\"head\""
+              }
             }
           },
           {
             "label": "tail",
             "returnStmt": {
-              "pyExpr": "\"tail\""
+              "sourceInfo": {
+                "start": {
+                  "line": 11,
+                  "column": 15
+                },
+                "end": {
+                  "line": 11,
+                  "column": 22
+                }
+              },
+              "pyExpr": "\"tail\"",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 11,
+                    "column": 22
+                  },
+                  "end": {
+                    "line": 11,
+                    "column": 22
+                  }
+                },
+                "pyExpr": "\"tail\""
+              }
             }
           }
         ]

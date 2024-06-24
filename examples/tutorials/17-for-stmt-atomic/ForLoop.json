@@ -1,33 +1,149 @@
 {
+  "sourceInfo": {
+    "start": {
+      "line": 2
+    },
+    "end": {
+      "line": 11
+    }
+  },
   "states": {
+    "sourceInfo": {
+      "start": {
+        "line": 2
+      },
+      "end": {
+        "line": 6
+      }
+    },
     "code": "elements = set([1, 2, 3, 4, 5])\ncount = 5\n\n"
   },
   "actions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 6
+        },
+        "end": {
+          "line": 11
+        }
+      },
       "name": "Remove",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 7,
+            "column": 3
+          },
+          "end": {
+            "line": 11
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "forStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 7,
+                  "column": 3
+                },
+                "end": {
+                  "line": 11
+                }
+              },
               "loopVars": [
                 "e"
               ],
               "pyExpr": "elements",
               "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 8,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 11
+                  }
+                },
                 "stmts": [
                   {
-                    "pyStmt": {
-                      "code": "elements.remove(e)"
+                    "callStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 8,
+                          "column": 5
+                        },
+                        "end": {
+                          "line": 8,
+                          "column": 22
+                        }
+                      },
+                      "name": "remove",
+                      "args": [
+                        {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 8,
+                              "column": 21
+                            },
+                            "end": {
+                              "line": 8,
+                              "column": 21
+                            }
+                          },
+                          "pyExpr": "e",
+                          "expr": {
+                            "sourceInfo": {
+                              "start": {
+                                "line": 8,
+                                "column": 21
+                              },
+                              "end": {
+                                "line": 8,
+                                "column": 21
+                              }
+                            },
+                            "pyExpr": "e"
+                          }
+                        }
+                      ],
+                      "receiver": "elements"
                     }
                   },
                   {
                     "pyStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 9,
+                          "column": 5
+                        },
+                        "end": {
+                          "line": 9,
+                          "column": 14
+                        }
+                      },
                       "code": "count -= 1"
                     }
                   }
                 ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 7,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 7,
+                    "column": 12
+                  }
+                },
+                "pyExpr": "elements"
               }
             }
           }

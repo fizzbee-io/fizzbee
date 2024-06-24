@@ -450,6 +450,8 @@ class BuildAstVisitor(FizzParserVisitor):
         argument = ast.Argument(source_info=get_source_info(ctx))
         py_str = self.get_py_str(ctx)
         argument.py_expr = BuildAstVisitor.transform_code(py_str)
+        argument.expr.py_expr = argument.py_expr
+        argument.expr.source_info.CopyFrom(get_source_info(ctx))
         return argument
 
     # Visit a parse tree produced by FizzParser#def_parameter.
@@ -470,6 +472,8 @@ class BuildAstVisitor(FizzParserVisitor):
                     continue
                 if isinstance(child, FizzParser.TestContext):
                     param.default_py_expr = self.get_py_str(child)
+                    param.default_expr.py_expr = param.default_py_expr
+                    param.default_expr.source_info.CopyFrom(get_source_info(child))
                     continue
                 self.log_childtree(child)
                 childProto = self.visit(child)
@@ -731,12 +735,17 @@ class BuildAstVisitor(FizzParserVisitor):
             if hasattr(child, 'toStringTree'):
                 self.log_childtree(child)
                 if isinstance(child, FizzParser.TestContext):
-                    if_stmt.branches[0].condition = self.get_py_str(child)
+                    py_expr = self.get_py_str(child)
+                    if_stmt.branches[0].condition = py_expr
+                    if_stmt.branches[0].condition_expr.py_expr = py_expr
+                    if_stmt.branches[0].condition_expr.source_info.CopyFrom(get_source_info(child))
+                    if_stmt.branches[0].source_info.CopyFrom(get_source_info(child))
                     continue
                 childProto = self.visit(child)
                 print("visitIf_stmt childProto",childProto, childProto.__class__.__name__, child.__class__.__name__)
                 if isinstance(childProto, ast.Block):
                     if_stmt.branches[0].block.CopyFrom(childProto)
+                    if_stmt.branches[0].source_info.end.CopyFrom(childProto.source_info.end)
                 elif isinstance(childProto, ast.Branch):
                     if_stmt.branches.append(childProto)
                 else:
@@ -763,7 +772,9 @@ class BuildAstVisitor(FizzParserVisitor):
         if ctx.getChildCount() != 4:
             raise Exception("visitElif_clause child count != 4", ctx.getChildCount(), ctx.getText())
         branch = ast.Branch(source_info=get_source_info(ctx))
-        branch.condition = self.get_py_str(ctx.getChild(1))
+        branch.condition_expr.py_expr = self.get_py_str(ctx.getChild(1))
+        branch.condition_expr.source_info.CopyFrom(get_source_info(ctx.getChild(1)))
+        branch.condition = branch.condition_expr.py_expr
         branch.block.CopyFrom(self.visit(ctx.getChild(3)))
         print("visitElif_clause branch", branch)
         return branch
@@ -776,6 +787,7 @@ class BuildAstVisitor(FizzParserVisitor):
             print("visitElse_clause child index",i,child.getText())
             branch = ast.Branch(source_info=get_source_info(ctx))
             branch.condition = "True"
+            branch.condition_expr.py_expr="True"
             if hasattr(child, 'toStringTree'):
                 self.log_childtree(child)
                 if isinstance(child, FizzParser.TestContext):
@@ -819,6 +831,8 @@ class BuildAstVisitor(FizzParserVisitor):
                     continue
                 if isinstance(child, FizzParser.TestlistContext):
                     any_stmt.py_expr = self.get_py_str(child)
+                    any_stmt.iter_expr.py_expr = any_stmt.py_expr
+                    any_stmt.iter_expr.source_info.CopyFrom(get_source_info(child))
                     continue
 
                 self.log_childtree(child)
@@ -855,6 +869,8 @@ class BuildAstVisitor(FizzParserVisitor):
             print("visitAny_assign_stmt child index",i,child.getText())
             if has_condition:
                 any_stmt.condition = self.get_py_str(child)
+                any_stmt.condition_expr.py_expr = any_stmt.condition
+                any_stmt.condition_expr.source_info.CopyFrom(get_source_info(child))
                 continue
             if hasattr(child, 'toStringTree'):
                 if isinstance(child, FizzParser.ExprlistContext):
@@ -862,6 +878,8 @@ class BuildAstVisitor(FizzParserVisitor):
                     continue
                 if isinstance(child, FizzParser.TestlistContext):
                     any_stmt.py_expr = self.get_py_str(child)
+                    any_stmt.iter_expr.py_expr = any_stmt.py_expr
+                    any_stmt.iter_expr.source_info.CopyFrom(get_source_info(child))
                     continue
 
                 self.log_childtree(child)
@@ -904,6 +922,8 @@ class BuildAstVisitor(FizzParserVisitor):
                     continue
                 if isinstance(child, FizzParser.TestlistContext):
                     for_stmt.py_expr = self.get_py_str(child)
+                    for_stmt.iter_expr.py_expr = for_stmt.py_expr
+                    for_stmt.iter_expr.source_info.CopyFrom(get_source_info(child))
                     continue
 
                 self.log_childtree(child)
@@ -953,6 +973,8 @@ class BuildAstVisitor(FizzParserVisitor):
             if hasattr(child, 'toStringTree'):
                 if isinstance(child, FizzParser.TestContext):
                     while_stmt.py_expr = self.get_py_str(child)
+                    while_stmt.iter_expr.py_expr = while_stmt.py_expr
+                    while_stmt.iter_expr.source_info.CopyFrom(get_source_info(child))
                     continue
 
                 self.log_childtree(child)
@@ -1004,12 +1026,13 @@ class BuildAstVisitor(FizzParserVisitor):
         print("visitRequire_stmt\n",ctx.getText())
         require_stmt = ast.RequireStmt(source_info=get_source_info(ctx))
         require_stmt.condition = self.get_py_str(ctx.getChild(1))
+        require_stmt.condition_expr.py_expr = require_stmt.condition
+        require_stmt.condition_expr.source_info.CopyFrom(get_source_info(ctx.getChild(1)))
         return require_stmt
 
     # Visit a parse tree produced by FizzParser#continue_stmt.
     def visitContinue_stmt(self, ctx:FizzParser.Continue_stmtContext):
         return ast.ContinueStmt(source_info=get_source_info(ctx))
-
 
     # Visit a parse tree produced by FizzParser#return_stmt.
     def visitReturn_stmt(self, ctx:FizzParser.Return_stmtContext):
@@ -1020,6 +1043,8 @@ class BuildAstVisitor(FizzParserVisitor):
             if hasattr(child, 'toStringTree'):
                 if isinstance(child, FizzParser.TestlistContext):
                     return_stmt.py_expr = self.get_py_str(child)
+                    return_stmt.expr.py_expr = return_stmt.py_expr
+                    return_stmt.expr.source_info.CopyFrom(get_source_info(child))
                     continue
 
                 self.log_childtree(child)

@@ -1,17 +1,62 @@
 {
+  "sourceInfo": {
+    "start": {
+      "line": 2
+    },
+    "end": {
+      "line": 29
+    }
+  },
   "states": {
+    "sourceInfo": {
+      "start": {
+        "line": 2
+      },
+      "end": {
+        "line": 7
+      }
+    },
     "code": "toss1 = -1\ntoss2 = -1\nvalue = -1\n\n"
   },
   "invariants": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 8,
+          "column": 2
+        },
+        "end": {
+          "line": 9,
+          "column": 2
+        }
+      },
       "always": true,
       "pyExpr": "value in [-1, 1, 2, 3]"
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 9,
+          "column": 2
+        },
+        "end": {
+          "line": 10,
+          "column": 2
+        }
+      },
       "always": true,
       "pyExpr": "(toss2 == -1 or value in [1, 2, 3])"
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 10,
+          "column": 2
+        },
+        "end": {
+          "line": 12
+        }
+      },
       "always": true,
       "eventually": true,
       "pyExpr": "value in [1, 2, 3]"
@@ -19,54 +64,211 @@
   ],
   "actions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 12
+        },
+        "end": {
+          "line": 29
+        }
+      },
       "name": "Toss",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 13,
+            "column": 4
+          },
+          "end": {
+            "line": 29
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "ifStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 13,
+                  "column": 4
+                },
+                "end": {
+                  "line": 29
+                }
+              },
               "branches": [
                 {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 13,
+                      "column": 7
+                    },
+                    "end": {
+                      "line": 29
+                    }
+                  },
                   "condition": "value <= 0",
                   "block": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 14,
+                        "column": 8
+                      },
+                      "end": {
+                        "line": 29
+                      }
+                    },
                     "stmts": [
                       {
                         "ifStmt": {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 14,
+                              "column": 8
+                            },
+                            "end": {
+                              "line": 29
+                            }
+                          },
                           "branches": [
                             {
+                              "sourceInfo": {
+                                "start": {
+                                  "line": 14,
+                                  "column": 11
+                                },
+                                "end": {
+                                  "line": 18,
+                                  "column": 8
+                                }
+                              },
                               "condition": "toss1 == -1",
                               "block": {
+                                "sourceInfo": {
+                                  "start": {
+                                    "line": 16,
+                                    "column": 16
+                                  },
+                                  "end": {
+                                    "line": 18,
+                                    "column": 8
+                                  }
+                                },
                                 "flow": "FLOW_ONEOF",
                                 "stmts": [
                                   {
                                     "pyStmt": {
+                                      "sourceInfo": {
+                                        "start": {
+                                          "line": 16,
+                                          "column": 16
+                                        },
+                                        "end": {
+                                          "line": 16,
+                                          "column": 24
+                                        }
+                                      },
                                       "code": "toss1 = 0"
                                     }
                                   },
                                   {
                                     "pyStmt": {
+                                      "sourceInfo": {
+                                        "start": {
+                                          "line": 17,
+                                          "column": 16
+                                        },
+                                        "end": {
+                                          "line": 17,
+                                          "column": 24
+                                        }
+                                      },
                                       "code": "toss1 = 1"
                                     }
                                   }
                                 ]
+                              },
+                              "conditionExpr": {
+                                "sourceInfo": {
+                                  "start": {
+                                    "line": 14,
+                                    "column": 11
+                                  },
+                                  "end": {
+                                    "line": 14,
+                                    "column": 21
+                                  }
+                                },
+                                "pyExpr": "toss1 == -1"
                               }
                             },
                             {
+                              "sourceInfo": {
+                                "start": {
+                                  "line": 18,
+                                  "column": 8
+                                },
+                                "end": {
+                                  "line": 29
+                                }
+                              },
                               "condition": "toss1 >= 0",
                               "block": {
+                                "sourceInfo": {
+                                  "start": {
+                                    "line": 19,
+                                    "column": 12
+                                  },
+                                  "end": {
+                                    "line": 29
+                                  }
+                                },
                                 "stmts": [
                                   {
                                     "block": {
+                                      "sourceInfo": {
+                                        "start": {
+                                          "line": 20,
+                                          "column": 16
+                                        },
+                                        "end": {
+                                          "line": 23,
+                                          "column": 12
+                                        }
+                                      },
                                       "flow": "FLOW_ONEOF",
                                       "stmts": [
                                         {
                                           "pyStmt": {
+                                            "sourceInfo": {
+                                              "start": {
+                                                "line": 20,
+                                                "column": 16
+                                              },
+                                              "end": {
+                                                "line": 20,
+                                                "column": 24
+                                              }
+                                            },
                                             "code": "toss2 = 0"
                                           }
                                         },
                                         {
                                           "pyStmt": {
+                                            "sourceInfo": {
+                                              "start": {
+                                                "line": 21,
+                                                "column": 16
+                                              },
+                                              "end": {
+                                                "line": 21,
+                                                "column": 24
+                                              }
+                                            },
                                             "code": "toss2 = 1"
                                           }
                                         }
@@ -75,46 +277,165 @@
                                   },
                                   {
                                     "ifStmt": {
+                                      "sourceInfo": {
+                                        "start": {
+                                          "line": 23,
+                                          "column": 12
+                                        },
+                                        "end": {
+                                          "line": 29
+                                        }
+                                      },
                                       "branches": [
                                         {
+                                          "sourceInfo": {
+                                            "start": {
+                                              "line": 23,
+                                              "column": 15
+                                            },
+                                            "end": {
+                                              "line": 26,
+                                              "column": 12
+                                            }
+                                          },
                                           "condition": "toss1 == 0 and toss2 == 0",
                                           "block": {
+                                            "sourceInfo": {
+                                              "start": {
+                                                "line": 24,
+                                                "column": 16
+                                              },
+                                              "end": {
+                                                "line": 26,
+                                                "column": 12
+                                              }
+                                            },
                                             "stmts": [
                                               {
                                                 "pyStmt": {
+                                                  "sourceInfo": {
+                                                    "start": {
+                                                      "line": 24,
+                                                      "column": 16
+                                                    },
+                                                    "end": {
+                                                      "line": 24,
+                                                      "column": 25
+                                                    }
+                                                  },
                                                   "code": "toss1 = -1"
                                                 }
                                               },
                                               {
                                                 "pyStmt": {
+                                                  "sourceInfo": {
+                                                    "start": {
+                                                      "line": 25,
+                                                      "column": 16
+                                                    },
+                                                    "end": {
+                                                      "line": 25,
+                                                      "column": 25
+                                                    }
+                                                  },
                                                   "code": "toss2 = -1"
                                                 }
                                               }
                                             ]
+                                          },
+                                          "conditionExpr": {
+                                            "sourceInfo": {
+                                              "start": {
+                                                "line": 23,
+                                                "column": 15
+                                              },
+                                              "end": {
+                                                "line": 23,
+                                                "column": 39
+                                              }
+                                            },
+                                            "pyExpr": "toss1 == 0 and toss2 == 0"
                                           }
                                         },
                                         {
+                                          "sourceInfo": {
+                                            "start": {
+                                              "line": 26,
+                                              "column": 12
+                                            },
+                                            "end": {
+                                              "line": 29
+                                            }
+                                          },
                                           "condition": "True",
                                           "block": {
+                                            "sourceInfo": {
+                                              "start": {
+                                                "line": 27,
+                                                "column": 16
+                                              },
+                                              "end": {
+                                                "line": 29
+                                              }
+                                            },
                                             "stmts": [
                                               {
                                                 "pyStmt": {
+                                                  "sourceInfo": {
+                                                    "start": {
+                                                      "line": 27,
+                                                      "column": 16
+                                                    },
+                                                    "end": {
+                                                      "line": 27,
+                                                      "column": 36
+                                                    }
+                                                  },
                                                   "code": "value = 2 * toss1 + toss2"
                                                 }
                                               }
                                             ]
+                                          },
+                                          "conditionExpr": {
+                                            "pyExpr": "True"
                                           }
                                         }
                                       ]
                                     }
                                   }
                                 ]
+                              },
+                              "conditionExpr": {
+                                "sourceInfo": {
+                                  "start": {
+                                    "line": 18,
+                                    "column": 13
+                                  },
+                                  "end": {
+                                    "line": 18,
+                                    "column": 22
+                                  }
+                                },
+                                "pyExpr": "toss1 >= 0"
                               }
                             }
                           ]
                         }
                       }
                     ]
+                  },
+                  "conditionExpr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 13,
+                        "column": 7
+                      },
+                      "end": {
+                        "line": 13,
+                        "column": 16
+                      }
+                    },
+                    "pyExpr": "value <= 0"
                   }
                 }
               ]

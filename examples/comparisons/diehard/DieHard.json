@@ -1,19 +1,75 @@
 {
+  "sourceInfo": {
+    "start": {
+      "line": 2
+    },
+    "end": {
+      "line": 36
+    }
+  },
   "states": {
+    "sourceInfo": {
+      "start": {
+        "line": 2
+      },
+      "end": {
+        "line": 6
+      }
+    },
     "code": "big = 0\nsmall = 0\n\n"
   },
   "invariants": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 6
+        },
+        "end": {
+          "line": 9
+        }
+      },
       "name": "CheckBigJug",
       "temporalOperators": [
         "always"
       ],
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 7,
+            "column": 4
+          },
+          "end": {
+            "line": 9
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "returnStmt": {
-              "pyExpr": "big != 4"
+              "sourceInfo": {
+                "start": {
+                  "line": 7,
+                  "column": 4
+                },
+                "end": {
+                  "line": 7,
+                  "column": 18
+                }
+              },
+              "pyExpr": "big != 4",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 7,
+                    "column": 11
+                  },
+                  "end": {
+                    "line": 7,
+                    "column": 18
+                  }
+                },
+                "pyExpr": "big != 4"
+              }
             }
           }
         ]
@@ -23,13 +79,43 @@
   ],
   "actions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 9
+        },
+        "end": {
+          "line": 12
+        }
+      },
       "name": "FillBigJug",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 10,
+            "column": 4
+          },
+          "end": {
+            "line": 12
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 10,
+                  "column": 4
+                },
+                "end": {
+                  "line": 10,
+                  "column": 10
+                }
+              },
               "code": "big = 5"
             }
           }
@@ -37,13 +123,43 @@
       }
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 12
+        },
+        "end": {
+          "line": 15
+        }
+      },
       "name": "FillSmallJug",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 13,
+            "column": 4
+          },
+          "end": {
+            "line": 15
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 13,
+                  "column": 4
+                },
+                "end": {
+                  "line": 13,
+                  "column": 12
+                }
+              },
               "code": "small = 3"
             }
           }
@@ -51,13 +167,43 @@
       }
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 15
+        },
+        "end": {
+          "line": 18
+        }
+      },
       "name": "EmptyBigJug",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 16,
+            "column": 4
+          },
+          "end": {
+            "line": 18
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 16,
+                  "column": 4
+                },
+                "end": {
+                  "line": 16,
+                  "column": 10
+                }
+              },
               "code": "big = 0"
             }
           }
@@ -65,13 +211,43 @@
       }
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 18
+        },
+        "end": {
+          "line": 21
+        }
+      },
       "name": "EmptySmallJug",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 19,
+            "column": 4
+          },
+          "end": {
+            "line": 21
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 19,
+                  "column": 4
+                },
+                "end": {
+                  "line": 19,
+                  "column": 12
+                }
+              },
               "code": "small = 0"
             }
           }
@@ -79,46 +255,169 @@
       }
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 21
+        },
+        "end": {
+          "line": 29
+        }
+      },
       "name": "SmallToBig",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 22,
+            "column": 4
+          },
+          "end": {
+            "line": 29
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "ifStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 22,
+                  "column": 4
+                },
+                "end": {
+                  "line": 29
+                }
+              },
               "branches": [
                 {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 22,
+                      "column": 7
+                    },
+                    "end": {
+                      "line": 25,
+                      "column": 4
+                    }
+                  },
                   "condition": "small + big <= 5",
                   "block": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 23,
+                        "column": 8
+                      },
+                      "end": {
+                        "line": 25,
+                        "column": 4
+                      }
+                    },
                     "stmts": [
                       {
                         "pyStmt": {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 23,
+                              "column": 8
+                            },
+                            "end": {
+                              "line": 23,
+                              "column": 20
+                            }
+                          },
                           "code": "big = big + small"
                         }
                       },
                       {
                         "pyStmt": {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 24,
+                              "column": 8
+                            },
+                            "end": {
+                              "line": 24,
+                              "column": 16
+                            }
+                          },
                           "code": "small = 0"
                         }
                       }
                     ]
+                  },
+                  "conditionExpr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 22,
+                        "column": 7
+                      },
+                      "end": {
+                        "line": 22,
+                        "column": 22
+                      }
+                    },
+                    "pyExpr": "small + big <= 5"
                   }
                 },
                 {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 25,
+                      "column": 4
+                    },
+                    "end": {
+                      "line": 29
+                    }
+                  },
                   "condition": "True",
                   "block": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 26,
+                        "column": 8
+                      },
+                      "end": {
+                        "line": 29
+                      }
+                    },
                     "stmts": [
                       {
                         "pyStmt": {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 26,
+                              "column": 8
+                            },
+                            "end": {
+                              "line": 26,
+                              "column": 32
+                            }
+                          },
                           "code": "small = small - (5 - big)"
                         }
                       },
                       {
                         "pyStmt": {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 27,
+                              "column": 8
+                            },
+                            "end": {
+                              "line": 27,
+                              "column": 14
+                            }
+                          },
                           "code": "big = 5"
                         }
                       }
                     ]
+                  },
+                  "conditionExpr": {
+                    "pyExpr": "True"
                   }
                 }
               ]
@@ -128,46 +427,169 @@
       }
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 29
+        },
+        "end": {
+          "line": 36
+        }
+      },
       "name": "BigToSmall",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 30,
+            "column": 4
+          },
+          "end": {
+            "line": 36
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "ifStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 30,
+                  "column": 4
+                },
+                "end": {
+                  "line": 36
+                }
+              },
               "branches": [
                 {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 30,
+                      "column": 7
+                    },
+                    "end": {
+                      "line": 33,
+                      "column": 4
+                    }
+                  },
                   "condition": "small + big <= 3",
                   "block": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 31,
+                        "column": 8
+                      },
+                      "end": {
+                        "line": 33,
+                        "column": 4
+                      }
+                    },
                     "stmts": [
                       {
                         "pyStmt": {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 31,
+                              "column": 8
+                            },
+                            "end": {
+                              "line": 31,
+                              "column": 22
+                            }
+                          },
                           "code": "small = big + small"
                         }
                       },
                       {
                         "pyStmt": {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 32,
+                              "column": 8
+                            },
+                            "end": {
+                              "line": 32,
+                              "column": 14
+                            }
+                          },
                           "code": "big = 0"
                         }
                       }
                     ]
+                  },
+                  "conditionExpr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 30,
+                        "column": 7
+                      },
+                      "end": {
+                        "line": 30,
+                        "column": 22
+                      }
+                    },
+                    "pyExpr": "small + big <= 3"
                   }
                 },
                 {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 33,
+                      "column": 4
+                    },
+                    "end": {
+                      "line": 36
+                    }
+                  },
                   "condition": "True",
                   "block": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 34,
+                        "column": 8
+                      },
+                      "end": {
+                        "line": 36
+                      }
+                    },
                     "stmts": [
                       {
                         "pyStmt": {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 34,
+                              "column": 8
+                            },
+                            "end": {
+                              "line": 34,
+                              "column": 30
+                            }
+                          },
                           "code": "big = big - (3 - small)"
                         }
                       },
                       {
                         "pyStmt": {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 35,
+                              "column": 8
+                            },
+                            "end": {
+                              "line": 35,
+                              "column": 16
+                            }
+                          },
                           "code": "small = 3"
                         }
                       }
                     ]
+                  },
+                  "conditionExpr": {
+                    "pyExpr": "True"
                   }
                 }
               ]

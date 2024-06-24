@@ -1,16 +1,64 @@
 {
+  "sourceInfo": {
+    "start": {
+      "line": 2
+    },
+    "end": {
+      "line": 16
+    }
+  },
   "invariants": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 7
+        },
+        "end": {
+          "line": 10
+        }
+      },
       "name": "Safety",
       "temporalOperators": [
         "always"
       ],
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 8,
+            "column": 2
+          },
+          "end": {
+            "line": 10
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "returnStmt": {
-              "pyExpr": "hour <= 12 and hour >= 1"
+              "sourceInfo": {
+                "start": {
+                  "line": 8,
+                  "column": 2
+                },
+                "end": {
+                  "line": 8,
+                  "column": 32
+                }
+              },
+              "pyExpr": "hour <= 12 and hour >= 1",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 8,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 8,
+                    "column": 32
+                  }
+                },
+                "pyExpr": "hour <= 12 and hour >= 1"
+              }
             }
           }
         ]
@@ -18,17 +66,57 @@
       "pyCode": "def Safety():\n  return hour <= 12 and hour >= 1\n\n"
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 10
+        },
+        "end": {
+          "line": 14
+        }
+      },
       "name": "Liveness",
       "temporalOperators": [
         "always",
         "eventually"
       ],
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 11,
+            "column": 4
+          },
+          "end": {
+            "line": 14
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "returnStmt": {
-              "pyExpr": "hour in [6]"
+              "sourceInfo": {
+                "start": {
+                  "line": 11,
+                  "column": 4
+                },
+                "end": {
+                  "line": 11,
+                  "column": 21
+                }
+              },
+              "pyExpr": "hour in [6]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 11,
+                    "column": 11
+                  },
+                  "end": {
+                    "line": 11,
+                    "column": 21
+                  }
+                },
+                "pyExpr": "hour in [6]"
+              }
             }
           }
         ]
@@ -38,30 +126,101 @@
   ],
   "actions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 2
+        },
+        "end": {
+          "line": 7
+        }
+      },
       "name": "Init",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 3,
+            "column": 2
+          },
+          "end": {
+            "line": 7
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 3,
+                  "column": 2
+                },
+                "end": {
+                  "line": 3,
+                  "column": 9
+                }
+              },
               "code": "hour = 1"
             }
           },
           {
             "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 4,
+                  "column": 2
+                },
+                "end": {
+                  "line": 7
+                }
+              },
               "loopVars": [
                 "v"
               ],
               "pyExpr": "range(1, 13)",
               "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 5,
+                    "column": 4
+                  },
+                  "end": {
+                    "line": 7
+                  }
+                },
                 "stmts": [
                   {
                     "pyStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 5,
+                          "column": 4
+                        },
+                        "end": {
+                          "line": 5,
+                          "column": 11
+                        }
+                      },
                       "code": "hour = v"
                     }
                   }
                 ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 4,
+                    "column": 11
+                  },
+                  "end": {
+                    "line": 4,
+                    "column": 22
+                  }
+                },
+                "pyExpr": "range(1, 13)"
               }
             }
           }
@@ -69,13 +228,43 @@
       }
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 14
+        },
+        "end": {
+          "line": 16
+        }
+      },
       "name": "Tick",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 15,
+            "column": 4
+          },
+          "end": {
+            "line": 16
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 15,
+                  "column": 4
+                },
+                "end": {
+                  "line": 15,
+                  "column": 21
+                }
+              },
               "code": "hour = hour%12 + 1"
             }
           }

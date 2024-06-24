@@ -1,21 +1,77 @@
 {
+  "sourceInfo": {
+    "start": {
+      "line": 2
+    },
+    "end": {
+      "line": 15
+    }
+  },
   "states": {
+    "sourceInfo": {
+      "start": {
+        "line": 2
+      },
+      "end": {
+        "line": 6
+      }
+    },
     "code": "a = 0\nb = 0\n\n"
   },
   "actions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 6
+        },
+        "end": {
+          "line": 11
+        }
+      },
       "name": "Incr",
       "flow": "FLOW_PARALLEL",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 8,
+            "column": 4
+          },
+          "end": {
+            "line": 11
+          }
+        },
         "flow": "FLOW_PARALLEL",
         "stmts": [
           {
             "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 8,
+                  "column": 4
+                },
+                "end": {
+                  "line": 8,
+                  "column": 12
+                }
+              },
               "code": "a = a + 1"
             }
           },
           {
             "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 9,
+                  "column": 4
+                },
+                "end": {
+                  "line": 9,
+                  "column": 12
+                }
+              },
               "code": "b = b + 1"
             }
           }
@@ -23,18 +79,58 @@
       }
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 11
+        },
+        "end": {
+          "line": 15
+        }
+      },
       "name": "Decr",
       "flow": "FLOW_PARALLEL",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 13,
+            "column": 4
+          },
+          "end": {
+            "line": 15
+          }
+        },
         "flow": "FLOW_PARALLEL",
         "stmts": [
           {
             "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 13,
+                  "column": 4
+                },
+                "end": {
+                  "line": 13,
+                  "column": 12
+                }
+              },
               "code": "a = a - 1"
             }
           },
           {
             "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 14,
+                  "column": 4
+                },
+                "end": {
+                  "line": 14,
+                  "column": 12
+                }
+              },
               "code": "b = b - 1"
             }
           }
