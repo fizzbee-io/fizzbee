@@ -1,13 +1,51 @@
 {
+  "sourceInfo": {
+    "start": {
+      "line": 2
+    },
+    "end": {
+      "line": 23
+    }
+  },
   "actions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 13
+        },
+        "end": {
+          "line": 23
+        }
+      },
       "name": "Roll",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 14,
+            "column": 2
+          },
+          "end": {
+            "line": 23
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 14,
+                  "column": 2
+                },
+                "end": {
+                  "line": 14,
+                  "column": 15
+                }
+              },
               "vars": [
                 "toss1"
               ],
@@ -16,11 +54,39 @@
           },
           {
             "whileStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 15,
+                  "column": 2
+                },
+                "end": {
+                  "line": 23
+                }
+              },
               "pyExpr": "(True)",
               "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 16,
+                    "column": 4
+                  },
+                  "end": {
+                    "line": 23
+                  }
+                },
                 "stmts": [
                   {
                     "callStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 16,
+                          "column": 4
+                        },
+                        "end": {
+                          "line": 16,
+                          "column": 17
+                        }
+                      },
                       "vars": [
                         "toss2"
                       ],
@@ -29,6 +95,16 @@
                   },
                   {
                     "callStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 17,
+                          "column": 4
+                        },
+                        "end": {
+                          "line": 17,
+                          "column": 17
+                        }
+                      },
                       "vars": [
                         "toss3"
                       ],
@@ -37,28 +113,114 @@
                   },
                   {
                     "pyStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 19,
+                          "column": 4
+                        },
+                        "end": {
+                          "line": 19,
+                          "column": 36
+                        }
+                      },
                       "code": "value = 4 * toss1 + 2 * toss2 + toss3"
                     }
                   },
                   {
                     "ifStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 20,
+                          "column": 4
+                        },
+                        "end": {
+                          "line": 23
+                        }
+                      },
                       "branches": [
                         {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 20,
+                              "column": 7
+                            },
+                            "end": {
+                              "line": 23
+                            }
+                          },
                           "condition": "value >= 0 and value <= 6",
                           "block": {
+                            "sourceInfo": {
+                              "start": {
+                                "line": 21,
+                                "column": 6
+                              },
+                              "end": {
+                                "line": 23
+                              }
+                            },
                             "stmts": [
                               {
                                 "returnStmt": {
-                                  "pyExpr": "value"
+                                  "sourceInfo": {
+                                    "start": {
+                                      "line": 21,
+                                      "column": 6
+                                    },
+                                    "end": {
+                                      "line": 21,
+                                      "column": 13
+                                    }
+                                  },
+                                  "pyExpr": "value",
+                                  "expr": {
+                                    "sourceInfo": {
+                                      "start": {
+                                        "line": 21,
+                                        "column": 13
+                                      },
+                                      "end": {
+                                        "line": 21,
+                                        "column": 13
+                                      }
+                                    },
+                                    "pyExpr": "value"
+                                  }
                                 }
                               }
                             ]
+                          },
+                          "conditionExpr": {
+                            "sourceInfo": {
+                              "start": {
+                                "line": 20,
+                                "column": 7
+                              },
+                              "end": {
+                                "line": 20,
+                                "column": 31
+                              }
+                            },
+                            "pyExpr": "value >= 0 and value <= 6"
                           }
                         }
                       ]
                     }
                   }
                 ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 15,
+                    "column": 8
+                  },
+                  "end": {
+                    "line": 15,
+                    "column": 13
+                  }
+                },
+                "pyExpr": "(True)"
               }
             }
           }
@@ -68,19 +230,82 @@
   ],
   "functions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 2
+        },
+        "end": {
+          "line": 13
+        }
+      },
       "name": "Toss",
       "flow": "FLOW_ONEOF",
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 5,
+            "column": 4
+          },
+          "end": {
+            "line": 13
+          }
+        },
         "flow": "FLOW_ONEOF",
         "stmts": [
           {
             "returnStmt": {
-              "pyExpr": "0"
+              "sourceInfo": {
+                "start": {
+                  "line": 5,
+                  "column": 4
+                },
+                "end": {
+                  "line": 5,
+                  "column": 11
+                }
+              },
+              "pyExpr": "0",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 5,
+                    "column": 11
+                  },
+                  "end": {
+                    "line": 5,
+                    "column": 11
+                  }
+                },
+                "pyExpr": "0"
+              }
             }
           },
           {
             "returnStmt": {
-              "pyExpr": "1"
+              "sourceInfo": {
+                "start": {
+                  "line": 7,
+                  "column": 4
+                },
+                "end": {
+                  "line": 7,
+                  "column": 11
+                }
+              },
+              "pyExpr": "1",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 7,
+                    "column": 11
+                  },
+                  "end": {
+                    "line": 7,
+                    "column": 11
+                  }
+                },
+                "pyExpr": "1"
+              }
             }
           }
         ]

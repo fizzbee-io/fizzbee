@@ -1,10 +1,38 @@
 {
+  "sourceInfo": {
+    "start": {
+      "line": 2
+    },
+    "end": {
+      "line": 23,
+      "column": 20
+    }
+  },
   "invariants": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 3,
+          "column": 2
+        },
+        "end": {
+          "line": 4,
+          "column": 2
+        }
+      },
       "always": true,
       "pyExpr": "'TwoDice' not in __returns__ or __returns__['TwoDice'] in [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]"
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 4,
+          "column": 2
+        },
+        "end": {
+          "line": 6
+        }
+      },
       "always": true,
       "eventually": true,
       "pyExpr": "'TwoDice' in __returns__ and __returns__['TwoDice'] in [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]"
@@ -12,13 +40,45 @@
   ],
   "actions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 20
+        },
+        "end": {
+          "line": 23,
+          "column": 20
+        }
+      },
       "name": "TwoDice",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 21,
+            "column": 2
+          },
+          "end": {
+            "line": 23,
+            "column": 20
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 21,
+                  "column": 2
+                },
+                "end": {
+                  "line": 21,
+                  "column": 17
+                }
+              },
               "vars": [
                 "die1"
               ],
@@ -27,6 +87,16 @@
           },
           {
             "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 22,
+                  "column": 2
+                },
+                "end": {
+                  "line": 22,
+                  "column": 17
+                }
+              },
               "vars": [
                 "die2"
               ],
@@ -35,7 +105,30 @@
           },
           {
             "returnStmt": {
-              "pyExpr": "die1 + die2"
+              "sourceInfo": {
+                "start": {
+                  "line": 23,
+                  "column": 2
+                },
+                "end": {
+                  "line": 23,
+                  "column": 16
+                }
+              },
+              "pyExpr": "die1 + die2",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 23,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 23,
+                    "column": 16
+                  }
+                },
+                "pyExpr": "die1 + die2"
+              }
             }
           }
         ]
@@ -44,32 +137,122 @@
   ],
   "functions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 6
+        },
+        "end": {
+          "line": 11
+        }
+      },
       "name": "Toss",
       "flow": "FLOW_ATOMIC",
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 8,
+            "column": 8
+          },
+          "end": {
+            "line": 11
+          }
+        },
         "flow": "FLOW_ONEOF",
         "stmts": [
           {
             "returnStmt": {
-              "pyExpr": "0"
+              "sourceInfo": {
+                "start": {
+                  "line": 8,
+                  "column": 8
+                },
+                "end": {
+                  "line": 8,
+                  "column": 15
+                }
+              },
+              "pyExpr": "0",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 8,
+                    "column": 15
+                  },
+                  "end": {
+                    "line": 8,
+                    "column": 15
+                  }
+                },
+                "pyExpr": "0"
+              }
             }
           },
           {
             "returnStmt": {
-              "pyExpr": "1"
+              "sourceInfo": {
+                "start": {
+                  "line": 9,
+                  "column": 8
+                },
+                "end": {
+                  "line": 9,
+                  "column": 15
+                }
+              },
+              "pyExpr": "1",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 9,
+                    "column": 15
+                  },
+                  "end": {
+                    "line": 9,
+                    "column": 15
+                  }
+                },
+                "pyExpr": "1"
+              }
             }
           }
         ]
       }
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 11
+        },
+        "end": {
+          "line": 20
+        }
+      },
       "name": "RollDie",
       "flow": "FLOW_ATOMIC",
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 12,
+            "column": 2
+          },
+          "end": {
+            "line": 20
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 12,
+                  "column": 2
+                },
+                "end": {
+                  "line": 12,
+                  "column": 15
+                }
+              },
               "vars": [
                 "toss0"
               ],
@@ -78,11 +261,39 @@
           },
           {
             "whileStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 13,
+                  "column": 2
+                },
+                "end": {
+                  "line": 20
+                }
+              },
               "pyExpr": "True",
               "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 14,
+                    "column": 4
+                  },
+                  "end": {
+                    "line": 20
+                  }
+                },
                 "stmts": [
                   {
                     "callStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 14,
+                          "column": 4
+                        },
+                        "end": {
+                          "line": 14,
+                          "column": 17
+                        }
+                      },
                       "vars": [
                         "toss1"
                       ],
@@ -91,6 +302,16 @@
                   },
                   {
                     "callStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 15,
+                          "column": 4
+                        },
+                        "end": {
+                          "line": 15,
+                          "column": 17
+                        }
+                      },
                       "vars": [
                         "toss2"
                       ],
@@ -99,23 +320,99 @@
                   },
                   {
                     "ifStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 17,
+                          "column": 4
+                        },
+                        "end": {
+                          "line": 20
+                        }
+                      },
                       "branches": [
                         {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 17,
+                              "column": 7
+                            },
+                            "end": {
+                              "line": 20
+                            }
+                          },
                           "condition": "(toss0 != toss1 or toss0 != toss2)",
                           "block": {
+                            "sourceInfo": {
+                              "start": {
+                                "line": 18,
+                                "column": 6
+                              },
+                              "end": {
+                                "line": 20
+                              }
+                            },
                             "stmts": [
                               {
                                 "returnStmt": {
-                                  "pyExpr": "4 * toss0 + 2 * toss1 + toss2"
+                                  "sourceInfo": {
+                                    "start": {
+                                      "line": 18,
+                                      "column": 6
+                                    },
+                                    "end": {
+                                      "line": 18,
+                                      "column": 37
+                                    }
+                                  },
+                                  "pyExpr": "4 * toss0 + 2 * toss1 + toss2",
+                                  "expr": {
+                                    "sourceInfo": {
+                                      "start": {
+                                        "line": 18,
+                                        "column": 13
+                                      },
+                                      "end": {
+                                        "line": 18,
+                                        "column": 37
+                                      }
+                                    },
+                                    "pyExpr": "4 * toss0 + 2 * toss1 + toss2"
+                                  }
                                 }
                               }
                             ]
+                          },
+                          "conditionExpr": {
+                            "sourceInfo": {
+                              "start": {
+                                "line": 17,
+                                "column": 7
+                              },
+                              "end": {
+                                "line": 17,
+                                "column": 40
+                              }
+                            },
+                            "pyExpr": "(toss0 != toss1 or toss0 != toss2)"
                           }
                         }
                       ]
                     }
                   }
                 ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 13,
+                    "column": 8
+                  },
+                  "end": {
+                    "line": 13,
+                    "column": 8
+                  }
+                },
+                "pyExpr": "True"
               }
             }
           }

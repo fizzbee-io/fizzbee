@@ -1,9 +1,34 @@
 {
+  "sourceInfo": {
+    "start": {
+      "line": 2
+    },
+    "end": {
+      "line": 43
+    }
+  },
   "states": {
+    "sourceInfo": {
+      "start": {
+        "line": 5
+      },
+      "end": {
+        "line": 11
+      }
+    },
     "code": "nodes = range(0, 3)\n\nrunning = [True for i in nodes]\npeer_status = [ [True for i in nodes] for j in nodes]\n\n"
   },
   "invariants": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 3,
+          "column": 4
+        },
+        "end": {
+          "line": 5
+        }
+      },
       "always": true,
       "eventually": true,
       "pyExpr": "all( [ all([ (running[i] == peer_status[j][i] or not running[j] ) for i in nodes]) for j in nodes ] )"
@@ -11,25 +36,86 @@
   ],
   "actions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 11
+        },
+        "end": {
+          "line": 15
+        }
+      },
       "name": "Die",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 12,
+            "column": 4
+          },
+          "end": {
+            "line": 15
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 12,
+                  "column": 4
+                },
+                "end": {
+                  "line": 15
+                }
+              },
               "loopVars": [
                 "i"
               ],
               "pyExpr": "nodes",
               "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 13,
+                    "column": 8
+                  },
+                  "end": {
+                    "line": 15
+                  }
+                },
                 "stmts": [
                   {
                     "pyStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 13,
+                          "column": 8
+                        },
+                        "end": {
+                          "line": 13,
+                          "column": 21
+                        }
+                      },
                       "code": "running[i] = False"
                     }
                   }
                 ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 12,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 12,
+                    "column": 13
+                  }
+                },
+                "pyExpr": "nodes"
               }
             }
           }
@@ -37,25 +123,86 @@
       }
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 15
+        },
+        "end": {
+          "line": 19
+        }
+      },
       "name": "Start",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 16,
+            "column": 4
+          },
+          "end": {
+            "line": 19
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 16,
+                  "column": 4
+                },
+                "end": {
+                  "line": 19
+                }
+              },
               "loopVars": [
                 "i"
               ],
               "pyExpr": "nodes",
               "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 17,
+                    "column": 8
+                  },
+                  "end": {
+                    "line": 19
+                  }
+                },
                 "stmts": [
                   {
                     "pyStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 17,
+                          "column": 8
+                        },
+                        "end": {
+                          "line": 17,
+                          "column": 21
+                        }
+                      },
                       "code": "running[i] = True"
                     }
                   }
                 ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 16,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 16,
+                    "column": 13
+                  }
+                },
+                "pyExpr": "nodes"
               }
             }
           }
@@ -63,50 +210,182 @@
       }
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 19
+        },
+        "end": {
+          "line": 27
+        }
+      },
       "name": "CorrectlyDetectDeadNode",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 20,
+            "column": 4
+          },
+          "end": {
+            "line": 27
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 20,
+                  "column": 4
+                },
+                "end": {
+                  "line": 27
+                }
+              },
               "loopVars": [
                 "local"
               ],
               "pyExpr": "nodes",
               "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 21,
+                    "column": 8
+                  },
+                  "end": {
+                    "line": 27
+                  }
+                },
                 "stmts": [
                   {
                     "anyStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 21,
+                          "column": 8
+                        },
+                        "end": {
+                          "line": 27
+                        }
+                      },
                       "loopVars": [
                         "remote"
                       ],
                       "pyExpr": "nodes",
                       "block": {
+                        "sourceInfo": {
+                          "start": {
+                            "line": 22,
+                            "column": 12
+                          },
+                          "end": {
+                            "line": 27
+                          }
+                        },
                         "stmts": [
                           {
                             "ifStmt": {
+                              "sourceInfo": {
+                                "start": {
+                                  "line": 22,
+                                  "column": 12
+                                },
+                                "end": {
+                                  "line": 27
+                                }
+                              },
                               "branches": [
                                 {
+                                  "sourceInfo": {
+                                    "start": {
+                                      "line": 22,
+                                      "column": 15
+                                    },
+                                    "end": {
+                                      "line": 27
+                                    }
+                                  },
                                   "condition": "(local != remote and running[local]\n                    and not running[remote]\n                    and peer_status[local][remote])",
                                   "block": {
+                                    "sourceInfo": {
+                                      "start": {
+                                        "line": 25,
+                                        "column": 16
+                                      },
+                                      "end": {
+                                        "line": 27
+                                      }
+                                    },
                                     "stmts": [
                                       {
                                         "pyStmt": {
+                                          "sourceInfo": {
+                                            "start": {
+                                              "line": 25,
+                                              "column": 16
+                                            },
+                                            "end": {
+                                              "line": 25,
+                                              "column": 45
+                                            }
+                                          },
                                           "code": "peer_status[local][remote] = False"
                                         }
                                       }
                                     ]
+                                  },
+                                  "conditionExpr": {
+                                    "sourceInfo": {
+                                      "start": {
+                                        "line": 22,
+                                        "column": 15
+                                      },
+                                      "end": {
+                                        "line": 24,
+                                        "column": 50
+                                      }
+                                    },
+                                    "pyExpr": "(local != remote and running[local]\n                    and not running[remote]\n                    and peer_status[local][remote])"
                                   }
                                 }
                               ]
                             }
                           }
                         ]
+                      },
+                      "iterExpr": {
+                        "sourceInfo": {
+                          "start": {
+                            "line": 21,
+                            "column": 22
+                          },
+                          "end": {
+                            "line": 21,
+                            "column": 22
+                          }
+                        },
+                        "pyExpr": "nodes"
                       }
                     }
                   }
                 ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 20,
+                    "column": 17
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 17
+                  }
+                },
+                "pyExpr": "nodes"
               }
             }
           }
@@ -114,50 +393,182 @@
       }
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 27
+        },
+        "end": {
+          "line": 37
+        }
+      },
       "name": "FalselyDetectDeadNode",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 28,
+            "column": 4
+          },
+          "end": {
+            "line": 37
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 28,
+                  "column": 4
+                },
+                "end": {
+                  "line": 37
+                }
+              },
               "loopVars": [
                 "local"
               ],
               "pyExpr": "nodes",
               "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 29,
+                    "column": 8
+                  },
+                  "end": {
+                    "line": 37
+                  }
+                },
                 "stmts": [
                   {
                     "anyStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 29,
+                          "column": 8
+                        },
+                        "end": {
+                          "line": 37
+                        }
+                      },
                       "loopVars": [
                         "remote"
                       ],
                       "pyExpr": "nodes",
                       "block": {
+                        "sourceInfo": {
+                          "start": {
+                            "line": 30,
+                            "column": 12
+                          },
+                          "end": {
+                            "line": 37
+                          }
+                        },
                         "stmts": [
                           {
                             "ifStmt": {
+                              "sourceInfo": {
+                                "start": {
+                                  "line": 30,
+                                  "column": 12
+                                },
+                                "end": {
+                                  "line": 37
+                                }
+                              },
                               "branches": [
                                 {
+                                  "sourceInfo": {
+                                    "start": {
+                                      "line": 30,
+                                      "column": 15
+                                    },
+                                    "end": {
+                                      "line": 37
+                                    }
+                                  },
                                   "condition": "(local != remote\n                    and running[local]\n                    and running[remote]\n                    and peer_status[local][remote])",
                                   "block": {
+                                    "sourceInfo": {
+                                      "start": {
+                                        "line": 34,
+                                        "column": 16
+                                      },
+                                      "end": {
+                                        "line": 37
+                                      }
+                                    },
                                     "stmts": [
                                       {
                                         "pyStmt": {
+                                          "sourceInfo": {
+                                            "start": {
+                                              "line": 34,
+                                              "column": 16
+                                            },
+                                            "end": {
+                                              "line": 34,
+                                              "column": 45
+                                            }
+                                          },
                                           "code": "peer_status[local][remote] = False"
                                         }
                                       }
                                     ]
+                                  },
+                                  "conditionExpr": {
+                                    "sourceInfo": {
+                                      "start": {
+                                        "line": 30,
+                                        "column": 15
+                                      },
+                                      "end": {
+                                        "line": 33,
+                                        "column": 50
+                                      }
+                                    },
+                                    "pyExpr": "(local != remote\n                    and running[local]\n                    and running[remote]\n                    and peer_status[local][remote])"
                                   }
                                 }
                               ]
                             }
                           }
                         ]
+                      },
+                      "iterExpr": {
+                        "sourceInfo": {
+                          "start": {
+                            "line": 29,
+                            "column": 22
+                          },
+                          "end": {
+                            "line": 29,
+                            "column": 22
+                          }
+                        },
+                        "pyExpr": "nodes"
                       }
                     }
                   }
                 ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 28,
+                    "column": 17
+                  },
+                  "end": {
+                    "line": 28,
+                    "column": 17
+                  }
+                },
+                "pyExpr": "nodes"
               }
             }
           }
@@ -165,55 +576,197 @@
       }
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 37
+        },
+        "end": {
+          "line": 43
+        }
+      },
       "name": "Gossip",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 38,
+            "column": 4
+          },
+          "end": {
+            "line": 43
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 38,
+                  "column": 4
+                },
+                "end": {
+                  "line": 43
+                }
+              },
               "loopVars": [
                 "local"
               ],
               "pyExpr": "nodes",
               "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 39,
+                    "column": 8
+                  },
+                  "end": {
+                    "line": 43
+                  }
+                },
                 "stmts": [
                   {
                     "anyStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 39,
+                          "column": 8
+                        },
+                        "end": {
+                          "line": 43
+                        }
+                      },
                       "loopVars": [
                         "remote"
                       ],
                       "pyExpr": "nodes",
                       "block": {
+                        "sourceInfo": {
+                          "start": {
+                            "line": 40,
+                            "column": 12
+                          },
+                          "end": {
+                            "line": 43
+                          }
+                        },
                         "stmts": [
                           {
                             "ifStmt": {
+                              "sourceInfo": {
+                                "start": {
+                                  "line": 40,
+                                  "column": 12
+                                },
+                                "end": {
+                                  "line": 43
+                                }
+                              },
                               "branches": [
                                 {
+                                  "sourceInfo": {
+                                    "start": {
+                                      "line": 40,
+                                      "column": 15
+                                    },
+                                    "end": {
+                                      "line": 43
+                                    }
+                                  },
                                   "condition": "local != remote and running[local] and running[remote]",
                                   "block": {
+                                    "sourceInfo": {
+                                      "start": {
+                                        "line": 41,
+                                        "column": 16
+                                      },
+                                      "end": {
+                                        "line": 43
+                                      }
+                                    },
                                     "stmts": [
                                       {
                                         "pyStmt": {
+                                          "sourceInfo": {
+                                            "start": {
+                                              "line": 41,
+                                              "column": 16
+                                            },
+                                            "end": {
+                                              "line": 41,
+                                              "column": 76
+                                            }
+                                          },
                                           "code": "peer_status[local] = [peer_status[remote][i] for i in nodes ]"
                                         }
                                       },
                                       {
                                         "pyStmt": {
+                                          "sourceInfo": {
+                                            "start": {
+                                              "line": 42,
+                                              "column": 16
+                                            },
+                                            "end": {
+                                              "line": 42,
+                                              "column": 44
+                                            }
+                                          },
                                           "code": "peer_status[local][local] = True"
                                         }
                                       }
                                     ]
+                                  },
+                                  "conditionExpr": {
+                                    "sourceInfo": {
+                                      "start": {
+                                        "line": 40,
+                                        "column": 15
+                                      },
+                                      "end": {
+                                        "line": 40,
+                                        "column": 68
+                                      }
+                                    },
+                                    "pyExpr": "local != remote and running[local] and running[remote]"
                                   }
                                 }
                               ]
                             }
                           }
                         ]
+                      },
+                      "iterExpr": {
+                        "sourceInfo": {
+                          "start": {
+                            "line": 39,
+                            "column": 22
+                          },
+                          "end": {
+                            "line": 39,
+                            "column": 22
+                          }
+                        },
+                        "pyExpr": "nodes"
                       }
                     }
                   }
                 ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 38,
+                    "column": 17
+                  },
+                  "end": {
+                    "line": 38,
+                    "column": 17
+                  }
+                },
+                "pyExpr": "nodes"
               }
             }
           }

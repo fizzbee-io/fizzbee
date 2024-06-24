@@ -1,48 +1,204 @@
 {
+  "sourceInfo": {
+    "start": {
+      "line": 2
+    },
+    "end": {
+      "line": 13
+    }
+  },
   "states": {
+    "sourceInfo": {
+      "start": {
+        "line": 2
+      },
+      "end": {
+        "line": 6
+      }
+    },
     "code": "elements = set([1, 2, 3])\ncount = 3\n\n"
   },
   "actions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 6
+        },
+        "end": {
+          "line": 13
+        }
+      },
       "name": "Remove",
       "flow": "FLOW_SERIAL",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 7,
+            "column": 3
+          },
+          "end": {
+            "line": 13
+          }
+        },
         "flow": "FLOW_SERIAL",
         "stmts": [
           {
             "forStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 7,
+                  "column": 3
+                },
+                "end": {
+                  "line": 13
+                }
+              },
               "flow": "FLOW_PARALLEL",
               "loopVars": [
                 "e"
               ],
               "pyExpr": "elements",
               "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 9,
+                    "column": 7
+                  },
+                  "end": {
+                    "line": 13
+                  }
+                },
                 "flow": "FLOW_ATOMIC",
                 "stmts": [
                   {
                     "ifStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 9,
+                          "column": 7
+                        },
+                        "end": {
+                          "line": 13
+                        }
+                      },
                       "branches": [
                         {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 9,
+                              "column": 10
+                            },
+                            "end": {
+                              "line": 13
+                            }
+                          },
                           "condition": "e in elements",
                           "block": {
+                            "sourceInfo": {
+                              "start": {
+                                "line": 10,
+                                "column": 9
+                              },
+                              "end": {
+                                "line": 13
+                              }
+                            },
                             "stmts": [
                               {
-                                "pyStmt": {
-                                  "code": "elements.discard(e)"
+                                "callStmt": {
+                                  "sourceInfo": {
+                                    "start": {
+                                      "line": 10,
+                                      "column": 9
+                                    },
+                                    "end": {
+                                      "line": 10,
+                                      "column": 27
+                                    }
+                                  },
+                                  "name": "discard",
+                                  "args": [
+                                    {
+                                      "sourceInfo": {
+                                        "start": {
+                                          "line": 10,
+                                          "column": 26
+                                        },
+                                        "end": {
+                                          "line": 10,
+                                          "column": 26
+                                        }
+                                      },
+                                      "pyExpr": "e",
+                                      "expr": {
+                                        "sourceInfo": {
+                                          "start": {
+                                            "line": 10,
+                                            "column": 26
+                                          },
+                                          "end": {
+                                            "line": 10,
+                                            "column": 26
+                                          }
+                                        },
+                                        "pyExpr": "e"
+                                      }
+                                    }
+                                  ],
+                                  "receiver": "elements"
                                 }
                               },
                               {
                                 "pyStmt": {
+                                  "sourceInfo": {
+                                    "start": {
+                                      "line": 11,
+                                      "column": 9
+                                    },
+                                    "end": {
+                                      "line": 11,
+                                      "column": 18
+                                    }
+                                  },
                                   "code": "count -= 1"
                                 }
                               }
                             ]
+                          },
+                          "conditionExpr": {
+                            "sourceInfo": {
+                              "start": {
+                                "line": 9,
+                                "column": 10
+                              },
+                              "end": {
+                                "line": 9,
+                                "column": 15
+                              }
+                            },
+                            "pyExpr": "e in elements"
                           }
                         }
                       ]
                     }
                   }
                 ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 7,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 7,
+                    "column": 21
+                  }
+                },
+                "pyExpr": "elements"
               }
             }
           }

@@ -1,17 +1,62 @@
 {
+  "sourceInfo": {
+    "start": {
+      "line": 2
+    },
+    "end": {
+      "line": 17
+    }
+  },
   "states": {
+    "sourceInfo": {
+      "start": {
+        "line": 2
+      },
+      "end": {
+        "line": 6
+      }
+    },
     "code": "elements = set([1, 2, 3])\ncount = len(elements)\n\n"
   },
   "invariants": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 7,
+          "column": 2
+        },
+        "end": {
+          "line": 8,
+          "column": 2
+        }
+      },
       "always": true,
       "pyExpr": "count <= len(elements)"
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 8,
+          "column": 2
+        },
+        "end": {
+          "line": 9,
+          "column": 2
+        }
+      },
       "always": true,
       "pyExpr": "count >= 0"
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 9,
+          "column": 2
+        },
+        "end": {
+          "line": 11
+        }
+      },
       "always": true,
       "eventually": true,
       "pyExpr": "count == len(elements)"
@@ -19,31 +64,131 @@
   ],
   "actions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 11
+        },
+        "end": {
+          "line": 17
+        }
+      },
       "name": "Remove",
       "flow": "FLOW_SERIAL",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 12,
+            "column": 3
+          },
+          "end": {
+            "line": 17
+          }
+        },
         "flow": "FLOW_SERIAL",
         "stmts": [
           {
             "forStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 12,
+                  "column": 3
+                },
+                "end": {
+                  "line": 17
+                }
+              },
               "loopVars": [
                 "e"
               ],
               "pyExpr": "elements",
               "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 14,
+                    "column": 7
+                  },
+                  "end": {
+                    "line": 17
+                  }
+                },
                 "flow": "FLOW_ATOMIC",
                 "stmts": [
                   {
-                    "pyStmt": {
-                      "code": "elements.discard(e)"
+                    "callStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 14,
+                          "column": 7
+                        },
+                        "end": {
+                          "line": 14,
+                          "column": 25
+                        }
+                      },
+                      "name": "discard",
+                      "args": [
+                        {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 14,
+                              "column": 24
+                            },
+                            "end": {
+                              "line": 14,
+                              "column": 24
+                            }
+                          },
+                          "pyExpr": "e",
+                          "expr": {
+                            "sourceInfo": {
+                              "start": {
+                                "line": 14,
+                                "column": 24
+                              },
+                              "end": {
+                                "line": 14,
+                                "column": 24
+                              }
+                            },
+                            "pyExpr": "e"
+                          }
+                        }
+                      ],
+                      "receiver": "elements"
                     }
                   },
                   {
                     "pyStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 15,
+                          "column": 7
+                        },
+                        "end": {
+                          "line": 15,
+                          "column": 16
+                        }
+                      },
                       "code": "count -= 1"
                     }
                   }
                 ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 12,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 12,
+                    "column": 12
+                  }
+                },
+                "pyExpr": "elements"
               }
             }
           }

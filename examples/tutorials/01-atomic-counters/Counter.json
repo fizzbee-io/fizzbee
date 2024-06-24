@@ -1,27 +1,92 @@
 {
+  "sourceInfo": {
+    "start": {
+      "line": 2
+    },
+    "end": {
+      "line": 14
+    }
+  },
   "states": {
+    "sourceInfo": {
+      "start": {
+        "line": 2
+      },
+      "end": {
+        "line": 6
+      }
+    },
     "code": "a = 0\nb = 0\n\n"
   },
   "invariants": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 7,
+          "column": 2
+        },
+        "end": {
+          "line": 9
+        }
+      },
       "always": true,
       "pyExpr": "a == b"
     }
   ],
   "actions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 9
+        },
+        "end": {
+          "line": 14
+        }
+      },
       "name": "Add",
       "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 11,
+            "column": 4
+          },
+          "end": {
+            "line": 14
+          }
+        },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
             "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 11,
+                  "column": 4
+                },
+                "end": {
+                  "line": 11,
+                  "column": 12
+                }
+              },
               "code": "a = a + 1"
             }
           },
           {
             "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 12,
+                  "column": 4
+                },
+                "end": {
+                  "line": 12,
+                  "column": 12
+                }
+              },
               "code": "b = b + 1"
             }
           }

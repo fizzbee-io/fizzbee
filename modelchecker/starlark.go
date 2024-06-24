@@ -4,10 +4,10 @@ import (
 	ast "fizz/proto"
 	"github.com/golang/glog"
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 )
 
 func (e *Evaluator) EvalPyExpr(filename string, src interface{}, prevState starlark.StringDict) (starlark.Value, error) {
-
 	value, err := starlark.EvalOptions(e.options, e.thread, filename, src, prevState)
 	if err != nil {
 		glog.Errorf("Error evaluating expr: %+v", err)
@@ -17,11 +17,25 @@ func (e *Evaluator) EvalPyExpr(filename string, src interface{}, prevState starl
 	return value, nil
 }
 
+func (e *Evaluator) EvalExpr(filename string, expr *ast.Expr, prevState starlark.StringDict) (starlark.Value, error) {
+	start := expr.GetSourceInfo().GetStart()
+	filePortion := syntax.FilePortion{
+		Content:   []byte(expr.GetPyExpr()),
+		FirstLine: start.GetLine(),
+		FirstCol:  start.GetColumn(),
+	}
+	return e.EvalPyExpr(filename, filePortion, prevState)
+}
+
 func (e *Evaluator) ExecPyStmt(filename string, stmt *ast.PyStmt, prevState starlark.StringDict) (bool, error) {
 
-	starCode := stmt.Code
-
-	f, err := e.options.Parse(filename, starCode, 0)
+	start := stmt.GetSourceInfo().GetStart()
+	filePortion := syntax.FilePortion{
+		Content:   []byte(stmt.Code),
+		FirstLine: start.GetLine(),
+		FirstCol:  start.GetColumn(),
+	}
+	f, err := e.options.Parse(filename, filePortion, 0)
 	if err != nil {
 		glog.Errorf("Error parsing expr: %+v", err)
 		return false, err

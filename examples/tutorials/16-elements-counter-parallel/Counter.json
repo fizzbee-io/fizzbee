@@ -1,9 +1,34 @@
 {
+  "sourceInfo": {
+    "start": {
+      "line": 2
+    },
+    "end": {
+      "line": 22
+    }
+  },
   "states": {
+    "sourceInfo": {
+      "start": {
+        "line": 2
+      },
+      "end": {
+        "line": 7
+      }
+    },
     "code": "ELEMENTS = set([1, 2, 3])\nelements = set([])\ncount = 0\n\n"
   },
   "invariants": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 8,
+          "column": 2
+        },
+        "end": {
+          "line": 10
+        }
+      },
       "always": true,
       "eventually": true,
       "pyExpr": "count == len(elements)"
@@ -11,31 +36,131 @@
   ],
   "actions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 10
+        },
+        "end": {
+          "line": 16
+        }
+      },
       "name": "Add",
       "flow": "FLOW_SERIAL",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 11,
+            "column": 3
+          },
+          "end": {
+            "line": 16
+          }
+        },
         "flow": "FLOW_SERIAL",
         "stmts": [
           {
             "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 11,
+                  "column": 3
+                },
+                "end": {
+                  "line": 16
+                }
+              },
               "loopVars": [
                 "e"
               ],
               "pyExpr": "(ELEMENTS - elements)",
               "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 13,
+                    "column": 7
+                  },
+                  "end": {
+                    "line": 16
+                  }
+                },
                 "flow": "FLOW_PARALLEL",
                 "stmts": [
                   {
-                    "pyStmt": {
-                      "code": "elements.add(e)"
+                    "callStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 13,
+                          "column": 7
+                        },
+                        "end": {
+                          "line": 13,
+                          "column": 21
+                        }
+                      },
+                      "name": "add",
+                      "args": [
+                        {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 13,
+                              "column": 20
+                            },
+                            "end": {
+                              "line": 13,
+                              "column": 20
+                            }
+                          },
+                          "pyExpr": "e",
+                          "expr": {
+                            "sourceInfo": {
+                              "start": {
+                                "line": 13,
+                                "column": 20
+                              },
+                              "end": {
+                                "line": 13,
+                                "column": 20
+                              }
+                            },
+                            "pyExpr": "e"
+                          }
+                        }
+                      ],
+                      "receiver": "elements"
                     }
                   },
                   {
                     "pyStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 14,
+                          "column": 7
+                        },
+                        "end": {
+                          "line": 14,
+                          "column": 16
+                        }
+                      },
                       "code": "count += 1"
                     }
                   }
                 ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 11,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 11,
+                    "column": 32
+                  }
+                },
+                "pyExpr": "(ELEMENTS - elements)"
               }
             }
           }
@@ -43,31 +168,131 @@
       }
     },
     {
+      "sourceInfo": {
+        "start": {
+          "line": 16
+        },
+        "end": {
+          "line": 22
+        }
+      },
       "name": "Remove",
       "flow": "FLOW_SERIAL",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 17,
+            "column": 3
+          },
+          "end": {
+            "line": 22
+          }
+        },
         "flow": "FLOW_SERIAL",
         "stmts": [
           {
             "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 17,
+                  "column": 3
+                },
+                "end": {
+                  "line": 22
+                }
+              },
               "loopVars": [
                 "e"
               ],
               "pyExpr": "elements",
               "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 19,
+                    "column": 7
+                  },
+                  "end": {
+                    "line": 22
+                  }
+                },
                 "flow": "FLOW_PARALLEL",
                 "stmts": [
                   {
-                    "pyStmt": {
-                      "code": "elements.discard(e)"
+                    "callStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 19,
+                          "column": 7
+                        },
+                        "end": {
+                          "line": 19,
+                          "column": 25
+                        }
+                      },
+                      "name": "discard",
+                      "args": [
+                        {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 19,
+                              "column": 24
+                            },
+                            "end": {
+                              "line": 19,
+                              "column": 24
+                            }
+                          },
+                          "pyExpr": "e",
+                          "expr": {
+                            "sourceInfo": {
+                              "start": {
+                                "line": 19,
+                                "column": 24
+                              },
+                              "end": {
+                                "line": 19,
+                                "column": 24
+                              }
+                            },
+                            "pyExpr": "e"
+                          }
+                        }
+                      ],
+                      "receiver": "elements"
                     }
                   },
                   {
                     "pyStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 20,
+                          "column": 7
+                        },
+                        "end": {
+                          "line": 20,
+                          "column": 16
+                        }
+                      },
                       "code": "count -= 1"
                     }
                   }
                 ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 17,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 17,
+                    "column": 12
+                  }
+                },
+                "pyExpr": "elements"
               }
             }
           }

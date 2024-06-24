@@ -1,27 +1,104 @@
 {
+  "sourceInfo": {
+    "start": {
+      "line": 2
+    },
+    "end": {
+      "line": 9
+    }
+  },
   "states": {
+    "sourceInfo": {
+      "start": {
+        "line": 2
+      },
+      "end": {
+        "line": 5
+      }
+    },
     "code": "count = 0\n\n"
   },
   "actions": [
     {
+      "sourceInfo": {
+        "start": {
+          "line": 5
+        },
+        "end": {
+          "line": 9
+        }
+      },
       "name": "Incr",
       "flow": "FLOW_SERIAL",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
       "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 6,
+            "column": 2
+          },
+          "end": {
+            "line": 9
+          }
+        },
         "flow": "FLOW_SERIAL",
         "stmts": [
           {
             "whileStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 6,
+                  "column": 2
+                },
+                "end": {
+                  "line": 9
+                }
+              },
               "flow": "FLOW_SERIAL",
               "pyExpr": "count < 5",
               "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 8,
+                    "column": 6
+                  },
+                  "end": {
+                    "line": 9
+                  }
+                },
                 "flow": "FLOW_ATOMIC",
                 "stmts": [
                   {
                     "pyStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 8,
+                          "column": 6
+                        },
+                        "end": {
+                          "line": 8,
+                          "column": 22
+                        }
+                      },
                       "code": "count = count + 1"
                     }
                   }
                 ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 6,
+                    "column": 15
+                  },
+                  "end": {
+                    "line": 6,
+                    "column": 23
+                  }
+                },
+                "pyExpr": "count < 5"
               }
             }
           }
