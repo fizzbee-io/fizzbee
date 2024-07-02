@@ -463,6 +463,31 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 	return dict
 }
 
+// GetAllVariablesNocopy returns all variables visible in the Current thread, without deep copying.
+// This includes state variables and variables from the Current thread's variables in the top call frame
+func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
+	// Shallow clone the globals
+	dict := maps.Clone(p.Heap.globals)
+
+	maps.Copy(dict, p.Heap.state)
+	frame := p.currentThread().currentFrame()
+	if frame.obj != nil {
+		dict["self"] = frame.obj
+	}
+	maps.Copy(dict, frame.vars)
+	frame.scope.getAllVisibleVariablesToDictNoCopy(dict)
+
+	maps.Copy(dict, lib.Builtins)
+
+	for _, file := range p.Files {
+		for _, role := range file.Roles {
+			symmetric := slices.Contains(role.Modifiers, "symmetric")
+			dict[role.Name] = CreateRoleBuiltin(role.Name, symmetric, &p.Roles)
+		}
+	}
+	return dict
+}
+
 func (p *Process) updateAllVariablesInScope(dict starlark.StringDict) {
 	frame := p.currentThread().currentFrame()
 	for k, v := range dict {
@@ -494,7 +519,7 @@ func (p *Process) updateVariableInternal(key string, val starlark.Value, frame *
 		frame.obj = val.(*Role)
 		return
 	}
-	if val.Type() == "builtin_function_or_method" {
+	if val.Type() == "builtin_function_or_method" || val.Type() == "module" {
 		return
 	}
 	// Declare the variable to the Current scope
@@ -1117,13 +1142,24 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *Role, rol
 	newNode.Process.NewThread()
 	newNode.Process.Current = len(newNode.Process.Threads) - 1
 
+	frame := newNode.currentThread().currentFrame()
 	if role != nil {
-		newNode.currentThread().currentFrame().obj = role
-		newNode.currentThread().currentFrame().pc = fmt.Sprintf("Roles[%d].Actions[%d]", roleIndex, actionIndex)
-		newNode.currentThread().currentFrame().Name = role.Name + "." + action.Name
+		for _, r := range newNode.Roles {
+			if r.RefStringShort() == role.RefStringShort() {
+				frame.obj = r
+				break
+			}
+		}
+		if frame.obj == nil {
+			// This happens when a node is removed from the heap. But we cannot remove the node from
+			// the old node's `roles` list. So, we filter it out here.
+			return
+		}
+		frame.pc = fmt.Sprintf("Roles[%d].Actions[%d]", roleIndex, actionIndex)
+		frame.Name = role.Name + "." + action.Name
 	} else {
-		newNode.currentThread().currentFrame().pc = fmt.Sprintf("Actions[%d]", actionIndex)
-		newNode.currentThread().currentFrame().Name = action.Name
+		frame.pc = fmt.Sprintf("Actions[%d]", actionIndex)
+		frame.Name = action.Name
 	}
 
 	p.queue.Add(newNode)
