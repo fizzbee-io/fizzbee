@@ -111,6 +111,8 @@ type Process struct {
 	Enabled		bool                   `json:"-"`
 
 	Roles 	    []*Role                `json:"roles"`
+
+	CachedHashCode string              `json:"-"`
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
@@ -389,6 +391,9 @@ func (n *Node) GetName() string {
 }
 
 func (p *Process) HashCode() string {
+	if p.CachedHashCode != "" {
+		return p.CachedHashCode
+	}
 	threadHashes := make([]string, len(p.Threads))
 	for i, thread := range p.Threads {
 		threadHashes[i] = thread.HashCode()
@@ -414,7 +419,8 @@ func (p *Process) HashCode() string {
 	// hash the heap variables as well
 	heapHash := p.Heap.HashCode()
 	h.Write([]byte(heapHash))
-	return fmt.Sprintf("%x", h.Sum(nil))
+	p.CachedHashCode = fmt.Sprintf("%x", h.Sum(nil))
+	return p.CachedHashCode
 }
 
 func (p *Process) currentThread() *Thread {
