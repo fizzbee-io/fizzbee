@@ -1,10 +1,42 @@
 #!/bin/bash
 #bazel-bin/parser/parser_bin $1 > parserout.log
 
-# Check if the correct number of arguments is provided
-if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 <input_filename>"
-    exit 1
+usage() {
+  echo "Usage: $0 [-x|--simulation] filename"
+  exit 1
+}
+
+# Initialize variables
+simulation=false
+
+# Parse options
+while [[ "$1" =~ ^- ]]; do
+  case $1 in
+    -x | --simulation )
+      simulation=true
+      shift
+      ;;
+    -h | --help )
+      usage
+      ;;
+    * )
+      echo "Invalid option: $1" 1>&2
+      usage
+      ;;
+  esac
+done
+
+# Check for the required positional argument
+if [ -z "$1" ]; then
+  echo "Error: filename is required" 1>&2
+  usage
+fi
+
+input_filename=$1
+
+# Example usage of the parsed options and arguments
+if [ "$simulation" = true ]; then
+  echo "Simulation mode is enabled"
 fi
 
 input_filename=$1
@@ -30,8 +62,17 @@ fi
 json_filename="${input_filename%.*}.json"
 
 echo "Model checking" $json_filename
+
+# Prepare arguments for the Go binary
+args=()
+if [ "$simulation" = true ]; then
+  args+=("--simulation")
+fi
+args+=("$json_filename")
+
+
 # Run the second command with the JSON filename
-bazel-bin/fizzbee_/fizzbee "$json_filename"
+bazel-bin/fizzbee_/fizzbee "${args[@]}"
 
 # Clean up the temporary file
 rm "$temp_output"

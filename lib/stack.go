@@ -16,6 +16,18 @@ type Stack[T any] struct {
 	head *T
 }
 
+func (s *Stack[T]) Empty() bool {
+	return s.Empty()
+}
+
+func (s *Stack[T]) Add(t T) {
+	s.Push(t)
+}
+
+func (s *Stack[T]) Remove() (T, bool) {
+	return s.Pop()
+}
+
 func NewStack[T any]() *Stack[T] {
 	return &Stack[T]{sync.Mutex{}, make([]T, 0, 10), nil, nil}
 }
@@ -103,3 +115,7 @@ func (s *Stack[T]) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(s.s)
 }
+
+
+// Ensures Queue implements LinearCollection
+var _ LinearCollection[interface{}] = (*(Stack[interface{}]))(nil)

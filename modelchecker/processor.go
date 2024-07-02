@@ -674,15 +674,24 @@ func (n *Node) ForkForAlternatePaths(process *Process, name string) *Node {
 type Processor struct {
 	Init    *Node
 	Files   []*ast.File
-	queue   *lib.Queue[*Node]
+	queue   lib.LinearCollection[*Node]
 	visited map[string]*Node
 	config  *ast.StateSpaceOptions
+	stopped bool
 }
 
-func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions) *Processor {
+func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool) *Processor {
+
+	var collection lib.LinearCollection[*Node]
+	if simulation {
+		fmt.Println("Using stack")
+		collection = lib.NewStack[*Node]()
+	} else {
+		collection = lib.NewQueue[*Node]()
+	}
 	return &Processor{
 		Files:   files,
-		queue:   lib.NewQueue[*Node](),
+		queue:   collection,
 		visited: make(map[string]*Node),
 		config:  options,
 	}
@@ -742,10 +751,10 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 		p.Init.Name = action.Name
 	}
 
-	p.queue.Enqueue(p.Init)
+	p.queue.Add(p.Init)
 	prevCount := 0
-	for p.queue.Count() != 0 {
-		node, found := p.queue.Dequeue()
+	for p.queue.Len() != 0 && !p.stopped {
+		node, found := p.queue.Remove()
 		if !found {
 			panic("queue should not be empty")
 		}
@@ -760,7 +769,7 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 			continue
 		}
 		if len(p.visited)%20000 == 0 && len(p.visited) != prevCount {
-			fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Count(), time.Since(startTime))
+			fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
 			prevCount = len(p.visited)
 		}
 
@@ -776,7 +785,7 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 			break
 		}
 	}
-	fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Count(), time.Since(startTime))
+	fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
 	return p.Init, failedNode, err
 }
 
@@ -871,7 +880,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	if !yield {
 		for _, fork := range forks {
 			newNode := node.ForkForAlternatePaths(fork, "")
-			p.queue.Enqueue(newNode)
+			p.queue.Add(newNode)
 		}
 		return false, false
 	}
@@ -995,7 +1004,7 @@ func (p *Processor) processInit(node *Node) bool {
 		//thread := newNode.currentThread()
 		thread.currentFrame().pc = fmt.Sprintf("Actions[%d]", i)
 		thread.currentFrame().Name = action.Name
-		p.queue.Enqueue(newNode)
+		p.queue.Add(newNode)
 	}
 	return false
 }
@@ -1010,7 +1019,7 @@ func (p *Processor) YieldNode(node *Node) {
 		newNode := node.ForkForAlternatePaths(thread.Process.Fork(), name)
 		newNode.Current = i
 
-		_ = p.queue.Enqueue(newNode)
+		p.queue.Add(newNode)
 	}
 
 	if node.actionDepth >= int(p.config.Options.MaxActions) ||
@@ -1055,7 +1064,7 @@ func (p *Processor) YieldFork(node *Node, process *Process) {
 		newNode := node.ForkForAlternatePaths(thread.Process.Fork(), name)
 		newNode.Current = i
 
-		p.queue.Enqueue(newNode)
+		p.queue.Add(newNode)
 	}
 	if node.actionDepth >= int(p.config.Options.MaxActions) ||
 		len(process.Threads) >= int(p.config.Options.MaxConcurrentActions) {
@@ -1098,7 +1107,15 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *Role, rol
 		newNode.currentThread().currentFrame().Name = action.Name
 	}
 
-	p.queue.Enqueue(newNode)
+	p.queue.Add(newNode)
+}
+
+func (p *Processor) Stop() {
+	p.stopped = true
+}
+
+func (p *Processor) Stopped() bool {
+	return p.stopped
 }
 
 func captureStackTrace() string {

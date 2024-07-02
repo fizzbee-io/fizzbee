@@ -4,6 +4,7 @@ go_library(
     name = "lib",
     srcs = [
         "jsonmarshaller.go",
+        "linear_collection.go",
         "permutations.go",
         "queue.go",
         "stack.go",

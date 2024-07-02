@@ -17,6 +17,22 @@ type Queue[T any] struct {
     count int
 }
 
+func (q *Queue[T]) Len() int {
+    return q.Count()
+}
+
+func (q *Queue[T]) Empty() bool {
+    return q.Empty()
+}
+
+func (q *Queue[T]) Add(t T) {
+    q.Enqueue(t)
+}
+
+func (q *Queue[T]) Remove() (T, bool) {
+    return q.Dequeue()
+}
+
 func NewQueue[T any]() *Queue[T] {
     return &Queue[T]{sync.Mutex{}, list.New(), 0}
 }
@@ -58,3 +74,5 @@ func (q *Queue[T]) Count() int {
     return q.count
 }
 
+// Ensures Queue implements LinearCollection
+var _ LinearCollection[interface{}] = (*(Queue[interface{}]))(nil)
