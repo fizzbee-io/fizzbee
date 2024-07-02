@@ -158,7 +158,7 @@ func main() {
 
         return
     }
-    fmt.Println("FAILED: Model checker failed")
+    fmt.Println("FAILED: Model checker failed. Invariant: ", f.Invariants[failedNode.FailedInvariants[0][0]].Name)
 
     dumpFailedNode(failedNode, rootNode, outDir)
 }
