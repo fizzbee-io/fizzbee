@@ -14,7 +14,7 @@ func ReadOptionsFromYaml(filename string) (*proto.StateSpaceOptions, error) {
 	if msg.Options == nil {
 		msg.Options = &proto.Options{
 			MaxActions:            100,
-			MaxConcurrentActions:  5,
+			MaxConcurrentActions:  2,
 		}
 	}
 	if msg.Options.MaxConcurrentActions == 0 {
