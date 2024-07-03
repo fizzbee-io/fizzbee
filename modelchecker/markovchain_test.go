@@ -143,7 +143,7 @@ func TestSteadyStateDistribution(t *testing.T) {
 					},
 				}
 			}
-			p1 := NewProcessor(files, stateCfg)
+			p1 := NewProcessor(files, stateCfg, false)
 			root, _, _ := p1.Start()
 			//RemoveMergeNodes(root)
 

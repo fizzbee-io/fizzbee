@@ -10,16 +10,20 @@ import (
     "github.com/fizzbee-io/fizzbee/modelchecker"
     "google.golang.org/protobuf/encoding/protojson"
     "os"
+    "os/signal"
     "path/filepath"
     "slices"
     "strings"
+    "syscall"
     "time"
 )
 
 var isPlayground bool
+var simulation bool
 
 func main() {
     flag.BoolVar(&isPlayground, "playground", false, "is for playground")
+    flag.BoolVar(&simulation, "simulation", false, "Runs in simulation mode (DFS). Default=false for no simulation (BFS)")
     flag.Parse()
 
     args := flag.Args()
@@ -74,12 +78,19 @@ func main() {
         stateConfig.Options.MaxConcurrentActions = 2
     }
 
-    p1 := modelchecker.NewProcessor([]*ast.File{f}, stateConfig)
+    p1 := modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation)
+
+    c := make(chan os.Signal)
+    signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+    go func() {
+        <-c
+        fmt.Println("\nInterrupted. Stopping state exploration")
+        p1.Stop()
+    }()
     startTime := time.Now()
     rootNode, failedNode, err := p1.Start()
     endTime := time.Now()
     fmt.Printf("Time taken for model checking: %v\n", endTime.Sub(startTime))
-
     outDir, err := createOutputDir(dirPath)
     if err != nil {
         return
