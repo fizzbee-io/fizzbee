@@ -132,20 +132,22 @@ func main() {
         var failurePath []*modelchecker.Link
         var failedInvariant *modelchecker.InvariantPosition
         nodes, deadlock, _ := modelchecker.GetAllNodes(rootNode)
-        if deadlock != nil && stateConfig.GetDeadlockDetection() {
+        if deadlock != nil && stateConfig.GetDeadlockDetection() && !p1.Stopped() {
             fmt.Println("DEADLOCK detected")
             fmt.Println("FAILED: Model checker failed")
             dumpFailedNode(deadlock, rootNode, outDir)
             return
         }
-        if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
-            failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode)
-            fmt.Printf("IsLive: %t\n", failedInvariant == nil)
-            fmt.Printf("Time taken to check liveness: %v\n", time.Now().Sub(endTime))
-        } else if stateConfig.GetLiveness() == "eventual" {
-            failurePath, failedInvariant = modelchecker.CheckFastLiveness(nodes)
-            fmt.Printf("IsLive: %t\n", failedInvariant == nil)
-            fmt.Printf("Time taken to check liveness: %v\n", time.Now().Sub(endTime))
+        if !p1.Stopped() {
+            if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
+                failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode)
+                fmt.Printf("IsLive: %t\n", failedInvariant == nil)
+                fmt.Printf("Time taken to check liveness: %v\n", time.Now().Sub(endTime))
+            } else if stateConfig.GetLiveness() == "eventual" {
+                failurePath, failedInvariant = modelchecker.CheckFastLiveness(nodes)
+                fmt.Printf("IsLive: %t\n", failedInvariant == nil)
+                fmt.Printf("Time taken to check liveness: %v\n", time.Now().Sub(endTime))
+            }
         }
 
         if failedInvariant == nil {
