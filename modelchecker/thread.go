@@ -542,6 +542,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.AnyStmt.IterExpr, vars)
 		// TODO: This source info should be for the pyExpr not the anyStmt
 		t.Process.PanicOnError(stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.AnyStmt.PyExpr), err)
+		t.Process.updateAllVariablesInScope(vars)
 		//PanicOnError(err)
 		rangeVal, _ := val.(starlark.Iterable)
 		iter := rangeVal.Iterate()

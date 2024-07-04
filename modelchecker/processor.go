@@ -213,6 +213,8 @@ func (p *Process) Fork() *Process {
 
 	refs := make(map[string]*Role)
 	clone.SetCustomPtrFunc(reflect.TypeOf(&Role{}), roleResolveCloneFn(refs, nil, 0))
+	clone.SetCustomFunc(reflect.TypeOf(starlark.Set{}), starlarkSetResolveFn(refs, nil, 0))
+	clone.SetCustomFunc(reflect.TypeOf(starlark.Dict{}), starlarkDictResolveFn(refs, nil, 0))
 	p2 := &Process{
 		Name:        p.Name,
 		Heap:        p.Heap.Clone(refs, nil, 0),
@@ -254,6 +256,8 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 
 	refs := make(map[string]*Role)
 	clone.SetCustomPtrFunc(reflect.TypeOf(&Role{}), roleResolveCloneFn(refs, permutations, alt))
+	clone.SetCustomFunc(reflect.TypeOf(starlark.Dict{}), starlarkDictResolveFn(refs, permutations, alt))
+	clone.SetCustomFunc(reflect.TypeOf(starlark.Set{}), starlarkSetResolveFn(refs, permutations, alt))
 	clone.SetCustomFunc(reflect.TypeOf(lib.SymmetricValue{}), symmetricValueResolveFn(refs, permutations, alt))
 	p2 := &Process{
 		Name:        p.Name,
