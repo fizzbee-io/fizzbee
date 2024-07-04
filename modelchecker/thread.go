@@ -771,9 +771,10 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			newFrame := &CallFrame{FileIndex: def.fileIndex, pc: def.path + ".Block", Name: stmt.CallStmt.Name}
 			newFrame.vars = starlark.StringDict{}
 			hasNamedArgs := false
+			vars := t.Process.GetAllVariablesNocopy()
 			for i, arg := range stmt.CallStmt.Args {
 				// TODO: Is it really required to GetAllVariables() for each arg?
-				vars := t.Process.GetAllVariablesNocopy()
+
 				val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), arg.Expr, vars)
 				// TODO: This source info should be for the pyExpr not the callStmt
 				t.Process.PanicOnError(arg.Expr.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", arg.PyExpr), err)
@@ -791,11 +792,11 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 					panic("Named arguments must come after positional arguments")
 				}
 			}
+			vars = t.Process.GetAllVariablesNocopy()
 			for _, param := range def.params {
 				// handle default values
 				if _, ok := newFrame.vars[param.Name]; !ok {
 					if param.DefaultPyExpr != "" {
-						vars := t.Process.GetAllVariablesNocopy()
 						val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), param.DefaultExpr, vars)
 						t.Process.PanicOnError(param.GetDefaultExpr().GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", param.DefaultPyExpr), err)
 						//PanicOnError(err)
