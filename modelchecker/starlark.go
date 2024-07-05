@@ -2,13 +2,18 @@ package modelchecker
 
 import (
 	ast "fizz/proto"
+	"fmt"
 	"github.com/golang/glog"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 )
 
 func (e *Evaluator) EvalPyExpr(filename string, src interface{}, prevState starlark.StringDict) (starlark.Value, error) {
-	value, err := starlark.EvalOptions(e.options, e.thread, filename, src, prevState)
+
+	thread := &starlark.Thread{
+		Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
+	}
+	value, err := starlark.EvalOptions(e.options, thread, filename, src, prevState)
 	if err != nil {
 		glog.Errorf("Error evaluating expr: %+v", err)
 		return nil, err
@@ -40,8 +45,10 @@ func (e *Evaluator) ExecPyStmt(filename string, stmt *ast.PyStmt, prevState star
 		glog.Errorf("Error parsing expr: %+v", err)
 		return false, err
 	}
-
-	err = starlark.ExecREPLChunk(f, e.thread, prevState)
+	thread := &starlark.Thread{
+		Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
+	}
+	err = starlark.ExecREPLChunk(f, thread, prevState)
 	globals := prevState
 	//state, err := starlark.ExecFileOptions(e.options, e.thread, filename, starCode, prevState)
 	if err != nil {
