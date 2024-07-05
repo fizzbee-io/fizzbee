@@ -21,12 +21,12 @@ import (
 
 var isPlayground bool
 var simulation bool
-var internal_profile bool
+var internalProfile bool
 
 func main() {
     flag.BoolVar(&isPlayground, "playground", false, "is for playground")
     flag.BoolVar(&simulation, "simulation", false, "Runs in simulation mode (DFS). Default=false for no simulation (BFS)")
-    flag.BoolVar(&internal_profile, "internal_profile", false, "Enables CPU and memory profiling of the model checker")
+    flag.BoolVar(&internalProfile, "internal_profile", false, "Enables CPU and memory profiling of the model checker")
     flag.Parse()
 
     args := flag.Args()
@@ -179,7 +179,7 @@ func main() {
 }
 
 func startModelChecker(err error, p1 *modelchecker.Processor) (*modelchecker.Node, *modelchecker.Node, time.Time) {
-    if internal_profile {
+    if internalProfile {
         startCpuProfile()
         defer pprof.StopCPUProfile()
     }
@@ -187,7 +187,7 @@ func startModelChecker(err error, p1 *modelchecker.Processor) (*modelchecker.Nod
     rootNode, failedNode, err := p1.Start()
     endTime := time.Now()
     fmt.Printf("Time taken for model checking: %v\n", endTime.Sub(startTime))
-    if internal_profile {
+    if internalProfile {
         startHeapProfile()
     }
     return rootNode, failedNode, endTime

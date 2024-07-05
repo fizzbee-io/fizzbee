@@ -620,9 +620,6 @@ type Node struct {
 	forkDepth  int
 	stacktrace string
 
-	// ancestors map is used to detect cycles in the graph.
-	// TODO(jp): Should this be an array instead?
-	ancestors map[string]bool
 }
 
 type Link struct {
@@ -641,7 +638,6 @@ func NewNode(process *Process) *Node {
 		actionDepth: 0,
 		forkDepth:   0,
 		stacktrace:  captureStackTrace(),
-		ancestors:   make(map[string]bool),
 	}
 }
 
@@ -658,12 +654,6 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 		Fairness: n.Inbound[0].Fairness,
 		Messages: n.Inbound[0].Messages,
 	})
-	maps.Copy(other.ancestors, n.ancestors)
-}
-
-func (n *Node) Stutter() {
-	//n.Outbound = append(n.Outbound, &Link{Node: n, Name: "stutter"})
-	//n.Inbound = append(n.Inbound, &Link{Node: n, Name: "stutter"})
 }
 
 func (n *Node) Attach() {
@@ -700,12 +690,10 @@ func (n *Node) ForkForAction(process *Process, role *Role, action *ast.Action) *
 		actionDepth: n.actionDepth + 1,
 		forkDepth:   n.forkDepth + 1,
 		stacktrace:  captureStackTrace(),
-		ancestors:   maps.Clone(n.ancestors),
 	}
 	forkNode.Process.Name = actionName
 	forkNode.Inbound = append(forkNode.Inbound, &Link{Node: n, Name: actionName})
 	forkNode.Process.Stats.Increment(actionName)
-	forkNode.ancestors[n.HashCode()] = true
 	return forkNode
 }
 
@@ -718,10 +706,8 @@ func (n *Node) ForkForAlternatePaths(process *Process, name string) *Node {
 		actionDepth: n.actionDepth,
 		forkDepth:   n.forkDepth + 1,
 		stacktrace:  captureStackTrace(),
-		ancestors:   maps.Clone(n.ancestors),
 	}
 	forkNode.Inbound = append(forkNode.Inbound, &Link{Node: n, Name: name})
-	forkNode.ancestors[n.HashCode()] = true
 	return forkNode
 }
 
@@ -870,6 +856,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		}
 
 	}
+	node.CachedHashCode = ""
 	forks, yield := node.currentThread().Execute()
 	// Add the labels from the process to the inbound links
 	// This must be done even for duplicate nodes
@@ -895,12 +882,6 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		// copied to the link/transition when attaching/merging similar to Fairness.
 		if other.Enabled || !node.Enabled {
 			node.Duplicate(other, yield)
-			//if other.ancestors[node.Inbound[0].Node.HashCode()] {
-			//	fmt.Println("Cycle detected")
-			//	// TODO: Check if we can find the liveness here, incrementally.
-			//	// Naively calling the liveness checker here will make it very
-			//	// slow and expensive.
-			//}
 			return false, false
 		} else {
 			node.Attach()
@@ -951,7 +932,6 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 			p.YieldNode(node)
 			node.Name = "yield"
 		}
-		node.Stutter()
 		if len(node.Process.Threads) == 0 {
 			return false, false
 		}
@@ -1050,7 +1030,6 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 }
 
 func (p *Processor) processInit(node *Node) bool {
-	node.Stutter()
 	node.Process.removeCurrentThread()
 	// This is init node, generate a fork for each action in the file
 	for i, action := range p.Files[0].Actions {
