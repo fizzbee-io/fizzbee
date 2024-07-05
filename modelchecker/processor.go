@@ -28,6 +28,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -37,6 +38,8 @@ type DefType string
 const (
 	Function DefType = "function"
 )
+
+var forkLock sync.Mutex
 
 const enableCaptureStackTrace = false
 
@@ -198,6 +201,14 @@ func (p *Process) HasFailedInvariants() bool {
 }
 
 func (p *Process) Fork() *Process {
+	// SetCustomPtrFunc and SetCustomFunc changes the global state,
+	// so while the clone is in progress this should not be changed :(
+	// There is github issue to fix this in the clone library
+	// The only place the clone library is used is to clone the Threads (for the CallStack),
+	// this could probably be pushed down to minimize contention
+	forkLock.Lock()
+	defer forkLock.Unlock()
+
 	refs := make(map[string]*Role)
 	clone.SetCustomPtrFunc(reflect.TypeOf(&Role{}), roleResolveCloneFn(refs, nil, 0))
 	p2 := &Process{
@@ -231,6 +242,14 @@ func (p *Process) Fork() *Process {
 }
 
 func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Process {
+	// SetCustomPtrFunc and SetCustomFunc changes the global state,
+	// so while the clone is in progress this should not be changed :(
+	// There is github issue to fix this in the clone library
+	// The only place the clone library is used is to clone the Threads (for the CallStack),
+	// this could probably be pushed down to minimize contention
+	forkLock.Lock()
+	defer forkLock.Unlock()
+
 	refs := make(map[string]*Role)
 	clone.SetCustomPtrFunc(reflect.TypeOf(&Role{}), roleResolveCloneFn(refs, permutations, alt))
 	clone.SetCustomFunc(reflect.TypeOf(lib.SymmetricValue{}), symmetricValueResolveFn(refs, permutations, alt))
