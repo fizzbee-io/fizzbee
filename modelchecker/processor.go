@@ -654,16 +654,12 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 		Fairness: n.Inbound[0].Fairness,
 		Messages: n.Inbound[0].Messages,
 	})
-<<<<<<< Updated upstream
-=======
-	//maps.Copy(other.ancestors, n.ancestors)
+
+	n.Process = nil
+	n.Inbound = nil
+	n.Outbound = nil
 }
 
-func (n *Node) Stutter() {
-	//n.Outbound = append(n.Outbound, &Link{Node: n, Name: "stutter"})
-	//n.Inbound = append(n.Inbound, &Link{Node: n, Name: "stutter"})
->>>>>>> Stashed changes
-}
 
 func (n *Node) Attach() {
 	if len(n.Inbound) == 0 {
