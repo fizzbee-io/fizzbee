@@ -828,8 +828,9 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 		}
 
 		invariantFailure, symmetryFound := p.processNode(node)
-		if p.visited[node.HashCode()] == nil && !symmetryFound {
-			p.visited[node.HashCode()] = node
+
+		if symmetryFound {
+			continue
 		}
 
 		if invariantFailure && failedNode == nil {
@@ -920,6 +921,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		p.visited[hashCode] = node
 	}
 
+	p.visited[hashCode] = node
 	var failedInvariants map[int][]int
 	if yield {
 		failedInvariants = CheckInvariants(node.Process)
