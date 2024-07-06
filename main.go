@@ -12,6 +12,7 @@ import (
     "os"
     "os/signal"
     "path/filepath"
+    "runtime/pprof"
     "slices"
     "strings"
     "syscall"
@@ -20,10 +21,12 @@ import (
 
 var isPlayground bool
 var simulation bool
+var internalProfile bool
 
 func main() {
     flag.BoolVar(&isPlayground, "playground", false, "is for playground")
     flag.BoolVar(&simulation, "simulation", false, "Runs in simulation mode (DFS). Default=false for no simulation (BFS)")
+    flag.BoolVar(&internalProfile, "internal_profile", false, "Enables CPU and memory profiling of the model checker")
     flag.Parse()
 
     args := flag.Args()
@@ -87,10 +90,9 @@ func main() {
         fmt.Println("\nInterrupted. Stopping state exploration")
         p1.Stop()
     }()
-    startTime := time.Now()
-    rootNode, failedNode, err := p1.Start()
-    endTime := time.Now()
-    fmt.Printf("Time taken for model checking: %v\n", endTime.Sub(startTime))
+
+    rootNode, failedNode, endTime := startModelChecker(err, p1)
+
     outDir, err := createOutputDir(dirPath)
     if err != nil {
         return
@@ -130,20 +132,22 @@ func main() {
         var failurePath []*modelchecker.Link
         var failedInvariant *modelchecker.InvariantPosition
         nodes, deadlock, _ := modelchecker.GetAllNodes(rootNode)
-        if deadlock != nil && stateConfig.GetDeadlockDetection() {
+        if deadlock != nil && stateConfig.GetDeadlockDetection() && !p1.Stopped() {
             fmt.Println("DEADLOCK detected")
             fmt.Println("FAILED: Model checker failed")
             dumpFailedNode(deadlock, rootNode, outDir)
             return
         }
-        if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
-            failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode)
-            fmt.Printf("IsLive: %t\n", failedInvariant == nil)
-            fmt.Printf("Time taken to check liveness: %v\n", time.Now().Sub(endTime))
-        } else if stateConfig.GetLiveness() == "eventual" {
-            failurePath, failedInvariant = modelchecker.CheckFastLiveness(nodes)
-            fmt.Printf("IsLive: %t\n", failedInvariant == nil)
-            fmt.Printf("Time taken to check liveness: %v\n", time.Now().Sub(endTime))
+        if !p1.Stopped() {
+            if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
+                failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode)
+                fmt.Printf("IsLive: %t\n", failedInvariant == nil)
+                fmt.Printf("Time taken to check liveness: %v\n", time.Now().Sub(endTime))
+            } else if stateConfig.GetLiveness() == "eventual" {
+                failurePath, failedInvariant = modelchecker.CheckFastLiveness(nodes)
+                fmt.Printf("IsLive: %t\n", failedInvariant == nil)
+                fmt.Printf("Time taken to check liveness: %v\n", time.Now().Sub(endTime))
+            }
         }
 
         if failedInvariant == nil {
@@ -173,6 +177,45 @@ func main() {
 
     dumpFailedNode(failedNode, rootNode, outDir)
 }
+
+func startModelChecker(err error, p1 *modelchecker.Processor) (*modelchecker.Node, *modelchecker.Node, time.Time) {
+    if internalProfile {
+        startCpuProfile()
+        defer pprof.StopCPUProfile()
+    }
+    startTime := time.Now()
+    rootNode, failedNode, err := p1.Start()
+    endTime := time.Now()
+    fmt.Printf("Time taken for model checking: %v\n", endTime.Sub(startTime))
+    if internalProfile {
+        startHeapProfile()
+    }
+    return rootNode, failedNode, endTime
+}
+
+func startCpuProfile() {
+    // Start CPU profiling
+    f, err := os.Create("cpu.pprof")
+    if err != nil {
+        panic(err)
+    }
+    err = pprof.StartCPUProfile(f)
+    if err != nil {
+        panic(err)
+    }
+}
+
+func startHeapProfile() {
+    f, err := os.Create("mem.pprof")
+    if err != nil {
+        panic(err)
+    }
+    err = pprof.WriteHeapProfile(f)
+    if err != nil {
+        panic(err)
+    }
+}
+
 
 func dumpFailedNode(failedNode *modelchecker.Node, rootNode *modelchecker.Node, outDir string) {
     failurePath := make([]*modelchecker.Link, 0)

@@ -54,6 +54,7 @@ func (s *Stack[T]) Pop() (T, bool) {
 	}
 
 	res := s.s[l-1]
+	s.s[l-1] = v
 	s.s = s.s[:l-1]
 	if l > 1 {
 		s.peak = &s.s[l-2]

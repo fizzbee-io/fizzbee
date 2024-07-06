@@ -46,7 +46,7 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[strin
         if err != nil {
             return nil, err
         }
-        newSet := starlark.NewSet(10)
+        newSet := starlark.NewSet(len(newList))
         for _, v := range newList {
             err := newSet.Insert(v)
             if err != nil {
@@ -190,6 +190,7 @@ func deepCloneStringDict(v *starlark.Dict, refs map[string]*Role, src map[lib.Sy
 func deepCloneIterableToList(iterable starlark.Iterable, refs map[string]*Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) ([]starlark.Value, error) {
     var newList []starlark.Value
     iter := iterable.Iterate()
+    defer iter.Done()
     var x starlark.Value
     for iter.Next(&x) {
         clonedElem, err := deepCloneStarlarkValueWithPermutations(x, refs, permutations, alt)

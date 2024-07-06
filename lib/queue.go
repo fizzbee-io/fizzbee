@@ -55,11 +55,12 @@ func (q *Queue[T]) Dequeue() (T, bool) {
     q.lock.Lock()
     defer q.lock.Unlock()
     front := q.list.Front()
+    var v T
     if front == nil {
-        var v T
         return v, false
     }
     res := front.Value.([]T)[0]
+    front.Value.([]T)[0] = v
     front.Value = front.Value.([]T)[1:]
     if len(front.Value.([]T)) == 0 {
         q.list.Remove(front)

@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"go.starlark.net/starlark"
 	"hash"
+	"maps"
 	"sort"
 	"strings"
 )
@@ -203,6 +204,13 @@ func (s *Scope) getAllVisibleVariablesResolveRoles(dict starlark.StringDict, rol
 	}
 	// TODO: Resolve roles
 	CopyDict(s.vars, dict, roleRefs, nil, 0)
+}
+
+func (s *Scope) getAllVisibleVariablesToDictNoCopy(dict starlark.StringDict) {
+	if s.parent != nil {
+		s.parent.getAllVisibleVariablesToDictNoCopy(dict)
+	}
+	maps.Copy(dict, s.vars)
 }
 
 func (s *Scope) getAllVisibleVariablesToDict(dict starlark.StringDict) {
@@ -493,7 +501,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 	t.Process.Fairness = t.Fairness
 	oldRolesCount := len(t.Process.Roles)
 	if stmt.PyStmt != nil {
-		vars := t.Process.GetAllVariables()
+		vars := t.Process.GetAllVariablesNocopy()
 		_, err := t.Process.Evaluator.ExecPyStmt(t.getFileName(), stmt.PyStmt, vars)
 		t.Process.PanicOnError(stmt.PyStmt.GetSourceInfo(), fmt.Sprintf("Error executing statement: %s", stmt.PyStmt.GetCode()), err)
 		t.Process.updateAllVariablesInScope(vars)
@@ -507,7 +515,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		// So there is no yield in between an if condition evaluation and elif
 		// or if/elif/else and the first statement of the block.
 		for i, branch := range stmt.IfStmt.Branches {
-			vars := t.Process.GetAllVariables()
+			vars := t.Process.GetAllVariablesNocopy()
 			conditionExpr := branch.GetConditionExpr()
 			cond, err := t.Process.Evaluator.EvalExpr(t.getFileName(), conditionExpr, vars)
 
@@ -530,10 +538,11 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		if len(stmt.AnyStmt.LoopVars) != 1 {
 			panic("Loop variables must be exactly one")
 		}
-		vars := t.Process.GetAllVariables()
+		vars := t.Process.GetAllVariablesNocopy()
 		val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.AnyStmt.IterExpr, vars)
 		// TODO: This source info should be for the pyExpr not the anyStmt
 		t.Process.PanicOnError(stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.AnyStmt.PyExpr), err)
+		t.Process.updateAllVariablesInScope(vars)
 		//PanicOnError(err)
 		rangeVal, _ := val.(starlark.Iterable)
 		iter := rangeVal.Iterate()
@@ -561,7 +570,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			}
 
 			if stmt.AnyStmt.Condition != "" {
-				vars := fork.GetAllVariables()
+				vars := fork.GetAllVariablesNocopy()
 				vars[stmt.AnyStmt.LoopVars[0]] = x
 				cond, err := fork.Evaluator.EvalExpr(t.getFileName(), stmt.AnyStmt.ConditionExpr, vars)
 				//PanicOnError(err)
@@ -602,7 +611,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		if len(stmt.ForStmt.LoopVars) != 1 {
 			panic("Loop variables must be exactly one. TODO: Support multiple loop variables")
 		}
-		vars := t.Process.GetAllVariables()
+		vars := t.Process.GetAllVariablesNocopy()
 		val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.ForStmt.IterExpr, vars)
 		// TODO: This source info should be for the pyExpr not the forStmt
 		t.Process.PanicOnError(stmt.ForStmt.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.ForStmt.PyExpr), err)
@@ -646,7 +655,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		currentFrame.pc = currentFrame.pc + ".Block.$"
 		return nil, false
 	} else if stmt.RequireStmt != nil {
-		vars := t.Process.GetAllVariables()
+		vars := t.Process.GetAllVariablesNocopy()
 		cond, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.RequireStmt.GetConditionExpr(), vars)
 		//PanicOnError(err)
 		t.Process.PanicOnError(stmt.RequireStmt.GetSourceInfo(), fmt.Sprintf("Error checking condition: %s", stmt.RequireStmt.Condition), err)
@@ -657,7 +666,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			return nil, false
 		}
 	} else if stmt.ReturnStmt != nil {
-		vars := t.Process.GetAllVariables()
+		vars := t.Process.GetAllVariablesNocopy()
 		var val starlark.Value = starlark.None
 		if stmt.ReturnStmt.PyExpr != "" {
 			v, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.ReturnStmt.GetExpr(), vars)
@@ -747,7 +756,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			}
 			code.WriteString(")")
 			pyEquivStmt := &ast.PyStmt{Code: code.String(), SourceInfo: stmt.CallStmt.GetSourceInfo()}
-			vars := t.Process.GetAllVariables()
+			vars := t.Process.GetAllVariablesNocopy()
 			_, err := t.Process.Evaluator.ExecPyStmt(t.getFileName(), pyEquivStmt, vars)
 			t.Process.PanicOnError(stmt.CallStmt.GetSourceInfo(), fmt.Sprintf("Error executing statement: %s", pyEquivStmt.GetCode()), err)
 			t.Process.updateAllVariablesInScope(vars)
@@ -762,8 +771,10 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			newFrame := &CallFrame{FileIndex: def.fileIndex, pc: def.path + ".Block", Name: stmt.CallStmt.Name}
 			newFrame.vars = starlark.StringDict{}
 			hasNamedArgs := false
+			vars := t.Process.GetAllVariablesNocopy()
 			for i, arg := range stmt.CallStmt.Args {
-				vars := t.Process.GetAllVariables()
+				// TODO: Is it really required to GetAllVariables() for each arg?
+
 				val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), arg.Expr, vars)
 				// TODO: This source info should be for the pyExpr not the callStmt
 				t.Process.PanicOnError(arg.Expr.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", arg.PyExpr), err)
@@ -781,11 +792,11 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 					panic("Named arguments must come after positional arguments")
 				}
 			}
+			vars = t.Process.GetAllVariablesNocopy()
 			for _, param := range def.params {
 				// handle default values
 				if _, ok := newFrame.vars[param.Name]; !ok {
 					if param.DefaultPyExpr != "" {
-						vars := t.Process.GetAllVariables()
 						val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), param.DefaultExpr, vars)
 						t.Process.PanicOnError(param.GetDefaultExpr().GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", param.DefaultPyExpr), err)
 						//PanicOnError(err)
@@ -839,7 +850,7 @@ func (t *Thread) getFileName() string {
 }
 
 func (t *Thread) getDefinition(stmt *ast.Statement) (*Role, *Definition) {
-	vars := t.Process.GetAllVariables()
+	vars := t.Process.GetAllVariablesNocopy()
 	if stmt.CallStmt.Receiver != "" {
 		if receiver, ok := vars[stmt.CallStmt.Receiver]; ok {
 			if receiver.Type() == "role" {
@@ -918,7 +929,7 @@ func (t *Thread) executeWhileStatement() ([]*Process, bool) {
 	if stmt.Flow == ast.Flow_FLOW_PARALLEL || stmt.Flow == ast.Flow_FLOW_ONEOF {
 		panic("Only atomic/serial flow is supported for while statements")
 	}
-	vars := t.Process.GetAllVariables()
+	vars := t.Process.GetAllVariablesNocopy()
 	cond, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.GetIterExpr(), vars)
 	t.Process.PanicOnError(stmt.GetIterExpr().GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.PyExpr), err)
 	//PanicOnError(err)

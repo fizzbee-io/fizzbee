@@ -16,6 +16,10 @@ while [[ "$1" =~ ^- ]]; do
       simulation=true
       shift
       ;;
+    --internal_profile )
+      internal_profile=true
+      shift
+      ;;
     -h | --help )
       usage
       ;;
@@ -67,6 +71,9 @@ echo "Model checking" $json_filename
 args=()
 if [ "$simulation" = true ]; then
   args+=("--simulation")
+fi
+if [ "$internal_profile" = true ]; then
+  args+=("--internal_profile")
 fi
 args+=("$json_filename")
 

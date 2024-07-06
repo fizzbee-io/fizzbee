@@ -111,6 +111,8 @@ type Process struct {
 	Enabled		bool                   `json:"-"`
 
 	Roles 	    []*Role                `json:"roles"`
+
+	CachedHashCode string              `json:"-"`
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
@@ -211,6 +213,8 @@ func (p *Process) Fork() *Process {
 
 	refs := make(map[string]*Role)
 	clone.SetCustomPtrFunc(reflect.TypeOf(&Role{}), roleResolveCloneFn(refs, nil, 0))
+	clone.SetCustomFunc(reflect.TypeOf(starlark.Set{}), starlarkSetResolveFn(refs, nil, 0))
+	clone.SetCustomFunc(reflect.TypeOf(starlark.Dict{}), starlarkDictResolveFn(refs, nil, 0))
 	p2 := &Process{
 		Name:        p.Name,
 		Heap:        p.Heap.Clone(refs, nil, 0),
@@ -252,6 +256,8 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 
 	refs := make(map[string]*Role)
 	clone.SetCustomPtrFunc(reflect.TypeOf(&Role{}), roleResolveCloneFn(refs, permutations, alt))
+	clone.SetCustomFunc(reflect.TypeOf(starlark.Dict{}), starlarkDictResolveFn(refs, permutations, alt))
+	clone.SetCustomFunc(reflect.TypeOf(starlark.Set{}), starlarkSetResolveFn(refs, permutations, alt))
 	clone.SetCustomFunc(reflect.TypeOf(lib.SymmetricValue{}), symmetricValueResolveFn(refs, permutations, alt))
 	p2 := &Process{
 		Name:        p.Name,
@@ -389,6 +395,9 @@ func (n *Node) GetName() string {
 }
 
 func (p *Process) HashCode() string {
+	if p.CachedHashCode != "" {
+		return p.CachedHashCode
+	}
 	threadHashes := make([]string, len(p.Threads))
 	for i, thread := range p.Threads {
 		threadHashes[i] = thread.HashCode()
@@ -414,7 +423,8 @@ func (p *Process) HashCode() string {
 	// hash the heap variables as well
 	heapHash := p.Heap.HashCode()
 	h.Write([]byte(heapHash))
-	return fmt.Sprintf("%x", h.Sum(nil))
+	p.CachedHashCode = fmt.Sprintf("%x", h.Sum(nil))
+	return p.CachedHashCode
 }
 
 func (p *Process) currentThread() *Thread {
@@ -463,6 +473,31 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 	return dict
 }
 
+// GetAllVariablesNocopy returns all variables visible in the Current thread, without deep copying.
+// This includes state variables and variables from the Current thread's variables in the top call frame
+func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
+	// Shallow clone the globals
+	dict := maps.Clone(p.Heap.globals)
+
+	maps.Copy(dict, p.Heap.state)
+	frame := p.currentThread().currentFrame()
+	if frame.obj != nil {
+		dict["self"] = frame.obj
+	}
+	maps.Copy(dict, frame.vars)
+	frame.scope.getAllVisibleVariablesToDictNoCopy(dict)
+
+	maps.Copy(dict, lib.Builtins)
+
+	for _, file := range p.Files {
+		for _, role := range file.Roles {
+			symmetric := slices.Contains(role.Modifiers, "symmetric")
+			dict[role.Name] = CreateRoleBuiltin(role.Name, symmetric, &p.Roles)
+		}
+	}
+	return dict
+}
+
 func (p *Process) updateAllVariablesInScope(dict starlark.StringDict) {
 	frame := p.currentThread().currentFrame()
 	for k, v := range dict {
@@ -494,7 +529,7 @@ func (p *Process) updateVariableInternal(key string, val starlark.Value, frame *
 		frame.obj = val.(*Role)
 		return
 	}
-	if val.Type() == "builtin_function_or_method" {
+	if val.Type() == "builtin_function_or_method" || val.Type() == "module" {
 		return
 	}
 	// Declare the variable to the Current scope
@@ -585,9 +620,6 @@ type Node struct {
 	forkDepth  int
 	stacktrace string
 
-	// ancestors map is used to detect cycles in the graph.
-	// TODO(jp): Should this be an array instead?
-	ancestors map[string]bool
 }
 
 type Link struct {
@@ -606,7 +638,6 @@ func NewNode(process *Process) *Node {
 		actionDepth: 0,
 		forkDepth:   0,
 		stacktrace:  captureStackTrace(),
-		ancestors:   make(map[string]bool),
 	}
 }
 
@@ -623,13 +654,12 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 		Fairness: n.Inbound[0].Fairness,
 		Messages: n.Inbound[0].Messages,
 	})
-	maps.Copy(other.ancestors, n.ancestors)
+
+	n.Process = nil
+	n.Inbound = nil
+	n.Outbound = nil
 }
 
-func (n *Node) Stutter() {
-	//n.Outbound = append(n.Outbound, &Link{Node: n, Name: "stutter"})
-	//n.Inbound = append(n.Inbound, &Link{Node: n, Name: "stutter"})
-}
 
 func (n *Node) Attach() {
 	if len(n.Inbound) == 0 {
@@ -665,12 +695,10 @@ func (n *Node) ForkForAction(process *Process, role *Role, action *ast.Action) *
 		actionDepth: n.actionDepth + 1,
 		forkDepth:   n.forkDepth + 1,
 		stacktrace:  captureStackTrace(),
-		ancestors:   maps.Clone(n.ancestors),
 	}
 	forkNode.Process.Name = actionName
 	forkNode.Inbound = append(forkNode.Inbound, &Link{Node: n, Name: actionName})
 	forkNode.Process.Stats.Increment(actionName)
-	forkNode.ancestors[n.HashCode()] = true
 	return forkNode
 }
 
@@ -683,10 +711,8 @@ func (n *Node) ForkForAlternatePaths(process *Process, name string) *Node {
 		actionDepth: n.actionDepth,
 		forkDepth:   n.forkDepth + 1,
 		stacktrace:  captureStackTrace(),
-		ancestors:   maps.Clone(n.ancestors),
 	}
 	forkNode.Inbound = append(forkNode.Inbound, &Link{Node: n, Name: name})
-	forkNode.ancestors[n.HashCode()] = true
 	return forkNode
 }
 
@@ -793,8 +819,9 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 		}
 
 		invariantFailure, symmetryFound := p.processNode(node)
-		if p.visited[node.HashCode()] == nil && !symmetryFound {
-			p.visited[node.HashCode()] = node
+
+		if symmetryFound {
+			continue
 		}
 
 		if invariantFailure && failedNode == nil {
@@ -834,6 +861,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		}
 
 	}
+	node.CachedHashCode = ""
 	forks, yield := node.currentThread().Execute()
 	// Add the labels from the process to the inbound links
 	// This must be done even for duplicate nodes
@@ -859,12 +887,6 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		// copied to the link/transition when attaching/merging similar to Fairness.
 		if other.Enabled || !node.Enabled {
 			node.Duplicate(other, yield)
-			//if other.ancestors[node.Inbound[0].Node.HashCode()] {
-			//	fmt.Println("Cycle detected")
-			//	// TODO: Check if we can find the liveness here, incrementally.
-			//	// Naively calling the liveness checker here will make it very
-			//	// slow and expensive.
-			//}
 			return false, false
 		} else {
 			node.Attach()
@@ -885,6 +907,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		p.visited[hashCode] = node
 	}
 
+	p.visited[hashCode] = node
 	var failedInvariants map[int][]int
 	if yield {
 		failedInvariants = CheckInvariants(node.Process)
@@ -914,7 +937,6 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 			p.YieldNode(node)
 			node.Name = "yield"
 		}
-		node.Stutter()
 		if len(node.Process.Threads) == 0 {
 			return false, false
 		}
@@ -1013,7 +1035,6 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 }
 
 func (p *Processor) processInit(node *Node) bool {
-	node.Stutter()
 	node.Process.removeCurrentThread()
 	// This is init node, generate a fork for each action in the file
 	for i, action := range p.Files[0].Actions {
@@ -1117,13 +1138,24 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *Role, rol
 	newNode.Process.NewThread()
 	newNode.Process.Current = len(newNode.Process.Threads) - 1
 
+	frame := newNode.currentThread().currentFrame()
 	if role != nil {
-		newNode.currentThread().currentFrame().obj = role
-		newNode.currentThread().currentFrame().pc = fmt.Sprintf("Roles[%d].Actions[%d]", roleIndex, actionIndex)
-		newNode.currentThread().currentFrame().Name = role.Name + "." + action.Name
+		for _, r := range newNode.Roles {
+			if r.RefStringShort() == role.RefStringShort() {
+				frame.obj = r
+				break
+			}
+		}
+		if frame.obj == nil {
+			// This happens when a node is removed from the heap. But we cannot remove the node from
+			// the old node's `roles` list. So, we filter it out here.
+			return
+		}
+		frame.pc = fmt.Sprintf("Roles[%d].Actions[%d]", roleIndex, actionIndex)
+		frame.Name = role.Name + "." + action.Name
 	} else {
-		newNode.currentThread().currentFrame().pc = fmt.Sprintf("Actions[%d]", actionIndex)
-		newNode.currentThread().currentFrame().Name = action.Name
+		frame.pc = fmt.Sprintf("Actions[%d]", actionIndex)
+		frame.Name = action.Name
 	}
 
 	p.queue.Add(newNode)

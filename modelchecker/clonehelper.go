@@ -3,6 +3,7 @@ package modelchecker
 import (
 	"github.com/fizzbee-io/fizzbee/lib"
 	"github.com/jayaprabhakar/go-clone"
+	"go.starlark.net/starlark"
 	"reflect"
 	"unsafe"
 )
@@ -110,5 +111,32 @@ func symmetricValueResolveFn(refs map[string]*Role, permutations map[lib.Symmetr
 		oldVal := old.Interface().(lib.SymmetricValue)
 		newVal, _ := deepCloneStarlarkValueWithPermutations(oldVal, refs, permutations, alt)
 		*value = newVal.(lib.SymmetricValue)
+	}
+}
+
+func starlarkDictResolveFn(refs map[string]*Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
+	return func(allocator *clone.Allocator, old, new reflect.Value) {
+		value := new.Addr().Interface().(*starlark.Dict)
+		oldVal := old.Addr().Interface().(*starlark.Dict)
+		newVal, _ := deepCloneStarlarkValueWithPermutations(oldVal, refs, permutations, alt)
+		newDict := newVal.(*starlark.Dict)
+		for _, item := range newDict.Items() {
+			_ = value.SetKey(item[0], item[1])
+		}
+	}
+}
+
+func starlarkSetResolveFn(refs map[string]*Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
+	return func(allocator *clone.Allocator, old, new reflect.Value) {
+		value := new.Addr().Interface().(*starlark.Set)
+		oldVal := old.Addr().Interface().(*starlark.Set)
+		newVal, _ := deepCloneStarlarkValueWithPermutations(oldVal, refs, permutations, alt)
+		newSet := newVal.(*starlark.Set)
+		iter := newSet.Iterate()
+		defer iter.Done()
+		var x starlark.Value
+		for iter.Next(&x) {
+			_ = value.Insert(x)
+		}
 	}
 }
