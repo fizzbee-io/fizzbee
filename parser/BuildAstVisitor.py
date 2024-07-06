@@ -894,7 +894,7 @@ class BuildAstVisitor(FizzParserVisitor):
                     print("visitAny_assign_stmt childProto",childProto, child)
                     raise Exception("visitAny_assign_stmt childProto (unknown) type", childProto.__class__.__name__, dir(childProto), childProto)
             elif hasattr(child, 'getSymbol'):
-                if child.getSymbol().type == FizzParser.COLON:
+                if child.getSymbol().type == FizzParser.COLON or child.getSymbol().type == FizzParser.IF:
                     has_condition = True
                     print("visitAny_assign_stmt has_condition", has_condition)
                     continue
