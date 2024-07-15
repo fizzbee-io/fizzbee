@@ -202,3 +202,12 @@ func deepCloneIterableToList(iterable starlark.Iterable, refs map[string]*Role, 
     }
     return newList, nil
 }
+
+
+func DeepCopyBuiltIn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+    if len(args) != 1 {
+        return nil, fmt.Errorf("expected: only a single arg, but had %d args", len(args))
+    }
+    value, err := deepCloneStarlarkValue(args[0], nil)
+    return value, err
+}
