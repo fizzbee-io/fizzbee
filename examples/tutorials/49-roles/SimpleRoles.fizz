@@ -19,7 +19,7 @@ role Coordinator:
               vote = rm.Prepare()
 
             if vote == 'prepared':
-              prepared.add(rm)
+              prepared.add(rm.__id__)
             elif vote == 'aborted':
               atomic:
                 self.Abort()
@@ -44,20 +44,20 @@ role Coordinator:
 
 role Participant:
     action Init:
-        state = 'init'
+        self.state = 'init'
 
 
     atomic func Prepare():
         oneof:
-          state = 'prepared'
-          state = 'abort'
-        return state
+          self.state = 'prepared'
+          self.state = 'abort'
+        return self.state
 
     func Abort():
-          state = 'aborted'
+          self.state = 'aborted'
 
     func Commit():
-          state = 'committed'
+          self.state = 'committed'
 
 
 action Init:
