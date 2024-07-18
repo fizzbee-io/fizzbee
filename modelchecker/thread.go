@@ -536,7 +536,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		//	panic("Only atomic flow is supported for any statements")
 		//}
 		if len(stmt.AnyStmt.LoopVars) != 1 {
-			panic("Loop variables must be exactly one")
+			t.Process.PanicIfFalse(false, stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Exactly one loop variable expected. Got %d in %s", len(stmt.AnyStmt.LoopVars), stmt.AnyStmt.LoopVars))
 		}
 		vars := t.Process.GetAllVariablesNocopy()
 		val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.AnyStmt.IterExpr, vars)
@@ -545,7 +545,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		t.Process.updateAllVariablesInScope(vars)
 		//PanicOnError(err)
 		rangeVal, ok := val.(starlark.Iterable)
-		t.Process.PanicIfFalse(stmt.AnyStmt.IterExpr.GetSourceInfo(), fmt.Sprintf("Loop expression %s must be iterable, got %s", stmt.AnyStmt.PyExpr, val.Type()), ok)
+		t.Process.PanicIfFalse(ok, stmt.AnyStmt.IterExpr.GetSourceInfo(), fmt.Sprintf("Loop expression %s must be iterable, got %s", stmt.AnyStmt.PyExpr, val.Type()))
 
 		iter := rangeVal.Iterate()
 		defer iter.Done()
@@ -608,10 +608,10 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		//t.currentFrame().pc = fmt.Sprintf("%s.AnyStmt.Block", t.currentPc())
 	} else if stmt.ForStmt != nil {
 		if stmt.ForStmt.Flow == ast.Flow_FLOW_ONEOF {
-			panic("Oneof flow is supported for any statements")
+			panic("Oneof flow is not supported for any statements")
 		}
 		if len(stmt.ForStmt.LoopVars) != 1 {
-			panic("Loop variables must be exactly one. TODO: Support multiple loop variables")
+			t.Process.PanicIfFalse(false, stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Loop variables must be exactly one. TODO: Support multiple loop variables. Got %d in %s", len(stmt.ForStmt.LoopVars), stmt.ForStmt.LoopVars))
 		}
 		vars := t.Process.GetAllVariablesNocopy()
 		val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.ForStmt.IterExpr, vars)
@@ -619,7 +619,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		t.Process.PanicOnError(stmt.ForStmt.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.ForStmt.PyExpr), err)
 
 		rangeVal, ok := val.(starlark.Iterable)
-		t.Process.PanicIfFalse(stmt.ForStmt.IterExpr.GetSourceInfo(), fmt.Sprintf("Loop expression %s must be iterable, got %s", stmt.ForStmt.PyExpr, val.Type()), ok)
+		t.Process.PanicIfFalse(ok, stmt.ForStmt.IterExpr.GetSourceInfo(), fmt.Sprintf("Loop expression %s must be iterable, got %s", stmt.ForStmt.PyExpr, val.Type()))
 		iter := rangeVal.Iterate()
 		defer iter.Done()
 
