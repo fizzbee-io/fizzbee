@@ -559,7 +559,7 @@ func (p *Process) PanicOnError(sourceInfo *ast.SourceInfo, msg string, nestedErr
 	}
 }
 
-func (p *Process) PanicIfFalse(sourceInfo *ast.SourceInfo, msg string, ok bool)  {
+func (p *Process) PanicIfFalse(ok bool, sourceInfo *ast.SourceInfo, msg string) {
 	if !ok {
 		panic(p.NewModelError(sourceInfo, msg, nil))
 	}
