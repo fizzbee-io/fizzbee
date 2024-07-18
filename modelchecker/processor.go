@@ -559,6 +559,12 @@ func (p *Process) PanicOnError(sourceInfo *ast.SourceInfo, msg string, nestedErr
 	}
 }
 
+func (p *Process) PanicIfFalse(sourceInfo *ast.SourceInfo, msg string, ok bool)  {
+	if !ok {
+		panic(p.NewModelError(sourceInfo, msg, nil))
+	}
+}
+
 func (p *Process) RecordCall(callerFrame *CallFrame, receiverFrame *CallFrame, flow ast.Flow) {
 	if callerFrame.obj == nil && receiverFrame.obj == nil {
 		return

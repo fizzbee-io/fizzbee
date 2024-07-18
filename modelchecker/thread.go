@@ -544,7 +544,9 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		t.Process.PanicOnError(stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.AnyStmt.PyExpr), err)
 		t.Process.updateAllVariablesInScope(vars)
 		//PanicOnError(err)
-		rangeVal, _ := val.(starlark.Iterable)
+		rangeVal, ok := val.(starlark.Iterable)
+		t.Process.PanicIfFalse(stmt.AnyStmt.IterExpr.GetSourceInfo(), fmt.Sprintf("Loop expression %s must be iterable, got %s", stmt.AnyStmt.PyExpr, val.Type()), ok)
+
 		iter := rangeVal.Iterate()
 		defer iter.Done()
 
@@ -617,7 +619,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		t.Process.PanicOnError(stmt.ForStmt.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.ForStmt.PyExpr), err)
 
 		rangeVal, ok := val.(starlark.Iterable)
-		PanicIfFalse(ok, fmt.Sprintf("Loop variable must be iterable, got %s", val.Type()))
+		t.Process.PanicIfFalse(stmt.ForStmt.IterExpr.GetSourceInfo(), fmt.Sprintf("Loop expression %s must be iterable, got %s", stmt.ForStmt.PyExpr, val.Type()), ok)
 		iter := rangeVal.Iterate()
 		defer iter.Done()
 
