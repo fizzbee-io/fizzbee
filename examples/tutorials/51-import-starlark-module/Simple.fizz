@@ -1,0 +1,28 @@
+
+LIMIT = 3
+
+role A:
+  action Init:
+    self.value = 0
+
+  def my_method(self, val):
+    print("my_method", val, self, LIMIT)
+    self.value = (val + 1)%LIMIT
+
+
+action Init:
+    r1 = A()
+
+atomic action DoSomething1:
+    #r1.value = change_value1(r1.value)
+    r1.my_method(r1.value)
+
+#atomic action DoSomething2:
+#    sample_2.change_value(r1)
+
+def change_value1(value):
+    if value == 1:
+        return 2
+    print("current value1 ...:", value)
+    print()
+    return 1

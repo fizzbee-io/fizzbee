@@ -871,6 +871,20 @@ func findRoleInitAction(process *Process, role *Role) (int, string) {
 	for i, file := range process.Files {
 		for j, r := range file.Roles {
 			if r.Name == role.Name {
+				global := maps.Clone(process.Heap.globals)
+				for _, stmt := range r.Stmts {
+					_, err := process.Evaluator.ExecPyStmt(file.GetSourceInfo().GetFileName(), stmt.PyStmt, global)
+					process.PanicOnError(stmt.GetSourceInfo(), fmt.Sprintf("Error executing statement: %s", stmt.PyStmt.GetCode()), err)
+				}
+				for k, v := range global {
+					if process.Heap.globals[k] == v {
+						// original global did not change
+						continue
+					}
+
+					err := role.AddMethod(k, v)
+					process.PanicOnError(nil, fmt.Sprintf("Error adding method %s to role %s", k, role.Name), err)
+				}
 				for k, action := range r.Actions {
 					if action.Name == "Init" {
 						nextPath := fmt.Sprintf("Roles[%d].Actions[%d].Block", j, k)

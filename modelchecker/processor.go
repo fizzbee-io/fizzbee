@@ -21,8 +21,12 @@ import (
 	"github.com/fizzbee-io/fizzbee/lib"
 	"github.com/jayaprabhakar/go-clone"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
+	"go.starlark.net/syntax"
+	"log"
 	"maps"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"slices"
@@ -81,6 +85,46 @@ func (s *Stats) Increment(action string) {
 	s.Counts[action]++
 }
 
+
+func HandleModules(path string) map[string]starlark.Value {
+	//module_file := path + "/sample.star"
+	files, err := filepath.Glob(path + "/*.star")
+	if err != nil {
+		log.Fatal(err)
+	}
+	modules := make(map[string]starlark.Value)
+	for _, file := range files {
+		fmt.Println(file)
+		moduleName := getFileNameWithoutExt(file)
+		module := LoadModule(file)
+		modules[moduleName] = &starlarkstruct.Module{Name: moduleName, Members: module}
+	}
+	return modules
+}
+
+func getFileNameWithoutExt(filePath string) string {
+	// Extract filename with extension
+	fileNameWithExt := filepath.Base(filePath)
+
+	// Get filename without extension
+	return fileNameWithExt[:len(fileNameWithExt)-len(filepath.Ext(fileNameWithExt))]
+}
+
+
+func LoadModule(moduleFile string) starlark.StringDict {
+	thread := &starlark.Thread{
+		Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
+	}
+	options := &syntax.FileOptions{Set: true, GlobalReassign: true, TopLevelControl: true}
+	predeclared := starlark.StringDict{}
+	globals, err := starlark.ExecFileOptions(options, thread, moduleFile, nil, predeclared)
+	if err != nil {
+		panic(err)
+		return nil
+	}
+	return globals
+}
+
 type Process struct {
 	Heap             *Heap		      `json:"state"`
 	Threads          []*Thread        `json:"threads"`
@@ -113,6 +157,8 @@ type Process struct {
 	Roles 	    []*Role                `json:"roles"`
 
 	CachedHashCode string              `json:"-"`
+
+	Modules	 map[string]starlark.Value `json:"-"`
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
@@ -144,7 +190,6 @@ func NewProcess(name string, files []*ast.File, parent *Process) *Process {
 						roleName:  role.Name,
 						path:      fmt.Sprintf("Roles[%d].Functions[%d]", r, j),
 					}
-
 				}
 			}
 		}
@@ -225,6 +270,7 @@ func (p *Process) Fork() *Process {
 		Files:       p.Files,
 		Returns:     make(starlark.StringDict),
 		SymbolTable: p.SymbolTable,
+		Modules: 	 p.Modules,
 		Labels:      make([]string, 0),
 		Messages: 	 make([]*ast.Message, 0),
 		Stats:       p.Stats.Clone(),
@@ -269,6 +315,7 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 		Files:       p.Files,
 		Returns:     make(starlark.StringDict),
 		SymbolTable: p.SymbolTable,
+		Modules: 	 p.Modules,
 		Labels:      make([]string, 0),
 		Messages: 	 make([]*ast.Message, 0),
 		Stats:       p.Stats.Clone(),
@@ -464,6 +511,7 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 	frame.scope.getAllVisibleVariablesResolveRoles(dict, roleRefs)
 	maps.Copy(dict, lib.Builtins)
 	dict["deepcopy"] = starlark.NewBuiltin("deepcopy", DeepCopyBuiltIn)
+	maps.Copy(dict, p.Modules)
 
 	for _, file := range p.Files {
 		for _, role := range file.Roles {
@@ -490,6 +538,7 @@ func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
 
 	maps.Copy(dict, lib.Builtins)
 	dict["deepcopy"] = starlark.NewBuiltin("deepcopy", DeepCopyBuiltIn)
+	maps.Copy(dict, p.Modules)
 
 	for _, file := range p.Files {
 		for _, role := range file.Roles {
@@ -731,9 +780,10 @@ type Processor struct {
 	visited map[string]*Node
 	config  *ast.StateSpaceOptions
 	stopped bool
+	dirPath string
 }
 
-func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool) *Processor {
+func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, dirPath string) *Processor {
 
 	var collection lib.LinearCollection[*Node]
 	if simulation {
@@ -747,6 +797,7 @@ func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation 
 		queue:   collection,
 		visited: make(map[string]*Node),
 		config:  options,
+		dirPath: dirPath,
 	}
 }
 
@@ -771,6 +822,12 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 	startTime := time.Now()
 	process := NewProcess("init", p.Files, nil)
 
+
+	modules := make(map[string]starlark.Value)
+	if p.dirPath != "" {
+		modules = HandleModules(p.dirPath)
+	}
+	process.Modules = modules
 	p.Init = NewNode(process)
 	init = p.Init
 

@@ -81,7 +81,7 @@ func main() {
         stateConfig.Options.MaxConcurrentActions = 2
     }
 
-    p1 := modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation)
+    p1 := modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, dirPath)
 
     c := make(chan os.Signal)
     signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -177,6 +177,7 @@ func main() {
 
     dumpFailedNode(failedNode, rootNode, outDir)
 }
+
 
 func startModelChecker(err error, p1 *modelchecker.Processor) (*modelchecker.Node, *modelchecker.Node, time.Time) {
     if internalProfile {
