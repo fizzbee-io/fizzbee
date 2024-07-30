@@ -430,6 +430,22 @@ class BuildAstVisitor(FizzParserVisitor):
         print("func_call", func_call)
         return func_call
 
+    # Visit a parse tree produced by FizzParser#funcdef.
+    def visitFuncdef(self, ctx:FizzParser.FuncdefContext):
+        print("\n\nvisitFuncdef",ctx.__class__.__name__)
+        print("visitFuncdef",ctx.getText())
+        print("visitFuncdef",dir(ctx))
+        print("visitFuncdef children count",ctx.getChildCount())
+        print("visitFuncdef full text\n", self.get_py_str(ctx))
+
+        function = ast.Function(source_info=get_source_info(ctx))
+
+        py_str = self.get_py_str(ctx)
+        print("visitExpr_stmt full text\n",py_str)
+        py_str = BuildAstVisitor.transform_code(py_str)
+        return ast.PyStmt(code=py_str, source_info=get_source_info(ctx))
+
+
     # Visit a parse tree produced by FizzParser#arglist.
     def visitArglist(self, ctx:FizzParser.ArglistContext):
         arguments = []
@@ -682,7 +698,7 @@ class BuildAstVisitor(FizzParserVisitor):
             print("visitStmt child",childStmt.getText())
         childProto = self.visit(childStmt)
         if childProto is None:
-            print("childProto is None for visitStmt", childStmt.__name__)
+            print("childProto is None for visitStmt", childStmt)
             return None
         if isinstance(childProto, ast.PyStmt):
             return ast.Statement(py_stmt=childProto)

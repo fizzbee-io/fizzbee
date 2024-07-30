@@ -22,6 +22,24 @@ type Role struct {
 	Symmetric bool
 	Params *lib.Struct
 	Fields *lib.Struct
+	Methods map[string]*starlark.Function
+}
+
+func (r *Role) AddMethod(name string, val starlark.Value) error {
+	if val.Type() != "function" {
+		return fmt.Errorf("value must be a function. got %s", val.Type())
+	}
+	r.Methods[name] = val.(*starlark.Function)
+	return nil
+}
+
+func AddSelfParamBuiltin(role *Role, val *starlark.Function) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		newArgs := make([]starlark.Value, 0, len(args)+1)
+		newArgs = append(newArgs, role)
+		newArgs = append(newArgs, args...)
+		return val.CallInternal(thread, newArgs, kwargs)
+	}
 }
 
 func (r *Role) SetField(name string, val starlark.Value) error {
@@ -49,6 +67,8 @@ func (r *Role) Attr(name string) (starlark.Value, error) {
 		return v, nil
 	} else if _, ok := err.(starlark.NoSuchAttrError); !ok {
 		return v, err
+	} else if v, ok := r.Methods[name]; ok {
+		return starlark.NewBuiltin(name, AddSelfParamBuiltin(r, v)), nil
 	}
 	return lib.BuiltinAttr(r, name, roleMethods)
 }
@@ -147,7 +167,7 @@ func CreateRoleBuiltin(name string, symmetric bool, roles *[]*Role) *starlark.Bu
 			roleRefs[name] = 1
 		}
 		fields := lib.FromStringDict(starlark.String("fields"), starlark.StringDict{})
-		r := &Role{ref: nextRef, Name: name, Symmetric: symmetric, Params: params, Fields: fields}
+		r := &Role{ref: nextRef, Name: name, Symmetric: symmetric, Params: params, Fields: fields, Methods: map[string]*starlark.Function{}}
 		*roles = append(*roles, r)
 		return r, nil
 	})
