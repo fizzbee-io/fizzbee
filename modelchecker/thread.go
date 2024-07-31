@@ -877,7 +877,7 @@ func findRoleInitAction(process *Process, role *Role) (int, string) {
 					process.PanicOnError(stmt.GetSourceInfo(), fmt.Sprintf("Error executing statement: %s", stmt.PyStmt.GetCode()), err)
 				}
 				for k, v := range global {
-					if process.Heap.globals[k] == v {
+					if v.Type() != "function" || process.Heap.globals[k] == v {
 						// original global did not change
 						continue
 					}
