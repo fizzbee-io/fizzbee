@@ -62,10 +62,11 @@ func main() {
     if err != nil {
         if errors.Is(err, os.ErrNotExist) {
             if isPlayground {
+                deadlockDetection := true
                 stateConfig = &ast.StateSpaceOptions{
                     Options: &ast.Options{MaxActions: 100, MaxConcurrentActions: 2},
                     Liveness: "strict",
-                    DeadlockDetection: true,
+                    DeadlockDetection: &deadlockDetection,
                 }
             } else {
                 fmt.Println("fizz.yaml not found. Using default options")
@@ -80,7 +81,8 @@ func main() {
     if f.GetFrontMatter().GetYaml() != "" {
         fmStateConfig, err := modelchecker.ReadOptionsFromYamlString(f.GetFrontMatter().GetYaml())
         if err != nil {
-            return
+            fmt.Println("Error parsing YAML frontmatter:", err)
+            os.Exit(1)
         }
         proto.Merge(stateConfig, fmStateConfig)
     }
@@ -91,6 +93,10 @@ func main() {
     }
     if stateConfig.Options.MaxConcurrentActions == 0 {
         stateConfig.Options.MaxConcurrentActions = min(2, stateConfig.Options.MaxActions)
+    }
+    if stateConfig.DeadlockDetection == nil {
+        deadlockDetection := true
+        stateConfig.DeadlockDetection = &deadlockDetection
     }
 
     p1 := modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, dirPath)
