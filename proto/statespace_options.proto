@@ -4,6 +4,7 @@ option go_package = "fizz/proto";
 
 message StateSpaceOptions {
   Options options = 1;
+  // Set options like max_actions for individual action instead.
   map<string, Options> action_options = 2;
 
   // If true, continue exploring the state space of other paths that did not fail.
@@ -14,8 +15,13 @@ message StateSpaceOptions {
   // for debugging
   bool continue_path_on_invariant_failures = 4;
 
+  // Default is 'strict' implies liveness check is done TLA+, the other options are 'probabilistic'
+  // The probabilisitic model checker is not integrated into the playground but has to be run
+  // separately in commandline.
   string liveness = 5;
 
+  // Enable (default/true) or disable deadlock detection
+  // Note: explicitly setting it optional, makes this tristate
   optional bool deadlock_detection = 6;
 }
 
