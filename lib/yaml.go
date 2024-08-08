@@ -16,13 +16,16 @@ func ReadProtoFromFile(filename string, protomsg proto.Message) error {
     }
     defer yamlFile.Close()
     yamlBytes, _ := io.ReadAll(yamlFile)
+    return ReadProtoFromBytes(yamlBytes, protomsg)
+}
+
+func ReadProtoFromBytes(yamlBytes []byte, protomsg proto.Message) error {
     jsonBytes, err := YamlToJson(yamlBytes)
     if err != nil {
         return err
     }
 
-    err = protojson.Unmarshal(jsonBytes, protomsg)
-    return err
+    return protojson.Unmarshal(jsonBytes, protomsg)
 }
 
 // JsonToYaml converts JSON data to YAML data

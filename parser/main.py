@@ -1,3 +1,5 @@
+
+import re
 import sys
 from antlr4 import *
 from parser.FizzLexer import FizzLexer
@@ -6,6 +8,7 @@ from parser.FizzParserVisitor import FizzParserVisitor
 from antlr4.error.Errors import RecognitionException
 from antlr4.error.ErrorListener import ErrorListener
 from proto.fizz_ast_pb2 import File
+import proto.fizz_ast_pb2 as ast
 from parser.BuildAstVisitor import BuildAstVisitor
 from google.protobuf.json_format import MessageToJson
 from pathlib import Path
@@ -47,12 +50,32 @@ class MyErrorListener( ErrorListener ):
 def main(argv):
     if len(sys.argv) > 1:
         filename = sys.argv[1]
-        stream = FileStream(filename)
+        with open(filename, 'r') as file:
+            content = file.read()
     else:
-        stream = InputStream(sys.stdin.readline())
+        content = sys.stdin.read()
         filename = "stdin"
+
+    yaml_frontmatter, content_without_frontmatter = extract_yaml_frontmatter(content)
+    # Output or store the YAML frontmatter as needed
+    print("YAML Frontmatter:")
+    print(yaml_frontmatter)
+    print("FizzBee code:")
+    print(content_without_frontmatter)
+
+    # Continue with ANTLR parsing
+    stream = InputStream(content_without_frontmatter)
     lexer = FizzLexer(stream)
     tokens = CommonTokenStream(lexer)
+
+    # if len(sys.argv) > 1:
+    #     filename = sys.argv[1]
+    #     stream = FileStream(filename)
+    # else:
+    #     stream = InputStream(sys.stdin.readline())
+    #     filename = "stdin"
+    # lexer = FizzLexer(stream)
+    # tokens = CommonTokenStream(lexer)
 #    tokens.fill()
     parser = FizzParser(tokens)
     parser.addErrorListener( MyErrorListener() )
@@ -65,6 +88,8 @@ def main(argv):
     print('calling BuildAstVisitor() dir', dir(BuildAstVisitor(stream, file_path=filename)))
     answer = BuildAstVisitor(stream, file_path=filename).visit(tree)
     print("proto:\n", answer)
+    # answer.front_matter = ast.FrontMatter(yaml=yaml_frontmatter)
+    answer.front_matter.yaml = yaml_frontmatter
     json_obj = MessageToJson(answer)
     print("json:\n", json_obj)
     writeJsonToFile(sys.argv[1], json_obj)
@@ -98,6 +123,16 @@ def writeJsonToFile(input_filename, jsondata):
     # Write jsondata to the new file
     with output_path.open('w') as json_file:
         json_file.write(jsondata)
+
+
+# Define a function to extract YAML frontmatter
+def extract_yaml_frontmatter(text):
+    yaml_frontmatter_pattern = re.compile(r'^---\s*([\s\S]*?)\s*---\s*\n', re.MULTILINE)
+    match = yaml_frontmatter_pattern.match(text)
+    if match:
+        return match.group(1), yaml_frontmatter_pattern.sub('', text)
+    return '', text
+
 
 if __name__ == '__main__':
     main(sys.argv)

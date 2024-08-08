@@ -9,6 +9,7 @@ import (
     "github.com/fizzbee-io/fizzbee/lib"
     "github.com/fizzbee-io/fizzbee/modelchecker"
     "google.golang.org/protobuf/encoding/protojson"
+    "google.golang.org/protobuf/proto"
     "os"
     "os/signal"
     "path/filepath"
@@ -76,9 +77,20 @@ func main() {
         }
 
     }
+    if f.GetFrontMatter().GetYaml() != "" {
+        fmStateConfig, err := modelchecker.ReadOptionsFromYamlString(f.GetFrontMatter().GetYaml())
+        if err != nil {
+            return
+        }
+        proto.Merge(stateConfig, fmStateConfig)
+    }
+
     fmt.Printf("StateSpaceOptions: %+v\n", stateConfig)
+    if stateConfig.Options.MaxActions == 0 {
+        stateConfig.Options.MaxActions = 100
+    }
     if stateConfig.Options.MaxConcurrentActions == 0 {
-        stateConfig.Options.MaxConcurrentActions = 2
+        stateConfig.Options.MaxConcurrentActions = min(2, stateConfig.Options.MaxActions)
     }
 
     p1 := modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, dirPath)
