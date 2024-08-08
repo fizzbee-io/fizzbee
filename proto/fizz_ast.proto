@@ -14,6 +14,15 @@ message File {
   repeated Function functions = 8;
   repeated Statement stmts = 9;
   repeated Role roles = 10;
+
+  repeated string py_code = 11;
+
+  FrontMatter front_matter = 12;
+}
+
+message FrontMatter {
+  SourceInfo source_info = 1;
+  string yaml = 2;
 }
 
 message Role {
