@@ -16,7 +16,7 @@ message StateSpaceOptions {
 
   string liveness = 5;
 
-  bool deadlock_detection = 6;
+  optional bool deadlock_detection = 6;
 }
 
 message Options {
