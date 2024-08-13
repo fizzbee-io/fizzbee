@@ -615,7 +615,7 @@ func (p *Process) PanicIfFalse(ok bool, sourceInfo *ast.SourceInfo, msg string) 
 }
 
 func (p *Process) RecordCall(callerFrame *CallFrame, receiverFrame *CallFrame, flow ast.Flow) {
-	if callerFrame.obj == nil && receiverFrame.obj == nil {
+	if (callerFrame.obj == nil && receiverFrame.obj == nil) || callerFrame.obj == receiverFrame.obj {
 		return
 	}
 	msg := &ast.Message{
@@ -637,7 +637,7 @@ func (p *Process) RecordCall(callerFrame *CallFrame, receiverFrame *CallFrame, f
 }
 
 func (p *Process) RecordReturn(callerFrame *CallFrame, receiverFrame *CallFrame, val starlark.Value, flow ast.Flow) {
-	if callerFrame.obj == nil && receiverFrame.obj == nil {
+	if (callerFrame.obj == nil && receiverFrame.obj == nil) || callerFrame.obj == receiverFrame.obj {
 		return
 	}
 	msg := &ast.Message{
@@ -986,7 +986,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	}
 	if !yield {
 		for _, fork := range forks {
-			newNode := node.ForkForAlternatePaths(fork, "")
+			newNode := node.ForkForAlternatePaths(fork, fork.Name)
 			p.queue.Add(newNode)
 		}
 		return false, false
