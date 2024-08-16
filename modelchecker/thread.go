@@ -31,8 +31,69 @@ func (h *Heap) GetSymmetryDefs() []*lib.SymmetricValues {
 }
 
 func (h *Heap) MarshalJSON() ([]byte, error) {
-	return StringDictToJson(h.state)
+	return StringDictToJsonRetainType(h.state)
 }
+
+func StringDictToJsonRetainType(strDict starlark.StringDict) ([]byte, error) {
+	m := normalizeTypes(strDict)
+	bytes, err := lib.MarshalJSON(m)
+	//fmt.Println("----\n", m, "\n---\n", string(bytes))
+	return bytes, err
+}
+
+func normalizeTypes(stringDict starlark.StringDict) starlark.StringDict {
+	m := make(starlark.StringDict, len(stringDict))
+	for k, v := range stringDict {
+		if v.Type() == "set" {
+			// Convert set to a list.
+			iter := v.(starlark.Iterable).Iterate()
+
+			var x starlark.Value
+			var list []string
+			for iter.Next(&x) {
+				list = append(list, x.String())
+			}
+			sort.Strings(list)
+			values := make([]starlark.Value, len(list))
+			for i, s := range list {
+				values[i] = starlark.String(s)
+			}
+			m[k] = starlark.NewList(values)
+			iter.Done()
+			continue
+		} else if v.Type() == "dict" {
+			// Convert map keys to a sorted list and add re-add them.
+			dict := v.(*starlark.Dict)
+			keys := dict.Keys()
+
+			var list []string
+			var keyMap = make(map[string]starlark.Value)
+			for _, x := range keys {
+				list = append(list, x.String())
+				keyMap[x.String()] = x
+			}
+			sort.Strings(list)
+
+			newDict := starlark.NewDict(len(list))
+			for _, x := range list {
+				key := keyMap[x]
+				val, _, _ := dict.Get(key)
+				err := newDict.SetKey(key, val)
+				PanicOnError(err)
+			}
+			m[k] = newDict
+			continue
+		} else if v.Type() == "role" {
+			// Convert v to Role
+			role := v.(*lib.Role)
+			m[k] = starlark.String(role.RefString())
+		}
+		// list is okay. no changes needed
+		m[k] = v
+	}
+	return m
+}
+
 
 func StringDictToMap(stringDict starlark.StringDict) map[string]string {
 	m := make(map[string]string, len(stringDict))
@@ -122,7 +183,7 @@ func (h *Heap) insert(k string, v starlark.Value) bool {
 	return true
 }
 
-func (h *Heap) Clone(refs map[string]*Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Heap {
+func (h *Heap) Clone(refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Heap {
 	return &Heap{state:CloneDict(h.state, refs, permutations, alt), globals:h.globals}
 }
 
@@ -192,13 +253,13 @@ func (s *Scope) Lookup(name string) (starlark.Value, bool) {
 }
 
 // GetAllVisibleVariables returns all variables visible in this scope.
-func (s *Scope) GetAllVisibleVariables(roleRefs map[string]*Role) starlark.StringDict {
+func (s *Scope) GetAllVisibleVariables(roleRefs map[string]*lib.Role) starlark.StringDict {
 	dict := starlark.StringDict{}
 	s.getAllVisibleVariablesResolveRoles(dict, roleRefs)
 	return dict
 }
 
-func (s *Scope) getAllVisibleVariablesResolveRoles(dict starlark.StringDict, roleRefs map[string]*Role) {
+func (s *Scope) getAllVisibleVariablesResolveRoles(dict starlark.StringDict, roleRefs map[string]*lib.Role) {
 	if s.parent != nil {
 		s.parent.getAllVisibleVariablesResolveRoles(dict, roleRefs)
 	}
@@ -214,15 +275,15 @@ func (s *Scope) getAllVisibleVariablesToDictNoCopy(dict starlark.StringDict) {
 }
 
 func (s *Scope) getAllVisibleVariablesToDict(dict starlark.StringDict) {
-	s.getAllVisibleVariablesResolveRoles(dict, make(map[string]*Role))
+	s.getAllVisibleVariablesResolveRoles(dict, make(map[string]*lib.Role))
 }
 
-func CloneDict(oldDict starlark.StringDict, refs map[string]*Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) starlark.StringDict {
+func CloneDict(oldDict starlark.StringDict, refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) starlark.StringDict {
 	return CopyDict(oldDict, nil, refs, permutations, alt)
 }
 
 // CopyDict copies values `from` to `to` overriding existing values. If the `to` is nil, creates a new dict.
-func CopyDict(from starlark.StringDict, to starlark.StringDict, refs map[string]*Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) starlark.StringDict {
+func CopyDict(from starlark.StringDict, to starlark.StringDict, refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) starlark.StringDict {
 	if to == nil {
 		to = make(starlark.StringDict)
 	}
@@ -253,7 +314,7 @@ type CallFrame struct {
 	vars starlark.StringDict
 
 	callerAssignVarNames []string
-	obj                  *Role
+	obj                  *lib.Role
 }
 
 func (c *CallFrame) MarshalJSON() ([]byte, error) {
@@ -851,12 +912,12 @@ func (t *Thread) getFileName() string {
 	return t.Process.Files[0].GetSourceInfo().GetFileName()
 }
 
-func (t *Thread) getDefinition(stmt *ast.Statement) (*Role, *Definition) {
+func (t *Thread) getDefinition(stmt *ast.Statement) (*lib.Role, *Definition) {
 	vars := t.Process.GetAllVariablesNocopy()
 	if stmt.CallStmt.Receiver != "" {
 		if receiver, ok := vars[stmt.CallStmt.Receiver]; ok {
 			if receiver.Type() == "role" {
-				role := receiver.(*Role)
+				role := receiver.(*lib.Role)
 				return role, t.Process.SymbolTable[role.Name + "." + stmt.CallStmt.Name]
 			} else {
 				return nil, nil
@@ -867,7 +928,7 @@ func (t *Thread) getDefinition(stmt *ast.Statement) (*Role, *Definition) {
 	return nil, t.Process.SymbolTable[stmt.CallStmt.Name]
 }
 
-func findRoleInitAction(process *Process, role *Role) (int, string) {
+func findRoleInitAction(process *Process, role *lib.Role) (int, string) {
 	for i, file := range process.Files {
 		for j, r := range file.Roles {
 			if r.Name == role.Name {
@@ -1034,7 +1095,7 @@ func (t *Thread) executeEndOfBlock() bool {
 
 			if action, ok := protobuf.(*ast.Action); ok {
 				if action.Name == "Init" {
-					roleRefs := make(map[string]*Role)
+					roleRefs := make(map[string]*lib.Role)
 					for i, role := range t.Process.Roles {
 						roleRefs[role.RefString()] = t.Process.Roles[i]
 					}

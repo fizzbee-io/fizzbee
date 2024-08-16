@@ -8,6 +8,7 @@ go_library(
         "permutations.go",
         "queue.go",
         "stack.go",
+        "starlark_role.go",
         "starlark_types.go",
         "starlarkstruct.go",
         "tri_state.go",
