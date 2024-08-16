@@ -18,6 +18,28 @@ func MarshalJSON(obj interface{}) ([]byte, error) {
     if m, ok := obj.(starlark.Value); ok {
         return MarshalJSONStarlarkValue(m)
     }
+    if m, ok := obj.(starlark.StringDict); ok {
+        buf := strings.Builder{}
+        buf.WriteString("{")
+        first := true
+        for k, v := range m {
+            if !first {
+                buf.WriteString(",")
+            } else {
+                first = false
+            }
+            buf.WriteString("\"")
+            buf.WriteString(k)
+            buf.WriteString("\":")
+            b, err := MarshalJSONStarlarkValue(v)
+            if err != nil {
+                return nil, err
+            }
+            buf.Write(b)
+        }
+        buf.WriteString("}")
+        return []byte(buf.String()), nil
+    }
     return json.Marshal(obj)
 }
 
@@ -109,7 +131,10 @@ func MarshalJSONStarlarkValue(m starlark.Value) ([]byte, error) {
         }
         buf.WriteString("}")
         return []byte(buf.String()), nil
-    case "record", "role", "model_value", "symmetric_value":
+    case "role":
+        role := m.(*Role)
+        return json.Marshal(role.RefString())
+    case "record", "model_value", "symmetric_value":
         return json.Marshal(m)
     default:
         fmt.Println("Warn: unknown type: ", m.Type(), " value: ", m.String(), " using default json.Marshal")

@@ -15,7 +15,6 @@ go_library(
         "processor.go",
         "protopath.go",
         "starlark.go",
-        "starlark_role.go",
         "testconstants.go",
         "thread.go",
     ],

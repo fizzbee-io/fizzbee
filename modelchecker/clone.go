@@ -6,11 +6,11 @@ import (
     "go.starlark.net/starlark"
 )
 
-func deepCloneStarlarkValue(value starlark.Value, refs map[string]*Role) (starlark.Value, error) {
+func deepCloneStarlarkValue(value starlark.Value, refs map[string]*lib.Role) (starlark.Value, error) {
     return deepCloneStarlarkValueWithPermutations(value, refs, nil, 0)
 }
 
-func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[string]*Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) (starlark.Value, error) {
+func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) (starlark.Value, error) {
     // starlark has other types as well "string.elems", "string.codepoints", "function"
     // "builtin_function_or_method".
     switch value.Type() {
@@ -128,11 +128,11 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[strin
         }
         return newBag, nil
     case "role":
-        r := value.(*Role)
+        r := value.(*lib.Role)
         prefix := r.Name
-        id := r.ref
+        id := r.Ref
         if r.IsSymmetric() {
-            oldSymVal := lib.NewSymmetricValue(r.Name, r.ref)
+            oldSymVal := lib.NewSymmetricValue(r.Name, r.Ref)
             newVal, err := deepCloneStarlarkValueWithPermutations(oldSymVal, refs, permutations, alt)
             if err != nil {
                 return nil, err
@@ -142,7 +142,7 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[strin
             id = newRoleId.GetId()
         }
 
-        newRefString := GenerateRefString(prefix, id)
+        newRefString := lib.GenerateRefString(prefix, id)
 
         if cached, ok := refs[newRefString]; ok {
             return cached, nil
@@ -155,8 +155,8 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[strin
             if err != nil {
                 return nil, err
             }
-            newRole := &Role{
-                ref:       id,
+            newRole := &lib.Role{
+                Ref:       id,
                 Name:      prefix,
                 Symmetric: r.IsSymmetric(),
                 Params:    params.(*lib.Struct),
@@ -171,7 +171,7 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[strin
     }
 }
 
-func deepCloneStringDict(v *starlark.Dict, refs map[string]*Role, src map[lib.SymmetricValue][]lib.SymmetricValue, alt int) (*starlark.Dict, error) {
+func deepCloneStringDict(v *starlark.Dict, refs map[string]*lib.Role, src map[lib.SymmetricValue][]lib.SymmetricValue, alt int) (*starlark.Dict, error) {
     newDict := &starlark.Dict{}
     for _, item := range v.Items() {
         k, v := item[0], item[1]
@@ -188,7 +188,7 @@ func deepCloneStringDict(v *starlark.Dict, refs map[string]*Role, src map[lib.Sy
     return newDict, nil
 }
 
-func deepCloneIterableToList(iterable starlark.Iterable, refs map[string]*Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) ([]starlark.Value, error) {
+func deepCloneIterableToList(iterable starlark.Iterable, refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) ([]starlark.Value, error) {
     var newList []starlark.Value
     iter := iterable.Iterate()
     defer iter.Done()

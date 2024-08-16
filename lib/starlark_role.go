@@ -1,8 +1,7 @@
-package modelchecker
+package lib
 
 import (
 	"fmt"
-	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
 	"strings"
 )
@@ -17,11 +16,11 @@ var (
 	roleRefs = map[string]int{}
 )
 type Role struct {
-	ref int
+	Ref  int
 	Name string
 	Symmetric bool
-	Params *lib.Struct
-	Fields *lib.Struct
+	Params *Struct
+	Fields *Struct
 	Methods map[string]*starlark.Function
 }
 
@@ -49,7 +48,7 @@ func (r *Role) SetField(name string, val starlark.Value) error {
 		return fmt.Errorf("cannot set immutable field %s on role %s", name, r.Name)
 	} else if _, ok := err.(starlark.NoSuchAttrError); !ok {
 		return err
-	} else if v, _ := lib.BuiltinAttr(r, name, roleMethods); v != nil {
+	} else if v, _ := BuiltinAttr(r, name, roleMethods); v != nil {
 		return fmt.Errorf("cannot override builtins %s on role %s", name, r.Name)
 	}
 	return r.Fields.SetField(name, val)
@@ -70,23 +69,23 @@ func (r *Role) Attr(name string) (starlark.Value, error) {
 	} else if v, ok := r.Methods[name]; ok {
 		return starlark.NewBuiltin(name, AddSelfParamBuiltin(r, v)), nil
 	}
-	return lib.BuiltinAttr(r, name, roleMethods)
+	return BuiltinAttr(r, name, roleMethods)
 }
 
 func (r *Role) GetId() starlark.Value {
 	if r.Symmetric {
-		return lib.NewSymmetricValue(r.Name, r.ref)
+		return NewSymmetricValue(r.Name, r.Ref)
 	}
-	return lib.NewModelValue(r.Name, r.ref)
+	return NewModelValue(r.Name, r.Ref)
 }
 
 func (r *Role) AttrNames() []string {
-	return lib.BuiltinAttrNames(roleMethods)
+	return BuiltinAttrNames(roleMethods)
 }
 
 func (r *Role) String() string {
 	b := strings.Builder{}
-	b.WriteString(fmt.Sprintf("role %s#%d (", r.Name, r.ref))
+	b.WriteString(fmt.Sprintf("role %s#%d (", r.Name, r.Ref))
 	if len(r.Params.AttrNames()) > 0 {
 		b.WriteString(r.Params.String())
 		b.WriteString(",")
@@ -100,7 +99,7 @@ func (r *Role) MarshalJSON() ([]byte, error) {
 	b := strings.Builder{}
 	b.WriteString("{")
 	b.WriteString(fmt.Sprintf("\"name\": \"%s\",", r.Name))
-	b.WriteString(fmt.Sprintf("\"ref\": %d,", r.ref))
+	b.WriteString(fmt.Sprintf("\"ref\": %d,", r.Ref))
 	b.WriteString(fmt.Sprintf("\"ref_string\": \"%s\",", r.RefStringShort()))
 	b.WriteString("\"params\": ")
 	params, err := r.Params.MarshalJSON()
@@ -121,7 +120,7 @@ func (r *Role) MarshalJSON() ([]byte, error) {
 }
 
 func (r *Role) RefString() string {
-	return GenerateRefString(r.Name, r.ref)
+	return GenerateRefString(r.Name, r.Ref)
 }
 
 func GenerateRefString(name string, ref int) string {
@@ -129,7 +128,7 @@ func GenerateRefString(name string, ref int) string {
 }
 
 func (r *Role) RefStringShort() string {
-	return fmt.Sprintf("%s#%d", r.Name, r.ref)
+	return fmt.Sprintf("%s#%d", r.Name, r.Ref)
 }
 
 func (r *Role) Type() string {
@@ -159,15 +158,15 @@ var _ starlark.Value = (*Role)(nil)
 func CreateRoleBuiltin(name string, symmetric bool, roles *[]*Role) *starlark.Builtin {
 	return starlark.NewBuiltin(name, func(t *starlark.Thread, b *starlark.Builtin,
 		args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		params := lib.FromKeywords(starlark.String("params"), kwargs)
+		params := FromKeywords(starlark.String("params"), kwargs)
 		nextRef := roleRefs[name]
 		if roleRefs[name] > 0 {
 			roleRefs[name]++
 		} else {
 			roleRefs[name] = 1
 		}
-		fields := lib.FromStringDict(starlark.String("fields"), starlark.StringDict{})
-		r := &Role{ref: nextRef, Name: name, Symmetric: symmetric, Params: params, Fields: fields, Methods: map[string]*starlark.Function{}}
+		fields := FromStringDict(starlark.String("fields"), starlark.StringDict{})
+		r := &Role{Ref: nextRef, Name: name, Symmetric: symmetric, Params: params, Fields: fields, Methods: map[string]*starlark.Function{}}
 		*roles = append(*roles, r)
 		return r, nil
 	})

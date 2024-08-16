@@ -154,7 +154,7 @@ type Process struct {
 
 	Enabled		bool                   `json:"-"`
 
-	Roles 	    []*Role                `json:"roles"`
+	Roles 	    []*lib.Role `json:"roles"`
 
 	CachedHashCode string              `json:"-"`
 
@@ -256,8 +256,8 @@ func (p *Process) Fork() *Process {
 	forkLock.Lock()
 	defer forkLock.Unlock()
 
-	refs := make(map[string]*Role)
-	clone.SetCustomPtrFunc(reflect.TypeOf(&Role{}), roleResolveCloneFn(refs, nil, 0))
+	refs := make(map[string]*lib.Role)
+	clone.SetCustomPtrFunc(reflect.TypeOf(&lib.Role{}), roleResolveCloneFn(refs, nil, 0))
 	clone.SetCustomFunc(reflect.TypeOf(starlark.Set{}), starlarkSetResolveFn(refs, nil, 0))
 	clone.SetCustomFunc(reflect.TypeOf(starlark.Dict{}), starlarkDictResolveFn(refs, nil, 0))
 	p2 := &Process{
@@ -287,7 +287,8 @@ func (p *Process) Fork() *Process {
 		clonedThreads[i].Process = p2
 	}
 	p2.Threads = clonedThreads
-	p2.Roles = MapValues(refs)
+	p2.Roles = MapRoleValuesInOrder(refs, p.Roles)
+
 	return p2
 }
 
@@ -300,8 +301,8 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 	forkLock.Lock()
 	defer forkLock.Unlock()
 
-	refs := make(map[string]*Role)
-	clone.SetCustomPtrFunc(reflect.TypeOf(&Role{}), roleResolveCloneFn(refs, permutations, alt))
+	refs := make(map[string]*lib.Role)
+	clone.SetCustomPtrFunc(reflect.TypeOf(&lib.Role{}), roleResolveCloneFn(refs, permutations, alt))
 	clone.SetCustomFunc(reflect.TypeOf(starlark.Dict{}), starlarkDictResolveFn(refs, permutations, alt))
 	clone.SetCustomFunc(reflect.TypeOf(starlark.Set{}), starlarkSetResolveFn(refs, permutations, alt))
 	clone.SetCustomFunc(reflect.TypeOf(lib.SymmetricValue{}), symmetricValueResolveFn(refs, permutations, alt))
@@ -331,16 +332,16 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 		clonedThreads[i].Process = p2
 	}
 	p2.Threads = clonedThreads
-	p2.Roles = MapValues(refs)
+	p2.Roles = MapRoleValuesInOrder(refs, p.Roles)
 	return p2
 }
 
-// MapValues returns the values of the map m.
+// MapRoleValuesInOrder returns the values of the map m.
 // The values will be in an indeterminate order.
-func MapValues[M ~map[K]V, K comparable, V any](m M) []V {
-	r := make([]V, 0, len(m))
-	for _, v := range m {
-		r = append(r, v)
+func MapRoleValuesInOrder(m map[string]*lib.Role, oldList []*lib.Role) []*lib.Role {
+	r := make([]*lib.Role, 0, len(m))
+	for _, v := range oldList {
+		r = append(r, m[v.RefString()])
 	}
 	return r
 }
@@ -493,7 +494,7 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 	// Shallow clone the globals
 	dict := maps.Clone(p.Heap.globals)
 
-	roleRefs := make(map[string]*Role)
+	roleRefs := make(map[string]*lib.Role)
 	for i, role := range p.Roles {
 		roleRefs[role.RefString()] = p.Roles[i]
 	}
@@ -516,7 +517,7 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 	for _, file := range p.Files {
 		for _, role := range file.Roles {
 			symmetric := slices.Contains(role.Modifiers, "symmetric")
-			dict[role.Name] = CreateRoleBuiltin(role.Name, symmetric, &p.Roles)
+			dict[role.Name] = lib.CreateRoleBuiltin(role.Name, symmetric, &p.Roles)
 		}
 	}
 	return dict
@@ -543,7 +544,7 @@ func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
 	for _, file := range p.Files {
 		for _, role := range file.Roles {
 			symmetric := slices.Contains(role.Modifiers, "symmetric")
-			dict[role.Name] = CreateRoleBuiltin(role.Name, symmetric, &p.Roles)
+			dict[role.Name] = lib.CreateRoleBuiltin(role.Name, symmetric, &p.Roles)
 		}
 	}
 	return dict
@@ -577,7 +578,7 @@ func (p *Process) updateVariableInternal(key string, val starlark.Value, frame *
 		return
 	}
 	if key == "self" {
-		frame.obj = val.(*Role)
+		frame.obj = val.(*lib.Role)
 		return
 	}
 	if val.Type() == "builtin_function_or_method" || val.Type() == "module" {
@@ -732,7 +733,7 @@ func (n *Node) Attach() {
 	})
 }
 
-func (n *Node) ForkForAction(process *Process, role *Role, action *ast.Action) *Node {
+func (n *Node) ForkForAction(process *Process, role *lib.Role, action *ast.Action) *Node {
 	if process == nil {
 		process = n.Process
 	}
@@ -1054,7 +1055,7 @@ func (p *Process) GetSymmetryRoles() []*lib.SymmetricValues {
 	m := make(map[string][]lib.SymmetricValue)
 	for _, role := range p.Roles {
 		if role.IsSymmetric() {
-			m[role.Name] = append(m[role.Name], lib.NewSymmetricValue(role.Name, role.ref))
+			m[role.Name] = append(m[role.Name], lib.NewSymmetricValue(role.Name, role.Ref))
 		}
 	}
 	roleSymValues := make([]*lib.SymmetricValues, 0, len(m))
@@ -1185,7 +1186,7 @@ func (p *Processor) YieldFork(node *Node, process *Process) {
 	}
 }
 
-func (p *Processor) scheduleAction(node *Node, process *Process, role *Role, roleIndex int,
+func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role, roleIndex int,
 	action *ast.Action, actionIndex int) {
 
 	statProcess := process
