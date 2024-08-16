@@ -23,11 +23,13 @@ import (
 var isPlayground bool
 var simulation bool
 var internalProfile bool
+var saveStates bool
 
 func main() {
     flag.BoolVar(&isPlayground, "playground", false, "is for playground")
     flag.BoolVar(&simulation, "simulation", false, "Runs in simulation mode (DFS). Default=false for no simulation (BFS)")
     flag.BoolVar(&internalProfile, "internal_profile", false, "Enables CPU and memory profiling of the model checker")
+    flag.BoolVar(&saveStates, "save_states", false, "Save states to disk")
     flag.Parse()
 
     args := flag.Args()
@@ -171,7 +173,7 @@ func main() {
         if failedInvariant == nil {
             fmt.Println("PASSED: Model checker completed successfully")
             //nodes, _, _ := modelchecker.GetAllNodes(rootNode)
-            if len(f.GetRoles()) > 0 || !isPlayground {
+            if len(f.GetRoles()) > 0 || !isPlayground || saveStates {
                 nodeFiles, linkFileNames, err := modelchecker.GenerateProtoOfJson(nodes, outDir+"/")
                 if err != nil {
                     fmt.Println("Error generating proto files:", err)
