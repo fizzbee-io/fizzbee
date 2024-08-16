@@ -173,7 +173,7 @@ func main() {
         if failedInvariant == nil {
             fmt.Println("PASSED: Model checker completed successfully")
             //nodes, _, _ := modelchecker.GetAllNodes(rootNode)
-            if len(f.GetRoles()) > 0 || !isPlayground || saveStates {
+            if saveStates || !isPlayground {
                 nodeFiles, linkFileNames, err := modelchecker.GenerateProtoOfJson(nodes, outDir+"/")
                 if err != nil {
                     fmt.Println("Error generating proto files:", err)
