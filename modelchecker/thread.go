@@ -479,6 +479,14 @@ func (t *Thread) Execute() ([]*Process, bool) {
 		case *ast.Block:
 			forks = t.executeBlock()
 		case *ast.Statement:
+			if msg.Label == "checkpoint" && t.Process.EnableCheckpoint {
+				// Checkpoint is enabled if there was already no checkpoint
+				// before or fork or yield before this.
+				fork := t.Process.Fork()
+				fork.Name = fmt.Sprintf("checkpoint")
+				return []*Process{fork}, false
+			}
+			t.Process.EnableCheckpoint = true
 			forks, yield = t.executeStatement()
 		case *ast.ForStmt:
 			forks, yield = t.executeForStatement()
