@@ -159,6 +159,7 @@ type Process struct {
 	CachedHashCode string              `json:"-"`
 
 	Modules	 map[string]starlark.Value `json:"-"`
+	EnableCheckpoint bool 		  `json:"-"`
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
