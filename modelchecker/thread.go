@@ -570,6 +570,11 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 	t.Process.Fairness = t.Fairness
 	oldRolesCount := len(t.Process.Roles)
 	if stmt.PyStmt != nil {
+		if stmt.PyStmt.GetCode() == "pass" {
+			t.Process.Enable()
+			t.currentFrame().pc = t.FindNextProgramCounter()
+			return nil, false
+		}
 		vars := t.Process.GetAllVariablesNocopy()
 		_, err := t.Process.Evaluator.ExecPyStmt(t.getFileName(), stmt.PyStmt, vars)
 		t.Process.PanicOnError(stmt.PyStmt.GetSourceInfo(), fmt.Sprintf("Error executing statement: %s", stmt.PyStmt.GetCode()), err)
@@ -759,7 +764,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 					t.Process.Returns[convertToInvariant(invariant).Name] = val
 					//t.Process.Enable()
 				} else {
-					panic("Unknown protobuf type")
+					panic(fmt.Sprintf("Unknown protobuf type: %T, value %v at path %s", action, action, currentFrame.pc))
 				}
 
 			}
