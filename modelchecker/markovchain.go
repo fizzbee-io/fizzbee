@@ -1,10 +1,12 @@
 package modelchecker
 
 import (
+	"encoding/json"
 	"fizz/proto"
 	"fmt"
 	"github.com/fizzbee-io/fizzbee/lib"
 	"math"
+	"strings"
 )
 
 func matrixVectorProduct(matrix [][]float64, vector []float64) []float64 {
@@ -111,7 +113,7 @@ func steadyStateDistribution(root *Node, perfModel *proto.PerformanceModel) ([]f
 
 
 	// Create the transition matrix
-	nodes, _, _ := getAllNodes(root)
+	nodes, _, _, _ := getAllNodes(root)
 	initialDistribution := make([]float64, len(nodes))
 	initialDistribution[0] = 1.0 // Start from the root node
 	
@@ -210,7 +212,7 @@ func markovChainAnalysis(nodes []*Node, perfModel *proto.PerformanceModel, trans
 
 func FindAbsorptionCosts(root *Node, perfModel *proto.PerformanceModel, fileId int, invariantId int) ([]float64, *Histogram) {
 	// Create the transition matrix
-	nodes, _, yields := getAllNodes(root)
+	nodes, _, _, yields := getAllNodes(root)
 	//fmt.Println("Yields", yields)
 	yields += 1 // Add the root node
 
@@ -258,7 +260,7 @@ func createAbsorptionTransitionMatrix(nodes []*Node, fileId int, invariantId int
 
 func checkLivenessAndCost(root *Node, perfModel *proto.PerformanceModel, fileId int, invariantId int) ([]float64, *Histogram) {
 	// Create the transition matrix
-	nodes, _, yields := getAllNodes(root)
+	nodes, _, _, yields := getAllNodes(root)
 	fmt.Println("Yields", yields)
 	yields += 1 // Add the root node
 
@@ -279,7 +281,7 @@ func checkLivenessAndCost(root *Node, perfModel *proto.PerformanceModel, fileId 
 
 func checkLiveness(root *Node, fileId int, invariantId int) []float64 {
 	// Create the transition matrix
-	nodes, _, _ := getAllNodes(root)
+	nodes, _, _, _ := getAllNodes(root)
 
 	transitionMatrix := createTransitionMatrix(nodes)
 	//fmt.Printf("\nTransition Matrix:\n%v\n", transitionMatrix)
@@ -429,24 +431,24 @@ func transpose(matrix [][]float64) [][]float64 {
 	return result
 }
 
-func GetAllNodes(root *Node) ([]*Node, *Node, int) {
+func GetAllNodes(root *Node) ([]*Node, []string, *Node, int) {
 	return getAllNodes(root)
 
 }
-func getAllNodes(root *Node) ([]*Node, *Node, int) {
+func getAllNodes(root *Node) ([]*Node, []string, *Node, int) {
 	// Implement a traversal to get all nodes in the graph
 	// This can be a simple depth-first or breadth-first traversal
 	// depending on your requirements and graph structure.
 	// For simplicity, let's assume a simple depth-first traversal here.
 
-	result, deadlock, yield := traverseBFS(root)
+	result, msgs, deadlock, yield := traverseBFS(root)
 	//visited := make(map[*Node]bool)
 	//var result []*Node
 	//yield := 0
 	//maxDepth := 0
 	//traverseDFS(root, visited, &result, &yield, &maxDepth)
 	//fmt.Println("Max Depth", maxDepth)
-	return result, deadlock, yield
+	return result, msgs, deadlock, yield
 }
 
 func traverseDFS(node *Node, visited map[*Node]bool, result *[]*Node, yield *int, maxDepth *int) {
@@ -482,7 +484,9 @@ func traverseDFS(node *Node, visited map[*Node]bool, result *[]*Node, yield *int
 	}
 }
 
-func traverseBFS(rootNode *Node) ([]*Node, *Node, int) {
+func traverseBFS(rootNode *Node) ([]*Node, []string, *Node, int) {
+	msgs := make([]string, 0)
+	msgSet := make(map[string]int)
 	type stat struct {
 		index int
 		deadNode *Node
@@ -538,6 +542,62 @@ func traverseBFS(rootNode *Node) ([]*Node, *Node, int) {
 				visited[yieldNode].livePaths++
 				yieldNode = link.Node
 			}
+			if link.Type == "action" {
+				if node == link.Node || node.HashCode() == link.Node.HashCode() {
+					continue
+				}
+				messageKey := link.Name
+				if _, ok := msgSet[messageKey]; ok {
+					msgSet[messageKey]++
+					continue
+				} else {
+					msgSet[messageKey] = 1
+					parts := strings.Split(messageKey, ".")
+					msgName := ""
+					roleName := ""
+					if len(parts) == 2 {
+						roleName = parts[0]
+						msgName = parts[1]
+					} else {
+						continue
+					}
+					m := map[string]interface{} {
+						"type": "action",
+						"receiver": roleName,
+						"name": msgName,
+						"fairness": link.Fairness,
+					}
+
+					b, _ := json.Marshal(m)
+					msgs = append(msgs, string(b))
+				}
+			}
+
+			for _, message := range link.Messages {
+				if message.IsReturn {
+					continue
+				}
+				for _, receiver := range message.Receivers {
+					messageKey := fmt.Sprintf("%s,%s,%s", message.Sender, receiver, message.Name)
+					if _, ok := msgSet[messageKey]; ok {
+						msgSet[messageKey]++
+						continue
+					}
+					msgSet[messageKey] = 1
+
+					m := map[string]interface{} {
+						"type": "message",
+						"sender": message.Sender,
+						"receiver": receiver,
+						"name": message.Name,
+					}
+
+					b, _ := json.Marshal(m)
+					msgs = append(msgs, string(b))
+				}
+
+			}
+
 			queue.Enqueue(&queuedEntry{
 				node:      link.Node,
 				yieldNode: yieldNode,
@@ -554,5 +614,5 @@ func traverseBFS(rootNode *Node) ([]*Node, *Node, int) {
 			break
 		}
 	}
-	return result, deadlock, yield
+	return result, msgs, deadlock, yield
 }

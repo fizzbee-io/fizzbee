@@ -1,6 +1,7 @@
 package modelchecker
 
 import (
+	"encoding/json"
 	"fizz/proto"
 	"fmt"
 	proto2 "github.com/golang/protobuf/proto"
@@ -315,6 +316,154 @@ func GenerateFailurePath(nodes []*Link, invariant *InvariantPosition) string {
 		parentID = nodeID
 	}
 
+
+
+	builder.WriteString("}\n")
+	return builder.String()
+}
+
+type Pair[T1 any, T2 any] struct {
+	First T1
+	Second T2
+}
+
+func GenerateCommunicationGraph(messages []string) string {
+	// TODO: Handle assymetric communication
+	// For now, if there are 2 senders and 3 receivers, we will have 6 possible communication links
+	// We see of sender[0] sends to receiver[0], we assume, all 6 possible links are possible
+	// This is not perfect, but should be good enough for now
+	// Also, for now we are assuming 2 or more roles as any number of roles can be there
+	builder := strings.Builder{}
+	builder.WriteString("digraph G {\n")
+	builder.WriteString("  node [shape=box];\n")
+	builder.WriteString("  splines=false;\n")
+
+	builder.WriteString("  rankdir=LR;\n")
+
+	roles := make(map[string]bool)
+	// tracks whether there are a single instance or a role or multiple instances
+	roleNames := make(map[string]bool)
+	// first key is [sender, receiver] pair, second key is message name
+	uniqueMessages := make(map[Pair[string, string]]map[string]bool)
+	// first key is [receiver], second key is action name, fairness level pair
+	uniqueActions := make(map[string]map[string]proto.FairnessLevel)
+
+	for _, message := range messages {
+		dict := make(map[string]interface{})
+		_ = json.Unmarshal([]byte(message), &dict)
+		if dict["type"] == "message" {
+			sender := dict["sender"].(string)
+			senderParts := strings.Split(sender, "#")
+			roles[sender] = true
+			roleNames[senderParts[0]] = roleNames[senderParts[0]] || senderParts[1] != "0"
+
+			receiver := dict["receiver"].(string)
+			receiverParts := strings.Split(receiver, "#")
+			roles[receiver] = true
+			roleNames[receiverParts[0]] = roleNames[receiverParts[0]] || receiverParts[1] != "0"
+
+			pair := Pair[string, string]{senderParts[0], receiverParts[0]}
+			if _, ok := uniqueMessages[pair]; !ok {
+				uniqueMessages[pair] = make(map[string]bool)
+			}
+			uniqueMessages[pair][dict["name"].(string)] = true
+		} else if dict["type"] == "action" {
+			receiver := dict["receiver"].(string)
+			receiverParts := strings.Split(receiver, "#")
+			roles[receiver] = true
+			roleNames[receiverParts[0]] = roleNames[receiverParts[0]] || receiverParts[1] != "0"
+
+			if _, ok := uniqueActions[receiverParts[0]]; !ok {
+				uniqueActions[receiverParts[0]] = make(map[string]proto.FairnessLevel)
+			}
+			uniqueActions[receiverParts[0]][dict["name"].(string)] = proto.FairnessLevel(int(dict["fairness"].(float64)))
+		}
+	}
+
+	for roleName, replicated := range roleNames {
+		if replicated {
+			// Add a html type node table to represent replicated service
+			// for example, if there are multiple instances of Participant, we will have
+			//     "Participant" [shape=none label=<
+			//      <table cellpadding="14" cellspacing="8" style="dashed">
+			//      <tr><td port="p0">Participant #0</td></tr>
+			//      <tr><td port="p1" border="0">&#x022EE;</td></tr>
+			//      <tr><td port="p2">Participant #2</td></tr>
+			//      </table>>]
+			builder.WriteString(fmt.Sprintf("  \"%s\" [shape=none label=<<table cellpadding=\"14\" cellspacing=\"8\" style=\"dashed\">\n", roleName))
+			builder.WriteString(fmt.Sprintf("      <tr><td port=\"p%d\">%s#%d</td></tr>\n", 0, roleName, 0))
+			builder.WriteString(fmt.Sprintf("      <tr><td port=\"p%d\" border=\"0\">&#x022EE;</td></tr>\n", 1))
+			builder.WriteString(fmt.Sprintf("      <tr><td port=\"p%d\">%s#%d</td></tr>\n", 2, roleName, 2))
+			builder.WriteString("      </table>>]\n")
+		}
+	}
+	for p, m := range uniqueMessages {
+		sender := p.First
+		receiver := p.Second
+		// Concatenate all the messages
+		label := ""
+		for message := range m {
+			if label != "" {
+				label += ", "
+			}
+			label += message
+		}
+		// add a edge between sender and receiver
+		senderPorts := []string{}
+		if roleNames[sender] {
+			senderPorts = []string{":p0", ":p2"}
+		} else {
+			senderPorts = []string{""}
+
+		}
+		receiverPorts := []string{}
+		if roleNames[receiver] {
+			receiverPorts = []string{":p0", ":p2"}
+		} else {
+			receiverPorts = []string{""}
+		}
+		for _, senderPort := range senderPorts {
+			for _, receiverPort := range receiverPorts {
+				builder.WriteString(fmt.Sprintf("  \"%s\"%s -> \"%s\"%s [label=\"%s\"];\n", sender, senderPort, receiver, receiverPort, label))
+			}
+		}
+	}
+
+	for receiver, actions := range uniqueActions {
+		// for each receiver, add the actions
+		// - if the action is unfair add a hidden node and add an edge from the action to the receiver with action name as label
+		// - if there is at least one fair action, add a html table hidden node with one row for each action with no label and port name as action name
+		// - add an edge from corresponding action to the receiver with action name as label
+
+		// Add a hidden node for each action
+		hasFairAction := false
+		for action, fairness := range actions {
+
+			if fairness == proto.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN || fairness == proto.FairnessLevel_FAIRNESS_LEVEL_UNFAIR {
+				actionNodeName := fmt.Sprintf("action%s%s", receiver, action)
+				builder.WriteString(fmt.Sprintf("  \"%s\" [label=\"\" shape=\"none\"]\n", actionNodeName))
+				builder.WriteString(fmt.Sprintf("  \"%s\" -> \"%s\" [label=\"%s\"];\n", actionNodeName, receiver, action))
+			} else {
+				hasFairAction = true
+			}
+		}
+		if hasFairAction {
+			builder.WriteString(fmt.Sprintf("  \"FairAction%s\" [shape=none label=<<table cellpadding=\"14\" cellspacing=\"8\" style=\"invisible\"><tr>\n", receiver))
+			for action, fairness := range actions {
+				if !(fairness == proto.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN || fairness == proto.FairnessLevel_FAIRNESS_LEVEL_UNFAIR) {
+					builder.WriteString(fmt.Sprintf("      <td port=\"%s\"></td>\n", action))
+				}
+			}
+			builder.WriteString("      </tr></table>>]\n")
+			// Make the FairAction node at the same rank as the receiver
+			builder.WriteString(fmt.Sprintf("  { rank=same; \"%s\"; \"FairAction%s\"; }\n", receiver, receiver))
+			for action, fairness := range actions {
+				if !(fairness == proto.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN || fairness == proto.FairnessLevel_FAIRNESS_LEVEL_UNFAIR) {
+					builder.WriteString(fmt.Sprintf("  \"FairAction%s\":%s -> \"%s\" [label=\"%s\"];\n", receiver, action, receiver, action))
+				}
+			}
+		}
+	}
 
 
 	builder.WriteString("}\n")

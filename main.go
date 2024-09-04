@@ -147,11 +147,25 @@ func main() {
 
     //fmt.Println("root", root)
     if failedNode == nil {
-        //failurePath := nil
-        //failedInvariant := nil
         var failurePath []*modelchecker.Link
         var failedInvariant *modelchecker.InvariantPosition
-        nodes, deadlock, _ := modelchecker.GetAllNodes(rootNode)
+        nodes, messages, deadlock, _ := modelchecker.GetAllNodes(rootNode)
+
+        if len(messages) > 0 {
+            graphDot := modelchecker.GenerateCommunicationGraph(messages)
+            dotFileName := filepath.Join(outDir, "communication.dot")
+            // Write the content to the file
+            err := os.WriteFile(dotFileName, []byte(graphDot), 0644)
+            if err != nil {
+                fmt.Println("Error writing to file:", err)
+                return
+            }
+            if !isPlayground {
+                fmt.Printf("Writen communication diagram dotfile: %s\nTo generate svg, run: \n" +
+                    "dot -Tsvg %s -o communication.svg && open communication.svg\n", dotFileName, dotFileName)
+            }
+        }
+
         if deadlock != nil && stateConfig.GetDeadlockDetection() && !p1.Stopped() {
             fmt.Println("DEADLOCK detected")
             fmt.Println("FAILED: Model checker failed")
