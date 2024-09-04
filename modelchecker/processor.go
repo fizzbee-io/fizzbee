@@ -683,6 +683,7 @@ type Node struct {
 
 type Link struct {
 	Node     *Node
+	Type     string
 	Name     string
 	Labels   []string
 	Fairness ast.FairnessLevel
@@ -708,6 +709,7 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 	other.Inbound = append(other.Inbound, n.Inbound[0])
 	parent.Outbound = append(parent.Outbound, &Link{
 		Node:     other,
+		Type: 	  n.Inbound[0].Type,
 		Name:     n.Inbound[0].Name,
 		Labels:   n.Inbound[0].Labels,
 		Fairness: n.Inbound[0].Fairness,
@@ -727,6 +729,7 @@ func (n *Node) Attach() {
 	parent := n.Inbound[0].Node
 	parent.Outbound = append(parent.Outbound, &Link{
 		Node:     n,
+		Type: 	  n.Inbound[0].Type,
 		Name:     n.Inbound[0].Name,
 		Labels:   n.Inbound[0].Labels,
 		Fairness: n.Inbound[0].Fairness,
@@ -756,7 +759,7 @@ func (n *Node) ForkForAction(process *Process, role *lib.Role, action *ast.Actio
 		stacktrace:  captureStackTrace(),
 	}
 	forkNode.Process.Name = actionName
-	forkNode.Inbound = append(forkNode.Inbound, &Link{Node: n, Name: actionName})
+	forkNode.Inbound = append(forkNode.Inbound, &Link{Node: n, Type: "action", Name: actionName})
 	forkNode.Process.Stats.Increment(actionName)
 	return forkNode
 }
