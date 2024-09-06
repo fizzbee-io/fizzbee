@@ -542,6 +542,11 @@ func traverseBFS(rootNode *Node) ([]*Node, []string, *Node, int) {
 				visited[yieldNode].livePaths++
 				yieldNode = link.Node
 			}
+			queue.Enqueue(&queuedEntry{
+				node:      link.Node,
+				yieldNode: yieldNode,
+			})
+
 			if link.Type == "action" {
 				if node == link.Node || node.HashCode() == link.Node.HashCode() {
 					continue
@@ -549,27 +554,24 @@ func traverseBFS(rootNode *Node) ([]*Node, []string, *Node, int) {
 				messageKey := link.Name
 				if _, ok := msgSet[messageKey]; ok {
 					msgSet[messageKey]++
-					continue
 				} else {
 					msgSet[messageKey] = 1
 					parts := strings.Split(messageKey, ".")
-					msgName := ""
-					roleName := ""
+
 					if len(parts) == 2 {
-						roleName = parts[0]
-						msgName = parts[1]
-					} else {
-						continue
-					}
-					m := map[string]interface{} {
-						"type": "action",
-						"receiver": roleName,
-						"name": msgName,
-						"fairness": link.Fairness,
+						roleName := parts[0]
+						msgName := parts[1]
+						m := map[string]interface{} {
+							"type": "action",
+							"receiver": roleName,
+							"name": msgName,
+							"fairness": link.Fairness,
+						}
+
+						b, _ := json.Marshal(m)
+						msgs = append(msgs, string(b))
 					}
 
-					b, _ := json.Marshal(m)
-					msgs = append(msgs, string(b))
 				}
 			}
 
@@ -597,11 +599,6 @@ func traverseBFS(rootNode *Node) ([]*Node, []string, *Node, int) {
 				}
 
 			}
-
-			queue.Enqueue(&queuedEntry{
-				node:      link.Node,
-				yieldNode: yieldNode,
-			})
 		}
 	}
 	fmt.Println("Max Depth", maxDepth)
