@@ -638,7 +638,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		for iter.Next(&x) {
 			//fmt.Printf("anyVariable: x: %s\n", x.String())
 			fork := t.Process.Fork()
-			fork.Name = fmt.Sprintf("Any:%s", x.String())
+			fork.Name = fmt.Sprintf("Any:%s=%s", stmt.AnyStmt.LoopVars[0], x.String())
 			if stmt.AnyStmt.Block == nil {
 				fork.updateVariable(stmt.AnyStmt.LoopVars[0], x)
 			} else {
@@ -750,8 +750,10 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			//PanicOnError(err)
 			val = v
 		}
-		actionPath := strings.Split(currentFrame.pc, ".")[0]
-		action := GetProtoFieldByPath(t.currentFileAst(), actionPath)
+		pathComp := strings.Split(currentFrame.pc, ".")
+		actionPath := pathComp[0]
+		fileAst := t.currentFileAst()
+		action := GetProtoFieldByPath(fileAst, actionPath)
 		oldFrame := t.popFrame()
 		if t.Stack.Len() == 0 {
 			t.Process.removeCurrentThread()
@@ -763,6 +765,11 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 					//fmt.Println("Handling invariant returns")
 					t.Process.Returns[convertToInvariant(invariant).Name] = val
 					//t.Process.Enable()
+				} else if _, ok := action.(*ast.Role); ok {
+					actionPath = pathComp[0] + "." + pathComp[1]
+					action1 = GetProtoFieldByPath(fileAst, actionPath).(*ast.Action)
+					t.Process.Returns[oldFrame.obj.RefStringShort() + "." + convertToAction(action1).Name] = val
+					t.Process.Enable()
 				} else {
 					panic(fmt.Sprintf("Unknown protobuf type: %T, value %v at path %s", action, action, currentFrame.pc))
 				}

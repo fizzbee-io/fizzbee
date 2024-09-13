@@ -1200,10 +1200,10 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 	if action.Name == "Init" {
 		return
 	}
-	if p.config.ActionOptions[action.Name] != nil &&
-		statProcess.Stats.Counts[action.Name] >= int(p.config.ActionOptions[action.Name].MaxActions) {
+	if p.ExceedsActionCountLimits(action, statProcess, role) {
 		return
 	}
+
 	newNode := node.ForkForAction(process, role, action)
 	newNode.Process.NewThread()
 	newNode.Process.Current = len(newNode.Process.Threads) - 1
@@ -1229,6 +1229,47 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 	}
 
 	p.queue.Add(newNode)
+}
+
+func (p *Processor) ExceedsActionCountLimits(action *ast.Action, statProcess *Process, role *lib.Role) bool {
+	actionName := action.Name
+	if role != nil {
+		actionName = role.RefStringShort() + "." + actionName
+	}
+	if p.config.ActionOptions[actionName] != nil &&
+		statProcess.Stats.Counts[actionName] >= int(p.config.ActionOptions[actionName].MaxActions) {
+		return true
+	}
+	if role == nil {
+		return false
+	}
+	if p.config.ActionOptions[role.Name + "#." + action.Name] != nil {
+		perRoleActionLimit := p.config.ActionOptions[role.Name + "#." + action.Name].MaxActions
+		//fmt.Println("Per role action limit", role.Name + "#." + action.Name, perRoleActionLimit)
+		if statProcess.Stats.Counts[actionName] >= int(perRoleActionLimit) {
+			//fmt.Println("Exceeds per role action count limit", role.Name + "#." + action.Name, statProcess.Stats.Counts[actionName])
+			return true
+		}
+	}
+	actionName = role.Name + "." + action.Name
+	if p.config.ActionOptions[actionName] == nil {
+		return false
+	}
+	actionCount := 0
+	for k, count := range statProcess.Stats.Counts {
+
+		if strings.HasPrefix(k, role.Name + "#") && strings.HasSuffix(k, "." + action.Name) {
+			actionCount += count
+
+		}
+	}
+	if p.config.ActionOptions[actionName] != nil &&
+		actionCount >= int(p.config.ActionOptions[actionName].MaxActions) {
+		//fmt.Println("Exceeds action count limit", actionName, actionCount, role.RefStringShort(), action.Name)
+		return true
+	}
+
+	return false
 }
 
 func (p *Processor) Stop() {
