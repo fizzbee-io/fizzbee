@@ -351,7 +351,7 @@ func GenerateCommunicationGraph(messages []string) string {
 	for _, message := range messages {
 		dict := make(map[string]interface{})
 		_ = json.Unmarshal([]byte(message), &dict)
-		if dict["type"] == "message" {
+		if dict["type"] == "message" && dict["sender"] != "" {
 			sender := dict["sender"].(string)
 			senderParts := strings.Split(sender, "#")
 			roles[sender] = true
@@ -367,7 +367,7 @@ func GenerateCommunicationGraph(messages []string) string {
 				uniqueMessages[pair] = make(map[string]bool)
 			}
 			uniqueMessages[pair][dict["name"].(string)] = true
-		} else if dict["type"] == "action" {
+		} else if dict["type"] == "action" || dict["sender"] == "" {
 			receiver := dict["receiver"].(string)
 			receiverParts := strings.Split(receiver, "#")
 			roles[receiver] = true
@@ -376,7 +376,11 @@ func GenerateCommunicationGraph(messages []string) string {
 			if _, ok := uniqueActions[receiverParts[0]]; !ok {
 				uniqueActions[receiverParts[0]] = make(map[string]proto.FairnessLevel)
 			}
-			uniqueActions[receiverParts[0]][dict["name"].(string)] = proto.FairnessLevel(int(dict["fairness"].(float64)))
+			if dict["fairness"] == nil {
+				uniqueActions[receiverParts[0]][dict["name"].(string)] = proto.FairnessLevel(proto.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN)
+			} else {
+				uniqueActions[receiverParts[0]][dict["name"].(string)] = proto.FairnessLevel(int(dict["fairness"].(float64)))
+			}
 		}
 	}
 
