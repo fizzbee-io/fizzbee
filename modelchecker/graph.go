@@ -236,6 +236,7 @@ func GenerateDotFile(node *Node, visited map[*Node]bool) string {
 				label += "[" + strings.Join(child.Labels, ", ") + "]"
 
 			}
+			label = strings.ReplaceAll(label, "\"", "\\\"")
 			edgewidth := 1
 			edgecolor := "black"
 			if child.Fairness != proto.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN &&
@@ -311,6 +312,7 @@ func GenerateFailurePath(nodes []*Link, invariant *InvariantPosition) string {
 
 		if parentID != "" {
 			label := link.Name
+			label = strings.ReplaceAll(label, "\"", "\\\"")
 			builder.WriteString(fmt.Sprintf("  %s -> %s [label=\"%s\"];\n", parentID, nodeID, label))
 		}
 		parentID = nodeID
