@@ -20,7 +20,7 @@ func GenerateProtoOfJson(nodes []*Node, pathPrefix string) ([]string, []string, 
 		return nil, nil, err
 	}
 
-	shardSize := 10000
+	shardSize := 1000000
 	n := len(nodes)
 	shards := n / shardSize
 
@@ -53,7 +53,7 @@ func GenerateProtoOfJson(nodes []*Node, pathPrefix string) ([]string, []string, 
 		nodeJsons = nodeJsons[:0]
 	}
 
-	linksShardSize := 100000
+	linksShardSize := 1000000
 	linkShards := edges / linksShardSize
 
 	links := make([]*proto.Link, 0, linksShardSize)
