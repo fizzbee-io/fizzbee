@@ -1,5 +1,7 @@
 #!/bin/bash
-#bazel-bin/parser/parser_bin $1 > parserout.log
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORKING_DIR="$(pwd)"
 
 usage() {
   echo "Usage: $0 [-x|--simulation] filename"
@@ -45,18 +47,28 @@ fi
 
 input_filename=$1
 
-if ! test -f bazel-bin/parser/parser_bin; then
-  echo "bazel-bin/parser/parser_bin not found. Running 'bazel build parser/parser_bin'!"
-  bazel build parser/parser_bin
+# Check if the script directory and working directory are the same
+if [ "$SCRIPT_DIR" = "$WORKING_DIR" ]; then
+
+    # Check if parser_bin exists, otherwise run bazel build
+    if ! test -f bazel-bin/parser/parser_bin; then
+      echo "bazel-bin/parser/parser_bin not found. Running 'bazel build parser/parser_bin'!"
+      bazel build parser/parser_bin
+    fi
+    # Check if fizzbee exists, otherwise run bazel build
+    if ! test -f bazel-bin/fizzbee_/fizzbee; then
+        echo "bazel-bin/fizzbee_/fizzbee not found. Running 'bazel build //:fizzbee'!"
+        bazel build //:fizzbee
+    fi
 fi
-if ! test -f bazel-bin/fizzbee_/fizzbee; then
-  echo "bazel-bin/fizzbee_/fizzbee not found. Running 'bazel build //:fizzbee'!"
-  bazel build //:fizzbee
-fi
+
+# Set the paths for the binaries relative to the script directory
+PARSER_BIN="$SCRIPT_DIR/bazel-bin/parser/parser_bin"
+FIZZBEE_BIN="$SCRIPT_DIR/bazel-bin/fizzbee_/fizzbee"
 
 # Call the first binary and redirect output to a temporary file
 temp_output=$(mktemp)
-if ! bazel-bin/parser/parser_bin "$input_filename" > "$temp_output"; then
+if ! "$PARSER_BIN" "$input_filename" > "$temp_output"; then
     echo "Error: Compilation failed"
     echo "Logs at $temp_output" 
     exit 1
@@ -79,7 +91,7 @@ args+=("$json_filename")
 
 
 # Run the second command with the JSON filename
-bazel-bin/fizzbee_/fizzbee "${args[@]}"
+"$FIZZBEE_BIN" "${args[@]}"
 
 # Clean up the temporary file
 rm "$temp_output"
