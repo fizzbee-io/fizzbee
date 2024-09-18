@@ -756,7 +756,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		action := GetProtoFieldByPath(fileAst, actionPath)
 		oldFrame := t.popFrame()
 		if t.Stack.Len() == 0 {
-			t.Process.removeCurrentThread()
+			//t.Process.removeCurrentThread()
 			if val != starlark.None {
 				if action1, ok := action.(*ast.Action); ok {
 					t.Process.Returns[convertToAction(action1).Name] = val
