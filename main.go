@@ -65,8 +65,9 @@ func main() {
         if errors.Is(err, os.ErrNotExist) {
             if isPlayground {
                 deadlockDetection := true
+                crashOnYield := true
                 stateConfig = &ast.StateSpaceOptions{
-                    Options: &ast.Options{MaxActions: 100, MaxConcurrentActions: 2},
+                    Options: &ast.Options{MaxActions: 100, MaxConcurrentActions: 2, CrashOnYield: &crashOnYield},
                     Liveness: "strict",
                     DeadlockDetection: &deadlockDetection,
                 }
@@ -99,6 +100,10 @@ func main() {
     if stateConfig.DeadlockDetection == nil {
         deadlockDetection := true
         stateConfig.DeadlockDetection = &deadlockDetection
+    }
+    if stateConfig.Options.CrashOnYield == nil {
+        crashOnYield := true
+        stateConfig.Options.CrashOnYield = &crashOnYield
     }
 
     p1 := modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, dirPath)

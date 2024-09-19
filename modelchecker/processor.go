@@ -1007,9 +1007,15 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 			p.YieldNode(node)
 			node.Name = "yield"
 		}
-		if len(node.Process.Threads) == 0 {
+		if len(node.Process.Threads) == 0 || !*p.config.Options.CrashOnYield {
 			return false, false
 		}
+		frameName := node.Process.currentThread().Stack.RawArray()[0].Name
+
+		if p.config.ActionOptions[frameName] != nil && p.config.ActionOptions[frameName].CrashOnYield != nil && !p.config.ActionOptions[frameName].GetCrashOnYield() {
+			return false, false
+		}
+
 		crashFork := node.Process.Fork()
 		crashFork.Name = "crash"
 		crashFork.removeCurrentThread()
@@ -1236,8 +1242,26 @@ func (p *Processor) ExceedsActionCountLimits(action *ast.Action, statProcess *Pr
 	if role != nil {
 		actionName = role.RefStringShort() + "." + actionName
 	}
+	concurrentStats := make(map[string]int)
+
+	for _, thread := range statProcess.Threads {
+		frames := thread.Stack.RawArray()
+		rootFrame := frames[0]
+		name := rootFrame.Name
+		concurrentStats[name]++
+		nameParts := strings.Split(name, ".")
+		if len(nameParts) > 1 && rootFrame.obj != nil {
+			concurrentStats[nameParts[0] + "#." + nameParts[1]]++
+			concurrentStats[rootFrame.obj.RefStringShort() + "." + nameParts[1]]++
+		}
+	}
+	//fmt.Println("Concurrent stats", concurrentStats, actionName, concurrentStats[actionName], p.config.ActionOptions[actionName])
 	if p.config.ActionOptions[actionName] != nil &&
-		statProcess.Stats.Counts[actionName] >= int(p.config.ActionOptions[actionName].MaxActions) {
+		int(p.config.ActionOptions[actionName].MaxActions) > 0 && statProcess.Stats.Counts[actionName] >= int(p.config.ActionOptions[actionName].MaxActions)  {
+		return true
+	}
+	if p.config.ActionOptions[actionName] != nil &&
+		int(p.config.ActionOptions[actionName].GetMaxConcurrentActions()) > 0 && concurrentStats[actionName] >= int(p.config.ActionOptions[actionName].GetMaxConcurrentActions())  {
 		return true
 	}
 	if role == nil {
@@ -1245,9 +1269,12 @@ func (p *Processor) ExceedsActionCountLimits(action *ast.Action, statProcess *Pr
 	}
 	if p.config.ActionOptions[role.Name + "#." + action.Name] != nil {
 		perRoleActionLimit := p.config.ActionOptions[role.Name + "#." + action.Name].MaxActions
+		perRoleActionConcurrency := p.config.ActionOptions[role.Name + "#." + action.Name].GetMaxConcurrentActions()
 		//fmt.Println("Per role action limit", role.Name + "#." + action.Name, perRoleActionLimit)
-		if statProcess.Stats.Counts[actionName] >= int(perRoleActionLimit) {
-			//fmt.Println("Exceeds per role action count limit", role.Name + "#." + action.Name, statProcess.Stats.Counts[actionName])
+		if int(perRoleActionLimit) > 0 && statProcess.Stats.Counts[actionName] >= int(perRoleActionLimit) {
+			return true
+		}
+		if int(perRoleActionConcurrency) > 0 && concurrentStats[actionName] >= int(perRoleActionConcurrency) {
 			return true
 		}
 	}
@@ -1260,12 +1287,18 @@ func (p *Processor) ExceedsActionCountLimits(action *ast.Action, statProcess *Pr
 
 		if strings.HasPrefix(k, role.Name + "#") && strings.HasSuffix(k, "." + action.Name) {
 			actionCount += count
-
 		}
 	}
 	if p.config.ActionOptions[actionName] != nil &&
+		int(p.config.ActionOptions[actionName].MaxActions) > 0 &&
 		actionCount >= int(p.config.ActionOptions[actionName].MaxActions) {
 		//fmt.Println("Exceeds action count limit", actionName, actionCount, role.RefStringShort(), action.Name)
+		return true
+	}
+	if p.config.ActionOptions[actionName] != nil &&
+		int(p.config.ActionOptions[actionName].GetMaxConcurrentActions()) > 0 &&
+		concurrentStats[actionName] >= int(p.config.ActionOptions[actionName].GetMaxConcurrentActions()) {
+		//fmt.Println("Exceeds concurrent action count limit", actionName, concurrentStats[actionName])
 		return true
 	}
 

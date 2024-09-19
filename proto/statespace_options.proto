@@ -28,4 +28,7 @@ message StateSpaceOptions {
 message Options {
   int64 max_actions = 1;
   int64 max_concurrent_actions = 2;
+
+  // If true (default), model checker would evaluate the possibility of a crash at yield points.
+  optional bool crash_on_yield = 3;
 }
