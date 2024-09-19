@@ -56,13 +56,16 @@ def main(argv):
         content = sys.stdin.read()
         filename = "stdin"
 
-    yaml_frontmatter, content_without_frontmatter = extract_yaml_frontmatter(content)
+    initial_spaces, yaml_frontmatter, content_without_frontmatter = extract_yaml_frontmatter(content)
     # Output or store the YAML frontmatter as needed
-    print("YAML Frontmatter:")
+    print("YAML Frontmatter:", len(yaml_frontmatter.splitlines()))
     print(yaml_frontmatter)
-    print("FizzBee code:")
+    print("FizzBee code:", len(content_without_frontmatter.splitlines()))
     print(content_without_frontmatter)
-
+    num_lines = len(initial_spaces.splitlines()) + len(yaml_frontmatter.splitlines()) + 2
+    # prefix content_without_frontmatter with the empty new lines so the line numbers match
+    content_without_frontmatter = "\n" * num_lines + content_without_frontmatter
+    yaml_frontmatter = "\n" * len(initial_spaces.splitlines()) + yaml_frontmatter
     # Continue with ANTLR parsing
     stream = InputStream(content_without_frontmatter)
     lexer = FizzLexer(stream)
@@ -127,11 +130,17 @@ def writeJsonToFile(input_filename, jsondata):
 
 # Define a function to extract YAML frontmatter
 def extract_yaml_frontmatter(text):
-    yaml_frontmatter_pattern = re.compile(r'^---\s*([\s\S]*?)\s*---\s*\n', re.MULTILINE)
-    match = yaml_frontmatter_pattern.match(text)
+    # Regex pattern to capture the frontmatter
+    yaml_frontmatter_pattern = re.compile(r'^(\s*)---[^\n]*\n([\s\S]*?)---[^\n]*\n', re.MULTILINE)
+
+    match = yaml_frontmatter_pattern.search(text)
     if match:
-        return match.group(1), yaml_frontmatter_pattern.sub('', text)
-    return '', text
+        initial_text = match.group(1)
+        yaml_frontmatter = match.group(2)  # Add newline to preserve format
+        remaining_text = text[match.end():]  # Keep the remaining text after the frontmatter
+
+        return initial_text, yaml_frontmatter, remaining_text
+    return '', '', text
 
 
 if __name__ == '__main__':
