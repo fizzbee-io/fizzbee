@@ -7,6 +7,7 @@ go_library(
         "linear_collection.go",
         "permutations.go",
         "queue.go",
+        "randomqueue.go",
         "stack.go",
         "starlark_role.go",
         "starlark_types.go",

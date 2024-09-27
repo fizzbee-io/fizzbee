@@ -16,8 +16,9 @@ type Stack[T any] struct {
 	head *T
 }
 
-func (s *Stack[T]) Empty() bool {
-	return s.Empty()
+func (s *Stack[T]) Retain(n int) {
+	//TODO implement me
+	panic("Retain not implemented")
 }
 
 func (s *Stack[T]) Add(t T) {
@@ -26,6 +27,20 @@ func (s *Stack[T]) Add(t T) {
 
 func (s *Stack[T]) Remove() (T, bool) {
 	return s.Pop()
+}
+
+func (s *Stack[T]) Clear(n int) {
+	//TODO implement me
+	panic("Clear not implemented.")
+}
+
+func (s *Stack[T]) ClearAll() {
+	//TODO implement me
+	panic("ClearAll not implemented.")
+}
+
+func (s *Stack[T]) Empty() bool {
+	return s.Empty()
 }
 
 func NewStack[T any]() *Stack[T] {

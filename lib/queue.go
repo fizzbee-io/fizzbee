@@ -16,13 +16,9 @@ type Queue[T any] struct {
 
     count int
 }
-
-func (q *Queue[T]) Len() int {
-    return q.Count()
-}
-
-func (q *Queue[T]) Empty() bool {
-    return q.Empty()
+func (q *Queue[T]) Retain(n int) {
+    //TODO implement me
+    panic("Retain not implemented")
 }
 
 func (q *Queue[T]) Add(t T) {
@@ -31,6 +27,27 @@ func (q *Queue[T]) Add(t T) {
 
 func (q *Queue[T]) Remove() (T, bool) {
     return q.Dequeue()
+}
+
+func (q *Queue[T]) Clear(int) {
+    //TODO implement me
+    panic("Clear not implemented.")
+}
+
+func (q *Queue[T]) ClearAll() {
+    // Clear all elements
+    q.lock.Lock()
+    defer q.lock.Unlock()
+    q.list.Init()
+    q.count = 0
+}
+
+func (q *Queue[T]) Len() int {
+    return q.Count()
+}
+
+func (q *Queue[T]) Empty() bool {
+    return q.Empty()
 }
 
 func NewQueue[T any]() *Queue[T] {

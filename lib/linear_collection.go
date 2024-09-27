@@ -5,4 +5,7 @@ type LinearCollection[T any] interface {
     Empty() bool
     Add(T)
     Remove() (T, bool)
+    Clear(n int)
+    ClearAll()
+    Retain(n int)
 }

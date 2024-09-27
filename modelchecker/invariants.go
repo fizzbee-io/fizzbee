@@ -91,7 +91,6 @@ func CheckAssertion(process *Process, invariant *ast.Invariant, index int) bool 
 }
 
 func CheckStrictLiveness(node *Node) ([]*Link, *InvariantPosition) {
-	fmt.Println("Checking strict liveness")
 	process := node.Process
 	if len(process.Files) > 1 {
 		panic("Invariant checking not supported for multiple files yet")

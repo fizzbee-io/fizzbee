@@ -15,6 +15,10 @@ var (
 var (
 	roleRefs = map[string]int{}
 )
+
+func ClearRoleRefs()  {
+	roleRefs = map[string]int{}
+}
 type Role struct {
 	Ref  int
 	Name string

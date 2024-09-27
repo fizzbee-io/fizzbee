@@ -19,12 +19,14 @@ import (
 	ast "fizz/proto"
 	"fmt"
 	"github.com/fizzbee-io/fizzbee/lib"
+	"github.com/golang/protobuf/proto"
 	"github.com/jayaprabhakar/go-clone"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/syntax"
 	"log"
 	"maps"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -663,10 +665,10 @@ func (p *Process) RecordReturn(callerFrame *CallFrame, receiverFrame *CallFrame,
 }
 
 type Node struct {
-	*Process            `json:"process"`
+	*Process `json:"process"`
 
-	Inbound  []*Link    `json:"-"`
-	Outbound []*Link    `json:"-"`
+	Inbound  []*Link `json:"-"`
+	Outbound []*Link `json:"-"`
 
 	// The number of actions started until this node
 	// Note: This is the shorted path to this node from the root as we do BFS.
@@ -679,6 +681,7 @@ type Node struct {
 	forkDepth  int
 	stacktrace string
 
+	DuplicateOf *Node
 }
 
 type Link struct {
@@ -719,6 +722,7 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 	n.Process = nil
 	n.Inbound = nil
 	n.Outbound = nil
+	n.DuplicateOf = other
 }
 
 
@@ -779,54 +783,56 @@ func (n *Node) ForkForAlternatePaths(process *Process, name string) *Node {
 }
 
 type Processor struct {
-	Init    *Node
-	Files   []*ast.File
-	queue   lib.LinearCollection[*Node]
-	visited map[string]*Node
-	config  *ast.StateSpaceOptions
-	stopped bool
-	dirPath string
+	Init                *Node
+	Files               []*ast.File
+	queue               lib.LinearCollection[*Node]
+	visited             map[string]*Node
+	config              *ast.StateSpaceOptions
+	stopped             bool
+	dirPath             string
+	intermediate_states lib.LinearCollection[*Node]
+	simulation          bool
+	random rand.Rand
+	Seed   int64
 }
 
-func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, dirPath string) *Processor {
+func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string) *Processor {
 
 	var collection lib.LinearCollection[*Node]
+	var intermediate_states lib.LinearCollection[*Node]
+	if seed == 0 {
+		seed = time.Now().UnixMicro()
+	}
+	random := *rand.New(rand.NewSource(seed))
 	if simulation {
-		fmt.Println("Using stack")
-		collection = lib.NewStack[*Node]()
+		collection = lib.NewRandomQueue[*Node](random)
+		intermediate_states = lib.NewRandomQueue[*Node](random)
 	} else {
 		collection = lib.NewQueue[*Node]()
+		intermediate_states = lib.NewQueue[*Node]()
 	}
+	lib.ClearRoleRefs()
 	return &Processor{
 		Files:   files,
 		queue:   collection,
 		visited: make(map[string]*Node),
-		config:  options,
+		config:  proto.Clone(options).(*ast.StateSpaceOptions),
 		dirPath: dirPath,
+
+		intermediate_states: intermediate_states,
+		simulation:          simulation,
+		random:              random,
+		Seed:                seed,
 	}
 }
 
 func (p *Processor) GetVisitedNodesCount() int {
 	return len(p.visited)
 }
-// Start the model checker
-func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
-	// recover from panic
-	//defer func() {
-	//	if r := recover(); r != nil {
-	//		if modelErr, ok := r.(*ModelError); ok {
-	//			err = modelErr
-	//			return
-	//		}
-	//		panic(r)
-	//	}
-	//}()
-	if p.Init != nil {
-		panic("processor already started")
-	}
-	startTime := time.Now()
-	process := NewProcess("init", p.Files, nil)
 
+
+func (p *Processor) InitializeNode() (*Node, *Node, error) {
+	process := NewProcess("init", p.Files, nil)
 
 	modules := make(map[string]starlark.Value)
 	if p.dirPath != "" {
@@ -834,10 +840,9 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 	}
 	process.Modules = modules
 	p.Init = NewNode(process)
-	init = p.Init
 
 	if len(p.Files[0].Stmts) > 0 {
-		processPreInit(init, p.Files[0].Stmts)
+		processPreInit(p.Init, p.Files[0].Stmts)
 	}
 
 	if p.Files[0].Actions[0].Name != "Init" {
@@ -865,6 +870,22 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 		thread.currentFrame().Name = action.Name
 		p.Init.Name = action.Name
 	}
+	return p.Init, nil, nil
+}
+
+// Start the model checker
+func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
+	if p.simulation {
+		return p.StartSimulation()
+	}
+	if p.Init != nil {
+		panic("processor already started")
+	}
+	startTime := time.Now()
+	init, failedNode, err = p.InitializeNode()
+	if err != nil {
+		return init, failedNode, err
+	}
 
 	p.queue.Add(p.Init)
 	prevCount := 0
@@ -873,22 +894,26 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 		if !found {
 			panic("queue should not be empty")
 		}
-		//process := node.Process
-		//if other, ok := p.visited[process.HashCode()]; ok {
-		//	node.Merge(other)
-		//	continue
-		//}
 
 		if node.actionDepth > int(p.config.Options.MaxActions) {
 			// Add a node to indicate why this node was not processed
 			continue
 		}
-		if len(p.visited)%20000 == 0 && len(p.visited) != prevCount {
-			fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
-			prevCount = len(p.visited)
-		}
 
-		invariantFailure, symmetryFound := p.processNode(node)
+		invariantFailure := false
+		symmetryFound := false
+		for true {
+			if len(p.visited)%20000 == 0 && len(p.visited) != prevCount {
+				fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
+				prevCount = len(p.visited)
+			}
+			invariantFailure, symmetryFound = p.processNode(node)
+
+			if p.intermediate_states.Len() == 0 {
+				break
+			}
+			node, _ = p.intermediate_states.Remove()
+		}
 
 		if symmetryFound {
 			continue
@@ -902,6 +927,185 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 		}
 	}
 	fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
+	return p.Init, failedNode, err
+}
+
+func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) {
+	if p.Init != nil {
+		panic("processor already started")
+	}
+	init, failedNode, err = p.InitializeNode()
+	if err != nil || failedNode != nil {
+		return init, failedNode, err
+	}
+	livenessEnabled := false
+	livenessNode := failedNode
+	if p.config.GetLiveness() == "" || p.config.GetLiveness() == "strict" {
+		for _, file := range p.Files {
+			for _, invariant := range file.Invariants {
+				if invariant.Eventually || slices.Contains(invariant.TemporalOperators, "eventually")  {
+					livenessEnabled = true
+					break
+				}
+			}
+		}
+	}
+	maxActions := p.config.Options.MaxActions
+	crashOnYield := p.config.Options.CrashOnYield
+	randMaxActions := maxActions
+	//fmt.Println("Options", p.config.Options)
+	if livenessEnabled {
+		randMaxActions = p.random.Int63n(maxActions)
+		p.config.Options.MaxActions = randMaxActions
+		defer func() {
+			p.config.Options.MaxActions = maxActions
+			p.config.Options.CrashOnYield = crashOnYield
+		}()
+	}
+
+	//fmt.Println("MaxActions:", p.config.Options.MaxActions, "Seed:", p.Seed)
+
+	p.queue.Add(p.Init)
+	liveness := false
+	for p.queue.Len() != 0 && !p.stopped {
+		node, found := p.queue.Remove()
+		if !found {
+			panic("queue should not be empty")
+		}
+
+		if livenessEnabled && !liveness && node.actionDepth > int(p.config.Options.MaxActions - 1)  {
+			//fmt.Println("Max actions reached, switching to liveness", p.config.Options.MaxActions)
+			liveness = true
+			p.config.Options.MaxActions = 2*maxActions
+			*p.config.Options.CrashOnYield = false
+		} else if (liveness || !livenessEnabled) && node.actionDepth > int(p.config.Options.MaxActions) {
+			//fmt.Println("Max actions reached", p.config.Options.MaxActions)
+			continue
+		}
+		if liveness && node.actionDepth > 0  && node.actionDepth > int(randMaxActions) {
+			if node.currentThread().Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_UNFAIR ||
+				node.currentThread().Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN {
+				livenessNode = node
+				continue
+			}
+		}
+
+		invariantFailure := false
+		symmetryFound := false
+		prevLen := p.queue.Len()
+		if !liveness || node.actionDepth <= int(maxActions) {
+			p.visited = make(map[string]*Node)
+		}
+		for true {
+			inCrashPath := false
+			if len(node.Inbound) > 0 {
+				if node.Inbound[0].Node.Name == "crash" {
+					if liveness && node.actionDepth > int(randMaxActions) {
+						var nonCrashNode *Node
+						for p.queue.Len() != 0 {
+							nonCrashNode, _ = p.queue.Remove()
+							if nonCrashNode.Inbound[0].Node.Name == "crash" {
+								continue
+							}
+							break
+						}
+						if nonCrashNode != nil {
+							node = nonCrashNode
+							continue
+						} else {
+							break
+						}
+
+					}
+					inCrashPath = true
+				}
+			}
+			invariantFailure, symmetryFound = p.processNode(node)
+
+			if node.Process != nil && (node.Name == "yield" || node.Name == "crash") && p.simulation && (!inCrashPath || node.Enabled){
+				p.intermediate_states.ClearAll()
+				break
+			}
+			if !inCrashPath {
+				if p.intermediate_states.Len() == 0 {
+					break
+				}
+				node, _ = p.intermediate_states.Remove()
+			} else {
+				has_another_crash_action := false
+				var anotherCrashNode *Node
+				for p.queue.Len() != 0 {
+					anotherCrashNode, _ = p.queue.Remove()
+					if anotherCrashNode.Inbound[0].Node.Name == "crash" {
+						has_another_crash_action = true
+						break
+					}
+				}
+
+				if !has_another_crash_action {
+					prevLen = 0
+					break
+				} else {
+					node = anotherCrashNode
+					prevLen = p.queue.Len()
+				}
+			}
+
+
+		}
+		p.intermediate_states.ClearAll()
+
+		if symmetryFound {
+			continue
+		}
+		if invariantFailure && failedNode == nil {
+			failedNode = node
+		}
+		if invariantFailure {
+			break
+		}
+		if node.Process == nil && liveness {
+			failedInvPos, failed, ok := p.checkLiveness(node.DuplicateOf)
+			if !ok {
+				failedNode = failed
+				failedNode.FailedInvariants = make(map[int][]int)
+				failedNode.FailedInvariants[failedInvPos.FileIndex] = []int{failedInvPos.InvariantIndex}
+				break
+			}
+
+		}
+		if p.simulation && node.Process != nil && node.Name == "yield" && node.Enabled {
+			p.queue.Clear(prevLen)
+		}
+
+		if node.Process != nil && !node.Process.Enabled && prevLen == 0 && len(node.Inbound[0].Node.Outbound) == 0 {
+			if !liveness && p.config.GetDeadlockDetection() {
+				failedNode = node.Inbound[0].Node
+				break
+			} else {
+				// During liveness check since we are skipping non-fair nodes, we may end up with no next steps
+				// if this state matches all the required predicates, then it is a valid state. Otherwise, mark it as
+				// stutter state.
+				livenessNode = node
+			}
+
+		}
+	}
+	if liveness && livenessNode != nil {
+		for i, file := range p.Files {
+			for j, invariant := range file.Invariants {
+				hasEventually := slices.Contains(invariant.TemporalOperators, "eventually") || invariant.Eventually
+				if hasEventually {
+						if !livenessNode.Inbound[0].Node.Process.Witness[i][j] {
+							failedNode = livenessNode.Inbound[0].Node
+							break
+						}
+
+				}
+			}
+
+		}
+	}
 	return p.Init, failedNode, err
 }
 
@@ -933,6 +1137,9 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	}
 	node.CachedHashCode = ""
 	forks, yield := node.currentThread().Execute()
+	if len(forks) == 0 && !node.Enabled {
+		return false, false
+	}
 	// Add the labels from the process to the inbound links
 	// This must be done even for duplicate nodes
 	// The labels for the outbound links are added when the node is merged/attached
@@ -992,7 +1199,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	if !yield {
 		for _, fork := range forks {
 			newNode := node.ForkForAlternatePaths(fork, fork.Name)
-			p.queue.Add(newNode)
+			p.intermediate_states.Add(newNode)
 		}
 		return false, false
 	}
@@ -1213,6 +1420,8 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 	newNode := node.ForkForAction(process, role, action)
 	newNode.Process.NewThread()
 	newNode.Process.Current = len(newNode.Process.Threads) - 1
+	newNode.Process.Fairness = action.Fairness.GetLevel()
+	newNode.currentThread().Fairness = action.Fairness.GetLevel()
 
 	frame := newNode.currentThread().currentFrame()
 	if role != nil {
@@ -1312,6 +1521,113 @@ func (p *Processor) Stop() {
 func (p *Processor) Stopped() bool {
 	return p.stopped
 }
+
+func (p *Processor) checkLiveness(node *Node) (*InvariantPosition, *Node, bool) {
+	// Iterate over all files and their invariants
+	for i, file := range p.Files {
+		for j, invariant := range file.Invariants {
+			// Check if the invariant contains the "eventually" operator
+			hasEventually := slices.Contains(invariant.TemporalOperators, "eventually") || invariant.Eventually
+			if !hasEventually {
+				// Skip if the invariant does not involve liveness
+				continue
+			}
+
+			// Determine if the invariant is "eventually always" or "always eventually"
+			eventuallyAlways := false
+			alwaysEventually := false
+
+			// Handle block-based or operator-based invariants
+			if invariant.Block == nil {
+				if invariant.Always && invariant.Eventually {
+					alwaysEventually = true
+				} else if invariant.Eventually && invariant.GetNested().GetAlways() {
+					eventuallyAlways = true
+				}
+			} else {
+				// Check the order of temporal operators to identify liveness type
+				if slices.Contains(invariant.TemporalOperators, "eventually") &&
+					invariant.TemporalOperators[0] == "eventually" && invariant.TemporalOperators[1] == "always" {
+					eventuallyAlways = true
+				} else if slices.Contains(invariant.TemporalOperators, "eventually") &&
+					invariant.TemporalOperators[0] == "always" && invariant.TemporalOperators[1] == "eventually" {
+					alwaysEventually = true
+				}
+			}
+
+			// Check Witness for "eventually always" or "always eventually"
+			if eventuallyAlways {
+				// Check if invariant eventually holds and remains true forever after some point
+				if failedNode, ok := p.checkEventuallyAlways(i, j, node); !ok {
+					return NewInvariantPosition(i, j), failedNode, false
+				}
+			} else if alwaysEventually {
+				// Check if the invariant holds infinitely often
+				if failedNode, ok := p.checkAlwaysEventually(i, j, node); !ok {
+					return NewInvariantPosition(i, j), failedNode, false
+				}
+			}
+		}
+	}
+
+	// If no invariant failed, return success
+	return nil, nil, true
+}
+
+// Helper to check "eventually always" (<>[]) property
+func (p *Processor) checkEventuallyAlways(fileIndex, invariantIndex int, node *Node) (*Node, bool) {
+	// Iterate through the outbound links of the cycle
+	currentNode := node
+	for {
+		// Check if the invariant becomes permanently true at some point
+		if !currentNode.Process.Witness[fileIndex][invariantIndex] {
+			// If the invariant is false at this node, the "eventually always" condition fails
+			return currentNode, false
+		}
+
+		// Move to the next node in the cycle
+		if len(currentNode.Outbound) == 0 {
+			break
+		}
+		nextNode := currentNode.Outbound[0].Node
+		// Break if we detect a cycle back to the initial node
+		if nextNode == node {
+			break
+		}
+		currentNode = nextNode
+	}
+
+	// If we completed the cycle and the invariant was true throughout, return success
+	return nil, true
+}
+
+// Helper to check "always eventually" ([]<>) property
+func (p *Processor) checkAlwaysEventually(fileIndex, invariantIndex int, node *Node) (*Node, bool) {
+	// Iterate through the outbound links of the cycle
+	currentNode := node
+	for {
+		// Check if the invariant is true at least once in this cycle (eventually reappears)
+		if currentNode.Process.Witness[fileIndex][invariantIndex] {
+			// The invariant was true at some point, so "always eventually" holds
+			return nil, true
+		}
+
+		// Move to the next node in the cycle
+		if len(currentNode.Outbound) == 0 {
+			break
+		}
+		nextNode := currentNode.Outbound[0].Node
+		// Break if we detect a cycle back to the initial node
+		if nextNode == node {
+			break
+		}
+		currentNode = nextNode
+	}
+
+	// If the invariant was never true in the cycle, it fails
+	return currentNode, false
+}
+
 
 func captureStackTrace() string {
 	if !enableCaptureStackTrace {
