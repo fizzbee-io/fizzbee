@@ -601,7 +601,6 @@ func traverseBFS(rootNode *Node) ([]*Node, []string, *Node, int) {
 			}
 		}
 	}
-	fmt.Println("Max Depth", maxDepth)
 	var deadlock *Node
 	for _, node := range result {
 		entry := visited[node]

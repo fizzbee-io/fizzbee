@@ -24,12 +24,14 @@ var isPlayground bool
 var simulation bool
 var internalProfile bool
 var saveStates bool
+var seed int64
 
 func main() {
     flag.BoolVar(&isPlayground, "playground", false, "is for playground")
     flag.BoolVar(&simulation, "simulation", false, "Runs in simulation mode (DFS). Default=false for no simulation (BFS)")
     flag.BoolVar(&internalProfile, "internal_profile", false, "Enables CPU and memory profiling of the model checker")
     flag.BoolVar(&saveStates, "save_states", false, "Save states to disk")
+    flag.Int64Var(&seed, "seed", 0, "Seed for random number generator used in simulation mode")
     flag.Parse()
 
     args := flag.Args()
@@ -105,120 +107,164 @@ func main() {
         crashOnYield := true
         stateConfig.Options.CrashOnYield = &crashOnYield
     }
-
-    p1 := modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, dirPath)
-
-    c := make(chan os.Signal)
-    signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-    go func() {
-        <-c
-        fmt.Println("\nInterrupted. Stopping state exploration")
-        p1.Stop()
-    }()
-
-    rootNode, failedNode, endTime := startModelChecker(err, p1)
-
     outDir, err := createOutputDir(dirPath)
     if err != nil {
         return
     }
-    if p1.GetVisitedNodesCount() < 250 {
-        dotString := modelchecker.GenerateDotFile(rootNode, make(map[*modelchecker.Node]bool))
-        dotFileName := filepath.Join(outDir, "graph.dot")
-        // Write the content to the file
-        err := os.WriteFile(dotFileName, []byte(dotString), 0644)
-        if err != nil {
-            fmt.Println("Error writing to file:", err)
-            return
-        }
-        if !isPlayground {
-            fmt.Printf("Writen graph dotfile: %s\nTo generate svg, run: \n" +
-                "dot -Tsvg %s -o graph.svg && open graph.svg\n", dotFileName, dotFileName)
-        }
-    } else {
-        fmt.Printf("Skipping dotfile generation. Too many nodes: %d\n", p1.GetVisitedNodesCount())
+    //simulation = true
+    //seed = int64(1727460046152871)
+    maxRuns := 10000
+    if !simulation || seed != 0 {
+        maxRuns = 1
+        fmt.Println("Run simulation with seed", seed)
     }
-
-    if err != nil {
-        var modelErr *modelchecker.ModelError
-        if errors.As(err, &modelErr) {
-            fmt.Println("Stack Trace:")
-            fmt.Println(modelErr.SprintStackTrace())
-        } else {
-            fmt.Println("Error:", err)
-        }
-        os.Exit(1)
+    stopped := false
+    runs := 0
+    var p1 *modelchecker.Processor
+    if simulation {
+        c := make(chan os.Signal)
+        signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+        go func() {
+            <-c
+            fmt.Println("\nInterrupted. Stopping state exploration")
+            stopped = true
+            if p1 != nil {
+                p1.Stop()
+            }
+        }()
     }
+    i := 0
+    for !stopped && i < maxRuns {
+        i++
 
-    //fmt.Println("root", root)
-    if failedNode == nil {
-        var failurePath []*modelchecker.Link
-        var failedInvariant *modelchecker.InvariantPosition
-        nodes, messages, deadlock, _ := modelchecker.GetAllNodes(rootNode)
+        p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath)
+        if !simulation {
+            c := make(chan os.Signal)
+            signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+            go func() {
+                <-c
+                fmt.Println("\nInterrupted. Stopping state exploration")
+                p1.Stop()
+            }()
+        }
 
-        if len(messages) > 0 {
-            graphDot := modelchecker.GenerateCommunicationGraph(messages)
-            dotFileName := filepath.Join(outDir, "communication.dot")
+        rootNode, failedNode, endTime := startModelChecker(err, p1)
+        runs++
+
+        if p1.GetVisitedNodesCount() < 250 {
+            dotString := modelchecker.GenerateDotFile(rootNode, make(map[*modelchecker.Node]bool))
+            dotFileName := filepath.Join(outDir, "graph.dot")
             // Write the content to the file
-            err := os.WriteFile(dotFileName, []byte(graphDot), 0644)
+            err := os.WriteFile(dotFileName, []byte(dotString), 0644)
             if err != nil {
                 fmt.Println("Error writing to file:", err)
                 return
             }
-            if !isPlayground {
-                fmt.Printf("Writen communication diagram dotfile: %s\nTo generate svg, run: \n" +
-                    "dot -Tsvg %s -o communication.svg && open communication.svg\n", dotFileName, dotFileName)
+            if !isPlayground && !simulation {
+                fmt.Printf("Writen graph dotfile: %s\nTo generate svg, run: \n" +
+                    "dot -Tsvg %s -o graph.svg && open graph.svg\n", dotFileName, dotFileName)
             }
+        } else if !simulation {
+            fmt.Printf("Skipping dotfile generation. Too many nodes: %d\n", p1.GetVisitedNodesCount())
         }
 
-        if deadlock != nil && stateConfig.GetDeadlockDetection() && !p1.Stopped() {
-            fmt.Println("DEADLOCK detected")
-            fmt.Println("FAILED: Model checker failed")
-            dumpFailedNode(deadlock, rootNode, outDir)
-            return
-        }
-        if !p1.Stopped() {
-            if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
-                failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode)
-                fmt.Printf("IsLive: %t\n", failedInvariant == nil)
-                fmt.Printf("Time taken to check liveness: %v\n", time.Now().Sub(endTime))
-            } else if stateConfig.GetLiveness() == "eventual" {
-                failurePath, failedInvariant = modelchecker.CheckFastLiveness(nodes)
-                fmt.Printf("IsLive: %t\n", failedInvariant == nil)
-                fmt.Printf("Time taken to check liveness: %v\n", time.Now().Sub(endTime))
+        if err != nil {
+            var modelErr *modelchecker.ModelError
+            if errors.As(err, &modelErr) {
+                fmt.Println("Stack Trace:")
+                fmt.Println(modelErr.SprintStackTrace())
+            } else {
+                fmt.Println("Error:", err)
             }
+            os.Exit(1)
         }
 
-        if failedInvariant == nil {
-            fmt.Println("PASSED: Model checker completed successfully")
-            //nodes, _, _ := modelchecker.GetAllNodes(rootNode)
-            if saveStates || !isPlayground {
-                nodeFiles, linkFileNames, err := modelchecker.GenerateProtoOfJson(nodes, outDir+"/")
+        //fmt.Println("root", root)
+        if failedNode == nil {
+            var failurePath []*modelchecker.Link
+            var failedInvariant *modelchecker.InvariantPosition
+            nodes, messages, deadlock, _ := modelchecker.GetAllNodes(rootNode)
+
+            if len(messages) > 0 && !simulation {
+                graphDot := modelchecker.GenerateCommunicationGraph(messages)
+                dotFileName := filepath.Join(outDir, "communication.dot")
+                // Write the content to the file
+                err := os.WriteFile(dotFileName, []byte(graphDot), 0644)
                 if err != nil {
-                    fmt.Println("Error generating proto files:", err)
+                    fmt.Println("Error writing to file:", err)
                     return
                 }
-                fmt.Printf("Writen %d node files and %d link files to dir %s\n", len(nodeFiles), len(linkFileNames), outDir)
+                if !isPlayground {
+                    fmt.Printf("Writen communication diagram dotfile: %s\nTo generate svg, run: \n" +
+                        "dot -Tsvg %s -o communication.svg && open communication.svg\n", dotFileName, dotFileName)
+                }
             }
-        } else {
-            fmt.Println("FAILED: Liveness check failed")
-            if failedInvariant.FileIndex > 0 {
-                fmt.Printf("Only one file expected. Got %d\n", failedInvariant.FileIndex)
-            } else {
-                fmt.Printf("Invariant: %s\n", f.Invariants[failedInvariant.InvariantIndex].Name)
+
+            if deadlock != nil && stateConfig.GetDeadlockDetection() && !p1.Stopped() && !simulation {
+                fmt.Println("DEADLOCK detected")
+                fmt.Println("FAILED: Model checker failed")
+                if simulation {
+                    fmt.Println("seed:", p1.Seed)
+                }
+                dumpFailedNode(deadlock, rootNode, outDir)
+                return
             }
-            GenerateFailurePath(failurePath, failedInvariant, outDir)
+            if !simulation && !p1.Stopped() {
+                if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
+                    failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode)
+                } else if stateConfig.GetLiveness() == "eventual" {
+                    failurePath, failedInvariant = modelchecker.CheckFastLiveness(nodes)
+                }
+               fmt.Printf("IsLive: %t\n", failedInvariant == nil)
+               fmt.Printf("Time taken to check liveness: %v\n", time.Now().Sub(endTime))
+            }
+
+            if failedInvariant == nil && !simulation {
+                fmt.Println("PASSED: Model checker completed successfully")
+                //nodes, _, _ := modelchecker.GetAllNodes(rootNode)
+                if saveStates || !isPlayground {
+                    nodeFiles, linkFileNames, err := modelchecker.GenerateProtoOfJson(nodes, outDir+"/")
+                    if err != nil {
+                        fmt.Println("Error generating proto files:", err)
+                        return
+                    }
+                    fmt.Printf("Writen %d node files and %d link files to dir %s\n", len(nodeFiles), len(linkFileNames), outDir)
+                }
+                return
+            } else if failedInvariant != nil {
+                fmt.Println("FAILED: Liveness check failed")
+                if failedInvariant.FileIndex > 0 {
+                    fmt.Printf("Only one file expected. Got %d\n", failedInvariant.FileIndex)
+                } else {
+                    fmt.Printf("Invariant: %s\n", f.Invariants[failedInvariant.InvariantIndex].Name)
+                }
+                GenerateFailurePath(failurePath, failedInvariant, outDir)
+                return
+            }
+
+
+        } else if failedNode != nil {
+            if failedNode.FailedInvariants != nil && len(failedNode.FailedInvariants) > 0 && len(failedNode.FailedInvariants[0]) > 0 {
+                fmt.Println("FAILED: Model checker failed. Invariant: ", f.Invariants[failedNode.FailedInvariants[0][0]].Name)
+            } else if simulation {
+                fmt.Println("FAILED: Model checker failed. Deadlock/stuttering detected")
+            }
+            if simulation {
+                fmt.Println("seed:", p1.Seed)
+            }
+            dumpFailedNode(failedNode, rootNode, outDir)
+            return
         }
-
-        return
     }
-    fmt.Println("FAILED: Model checker failed. Invariant: ", f.Invariants[failedNode.FailedInvariants[0][0]].Name)
-
-    dumpFailedNode(failedNode, rootNode, outDir)
+    fmt.Println("Stopped after", runs, "runs at ", time.Now())
 }
 
 
 func startModelChecker(err error, p1 *modelchecker.Processor) (*modelchecker.Node, *modelchecker.Node, time.Time) {
+    if simulation {
+        rootNode, failedNode, _ := p1.Start()
+        return rootNode, failedNode, time.Now()
+    }
     if internalProfile {
         startCpuProfile()
         defer pprof.StopCPUProfile()
