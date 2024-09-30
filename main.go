@@ -25,13 +25,14 @@ var simulation bool
 var internalProfile bool
 var saveStates bool
 var seed int64
-
+var maxRuns int
 func main() {
     flag.BoolVar(&isPlayground, "playground", false, "is for playground")
     flag.BoolVar(&simulation, "simulation", false, "Runs in simulation mode (DFS). Default=false for no simulation (BFS)")
     flag.BoolVar(&internalProfile, "internal_profile", false, "Enables CPU and memory profiling of the model checker")
     flag.BoolVar(&saveStates, "save_states", false, "Save states to disk")
     flag.Int64Var(&seed, "seed", 0, "Seed for random number generator used in simulation mode")
+    flag.IntVar(&maxRuns, "max_runs", 0, "Maximum number of simulation runs/paths to explore. Default=0 for unlimited")
     flag.Parse()
 
     args := flag.Args()
@@ -111,12 +112,16 @@ func main() {
     if err != nil {
         return
     }
-    //simulation = true
-    //seed = int64(1727460046152871)
-    maxRuns := 10000
+
+    //maxRuns := 10000
     if !simulation || seed != 0 {
         maxRuns = 1
-        fmt.Println("Run simulation with seed", seed)
+    }
+    if simulation && seed != 0 {
+        fmt.Println("Seed:", seed)
+    }
+    if simulation && maxRuns == 0 {
+        fmt.Println("MaxRuns: unlimited")
     }
     stopped := false
     runs := 0
@@ -134,7 +139,7 @@ func main() {
         }()
     }
     i := 0
-    for !stopped && i < maxRuns {
+    for !stopped && (maxRuns <= 0 || i < maxRuns) {
         i++
 
         p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath)
