@@ -4,13 +4,14 @@ SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")"
 WORKING_DIR="$(pwd)"
 
 usage() {
-  echo "Usage: $0 [-x|--simulation] [--seed int64Number] filename"
+  echo "Usage: $0 [-x|--simulation] [--seed int64Number] [-- max_runs intNumber] filename"
   exit 1
 }
 
 # Initialize variables
 simulation=false
 seed=0
+max_runs=0
 
 # Parse options
 while [[ "$1" =~ ^- ]]; do
@@ -25,6 +26,15 @@ while [[ "$1" =~ ^- ]]; do
         shift 2
       else
         echo "Error: --seed requires a numeric value." 1>&2
+        usage
+      fi
+      ;;
+    --max_runs )
+      if [[ -n "$2" ]] && [[ "$2" =~ ^[0-9]+$ ]]; then
+        max_runs="$2"
+        shift 2
+      else
+        echo "Error: --max_runs requires a numeric value." 1>&2
         usage
       fi
       ;;
@@ -99,6 +109,9 @@ if [ "$internal_profile" = true ]; then
 fi
 if [ "$seed" -ne 0 ]; then
   args+=("--seed" "$seed")
+fi
+if [ "$max_runs" -ne 0 ]; then
+  args+=("--max_runs" "$max_runs")
 fi
 
 args+=("$json_filename")
