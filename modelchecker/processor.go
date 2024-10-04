@@ -1021,6 +1021,9 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 				}
 			}
 			invariantFailure, symmetryFound = p.processNode(node)
+			if invariantFailure {
+				break
+			}
 
 			if node.Process != nil && (node.Name == "yield" || node.Name == "crash") && p.simulation && (!inCrashPath || node.Enabled){
 				p.intermediate_states.ClearAll()
