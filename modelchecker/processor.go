@@ -1085,7 +1085,12 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 			if !liveness && p.config.GetDeadlockDetection() {
 				failedNode = node.Inbound[0].Node
 				break
-			} else {
+			} else if liveness && p.config.GetDeadlockDetection() {
+				// The if condition shouldn't have been required, but there is a small edge case not handled so far.
+				// This condition will prevent stuttering errors if deadlock detection is disabled.
+				// Ideally, when checking liveness with deadlock detection disabled, we must try non-fair actions,
+				// to distinquishe between stuttering and deadlock.
+
 				// During liveness check since we are skipping non-fair nodes, we may end up with no next steps
 				// if this state matches all the required predicates, then it is a valid state. Otherwise, mark it as
 				// stutter state.
