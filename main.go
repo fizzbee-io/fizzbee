@@ -1,6 +1,7 @@
 package main
 
 import (
+    "encoding/base64"
     "encoding/json"
     "errors"
     ast "fizz/proto"
@@ -10,6 +11,7 @@ import (
     "github.com/fizzbee-io/fizzbee/modelchecker"
     "google.golang.org/protobuf/encoding/protojson"
     "google.golang.org/protobuf/proto"
+    "html/template"
     "os"
     "os/signal"
     "path/filepath"
@@ -369,6 +371,14 @@ func GenerateFailurePath(failurePath []*modelchecker.Link, invariant *modelcheck
         fmt.Printf("Writen graph dotfile: %s\nTo generate an image file, run: \n"+
             "dot -Tsvg %s -o error-graph.svg && open error-graph.svg\n", dotFileName, dotFileName)
     }
+    err = GenerateFailurePathHtml(failurePath, invariant, outDir)
+    if err != nil {
+        return 
+    }
+    if !isPlayground {
+        fmt.Printf("Writen error states as html: %s/error-states.html\nTo open: \n"+
+            "open %s/error-states.html\n", outDir, outDir)
+    }
 }
 
 func createOutputDir(dirPath string) (string, error) {
@@ -385,4 +395,152 @@ func createOutputDir(dirPath string) (string, error) {
         return newDirPath, err
     }
     return newDirPath, nil
+}
+
+// Helper to remove Messages and Labels from the Links
+func removeFields(link *modelchecker.Link) *modelchecker.Link {
+    linkCopy := *link
+    linkCopy.Messages = nil
+    linkCopy.Labels = nil
+    return &linkCopy
+}
+
+// Helper to convert a Link to base64-encoded JSON without Messages and Labels
+func linkToBase64(link *modelchecker.Link) (string, error) {
+    linkCopy := removeFields(link)
+    jsonBytes, err := json.Marshal(linkCopy)
+    if err != nil {
+        return "", err
+    }
+    return base64.StdEncoding.EncodeToString(jsonBytes), nil
+}
+
+// Helper to create the JSON diff URL
+func createDiffURL(leftBase64, rightBase64 string) string {
+    return fmt.Sprintf("https://jsondiff.com/#left=data:base64,%s&right=data:base64,%s", leftBase64, rightBase64)
+}
+
+// Helper to write a single row in the HTML table
+func writeRow(tmpl *template.Template, file *os.File, rowNum int, name, nodeName, diffURL, yieldDiffURL string) error {
+    if name == nodeName {
+        nodeName = ""
+    }
+
+    data := map[string]interface{}{
+        "RowNum":       rowNum,
+        "Name":         name,
+        "NodeName":     nodeName,
+        "DiffURL":      diffURL,
+        "YieldDiffURL": yieldDiffURL,
+    }
+
+    return tmpl.Execute(file, data)
+}
+
+// Template for HTML generation
+const htmlTemplate = `
+<tr>
+	<td>{{.RowNum}}</td>
+	<td>{{.Name}}</td>
+	<td>{{.NodeName}}</td>
+	<td style="min-width:6em; text-align:center;">{{if .DiffURL}}<a href="{{.DiffURL}}" target="_blank">Show diff</a>{{end}}</td>
+	<td style="min-width:6em; text-align:center;">{{if .YieldDiffURL}}<a href="{{.YieldDiffURL}}" target="_blank">Show yield diff</a>{{end}}</td>
+</tr>
+`
+
+// GenerateFailurePathHtml creates an HTML file showing differences between adjacent failurePath Links
+func GenerateFailurePathHtml(failurePath []*modelchecker.Link, invariant *modelchecker.InvariantPosition, outDir string) error {
+    // Create the output file in the specified directory
+    outputFilePath := filepath.Join(outDir, "error-states.html")
+    file, err := os.Create(outputFilePath)
+    if err != nil {
+        return fmt.Errorf("failed to create file: %w", err)
+    }
+    defer file.Close()
+
+    // Start writing the HTML file
+    file.WriteString(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error States Comparison</title>
+</head>
+<body>
+    <h1>Error States Diff</h1>
+    <table border="1">
+        <tr>
+            <th>Row</th>
+            <th>Name</th>
+            <th>Node.Name</th>
+            <th style="min-width:6em; text-align:center;">Diff Link</th>
+            <th style="min-width:6em; text-align:center;">Yield Diff</th>
+        </tr>
+`)
+
+    // Initialize template for rows
+    tmpl, err := template.New("row").Parse(htmlTemplate)
+    if err != nil {
+        return fmt.Errorf("failed to parse template: %w", err)
+    }
+
+    var lastYieldObj *modelchecker.Link
+
+    // Process the first element (0th object) separately
+    if len(failurePath) > 0 {
+        firstLink := failurePath[0]
+        writeRow(tmpl, file, 1, firstLink.Name, firstLink.Node.Name, "", "")
+        if firstLink.Node.Name == "yield" {
+            lastYieldObj = firstLink
+        }
+    }
+
+    // Iterate through remaining pairs
+    for i := 1; i < len(failurePath); i++ {
+        leftLink := failurePath[i-1]
+        rightLink := failurePath[i]
+
+        // Convert both Links to base64 JSON
+        leftBase64, err := linkToBase64(leftLink)
+        if err != nil {
+            return fmt.Errorf("failed to encode left link to base64: %w", err)
+        }
+
+        rightBase64, err := linkToBase64(rightLink)
+        if err != nil {
+            return fmt.Errorf("failed to encode right link to base64: %w", err)
+        }
+
+        // Create the JSON diff URL
+        diffURL := createDiffURL(leftBase64, rightBase64)
+
+        // Check if Node.Name == "yield" for this object
+        yieldDiffURL := ""
+        if rightLink.Node.Name == "yield" && lastYieldObj != nil {
+            // Create a yield diff link between this and the last "yield" object
+            lastYieldBase64, err := linkToBase64(lastYieldObj)
+            if err != nil {
+                return fmt.Errorf("failed to encode last yield link to base64: %w", err)
+            }
+            yieldDiffURL = createDiffURL(lastYieldBase64, rightBase64)
+        }
+
+        // Update last yield object and index if current Node.Name is "yield"
+        if rightLink.Node.Name == "yield" {
+            lastYieldObj = rightLink
+        }
+
+        // Write the row to the HTML file
+        writeRow(tmpl, file, i+1, rightLink.Name, rightLink.Node.Name, diffURL, yieldDiffURL)
+    }
+
+    // Close the table and HTML file
+    file.WriteString(`
+    </table>
+</body>
+</html>
+`)
+
+    return nil
 }
