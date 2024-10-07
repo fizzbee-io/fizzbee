@@ -217,7 +217,7 @@ func main() {
                 return
             }
             if !simulation && !p1.Stopped() {
-                if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
+                if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "enabled" || stateConfig.GetLiveness() == "true"  || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
                     failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode)
                 } else if stateConfig.GetLiveness() == "eventual" {
                     failurePath, failedInvariant = modelchecker.CheckFastLiveness(nodes)
