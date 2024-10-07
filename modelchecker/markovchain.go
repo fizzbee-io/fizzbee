@@ -113,7 +113,7 @@ func steadyStateDistribution(root *Node, perfModel *proto.PerformanceModel) ([]f
 
 
 	// Create the transition matrix
-	nodes, _, _, _ := getAllNodes(root)
+	nodes, _, _, _ := getAllNodes(root, 0)
 	initialDistribution := make([]float64, len(nodes))
 	initialDistribution[0] = 1.0 // Start from the root node
 	
@@ -212,7 +212,7 @@ func markovChainAnalysis(nodes []*Node, perfModel *proto.PerformanceModel, trans
 
 func FindAbsorptionCosts(root *Node, perfModel *proto.PerformanceModel, fileId int, invariantId int) ([]float64, *Histogram) {
 	// Create the transition matrix
-	nodes, _, _, yields := getAllNodes(root)
+	nodes, _, _, yields := getAllNodes(root, 0)
 	//fmt.Println("Yields", yields)
 	yields += 1 // Add the root node
 
@@ -260,7 +260,7 @@ func createAbsorptionTransitionMatrix(nodes []*Node, fileId int, invariantId int
 
 func checkLivenessAndCost(root *Node, perfModel *proto.PerformanceModel, fileId int, invariantId int) ([]float64, *Histogram) {
 	// Create the transition matrix
-	nodes, _, _, yields := getAllNodes(root)
+	nodes, _, _, yields := getAllNodes(root, 0)
 	fmt.Println("Yields", yields)
 	yields += 1 // Add the root node
 
@@ -281,7 +281,7 @@ func checkLivenessAndCost(root *Node, perfModel *proto.PerformanceModel, fileId 
 
 func checkLiveness(root *Node, fileId int, invariantId int) []float64 {
 	// Create the transition matrix
-	nodes, _, _, _ := getAllNodes(root)
+	nodes, _, _, _ := getAllNodes(root, 0)
 
 	transitionMatrix := createTransitionMatrix(nodes)
 	//fmt.Printf("\nTransition Matrix:\n%v\n", transitionMatrix)
@@ -431,17 +431,17 @@ func transpose(matrix [][]float64) [][]float64 {
 	return result
 }
 
-func GetAllNodes(root *Node) ([]*Node, []string, *Node, int) {
-	return getAllNodes(root)
+func GetAllNodes(root *Node, maxActions int64) ([]*Node, []string, *Node, int) {
+	return getAllNodes(root, maxActions)
 
 }
-func getAllNodes(root *Node) ([]*Node, []string, *Node, int) {
+func getAllNodes(root *Node, maxActions int64) ([]*Node, []string, *Node, int) {
 	// Implement a traversal to get all nodes in the graph
 	// This can be a simple depth-first or breadth-first traversal
 	// depending on your requirements and graph structure.
 	// For simplicity, let's assume a simple depth-first traversal here.
 
-	result, msgs, deadlock, yield := traverseBFS(root)
+	result, msgs, deadlock, yield := traverseBFS(root, maxActions)
 	//visited := make(map[*Node]bool)
 	//var result []*Node
 	//yield := 0
@@ -484,7 +484,7 @@ func traverseDFS(node *Node, visited map[*Node]bool, result *[]*Node, yield *int
 	}
 }
 
-func traverseBFS(rootNode *Node) ([]*Node, []string, *Node, int) {
+func traverseBFS(rootNode *Node, maxActions int64) ([]*Node, []string, *Node, int) {
 	msgs := make([]string, 0)
 	msgSet := make(map[string]int)
 	type stat struct {
@@ -604,7 +604,7 @@ func traverseBFS(rootNode *Node) ([]*Node, []string, *Node, int) {
 	var deadlock *Node
 	for _, node := range result {
 		entry := visited[node]
-		if entry.deadNode != nil && entry.livePaths == 0 {
+		if entry.deadNode != nil && entry.livePaths == 0 && (node.Process == nil || (node.Stats != nil && node.Stats.TotalActions < int(maxActions))) {
 			// TODO: Remove these internal node path. These will mess with probabilistic analysis
 			deadlock = entry.deadNode
 			break

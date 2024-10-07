@@ -161,7 +161,7 @@ func TestSteadyStateDistribution(t *testing.T) {
 			fmt.Println(steadyStateDist)
 			fmt.Println(histogram.GetMeanCounts())
 			//fmt.Println(histogram.GetAllHistogram())
-			allNodes, _, _, _ := getAllNodes(root)
+			allNodes, _, _, _ := getAllNodes(root, 0)
 			for j, prob := range steadyStateDist {
 				if prob > 1e-6 && allNodes[j].Process != nil {
 					fmt.Printf("%2d: prob: %1.6f, state: %s / returns: %s\n", j, prob, allNodes[j].Heap.String(), allNodes[j].Returns.String())
