@@ -1188,6 +1188,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	var failedInvariants map[int][]int
 	if yield {
 		failedInvariants = CheckInvariants(node.Process)
+		node.Name = "yield"
 	}
 	if len(failedInvariants[0]) > 0 {
 		//panic(fmt.Sprintf("Invariant failed: %v", failedInvariants))
