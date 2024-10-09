@@ -104,7 +104,7 @@ docker run --rm -it fizzbee-app
 To make running CLI commands from Docker easier, you can create a shell alias. Add the following to your `.bashrc` or `.zshrc`:
 
 ```bash
-alias fizz='docker run -it --rm -v $(pwd):/app fizzbee-app'
+alias fizz='docker run -it --rm -v $(pwd):/spec -w /spec fizzbee-app'
 ```
 
 After adding the alias, you will need to either restart your terminal or use the source command to apply the changes immediately:
