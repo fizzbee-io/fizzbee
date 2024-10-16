@@ -7,6 +7,7 @@ import (
 	"go.starlark.net/starlark"
 	"maps"
 	"slices"
+	"strings"
 )
 
 type InvariantPosition struct {
@@ -39,9 +40,9 @@ func CheckInvariants(process *Process) map[int][]int {
 				}
 			} else {
 				passed = CheckAssertion(process, invariant, j)
-				if slices.Contains(invariant.TemporalOperators, "eventually") && passed /*&& (len(process.Threads) == 0 || process.Name == "yield")*/ {
+				if (slices.Contains(invariant.TemporalOperators, "eventually") || slices.Contains(invariant.TemporalOperators, "exists")) && passed /*&& (len(process.Threads) == 0 || process.Name == "yield")*/ {
 					process.Witness[i][j] = true
-				} else if !slices.Contains(invariant.TemporalOperators, "eventually") && !passed {
+				} else if !(slices.Contains(invariant.TemporalOperators, "eventually") || slices.Contains(invariant.TemporalOperators, "exists")) && !passed {
 					results[i] = append(results[i], j)
 				}
 			}
@@ -71,8 +72,8 @@ func CheckInvariant(process *Process, invariant *ast.Invariant) bool {
 }
 
 func CheckAssertion(process *Process, invariant *ast.Invariant, index int) bool {
-	if !slices.Contains(invariant.TemporalOperators, "always") {
-		panic("Invariant checking supported only for always/always-eventually/eventually-always invariants")
+	if !slices.Contains(invariant.TemporalOperators, "always") && !slices.Contains(invariant.TemporalOperators, "exists") {
+		panic("Invariant checking supported only for always/always-eventually/eventually-always/exists invariants" + strings.Join(invariant.TemporalOperators, ","))
 	}
 	cloned := process.CloneForAssert(nil, 0)
 	cloned.Heap.state["__returns__"] = NewDictFromStringDict(cloned.Returns)
@@ -88,6 +89,37 @@ func CheckAssertion(process *Process, invariant *ast.Invariant, index int) bool 
 		panic("Assertions should not include non-deterministic behavior")
 	}
 	return bool(cloned.Returns[invariant.Name].Truth())
+}
+func CheckSimpleExistsWitness(nodes []*Node) []*InvariantPosition {
+	process := nodes[0].Process
+	if len(process.Files) > 1 {
+		panic("Invariant checking not supported for multiple files yet")
+	}
+	existsInvariantPositions := make([]*InvariantPosition, 0)
+	for i, file := range process.Files {
+		for j, invariant := range file.Invariants {
+			if invariant.Block != nil && slices.Contains(invariant.TemporalOperators, "exists") {
+				existsInvariantPositions = append(existsInvariantPositions, NewInvariantPosition(i,j))
+			}
+		}
+	}
+	satisfiedInvariants := make([]int, 0)
+	for _, node := range nodes {
+		if len(existsInvariantPositions) == 0 {
+			break
+		}
+		for j, position := range existsInvariantPositions {
+			// If the node has witness in this position, then the invariant is satisfied
+			if node.Process.Witness[position.FileIndex][position.InvariantIndex] {
+				satisfiedInvariants = append(satisfiedInvariants, j)
+			}
+		}
+		// remove the satisfied invariants
+		for _, index := range satisfiedInvariants {
+			existsInvariantPositions = slices.Delete(existsInvariantPositions, index, index+1)
+		}
+	}
+	return existsInvariantPositions
 }
 
 func CheckStrictLiveness(node *Node) ([]*Link, *InvariantPosition) {

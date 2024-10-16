@@ -216,6 +216,17 @@ func main() {
                 dumpFailedNode(deadlock, rootNode, outDir)
                 return
             }
+            if !simulation {
+                invariants := modelchecker.CheckSimpleExistsWitness(nodes)
+                if len(invariants) > 0 {
+                    fmt.Println("\nFAILED: Expected states never reached")
+                    for i2, invariant := range invariants {
+                        fmt.Printf("Invariant %d: %s\n", i2, f.Invariants[invariant.InvariantIndex].Name)
+                    }
+                    fmt.Println("Time taken to check invariant: ", time.Now().Sub(endTime))
+                    return
+                }
+            }
             if !simulation && !p1.Stopped() {
                 if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "enabled" || stateConfig.GetLiveness() == "true"  || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
                     failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode)
