@@ -300,7 +300,7 @@ class BuildAstVisitor(FizzParserVisitor):
                         or child.getSymbol().type == FizzParser.COLON
                 ):
                     continue
-                if child.getSymbol().type == FizzParser.EVENTUALLY or child.getSymbol().type == FizzParser.ALWAYS:
+                if child.getSymbol().type in [FizzParser.EVENTUALLY, FizzParser.ALWAYS, FizzParser.EXISTS]:
                     invariant.temporal_operators.append(child.getText())
                     continue
 

@@ -90,6 +90,7 @@ SERIAL   : 'serial';
 PARALLEL : 'parallel';
 ONEOF    : 'oneof';
 ANY      : 'any';
+EXISTS   : 'exists';
 ACTION   : 'action';
 FUNC     : 'func';
 FAIR     : 'fair';
@@ -173,7 +174,9 @@ OPEN_BRACKET  : '[' {self.IncIndentLevel();};
 CLOSE_BRACKET : ']' {self.DecIndentLevel();};
 
 NAME: ID_START ID_CONTINUE*
-    | ANY;
+    | ANY
+    | EXISTS
+    ;
 //NAME_OR_ANY: NAME | 'any'
 
 LINE_JOIN : '\\' [ \t]* RN -> channel(HIDDEN);
