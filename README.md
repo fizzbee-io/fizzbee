@@ -75,3 +75,40 @@ bazel build --platforms=//:linux_x86  //:fizzbee
 ```
 Python seems to work without platforms flag but unfortunately, 
 passing platforms flag actually breaks the build.
+
+# Running the Fizz with Docker
+This guide will walk you through the steps needed to build and run the application using Docker.
+
+## Clone the Repository 
+If you haven't already cloned the project, you can do so by running the following command:
+
+```bash
+git clone https://github.com/fizzbee-io/fizzbee.git
+cd fizzbee
+```
+
+## Build the Docker Image
+To build the Docker image, run the following command from the root directory of the project:
+
+```bash
+docker build -t fizzbee-app .
+```
+
+## Run the Docker Container
+Once the image is built, you can run the container using:
+```bash
+docker run --rm -it fizzbee-app
+```
+
+## Using Shell Alias for Easier CLI Access
+To make running CLI commands from Docker easier, you can create a shell alias. Add the following to your `.bashrc` or `.zshrc`:
+
+```bash
+alias fizz='docker run -it --rm -v $(pwd):/spec -w /spec fizzbee-app'
+```
+
+After adding the alias, you will need to either restart your terminal or use the source command to apply the changes immediately:
+
+```bash
+source ~/.bashrc # or ~/.zshrc
+```
