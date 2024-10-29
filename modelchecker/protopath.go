@@ -3,7 +3,7 @@ package modelchecker
 import (
 	ast "fizz/proto"
 	"fmt"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"reflect"
 	"regexp"
 	"strconv"

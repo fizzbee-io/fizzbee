@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fizz/proto"
 	"fmt"
-	proto2 "github.com/golang/protobuf/proto"
+	proto3 "google.golang.org/protobuf/proto"
 	"log"
 	"os"
 	"path/filepath"
@@ -108,8 +108,8 @@ func writeNodeJsonsToFile(nodeJsons []string, filename string) error {
 	return writeProtoMsgToFile(&proto.Nodes{Json: nodeJsons}, filename)
 }
 
-func writeProtoMsgToFile(message proto2.Message, filename string) error {
-	data, err := proto2.Marshal(message)
+func writeProtoMsgToFile(message proto3.Message, filename string) error {
+	data, err := proto3.Marshal(message)
 	if err != nil {
 		log.Fatalf("Failed to serialize message: %v", err)
 		return err
