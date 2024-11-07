@@ -1196,12 +1196,12 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	var failedInvariants map[int][]int
 	if yield {
 		failedInvariants = CheckInvariants(node.Process)
-		node.Name = "yield"
 	}
 	if len(failedInvariants[0]) > 0 {
 		//panic(fmt.Sprintf("Invariant failed: %v", failedInvariants))
 		node.Process.FailedInvariants = failedInvariants
 		if !p.config.ContinuePathOnInvariantFailures {
+			node.Name = "yield"
 			return true, false
 		}
 	}
@@ -1221,8 +1221,8 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 			}
 		} else {
 			p.YieldNode(node)
-			node.Name = "yield"
 		}
+		node.Name = "yield"
 		if len(node.Process.Threads) == 0 || !*p.config.Options.CrashOnYield {
 			return false, false
 		}
