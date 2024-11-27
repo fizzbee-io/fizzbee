@@ -611,13 +611,18 @@ func cycleFinderHelper(node *Node, callback CycleCallback, visited map[*Node]boo
 	}
 	globalVisited[node] = true
 	hasFair := false
+	pendingAction := false
 	for _, link := range node.Outbound {
 		if link.Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_STRONG ||
 			link.Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_WEAK {
 			hasFair = true
 		}
+		if strings.HasPrefix(link.Name, "thread-") {
+			pendingAction = true
+		}
 	}
-	if node.Name == "yield" && !hasFair {
+
+	if node.Name == "yield" && !hasFair && !pendingAction {
 		pathCopy := slices.Clone(path)
 		pathCopy = append(pathCopy, &Link{
 			Node:     node,
