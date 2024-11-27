@@ -691,6 +691,7 @@ type Link struct {
 	Labels   []string
 	Fairness ast.FairnessLevel
 	Messages []*ast.Message
+	ReqId    int
 }
 
 func NewNode(process *Process) *Node {
@@ -717,6 +718,7 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 		Labels:   n.Inbound[0].Labels,
 		Fairness: n.Inbound[0].Fairness,
 		Messages: n.Inbound[0].Messages,
+		ReqId:    n.Inbound[0].ReqId,
 	})
 
 	n.Process = nil
@@ -738,6 +740,7 @@ func (n *Node) Attach() {
 		Labels:   n.Inbound[0].Labels,
 		Fairness: n.Inbound[0].Fairness,
 		Messages: n.Inbound[0].Messages,
+		ReqId:    n.Inbound[0].ReqId,
 	})
 }
 
@@ -1350,6 +1353,7 @@ func (p *Processor) YieldNode(node *Node) {
 		name := fmt.Sprintf("thread-%d", i)
 		newNode := node.ForkForAlternatePaths(thread.Process.Fork(), name)
 		newNode.Current = i
+		newNode.Inbound[len(newNode.Inbound)-1].ReqId = newNode.currentThread().Id
 
 		p.queue.Add(newNode)
 	}
@@ -1395,6 +1399,7 @@ func (p *Processor) YieldFork(node *Node, process *Process) {
 		name := fmt.Sprintf("thread-%d", i)
 		newNode := node.ForkForAlternatePaths(thread.Process.Fork(), name)
 		newNode.Current = i
+		newNode.Inbound[len(newNode.Inbound)-1].ReqId = newNode.currentThread().Id
 
 		p.queue.Add(newNode)
 	}
@@ -1427,8 +1432,9 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 	}
 
 	newNode := node.ForkForAction(process, role, action)
-	newNode.Process.NewThread()
+	thread := newNode.Process.NewThread()
 	newNode.Process.Current = len(newNode.Process.Threads) - 1
+	newNode.Inbound[0].ReqId = thread.Id
 	newNode.Process.Fairness = action.Fairness.GetLevel()
 	newNode.currentThread().Fairness = action.Fairness.GetLevel()
 

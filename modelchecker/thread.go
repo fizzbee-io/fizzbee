@@ -12,7 +12,10 @@ import (
 	"maps"
 	"sort"
 	"strings"
+	"sync/atomic"
 )
+
+var nextActionId = atomic.Int32{}
 
 type Heap struct {
 	state   starlark.StringDict
@@ -368,6 +371,7 @@ func (s *CallStack) HashCode() string {
 
 // Thread represents a thread of execution.
 type Thread struct {
+	Id      int         `json:"id"`
 	Process *Process    `json:"-"`
 	Files   []*ast.File `json:"-"`
 	Stack   *CallStack  `json:"stack"`
@@ -379,7 +383,7 @@ type Thread struct {
 func NewThread(Process *Process, files []*ast.File, fileIndex int, action string) *Thread {
 	stack := NewCallStack()
 	frame := &CallFrame{FileIndex: fileIndex, pc: action}
-	t := &Thread{Process: Process, Files: files, Stack: stack}
+	t := &Thread{Id: int(nextActionId.Add(1)), Process: Process, Files: files, Stack: stack}
 	t.pushFrame(frame)
 	return t
 }
@@ -445,7 +449,7 @@ func (t *Thread) popFrame() *CallFrame {
 
 func (t *Thread) Clone(permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Thread {
 	// TODO: handle symmetry in stack.Clone()
-	return &Thread{Process: t.Process, Files: t.Files, Stack: t.Stack.Clone(permutations, alt), Fairness: t.Fairness}
+	return &Thread{Id: t.Id, Process: t.Process, Files: t.Files, Stack: t.Stack.Clone(permutations, alt), Fairness: t.Fairness}
 }
 
 func (t *Thread) Execute() ([]*Process, bool) {

@@ -27,6 +27,7 @@ message Link {
   repeated string labels = 4;
   double weight = 5;
   repeated Message messages = 6;
+  int64 req_id = 7;
 }
 
 message Links {

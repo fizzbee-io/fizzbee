@@ -73,6 +73,7 @@ func GenerateProtoOfJson(nodes []*Node, pathPrefix string) ([]string, []string, 
 		numLinks := len(node.Outbound)
 		for _, outboundLink := range node.Outbound {
 			links = append(links, &proto.Link{
+				ReqId: int64(outboundLink.ReqId),
 				Src:    int64(i),
 				Dest:   int64(indexMap[outboundLink.Node]),
 				Name:   outboundLink.Name,

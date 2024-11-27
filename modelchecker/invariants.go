@@ -84,11 +84,17 @@ func CheckAssertion(process *Process, invariant *ast.Invariant, index int) bool 
 
 	assertThread.currentFrame().pc = fmt.Sprintf("Invariants[%d]", index)
 	assertThread.currentFrame().Name = invariant.Name
-	assertThread.Execute()
-	if len(cloned.Threads) > numThreads {
-		panic("Assertions should not include non-deterministic behavior")
+	for {
+		forks, _ := assertThread.Execute()
+		if len(cloned.Threads) <= numThreads {
+			return bool(cloned.Returns[invariant.Name].Truth())
+		}
+		if len(forks) > 0 {
+			panic("Assertions should not include non-deterministic behavior")
+		}
+
 	}
-	return bool(cloned.Returns[invariant.Name].Truth())
+
 }
 func CheckSimpleExistsWitness(nodes []*Node) []*InvariantPosition {
 	process := nodes[0].Process
