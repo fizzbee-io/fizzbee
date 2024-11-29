@@ -77,7 +77,7 @@ The block modifiers are: `atomic`, `serial`, `parallel`, `oneof`
 `atomic` and `serial` are already explained.
 
 ### Oneof `oneof`
-`oneof` is equivalent to \/ in TLA+.
+`oneof` is equivalent to `\/` in TLA+.
 For example,
 ```
 action IncrementAny:
@@ -98,7 +98,7 @@ so other actions could be interleaved between them.
 
 ```
 action IncrementAny:
-  oneof:
+  parallel:
     a += 1
     b += 1
 ```
@@ -176,7 +176,7 @@ Same as python: while. (Note: Python's else clause on while is not supported)
 while a < 5:
   a += 1
 ```
-If a is 10 at the beginning, a will be 15 at the end.
+If a is 2 at the beginning, a will be 5 at the end.
 
 ### For
 Same as python: for. (Note: Python's else clause on for is not supported)
@@ -721,7 +721,7 @@ If every state here is LIVE, then the liveness property is satisfied.
 In this example, `eventually always` (`[]<>`) and `always eventually` (`<>[]`) are the same. But, in general, they are not.
 
 `always eventually` is implemented as, in the steady state, every node should satisfy the liveness predicate.
-`eventually always` is implemented as, make every node that satisfies the liveness predicate, into a terminal state. That is,
+`eventually always` is implemented as, make every node that satisfies the liveness predicate into a terminal state. That is,
 remove outbound edges, and make it a stuttering loop. Now, start from every node in the graph with equal probability,
 and find the steady state. In the new steady state, if every node satisfies the liveness predicate, 
 then the model's liveness property is satisfied.
