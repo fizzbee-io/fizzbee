@@ -190,8 +190,8 @@ func main() {
         if failedNode == nil {
             var failurePath []*modelchecker.Link
             var failedInvariant *modelchecker.InvariantPosition
-            nodes, messages, deadlock, _ := modelchecker.GetAllNodes(rootNode, stateConfig.GetOptions().GetMaxActions())
-
+            nodes, messages, deadlock, yieldsCount := modelchecker.GetAllNodes(rootNode, stateConfig.GetOptions().GetMaxActions())
+            fmt.Println("Valid nodes:", len(nodes), "Unique states:", yieldsCount)
             if len(messages) > 0 && !simulation {
                 graphDot := modelchecker.GenerateCommunicationGraph(messages)
                 dotFileName := filepath.Join(outDir, "communication.dot")
