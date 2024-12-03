@@ -252,7 +252,7 @@ func AlwaysEventuallyFast(nodes []*Node, predicate Predicate) ([]*Link, bool) {
 		visited[node] = true
 		for _, link := range node.Inbound {
 			if visited[link.Node] || link.Node == node ||
-				link.Fairness != ast.FairnessLevel_FAIRNESS_LEVEL_STRONG {
+				(link.Fairness != ast.FairnessLevel_FAIRNESS_LEVEL_STRONG && link.Fairness != ast.FairnessLevel_FAIRNESS_LEVEL_WEAK) {
                 continue
 			}
 			delete(falseNodes, link.Node)
@@ -418,7 +418,7 @@ func EventuallyAlwaysFast(nodes []*Node, predicate Predicate) ([]*Link, bool) {
 	}
 	fmt.Println("Every behavior leads to a bad state eventually")
 
-	return CycleFinderFinalBfs(nodes[0], func(path []*Link) bool {
+	return CycleFinderFinalBfs(nodes[0], func(path []*Link, cycles int) bool {
 		return false
 	})
 }
@@ -426,10 +426,10 @@ func EventuallyAlwaysFast(nodes []*Node, predicate Predicate) ([]*Link, bool) {
 
 type Predicate func(n *Node) (bool, bool)
 
-type CycleCallback func(path []*Link) bool
+type CycleCallback func(path []*Link, cycles int) bool
 
 func AlwaysEventuallyFinal(root *Node, predicate Predicate) ([]*Link, bool) {
-	f := func(path []*Link) bool {
+	f := func(path []*Link, cycles int) bool {
 		mergeNode := path[len(path)-1].Node
 		mergeIndex := 0
 		// iterate over the path in reverse order and check if the property holds
@@ -446,7 +446,7 @@ func AlwaysEventuallyFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 			}
 		}
 		//fmt.Println("Live node NOT FOUND in the path")
-		if isFairCycle(path[mergeIndex:], false) {
+		if isFairCycle(path[mergeIndex:], true) {
 			//fmt.Println("Fair cycle found")
 			//isFairCycle(path[mergeIndex:], true)
 			return false
@@ -459,7 +459,7 @@ func AlwaysEventuallyFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 }
 
 func EventuallyAlwaysFinal(root *Node, predicate Predicate) ([]*Link, bool) {
-	f := func(path []*Link) bool {
+	f := func(path []*Link, cycles int) bool {
 		mergeNode := path[len(path)-1].Node
 		mergeIndex := 0
 		deadNodeFound := false
@@ -476,7 +476,7 @@ func EventuallyAlwaysFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 				break
 			}
 		}
-		if deadNodeFound && isFairCycle(path[mergeIndex:], false) {
+		if deadNodeFound && isFairCycle(path[mergeIndex:], true) {
 			////fmt.Println("Fair cycle found")
 			return false
 		} else {
@@ -499,12 +499,18 @@ func isFairCycle(path []*Link, debugLog bool) bool {
 	firstYield := -1
 	prevNodeHasNonCrashLink := false
 	nextNodeIsCrash := false
+
+	for i, link := range path {
+		//node := link.Node
+		fmt.Println("i :", i, "Link.Name", link.Name, /*"Node:", node.String(),*/ "choice fairness", link.ChoiceFairness)
+	}
+	fmt.Println("Checking fairness")
 	for i, link := range path {
 		node := link.Node
 		unvisitedWeakFairLinksOutOfChain := map[string]bool{}
 
 		if debugLog {
-			fmt.Println("Node:", node.String())
+			fmt.Println("Node:", node.String(), "choice fairness", link.ChoiceFairness)
 		}
 		if nextNodeIsCrash && prevNodeHasNonCrashLink {
 			if debugLog {
@@ -516,7 +522,25 @@ func isFairCycle(path []*Link, debugLog bool) bool {
 			if debugLog {
 				fmt.Println("Node is not init or yield")
 			}
-			continue
+			//for _, outLink := range node.Outbound {
+			//	fmt.Println("Outlink:", outLink.Name, outLink.Fairness, outLink.Labels, outLink.Node.Name, outLink.ChoiceFairness)
+			//	//fmt.Println("Fairness:", (node.Outbound[0].ChoiceFairness != ast.FairnessLevel_FAIRNESS_LEVEL_STRONG) &&
+			//	//	(node.Outbound[0].ChoiceFairness != ast.FairnessLevel_FAIRNESS_LEVEL_WEAK))
+			//}
+			//fmt.Println("To skip or not", len(node.Outbound) <= 0 || !strings.HasPrefix(node.Outbound[0].Name, "Any:") ||
+			//	(node.Outbound[0].ChoiceFairness == ast.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN) ||
+			//	(node.Outbound[0].ChoiceFairness == ast.FairnessLevel_FAIRNESS_LEVEL_UNFAIR))
+
+			if len(node.Outbound) <= 0 || !strings.HasPrefix(node.Outbound[0].Name, "Any:") ||
+				node.Outbound[0].ChoiceFairness == ast.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN ||
+				node.Outbound[0].ChoiceFairness == ast.FairnessLevel_FAIRNESS_LEVEL_UNFAIR {
+				if debugLog {
+					fmt.Println("Not a fair Any choice node")
+				}
+				continue
+
+			}
+			//continue
 		}
 
 		if firstYield == -1 {
@@ -525,7 +549,7 @@ func isFairCycle(path []*Link, debugLog bool) bool {
 		prevNodeHasNonCrashLink = false
 		for _, outLink := range node.Outbound {
 			if debugLog {
-				fmt.Println("Outlink:", outLink.Name, outLink.Fairness, outLink.Labels, outLink.Node.Name)
+				//fmt.Println("Outlink:", outLink.Name, outLink.Fairness, outLink.Labels, outLink.Node.Name, outLink.ChoiceFairness)
 			}
 			if outLink.Name != "crash" {
 				prevNodeHasNonCrashLink = true
@@ -583,6 +607,7 @@ func isFairCycle(path []*Link, debugLog bool) bool {
 		fmt.Println("Weak Fair Links in chain:", weakFairLinksInChain)
 		fmt.Println("Weak Fair Links out of chain:", weakFairLinksOutOfChain)
 	}
+	fmt.Println("Checking fairness done. Is Fair:", !(len(strongFairLinksOutOfChain) > 0 || len(weakFairLinksOutOfChain) > 0))
 	if len(strongFairLinksOutOfChain) > 0 || len(weakFairLinksOutOfChain) > 0 {
 		return false
 	}
@@ -594,14 +619,20 @@ func CycleFinderFinal(node *Node, callback CycleCallback) ([]*Link, bool) {
 	globalVisited := make(map[*Node]bool)
 	rootLink := InitNodeToLink(node)
 	path := []*Link{rootLink}
-	return cycleFinderHelper(node, callback, visited, path, globalVisited)
+	return cycleFinderHelper(node, callback, visited, 0, path, globalVisited)
 }
 
-func cycleFinderHelper(node *Node, callback CycleCallback, visited map[*Node]bool, path []*Link, globalVisited map[*Node]bool) ([]*Link, bool) {
+func cycleFinderHelper(node *Node, callback CycleCallback, visited map[*Node]bool, cycles int, path []*Link, globalVisited map[*Node]bool) ([]*Link, bool) {
 	if visited[node] {
-		//fmt.Println("\n\nCycle detected in the path:")
+		fmt.Println("\n\nCycle detected in the path:")
 		//fmt.Println("Path:", path)
-		return path, callback(path)
+		//fmt.Println("Cycle found")
+		for i, link := range path {
+			fmt.Println(i, link.Name, link.Node.HashCode(), link.Node.String())
+
+		}
+		fmt.Println("Visited node", node.HashCode(), node.String())
+		return path, callback(path, cycles + 1)
 	}
 
 	visited[node] = true
@@ -628,7 +659,12 @@ func cycleFinderHelper(node *Node, callback CycleCallback, visited map[*Node]boo
 			Node:     node,
 			Name:     "stutter",
 		})
-		isLive := callback(pathCopy)
+		fmt.Println("Cycle found")
+		for i, link := range pathCopy {
+			fmt.Println(i, link.Name, link.Node.String())
+
+		}
+		isLive := callback(pathCopy, cycles + 1)
 		if !isLive {
 			return pathCopy, false
 		}
@@ -639,7 +675,7 @@ func cycleFinderHelper(node *Node, callback CycleCallback, visited map[*Node]boo
 		pathCopy := slices.Clone(path)
 		visitedCopy := maps.Clone(visited)
 		pathCopy = append(pathCopy, link)
-		failedPath, success := cycleFinderHelper(link.Node, callback, visitedCopy, pathCopy, globalVisited)
+		failedPath, success := cycleFinderHelper(link.Node, callback, visitedCopy, cycles, pathCopy, globalVisited)
 		if !success {
 			return failedPath,false
 		}
@@ -672,7 +708,7 @@ func cycleFinderHelperBfs(root *Node, callback CycleCallback, visited map[*Node]
 			path = append(path, element.link)
 			//fmt.Println("\n\nCycle detected in the path:")
 			//fmt.Println("Path:", path)
-			live := callback(path)
+			live := callback(path, 1)
 			if live {
 				continue
 			}
@@ -699,7 +735,7 @@ func cycleFinderHelperBfs(root *Node, callback CycleCallback, visited map[*Node]
 				Node:     node,
 				Name:     "stutter",
 			})
-			live := callback(pathCopy)
+			live := callback(pathCopy, 1)
 			if live {
 				continue
 			}
@@ -718,4 +754,98 @@ func NewDictFromStringDict(vals starlark.StringDict) *starlark.Dict {
 		PanicOnError(err)
 	}
 	return result
+}
+
+
+// Tarjan's algorithm helper structure
+type tarjanData struct {
+	index      int
+	lowLink    int
+	onStack    bool
+}
+
+func CheckLivenessSccAlwaysEventually(nodes []*Node, invPos InvariantPosition) (bool, error) {
+	// Map each node to its Tarjan data
+	tarjan := make(map[*Node]*tarjanData)
+	var stack []*Node
+	var index int
+	var sccs [][]*Node
+
+	// Tarjan's algorithm to find SCCs
+	var strongConnect func(node *Node)
+	strongConnect = func(node *Node) {
+		data := &tarjanData{index: index, lowLink: index, onStack: true}
+		tarjan[node] = data
+		stack = append(stack, node)
+		index++
+
+		for _, link := range node.Outbound {
+			next := link.Node
+			if _, exists := tarjan[next]; !exists {
+				// Visit unvisited node
+				strongConnect(next)
+				data.lowLink = min(data.lowLink, tarjan[next].lowLink)
+			} else if tarjan[next].onStack {
+				// Update lowLink for back edges
+				data.lowLink = min(data.lowLink, tarjan[next].index)
+			}
+		}
+
+		// If node is a root of an SCC
+		if data.lowLink == data.index {
+			var scc []*Node
+			for {
+				w := stack[len(stack)-1]
+				stack = stack[:len(stack)-1]
+				tarjan[w].onStack = false
+				scc = append(scc, w)
+				if w == node {
+					break
+				}
+			}
+			sccs = append(sccs, scc)
+		}
+	}
+
+	// Initialize Tarjan's algorithm
+	for _, node := range nodes {
+		if _, visited := tarjan[node]; !visited {
+			strongConnect(node)
+		}
+	}
+
+	// Check each SCC for liveness property
+	for i, scc := range sccs {
+		fmt.Println("SCC:", i, len(scc))
+		for j, node := range scc {
+			fmt.Println(j, node.String())
+		}
+		//if isTerminalSCC(scc) {
+		//	// Check if every node in this SCC satisfies P
+		//	for _, node := range scc {
+		//		if !node.Process.Witness[invPos.FileIndex][invPos.InvariantIndex] {
+		//			return false, fmt.Errorf("liveness property violated in SCC containing node %+v", node)
+		//		}
+		//	}
+		//}
+	}
+
+	return true, nil
+}
+
+// Helper to determine if an SCC is terminal
+func isTerminalSCC(scc []*Node) bool {
+	nodeSet := make(map[*Node]struct{})
+	for _, node := range scc {
+		nodeSet[node] = struct{}{}
+	}
+
+	for _, node := range scc {
+		for _, link := range node.Outbound {
+			if _, inSCC := nodeSet[link.Node]; !inSCC {
+				return false
+			}
+		}
+	}
+	return true
 }
