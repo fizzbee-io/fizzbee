@@ -79,7 +79,7 @@ compound_stmt
     | decorator* (classdef | funcdef)                                                # class_or_func_def_stmt
     | roledef                                                                        # role_def_stmt
 
-    | ANY exprlist IN testlist COLON suite                                           # any_stmt
+    | fairness? ANY exprlist IN testlist COLON suite                                           # any_stmt
     | INIT COLON suite                                                               # init_stmt
     | INVARIANTS COLON invariants_suite                                              # invariants_stmt
     | assertiondef                                                                   # assertion_stmt
@@ -199,7 +199,7 @@ simple_stmt
 //         function calls of the simplest form like ret = fn(arg1,arg2)
 small_stmt
     : (NAME ASSIGN)? (NAME DOT)? NAME OPEN_PAREN arglist? CLOSE_PAREN    # func_call_stmt  // Fizz specific shortcut
-    | exprlist ASSIGN ANY testlist ((COLON | IF) test)?                  # any_assign_stmt
+    | exprlist ASSIGN fairness? ANY testlist ((COLON | IF) test)?                  # any_assign_stmt
     | REQUIRE test                                                       # require_stmt
     | testlist_star_expr assign_part?                        # expr_stmt
     | {self.CheckVersion(2)}? PRINT (

@@ -906,6 +906,8 @@ class BuildAstVisitor(FizzParserVisitor):
                 print("visitAny_assign_stmt childProto",childProto)
                 if isinstance(childProto, ast.Block):
                     any_stmt.block.CopyFrom(childProto)
+                elif isinstance(childProto, ast.Fairness):
+                    any_stmt.fairness.CopyFrom(childProto)
                 else:
                     print("visitAny_assign_stmt childProto",childProto, child)
                     raise Exception("visitAny_assign_stmt childProto (unknown) type", childProto.__class__.__name__, dir(childProto), childProto)

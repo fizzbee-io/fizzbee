@@ -118,6 +118,7 @@ message AnyStmt {
   string condition = 6;
   Expr iter_expr = 7;
   Expr condition_expr = 8;
+  Fairness fairness = 9;
 }
 
 message WhileStmt {
