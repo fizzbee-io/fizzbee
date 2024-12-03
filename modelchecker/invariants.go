@@ -418,18 +418,22 @@ func EventuallyAlwaysFast(nodes []*Node, predicate Predicate) ([]*Link, bool) {
 	}
 	fmt.Println("Every behavior leads to a bad state eventually")
 
-	return CycleFinderFinalBfs(nodes[0], func(path []*Link, cycles int) bool {
-		return false
+	return CycleFinderFinalBfs(nodes[0], func(path []*Link, cycles int) (bool, *CycleCallbackResult) {
+		return false, nil
 	})
 }
 
 
 type Predicate func(n *Node) (bool, bool)
 
-type CycleCallback func(path []*Link, cycles int) bool
+type CycleCallbackResult struct {
+	missingLinks []*Pair[*Node, []*Link]
+}
+type CycleCallback func(path []*Link, cycles int) (bool, *CycleCallbackResult)
+
 
 func AlwaysEventuallyFinal(root *Node, predicate Predicate) ([]*Link, bool) {
-	f := func(path []*Link, cycles int) bool {
+	f := func(path []*Link, cycles int) (bool, *CycleCallbackResult) {
 		mergeNode := path[len(path)-1].Node
 		mergeIndex := 0
 		// iterate over the path in reverse order and check if the property holds
@@ -438,28 +442,33 @@ func AlwaysEventuallyFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 			//fmt.Printf("Node: %s, Relevant: %t, Value: %t\n", path[i].String(), relevant, value)
 			if relevant && value {
 				//fmt.Println("Live node FOUND in the path")
-				return true
+				return true, nil
 			}
 			if i < len(path) - 1 && path[i].Node == mergeNode {
-				mergeIndex = i
-				break
+				if cycles > 0 {
+					mergeIndex = i
+					break
+				} else {
+					cycles--
+				}
 			}
 		}
 		//fmt.Println("Live node NOT FOUND in the path")
-		if isFairCycle(path[mergeIndex:], true) {
-			//fmt.Println("Fair cycle found")
+		isFair, cycleCallbackResult := isFairCycle(path[mergeIndex:], true)
+		if isFair {
+			fmt.Println("Fair cycle found")
 			//isFairCycle(path[mergeIndex:], true)
-			return false
+			return false, nil
 		} else {
-			//fmt.Println("Not a fair cycle, and has fair exit link")
-			return true
+			fmt.Println("Not a fair cycle, and has fair exit link")
+			return true, cycleCallbackResult
 		}
 	}
 	return CycleFinderFinal(root, f)
 }
 
 func EventuallyAlwaysFinal(root *Node, predicate Predicate) ([]*Link, bool) {
-	f := func(path []*Link, cycles int) bool {
+	f := func(path []*Link, cycles int) (bool, *CycleCallbackResult) {
 		mergeNode := path[len(path)-1].Node
 		mergeIndex := 0
 		deadNodeFound := false
@@ -476,19 +485,25 @@ func EventuallyAlwaysFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 				break
 			}
 		}
-		if deadNodeFound && isFairCycle(path[mergeIndex:], true) {
-			////fmt.Println("Fair cycle found")
-			return false
-		} else {
-			//fmt.Println("Not a fair cycle, and has fair exit link")
-			return true
+		if deadNodeFound {
+			isFair, cycleCallbackResult := isFairCycle(path[mergeIndex:], true)
+			if isFair {
+				fmt.Println("Fair cycle found")
+				return false, nil
+			} else {
+				fmt.Println("Not a fair cycle, and has fair exit link")
+				return true, cycleCallbackResult
+			}
+			//return false, nil
 		}
+			return true, nil
+
 		//fmt.Println("Dead node NOT FOUND in the path")
 	}
 	return CycleFinderFinal(root, f)
 }
 
-func isFairCycle(path []*Link, debugLog bool) bool {
+func isFairCycle(path []*Link, debugLog bool) (bool, *CycleCallbackResult) {
 	strongFairLinksInChain := map[string]bool{}
 	strongFairLinksOutOfChain := map[string]bool{}
 
@@ -516,7 +531,7 @@ func isFairCycle(path []*Link, debugLog bool) bool {
 			if debugLog {
 				fmt.Println("Loop with a crash node, but previous node has non-crash link")
 			}
-			return false
+			return false, nil
 		}
 		if node.Name != "init" && node.Name != "yield" {
 			if debugLog {
@@ -609,9 +624,34 @@ func isFairCycle(path []*Link, debugLog bool) bool {
 	}
 	fmt.Println("Checking fairness done. Is Fair:", !(len(strongFairLinksOutOfChain) > 0 || len(weakFairLinksOutOfChain) > 0))
 	if len(strongFairLinksOutOfChain) > 0 || len(weakFairLinksOutOfChain) > 0 {
-		return false
+		cycleCallbackResult := findMissingLinks(path, strongFairLinksOutOfChain, weakFairLinksOutOfChain)
+		return false, cycleCallbackResult
 	}
-	return true
+	return true, nil
+}
+
+func findMissingLinks(path []*Link, strongFairLinksOutOfChain map[string]bool, weakFairLinksOutOfChain map[string]bool) *CycleCallbackResult {
+	missingLinks := make([]*Pair[*Node, []*Link], 0)
+	for _, link := range path {
+		node := link.Node
+		nodeMissingLinks := make([]*Link, 0)
+		for _, outLink := range node.Outbound {
+			if outLink.Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_STRONG {
+				if _, ok := strongFairLinksOutOfChain[outLink.Name]; ok {
+					nodeMissingLinks = append(nodeMissingLinks, outLink)
+				}
+			} else if outLink.Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_WEAK {
+				if _, ok := weakFairLinksOutOfChain[outLink.Name]; ok {
+					nodeMissingLinks = append(nodeMissingLinks, outLink)
+				}
+			}
+		}
+		if len(nodeMissingLinks) > 0 {
+			missingLinks = append(missingLinks, &Pair[*Node, []*Link]{First: node, Second: nodeMissingLinks})
+		}
+	}
+	return &CycleCallbackResult{missingLinks: missingLinks}
+	
 }
 
 func CycleFinderFinal(node *Node, callback CycleCallback) ([]*Link, bool) {
@@ -632,7 +672,43 @@ func cycleFinderHelper(node *Node, callback CycleCallback, visited map[*Node]boo
 
 		}
 		fmt.Println("Visited node", node.HashCode(), node.String())
-		return path, callback(path, cycles + 1)
+		isLive, result := callback(path, cycles)
+		fmt.Println("Is live:", isLive, "Result:", result)
+		if !isLive || result == nil {
+			return path, isLive
+		}
+		for i, link := range result.missingLinks {
+			fmt.Println("Missing links from node", i, link.First.String())
+			for j, l := range link.Second {
+				fmt.Println(j, l.Name, l.Node.String())
+				// Find the next larger cycle including the missing link one by one.
+				// That is, copy path, and visited, globalVisited and recursively call cycleFinderHelper for each of the missing link/node
+
+				pathCopy := slices.Clone(path)
+				visitedCopy := maps.Clone(visited)
+				// Add the links from last node in path to the missing link.
+				for k1, oldLink := range path {
+					if oldLink.Node == path[len(path)-1].Node {
+						for _, oldLink2 := range path[k1 + 1:] {
+							pathCopy = append(pathCopy, oldLink2)
+							if oldLink2.Node == l.Node {
+								break
+							}
+						}
+						break
+					}
+				}
+
+				pathCopy = append(pathCopy, l)
+				//globalVisitedCopy := maps.Clone(globalVisited)
+				failedPath, success := cycleFinderHelper(l.Node, callback, visitedCopy, cycles + 1, pathCopy, globalVisited)
+				if !success {
+					return failedPath, false
+				}
+			}
+
+		}
+		return path, isLive
 	}
 
 	visited[node] = true
@@ -664,7 +740,7 @@ func cycleFinderHelper(node *Node, callback CycleCallback, visited map[*Node]boo
 			fmt.Println(i, link.Name, link.Node.String())
 
 		}
-		isLive := callback(pathCopy, cycles + 1)
+		isLive, _ := callback(pathCopy, cycles + 1)
 		if !isLive {
 			return pathCopy, false
 		}
@@ -708,7 +784,7 @@ func cycleFinderHelperBfs(root *Node, callback CycleCallback, visited map[*Node]
 			path = append(path, element.link)
 			//fmt.Println("\n\nCycle detected in the path:")
 			//fmt.Println("Path:", path)
-			live := callback(path, 1)
+			live, _ := callback(path, 1)
 			if live {
 				continue
 			}
@@ -735,7 +811,7 @@ func cycleFinderHelperBfs(root *Node, callback CycleCallback, visited map[*Node]
 				Node:     node,
 				Name:     "stutter",
 			})
-			live := callback(pathCopy, 1)
+			live, _ := callback(pathCopy, 1)
 			if live {
 				continue
 			}
