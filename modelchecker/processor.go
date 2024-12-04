@@ -128,40 +128,41 @@ func LoadModule(moduleFile string) starlark.StringDict {
 }
 
 type Process struct {
-	Heap             *Heap		      `json:"state"`
-	Threads          []*Thread        `json:"threads"`
-	Current          int              `json:"current"`
-	Name             string           `json:"name"`
-	Files            []*ast.File      `json:"-"`
-	Parent           *Process         `json:"-"`
-	Evaluator        *Evaluator       `json:"-"`
-	Children         []*Process       `json:"-"`
-	FailedInvariants map[int][]int    `json:"failedInvariants"`
-	Stats            *Stats           `json:"stats"`
+	Heap             *Heap         `json:"state"`
+	Threads          []*Thread     `json:"threads"`
+	Current          int           `json:"current"`
+	Name             string        `json:"name"`
+	Files            []*ast.File   `json:"-"`
+	Parent           *Process      `json:"-"`
+	Evaluator        *Evaluator    `json:"-"`
+	Children         []*Process    `json:"-"`
+	FailedInvariants map[int][]int `json:"failedInvariants"`
+	Stats            *Stats        `json:"stats"`
 	// Witness indicates the successful liveness checks
 	// For liveness checks, not all nodes will pass the condition, witness indicates
 	// which invariants this node passed.
 	Witness     [][]bool               `json:"witness"`
 	Returns     starlark.StringDict    `json:"returns"`
 	SymbolTable map[string]*Definition `json:"-"`
-	Labels 		[]string               `json:"-"`
-	Messages    []*ast.Message          `json:"-"`
+	Labels      []string               `json:"-"`
+	Messages    []*ast.Message         `json:"-"`
 
 	// Fairness is actually a property of the transition/link. But to determine whether
 	// the link is fair, we need to know if the process stepped through at least one
 	// fair statement. To determine that, each thread maintains the fairness level
 	// of the action that started. If that thread executed a statement, that process becomes fair,
 	// that in-turn makes the link fair.
-	Fairness    ast.FairnessLevel      `json:"-"`
+	Fairness ast.FairnessLevel `json:"-"`
 
-	Enabled		bool                   `json:"-"`
+	Enabled bool `json:"-"`
 
-	Roles 	    []*lib.Role `json:"roles"`
+	Roles []*lib.Role `json:"roles"`
 
-	CachedHashCode string              `json:"-"`
+	CachedHashCode string `json:"-"`
 
-	Modules	 map[string]starlark.Value `json:"-"`
-	EnableCheckpoint bool 		  `json:"-"`
+	Modules          map[string]starlark.Value `json:"-"`
+	EnableCheckpoint bool                      `json:"-"`
+	ChoiceFairness   ast.FairnessLevel        `json:"-"`
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
@@ -690,6 +691,7 @@ type Link struct {
 	Name     string
 	Labels   []string
 	Fairness ast.FairnessLevel
+	ChoiceFairness ast.FairnessLevel
 	Messages []*ast.Message
 	ReqId    int
 }
@@ -717,6 +719,7 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 		Name:     n.Inbound[0].Name,
 		Labels:   n.Inbound[0].Labels,
 		Fairness: n.Inbound[0].Fairness,
+		ChoiceFairness: n.Inbound[0].ChoiceFairness,
 		Messages: n.Inbound[0].Messages,
 		ReqId:    n.Inbound[0].ReqId,
 	})
@@ -739,6 +742,7 @@ func (n *Node) Attach() {
 		Name:     n.Inbound[0].Name,
 		Labels:   n.Inbound[0].Labels,
 		Fairness: n.Inbound[0].Fairness,
+		ChoiceFairness: n.Inbound[0].ChoiceFairness,
 		Messages: n.Inbound[0].Messages,
 		ReqId:    n.Inbound[0].ReqId,
 	})
@@ -781,7 +785,8 @@ func (n *Node) ForkForAlternatePaths(process *Process, name string) *Node {
 		forkDepth:   n.forkDepth + 1,
 		stacktrace:  captureStackTrace(),
 	}
-	forkNode.Inbound = append(forkNode.Inbound, &Link{Node: n, Name: name})
+
+	forkNode.Inbound = append(forkNode.Inbound, &Link{Node: n, Name: name, ChoiceFairness: process.ChoiceFairness})
 	return forkNode
 }
 
@@ -1157,6 +1162,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	if len(node.Inbound) > 0 {
 		node.Inbound[0].Labels = append(node.Inbound[0].Labels, node.Process.Labels...)
 		node.Inbound[0].Fairness = node.Process.Fairness
+
 		node.Inbound[0].Messages = append(node.Inbound[0].Messages, node.Process.Messages...)
 	}
 

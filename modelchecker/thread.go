@@ -643,6 +643,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			//fmt.Printf("anyVariable: x: %s\n", x.String())
 			fork := t.Process.Fork()
 			fork.Name = fmt.Sprintf("Any:%s=%s", stmt.AnyStmt.LoopVars[0], x.String())
+			fork.ChoiceFairness = stmt.AnyStmt.Fairness.GetLevel()
 			if stmt.AnyStmt.Block == nil {
 				fork.updateVariable(stmt.AnyStmt.LoopVars[0], x)
 			} else {
