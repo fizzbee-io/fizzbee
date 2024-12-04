@@ -190,7 +190,7 @@ func main() {
         if failedNode == nil {
             var failurePath []*modelchecker.Link
             var failedInvariant *modelchecker.InvariantPosition
-            nodes, messages, deadlock, _ := modelchecker.GetAllNodes(rootNode, stateConfig.GetOptions().GetMaxActions())
+            nodes, messages, deadlock, yieldsCount := modelchecker.GetAllNodes(rootNode, stateConfig.GetOptions().GetMaxActions())
 
             if len(messages) > 0 && !simulation {
                 graphDot := modelchecker.GenerateCommunicationGraph(messages)
@@ -217,6 +217,7 @@ func main() {
                 return
             }
             if !simulation {
+                fmt.Println("Valid nodes:", len(nodes), "Unique states:", yieldsCount)
                 invariants := modelchecker.CheckSimpleExistsWitness(nodes)
                 if len(invariants) > 0 {
                     fmt.Println("\nFAILED: Expected states never reached")
