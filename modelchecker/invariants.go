@@ -176,7 +176,7 @@ func CheckStrictLiveness(node *Node) ([]*Link, *InvariantPosition) {
 }
 
 func CheckFastLiveness(allNodes []*Node) ([]*Link, *InvariantPosition) {
-	fmt.Println("Checking strict liveness fast approach")
+	fmt.Println("Checking strict liveness with nondeterministic checker")
 	node := allNodes[0]
 	process := node.Process
 	if len(process.Files) > 1 {
