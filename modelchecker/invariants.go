@@ -435,24 +435,27 @@ type CycleCallback func(path []*Link, cycles int) (bool, *CycleCallbackResult)
 func AlwaysEventuallyFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 	f := func(path []*Link, cycles int) (bool, *CycleCallbackResult) {
 		mergeNode := path[len(path)-1].Node
-		mergeIndex := 0
-		// iterate over the path in reverse order and check if the property holds
-		for i := len(path) - 1; i >= 0; i-- {
-			relevant, value := predicate(path[i].Node)
-			//fmt.Printf("Node: %s, Relevant: %t, Value: %t\n", path[i].String(), relevant, value)
-			if relevant && value {
-				//fmt.Println("Live node FOUND in the path")
-				return true, nil
-			}
-			if i < len(path) - 1 && path[i].Node == mergeNode {
-				if cycles <= 0 {
-					mergeIndex = i
-					break
-				} else {
-					cycles--
+		mergeIndex := -1
+		// iterate over the path in order to find the earliest merge node forming the largest cycle
+		// Then check if the property holds in that cycle
+		for i := 0; i < len(path) - 1; i++ {
+			if path[i].Node == mergeNode {
+				for j := i + 1; j < len(path); j++ {
+					relevant, value := predicate(path[j].Node)
+					if relevant && !value {
+						mergeIndex = i
+						break
+					}
 				}
+				break
 			}
+
 		}
+		if mergeIndex == -1 {
+			//fmt.Println("No merge node found")
+			return true, nil
+		}
+
 		//fmt.Println("Live node NOT FOUND in the path")
 		isFair, cycleCallbackResult := isFairCycle(path[mergeIndex:], false)
 		if isFair {
@@ -472,23 +475,22 @@ func EventuallyAlwaysFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 		mergeNode := path[len(path)-1].Node
 		mergeIndex := 0
 		deadNodeFound := false
-		// iterate over the path in reverse order and check if the property holds
-		for i := len(path) - 1; i >= 0; i-- {
-			relevant, value := predicate(path[i].Node)
-			//fmt.Printf("Node: %+v, Relevant: %t, Value: %t\n", path[i], relevant, value)
-			if relevant && !value {
-				//fmt.Println("Dead node FOUND in the path")
-				deadNodeFound = true
-			}
-			if i < len(path) - 1 && path[i].Node == mergeNode {
-				if cycles <= 0 {
-					mergeIndex = i
-					break
-				} else {
-					cycles--
+
+		// iterate over the path in order to find the earliest merge node forming the largest cycle
+		// Then check if the property holds in that cycle
+		for i := 0; i < len(path) - 1; i++ {
+			if path[i].Node == mergeNode {
+				for j := i + 1; j < len(path); j++ {
+					relevant, value := predicate(path[j].Node)
+					if relevant && !value {
+						deadNodeFound = true
+						break
+					}
 				}
+				break
 			}
 		}
+		
 		if deadNodeFound {
 			isFair, cycleCallbackResult := isFairCycle(path[mergeIndex:], false)
 			if isFair {
@@ -568,10 +570,11 @@ func isFairCycle(path []*Link, debugLog bool) (bool, *CycleCallbackResult) {
 		}
 		prevNodeHasNonCrashLink = false
 		for _, outLink := range node.Outbound {
+			linkName := fairnessLinkName(node, outLink)
 			if debugLog {
 				//fmt.Println("Outlink:", outLink.Name, outLink.Fairness, outLink.Labels, outLink.Node.Name, outLink.ChoiceFairness)
 			}
-			if outLink.Name != "crash" {
+			if linkName != "crash" {
 				prevNodeHasNonCrashLink = true
 			} else if outLink.Node == path[(i+1)%chainLen].Node {
 				nextNodeIsCrash = true
@@ -580,23 +583,23 @@ func isFairCycle(path []*Link, debugLog bool) (bool, *CycleCallbackResult) {
 				if outLink.Node == path[(i+1)%chainLen].Node {
 					// outlink points to the next node in the chain
 					// It satisfies the strong fairness condition for that action
-					strongFairLinksInChain[outLink.Name] = true
-					delete(strongFairLinksOutOfChain, outLink.Name)
-				} else if _, ok := strongFairLinksInChain[outLink.Name]; !ok {
-					strongFairLinksOutOfChain[outLink.Name] = true
+					strongFairLinksInChain[linkName] = true
+					delete(strongFairLinksOutOfChain, linkName)
+				} else if _, ok := strongFairLinksInChain[linkName]; !ok {
+					strongFairLinksOutOfChain[linkName] = true
 				}
 			} else if outLink.Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_WEAK {
 				if outLink.Node == path[(i+1)%chainLen].Node {
 					if debugLog {
-						fmt.Println("Weak Fair link in chain", outLink.Name, outLink.Node.Name)
+						fmt.Println("Weak Fair link in chain", linkName, outLink.Node.Name)
 					}
-					weakFairLinksInChain[outLink.Name] = true
-					delete(unvisitedWeakFairLinksOutOfChain, outLink.Name)
-				} else if _, ok := weakFairLinksInChain[outLink.Name]; !ok {
+					weakFairLinksInChain[linkName] = true
+					delete(unvisitedWeakFairLinksOutOfChain, linkName)
+				} else if _, ok := weakFairLinksInChain[linkName]; !ok {
 					if debugLog {
-						fmt.Println("Weak Fair link out of chain", outLink.Name, outLink.Node.Name)
+						fmt.Println("Weak Fair link out of chain", linkName, outLink.Node.Name)
 					}
-					unvisitedWeakFairLinksOutOfChain[outLink.Name] = true
+					unvisitedWeakFairLinksOutOfChain[linkName] = true
 				}
 			}
 		}
@@ -635,18 +638,30 @@ func isFairCycle(path []*Link, debugLog bool) (bool, *CycleCallbackResult) {
 	return true, nil
 }
 
+func fairnessLinkName(node *Node, outLink *Link) string {
+	linkName := outLink.Name
+	if strings.HasPrefix(linkName, "Any:") {
+		linkName = linkName + "|" + node.currentThread().currentPc()
+		if node.currentThread().currentFrame().obj != nil {
+			linkName = linkName + "|" + node.currentThread().currentFrame().obj.RefStringShort()
+		}
+	}
+	return linkName
+}
+
 func findMissingLinks(path []*Link, strongFairLinksOutOfChain map[string]bool, weakFairLinksOutOfChain map[string]bool) *CycleCallbackResult {
 	missingLinks := make([]*Pair[*Node, []*Link], 0)
 	for _, link := range path {
 		node := link.Node
 		nodeMissingLinks := make([]*Link, 0)
 		for _, outLink := range node.Outbound {
+			linkName := fairnessLinkName(node, outLink)
 			if outLink.Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_STRONG {
-				if _, ok := strongFairLinksOutOfChain[outLink.Name]; ok {
+				if _, ok := strongFairLinksOutOfChain[linkName]; ok {
 					nodeMissingLinks = append(nodeMissingLinks, outLink)
 				}
 			} else if outLink.Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_WEAK {
-				if _, ok := weakFairLinksOutOfChain[outLink.Name]; ok {
+				if _, ok := weakFairLinksOutOfChain[linkName]; ok {
 					nodeMissingLinks = append(nodeMissingLinks, outLink)
 				}
 			}
