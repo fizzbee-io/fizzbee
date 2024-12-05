@@ -314,7 +314,7 @@ func GenerateFailurePath(nodes []*Link, invariant *InvariantPosition) string {
 		if parentID != "" {
 			label := link.Name
 			label = strings.ReplaceAll(label, "\"", "\\\"")
-			builder.WriteString(fmt.Sprintf("  %s -> %s [label=\"%s\"];\n", parentID, nodeID, label))
+			builder.WriteString(fmt.Sprintf("  %s -> %s [label=\"%s\"];\n", parentID, nodeID, fmt.Sprintf("%d: %s", i, label)))
 		}
 		parentID = nodeID
 	}
