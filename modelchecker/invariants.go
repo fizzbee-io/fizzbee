@@ -642,8 +642,15 @@ func isFairCycle(path []*Link, debugLog bool) (bool, *CycleCallbackResult) {
 func fairnessLinkName(node *Node, outLink *Link) (string, ast.FairnessLevel, bool) {
 	linkName := outLink.Name
 	isChoiceLink := strings.HasPrefix(linkName, "Any:")
+	isThreadLink := strings.HasPrefix(linkName, "thread-")
 	fairness := outLink.Fairness
 	if isChoiceLink {
+		linkName = linkName + "|" + node.currentThread().currentPc()
+		if node.currentThread().currentFrame().obj != nil {
+			linkName = linkName + "|" + node.currentThread().currentFrame().obj.RefStringShort()
+		}
+		fairness = ast.FairnessLevel_FAIRNESS_LEVEL_STRONG
+	} else if isThreadLink {
 		linkName = linkName + "|" + node.currentThread().currentPc()
 		if node.currentThread().currentFrame().obj != nil {
 			linkName = linkName + "|" + node.currentThread().currentFrame().obj.RefStringShort()
