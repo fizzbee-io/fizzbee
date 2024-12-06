@@ -476,6 +476,7 @@ func EventuallyAlwaysFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 		// Then check if the property holds in that cycle
 		for i := 0; i < len(path) - 1; i++ {
 			if path[i].Node == mergeNode {
+				mergeIndex = i
 				for j := i + 1; j < len(path); j++ {
 					relevant, value := predicate(path[j].Node)
 					if relevant && !value {
