@@ -104,6 +104,63 @@ func GenerateProtoOfJson(nodes []*Node, pathPrefix string) ([]string, []string, 
 	return jsonFileNames, linksFileNames, nil
 }
 
+
+func GenerateErrorPathProtoOfJson(errorPath []*Link, pathPrefix string) ([]string, []string, error) {
+	dir := filepath.Dir(pathPrefix)
+	err := os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		fmt.Printf("Error creating directory %s: %v\n", dir, err)
+		return nil, nil, err
+	}
+
+	indexMap := make(map[*Node]int)
+	filename := fmt.Sprintf("%snodes_errors.pb", pathPrefix)
+	nodeJsons := make([]string, 0, len(errorPath))
+	jsonFileNames := make([]string, 0, 1)
+	edges := len(errorPath) - 1
+	for i, errorPathLink := range errorPath {
+		node := errorPathLink.Node
+		indexMap[node] = i
+		nodeJsons = append(nodeJsons, node.GetJsonString())
+
+	}
+	if len(nodeJsons) > 0 {
+		err := writeNodeJsonsToFile(nodeJsons, filename)
+		if err != nil {
+			return nil, nil, err
+		}
+		jsonFileNames = append(jsonFileNames, filename)
+		nodeJsons = nodeJsons[:0]
+	}
+
+	links := make([]*proto.Link, 0, edges)
+	adjListFileName := fmt.Sprintf("%sadjacency_lists_errors.pb", pathPrefix)
+	linksFileNames := make([]string, 0, 1)
+	for i, outboundLink := range errorPath[1:] {
+		protoLink := &proto.Link{
+			ReqId:    int64(outboundLink.ReqId),
+			Src:      int64(i),
+			Dest:     int64(i + 1),
+			Name:     outboundLink.Name,
+			Labels:   outboundLink.Labels,
+			Messages: outboundLink.Messages,
+			Weight:   1.0,
+		}
+		links = append(links, protoLink)
+
+	}
+	if len(links) > 0 {
+		err := writeProtoMsgToFile(&proto.Links{TotalNodes: int64(len(errorPath)), Links: links}, adjListFileName)
+		if err != nil {
+			return nil, nil, err
+		}
+		linksFileNames = append(linksFileNames, adjListFileName)
+		links = links[:0]
+	}
+
+	return jsonFileNames, linksFileNames, nil
+}
+
 func writeNodeJsonsToFile(nodeJsons []string, filename string) error {
 	// Serialize the message to binary format
 	return writeProtoMsgToFile(&proto.Nodes{Json: nodeJsons}, filename)
