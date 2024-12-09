@@ -258,6 +258,10 @@ func main() {
                     fmt.Printf("Invariant: %s\n", f.Invariants[failedInvariant.InvariantIndex].Name)
                 }
                 GenerateFailurePath(failurePath, failedInvariant, outDir)
+                _, _, err = modelchecker.GenerateErrorPathProtoOfJson(failurePath, outDir+"/")
+                if err != nil {
+                    fmt.Println("Error writing files", err)
+                }
                 return
             }
 
@@ -339,6 +343,10 @@ func dumpFailedNode(failedNode *modelchecker.Node, rootNode *modelchecker.Node, 
     }
     slices.Reverse(failurePath)
     GenerateFailurePath(failurePath, nil, outDir)
+    _, _, err := modelchecker.GenerateErrorPathProtoOfJson(failurePath, outDir+"/")
+    if err != nil {
+        fmt.Println("Error writing files", err)
+    }
 }
 
 func GenerateFailurePath(failurePath []*modelchecker.Link, invariant *modelchecker.InvariantPosition, outDir string) {
