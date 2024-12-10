@@ -155,6 +155,7 @@ type Process struct {
 	Fairness ast.FairnessLevel `json:"-"`
 
 	Enabled bool `json:"-"`
+	ThreadProgress bool `json:"-"`
 
 	Roles []*lib.Role `json:"roles"`
 
@@ -724,7 +725,7 @@ type Node struct {
 	forkDepth  int
 	stacktrace string
 
-	DuplicateOf *Node
+	DuplicateOf    *Node
 }
 
 type Link struct {
@@ -1219,8 +1220,11 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	}
 	node.CachedHashCode = ""
 	forks, yield := node.currentThread().Execute()
-	if len(forks) == 0 && !node.Enabled {
+	if len(forks) == 0 && !node.Enabled && !node.ThreadProgress {
 		return false, false
+	}
+	if node.ThreadProgress {
+		node.Enable()
 	}
 	// Add the labels from the process to the inbound links
 	// This must be done even for duplicate nodes
@@ -1426,7 +1430,7 @@ func (p *Processor) YieldNode(node *Node) {
 		newNode := node.ForkForAlternatePaths(thread.Process.Fork(), name)
 		newNode.Current = i
 		newNode.Inbound[len(newNode.Inbound)-1].ReqId = i
-
+		newNode.ThreadProgress = true
 		p.queue.Add(newNode)
 	}
 
@@ -1472,7 +1476,7 @@ func (p *Processor) YieldFork(node *Node, process *Process) {
 		newNode := node.ForkForAlternatePaths(thread.Process.Fork(), name)
 		newNode.Current = i
 		newNode.Inbound[len(newNode.Inbound)-1].ReqId = i
-
+		newNode.ThreadProgress = true
 		p.queue.Add(newNode)
 	}
 	if node.actionDepth >= int(p.config.Options.MaxActions) ||
