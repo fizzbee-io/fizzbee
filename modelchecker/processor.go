@@ -852,7 +852,7 @@ func (n *Node) ForkForAlternatePaths(process *Process, name string) *Node {
 		stacktrace:  captureStackTrace(),
 	}
 
-	forkNode.Inbound = append(forkNode.Inbound, &Link{Node: n, Name: name, ChoiceFairness: process.ChoiceFairness})
+	forkNode.Inbound = append(forkNode.Inbound, &Link{Node: n, Name: name, ChoiceFairness: process.ChoiceFairness, ReqId: n.Current})
 	return forkNode
 }
 
