@@ -761,7 +761,7 @@ func cycleFinderHelper(node *Node, callback CycleCallback, visited map[*Node]boo
 		}
 	}
 
-	if node.Name == "yield" && !hasFair && !pendingAction {
+	if (node.Name == "yield" || node.Name == "crash" || node.Name == "init") && !hasFair && !pendingAction {
 		pathCopy := slices.Clone(path)
 		pathCopy = append(pathCopy, &Link{
 			Node:     node,
