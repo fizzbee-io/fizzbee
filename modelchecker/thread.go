@@ -612,6 +612,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		//forks := t.executeBlock()
 		//return forks, false
 	} else if stmt.AnyStmt != nil {
+		t.Process.ThreadProgress = false
 		//if stmt.AnyStmt.Flow != ast.Flow_FLOW_ATOMIC && t.currentFrame().scope.flow != ast.Flow_FLOW_ATOMIC {
 		//	// TODO: Is this actually needed?
 		//	panic("Only atomic flow is supported for any statements")
@@ -682,6 +683,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			t.ExitScope()
 		} else {
 			t.Process.Enabled = false
+			t.Process.ThreadProgress = false
 			t.Aborted = true
 			return nil, false
 		}
@@ -739,6 +741,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		currentFrame.pc = currentFrame.pc + ".Block.$"
 		return nil, false
 	} else if stmt.RequireStmt != nil {
+		t.Process.ThreadProgress = false
 		vars := t.Process.GetAllVariablesNocopy()
 		cond, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.RequireStmt.GetConditionExpr(), vars)
 		//PanicOnError(err)
@@ -746,6 +749,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		t.Process.updateAllVariablesInScope(vars)
 		if !cond.Truth() {
 			t.Process.Enabled = false
+			t.Process.ThreadProgress = false
 			t.Aborted = true
 			return nil, false
 		}
@@ -1213,7 +1217,9 @@ type CodeSnippet interface {
 
 func (t *Thread) CurrentPcSourceInfo() *ast.SourceInfo {
 	protoMsg := GetProtoFieldByPath(t.currentFileAst(), t.currentPc())
-
+	if protoMsg == nil {
+		return &ast.SourceInfo{}
+	}
 	snippet := protoMsg.(CodeSnippet)
 	info := snippet.GetSourceInfo()
 	return info
