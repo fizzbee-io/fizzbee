@@ -176,7 +176,7 @@ func markovChainAnalysis(nodes []*Node, perfModel *proto.PerformanceModel, trans
 		totalProb := 0.0
 		for j, _ := range altCurrentDistribution {
 			if transitionMatrix[j][j] == 1.0 || (nodes[j].Process != nil &&
-				len(nodes[j].Process.Threads) == 0 && len(nodes[j].Process.Witness) > 0 && len(nodes[j].Process.Witness[0]) > 0 &&
+				nodes[j].Process.GetThreadsCount() == 0 && len(nodes[j].Process.Witness) > 0 && len(nodes[j].Process.Witness[0]) > 0 &&
 				nodes[j].Process.Witness[0][0]) {
 				altCurrentDistribution[j] = 0.0
 				terminationProbability += nextDistribution[j]

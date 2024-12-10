@@ -276,7 +276,7 @@ func GenerateDotFile(node *Node, visited map[*Node]bool) string {
 			}
 		}
 		penwidth := 1
-		if n.Process != nil && (len(n.Threads) == 0 || n.Name == "yield"){
+		if n.Process != nil && (n.GetThreadsCount() == 0 || n.Name == "yield"){
 			penwidth = 2
 		}
 		stateString := re.ReplaceAllString(n.String(), "\\")
@@ -292,7 +292,9 @@ func GenerateDotFile(node *Node, visited map[*Node]bool) string {
 			label := child.Name
 			if child.Labels != nil && len(child.Labels) > 0 {
 				label += "[" + strings.Join(child.Labels, ", ") + "]"
-
+			}
+			if len(child.ThreadsMap) > 0 {
+				label += fmt.Sprintf("\n ThreadsMap: %v", child.ThreadsMap)
 			}
 			label = strings.ReplaceAll(label, "\"", "\\\"")
 			edgewidth := 1
@@ -360,7 +362,7 @@ func GenerateFailurePath(nodes []*Link, invariant *InvariantPosition) string {
 				color = "green"
 			}
 			penwidth := 1
-			if node.Process != nil && len(node.Threads) == 0 || node.Name == "yield" {
+			if node.Process != nil && node.GetThreadsCount() == 0 || node.Name == "yield" {
 				penwidth = 2
 			}
 			stateString := re.ReplaceAllString(node.String(), "\\")

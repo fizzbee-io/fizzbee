@@ -40,7 +40,7 @@ func (e *ModelError) SprintStackTrace() string {
     //if e.NestedError != nil {
     //    builder.WriteString(fmt.Sprintf("nested: %s\n", e.NestedError.Error()))
     //}
-    if len(e.Process.Threads) == 0 {
+    if e.Process.GetThreadsCount() == 0 {
         return builder.String()
     }
     thread := e.Process.currentThread()

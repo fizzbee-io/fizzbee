@@ -159,10 +159,11 @@ type Process struct {
 	Roles []*lib.Role `json:"roles"`
 
 	CachedHashCode string `json:"-"`
+	CachedThreadHashes []string	`json:"-"`
 
-	Modules          map[string]starlark.Value `json:"-"`
-	EnableCheckpoint bool                      `json:"-"`
-	ChoiceFairness   ast.FairnessLevel        `json:"-"`
+	Modules            map[string]starlark.Value `json:"-"`
+	EnableCheckpoint   bool                      `json:"-"`
+	ChoiceFairness     ast.FairnessLevel         `json:"-"`
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
@@ -228,7 +229,7 @@ func NewProcess(name string, files []*ast.File, parent *Process) *Process {
 func (p *Process) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
 		"state":     p.Heap,
-		"threads":   p.Threads,
+		"threads":   p.GetThreads(),
 		"current":   p.Current,
 		"name":      p.Name,
 		"failedInvariants": p.FailedInvariants,
@@ -249,6 +250,20 @@ func (p *Process) HasFailedInvariants() bool {
 		}
 	}
 	return false
+}
+
+func (p *Process) GetThreads() []*Thread {
+	activeThreads := make([]*Thread, 0)
+	for _, thread := range p.Threads {
+		if thread != nil {
+			activeThreads = append(activeThreads, thread)
+		}
+	}
+	return activeThreads
+}
+
+func (p *Process) GetThreadsCount() int {
+	return len(p.GetThreads())
 }
 
 func (p *Process) Fork() *Process {
@@ -287,6 +302,9 @@ func (p *Process) Fork() *Process {
 	p.Children = append(p.Children, p2)
 	clonedThreads := make([]*Thread, len(p.Threads))
 	for i, thread := range p.Threads {
+		if thread == nil {
+			continue
+		}
 		clonedThreads[i] = thread.Clone(nil, 0)
 		clonedThreads[i].Process = p2
 	}
@@ -332,6 +350,9 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 
 	clonedThreads := make([]*Thread, len(p.Threads))
 	for i, thread := range p.Threads {
+		if thread == nil {
+			continue
+		}
 		clonedThreads[i] = thread.Clone(permutations, alt)
 		clonedThreads[i].Process = p2
 	}
@@ -362,7 +383,7 @@ func (p *Process) propagateEnabled() {
 		return
 	}
 	parent := p.Parent
-	for parent != nil && len(parent.Threads) != 0 && !parent.Enabled {
+	for parent != nil && parent.GetThreadsCount() != 0 && !parent.Enabled {
 		parent.Enabled = true
 		parent = parent.Parent
 
@@ -371,7 +392,16 @@ func (p *Process) propagateEnabled() {
 
 func (p *Process) NewThread() *Thread {
 	thread := NewThread(p, p.Files, 0, "")
+	for i, t := range p.Threads {
+		if t == nil {
+			//fmt.Println("Reusing thread slot", i)
+			p.Threads[i] = thread
+			p.Current = i
+			return thread
+		}
+	}
 	p.Threads = append(p.Threads, thread)
+	p.Current = len(p.Threads) - 1
 	return thread
 }
 
@@ -390,8 +420,8 @@ func (n *Node) String() string {
 
 	n.appendState(p, buf)
 	buf.WriteString("\n")
-	if len(p.Threads) > 0 {
-		buf.WriteString(fmt.Sprintf("Threads: %d/%d\n", p.Current, len(p.Threads)))
+	if p.GetThreadsCount() > 0 {
+		buf.WriteString(fmt.Sprintf("Threads: %d/%d\n", p.Current, p.GetThreadsCount()))
 	} else {
 		//buf.WriteString("Threads: 0\n")
 	}
@@ -451,15 +481,19 @@ func (p *Process) HashCode() string {
 		return p.CachedHashCode
 	}
 	threadHashes := make([]string, len(p.Threads))
+	p.CachedThreadHashes = make([]string, len(threadHashes))
 	for i, thread := range p.Threads {
 		threadHashes[i] = thread.HashCode()
+		// Having a second copy of the thread hashes as the first one
+		// will be sorted to create the process hash
+		p.CachedThreadHashes[i] = threadHashes[i]
 	}
 
 	h := sha256.New()
 
 	// Use the Current thread's hash first, not the index
 	currentThreadHash := ""
-	if len(threadHashes) > 0 {
+	if len(threadHashes) > 0 && p.Current >= 0 {
 		currentThreadHash = threadHashes[p.Current]
 	}
 	h.Write([]byte(currentThreadHash))
@@ -487,9 +521,17 @@ func (p *Process) removeCurrentThread() {
 	if len(p.Threads) == 0 {
 		return
 	}
-	p.Threads = append(p.Threads[:p.Current],
-		p.Threads[p.Current+1:]...)
-	p.Current = 0
+	p.Threads[p.Current] = nil
+	for i, thread := range p.Threads {
+		if thread != nil {
+			p.Current = i
+			return
+		}
+	}
+	//p.Current = -1
+	//p.Threads = append(p.Threads[:p.Current],
+	//	p.Threads[p.Current+1:]...)
+	//p.Current = 0
 }
 
 // GetAllVariables returns all variables visible in the Current thread.
@@ -686,14 +728,15 @@ type Node struct {
 }
 
 type Link struct {
-	Node     *Node
-	Type     string
-	Name     string
-	Labels   []string
-	Fairness ast.FairnessLevel
+	Node           *Node
+	Type           string
+	Name           string
+	Labels         []string
+	Fairness       ast.FairnessLevel
 	ChoiceFairness ast.FairnessLevel
-	Messages []*ast.Message
-	ReqId    int
+	Messages       []*ast.Message
+	ReqId          int
+	ThreadsMap     map[int]int
 }
 
 func NewNode(process *Process) *Node {
@@ -713,21 +756,43 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 	}
 	parent := n.Inbound[0].Node
 	other.Inbound = append(other.Inbound, n.Inbound[0])
-	parent.Outbound = append(parent.Outbound, &Link{
-		Node:     other,
-		Type: 	  n.Inbound[0].Type,
-		Name:     n.Inbound[0].Name,
-		Labels:   n.Inbound[0].Labels,
-		Fairness: n.Inbound[0].Fairness,
+	newOutLink := &Link{
+		Node:           other,
+		Type:           n.Inbound[0].Type,
+		Name:           n.Inbound[0].Name,
+		Labels:         n.Inbound[0].Labels,
+		Fairness:       n.Inbound[0].Fairness,
 		ChoiceFairness: n.Inbound[0].ChoiceFairness,
-		Messages: n.Inbound[0].Messages,
-		ReqId:    n.Inbound[0].ReqId,
-	})
+		Messages:       n.Inbound[0].Messages,
+		ReqId:          n.Inbound[0].ReqId,
+	}
+	parent.Outbound = append(parent.Outbound, newOutLink)
+
+	newOutLink.ThreadsMap = n.CreateNewToOldThreadIndexMap(other)
 
 	n.Process = nil
 	n.Inbound = nil
 	n.Outbound = nil
 	n.DuplicateOf = other
+}
+
+func (n *Node) CreateNewToOldThreadIndexMap(other *Node) map[int]int {
+	// Create a threads map to map the thread index of the original node to the thread index of the new node
+	// based on the node.Process.CachedThreadHashCode order
+	threadsMap := make(map[int]int)
+	oldThreadHashToIndex := make(map[string][]int)
+	for i, hash := range n.Process.CachedThreadHashes {
+		oldThreadHashToIndex[hash] = append(oldThreadHashToIndex[hash], i)
+	}
+	for i, hash := range other.Process.CachedThreadHashes {
+		if hash == "" {
+			continue
+		}
+
+		threadsMap[i] = oldThreadHashToIndex[hash][0]
+		oldThreadHashToIndex[hash] = oldThreadHashToIndex[hash][1:]
+	}
+	return threadsMap
 }
 
 
@@ -736,16 +801,17 @@ func (n *Node) Attach() {
 		return
 	}
 	parent := n.Inbound[0].Node
-	parent.Outbound = append(parent.Outbound, &Link{
-		Node:     n,
-		Type: 	  n.Inbound[0].Type,
-		Name:     n.Inbound[0].Name,
-		Labels:   n.Inbound[0].Labels,
-		Fairness: n.Inbound[0].Fairness,
+	newOutLink := &Link{
+		Node:           n,
+		Type:           n.Inbound[0].Type,
+		Name:           n.Inbound[0].Name,
+		Labels:         n.Inbound[0].Labels,
+		Fairness:       n.Inbound[0].Fairness,
 		ChoiceFairness: n.Inbound[0].ChoiceFairness,
-		Messages: n.Inbound[0].Messages,
-		ReqId:    n.Inbound[0].ReqId,
-	})
+		Messages:       n.Inbound[0].Messages,
+		ReqId:          n.Inbound[0].ReqId,
+	}
+	parent.Outbound = append(parent.Outbound, newOutLink)
 }
 
 func (n *Node) ForkForAction(process *Process, role *lib.Role, action *ast.Action) *Node {
@@ -1232,7 +1298,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 			p.YieldNode(node)
 		}
 		node.Name = "yield"
-		if len(node.Process.Threads) == 0 || !*p.config.Options.CrashOnYield {
+		if node.Process.GetThreadsCount() == 0 || node.Process.Current == -1 || !*p.config.Options.CrashOnYield {
 			return false, false
 		}
 		frameName := node.Process.currentThread().Stack.RawArray()[0].Name
@@ -1353,19 +1419,19 @@ func (p *Processor) processInit(node *Node) bool {
 func (p *Processor) YieldNode(node *Node) {
 
 	for i, thread := range node.Threads {
-		if thread.currentPc() == "" {
+		if thread == nil || thread.currentPc() == "" {
 			continue
 		}
 		name := fmt.Sprintf("thread-%d", i)
 		newNode := node.ForkForAlternatePaths(thread.Process.Fork(), name)
 		newNode.Current = i
-		newNode.Inbound[len(newNode.Inbound)-1].ReqId = newNode.currentThread().Id
+		newNode.Inbound[len(newNode.Inbound)-1].ReqId = i
 
 		p.queue.Add(newNode)
 	}
 
 	if node.actionDepth >= int(p.config.Options.MaxActions) ||
-		len(node.Threads) >= int(p.config.Options.MaxConcurrentActions) {
+		node.GetThreadsCount() >= int(p.config.Options.MaxConcurrentActions) {
 		return
 	}
 
@@ -1399,18 +1465,18 @@ func (p *Processor) scheduleRoleActions(node *Node, process *Process) {
 
 func (p *Processor) YieldFork(node *Node, process *Process) {
 	for i, thread := range process.Threads {
-		if thread.currentPc() == "" {
+		if thread == nil || thread.currentPc() == "" {
 			continue
 		}
 		name := fmt.Sprintf("thread-%d", i)
 		newNode := node.ForkForAlternatePaths(thread.Process.Fork(), name)
 		newNode.Current = i
-		newNode.Inbound[len(newNode.Inbound)-1].ReqId = newNode.currentThread().Id
+		newNode.Inbound[len(newNode.Inbound)-1].ReqId = i
 
 		p.queue.Add(newNode)
 	}
 	if node.actionDepth >= int(p.config.Options.MaxActions) ||
-		len(process.Threads) >= int(p.config.Options.MaxConcurrentActions) {
+		process.GetThreadsCount() >= int(p.config.Options.MaxConcurrentActions) {
 
 		return
 	}
@@ -1439,12 +1505,12 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 
 	newNode := node.ForkForAction(process, role, action)
 	thread := newNode.Process.NewThread()
-	newNode.Process.Current = len(newNode.Process.Threads) - 1
-	newNode.Inbound[0].ReqId = thread.Id
+	//newNode.Process.Current = len(newNode.Process.Threads) - 1
+	newNode.Inbound[0].ReqId = newNode.Process.Current
 	newNode.Process.Fairness = action.Fairness.GetLevel()
-	newNode.currentThread().Fairness = action.Fairness.GetLevel()
+	thread.Fairness = action.Fairness.GetLevel()
 
-	frame := newNode.currentThread().currentFrame()
+	frame := thread.currentFrame()
 	if role != nil {
 		for _, r := range newNode.Roles {
 			if r.RefStringShort() == role.RefStringShort() {
@@ -1474,7 +1540,7 @@ func (p *Processor) ExceedsActionCountLimits(action *ast.Action, statProcess *Pr
 	}
 	concurrentStats := make(map[string]int)
 
-	for _, thread := range statProcess.Threads {
+	for _, thread := range statProcess.GetThreads() {
 		frames := thread.Stack.RawArray()
 		rootFrame := frames[0]
 		name := rootFrame.Name

@@ -181,7 +181,7 @@ func TestSteadyStateDistribution(t *testing.T) {
 				if eventuallyAlways {
 					fmt.Println("Eventually Always")
 					for j, prob := range steadyStateDist {
-						if prob > 1e-6 && allNodes[j].Process != nil && len(allNodes[j].Process.Threads) == 0 {
+						if prob > 1e-6 && allNodes[j].Process != nil && allNodes[j].Process.GetThreadsCount() == 0 {
 							status := "DEAD"
 							if allNodes[j].Process.Witness[0][k] {
 								status = "LIVE"
