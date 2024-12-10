@@ -26,17 +26,17 @@ func TestRemoveCurrentThread(t *testing.T) {
 		Current: 1,
 	}
 	p.removeCurrentThread()
-	assert.Equal(t, 2, len(p.Threads))
+	assert.Equal(t, 2, p.GetThreadsCount())
 	assert.Equal(t, 0, p.Current)
 
 	p.Current = 1
 	p.removeCurrentThread()
-	assert.Equal(t, 1, len(p.Threads))
+	assert.Equal(t, 1, p.GetThreadsCount())
 	assert.Equal(t, 0, p.Current)
 
 	p.Current = 0
 	p.removeCurrentThread()
-	assert.Equal(t, 0, len(p.Threads))
+	assert.Equal(t, 0, p.GetThreadsCount())
 	assert.Equal(t, 0, p.Current)
 }
 
@@ -47,7 +47,7 @@ func TestHash(t *testing.T) {
 	files := []*ast.File{file}
 	process := NewProcess("", files, nil)
 	process.Heap.state = starlark.StringDict{"a": starlark.MakeInt(10), "b": starlark.MakeInt(20)}
-	assert.Len(t, process.Threads, 0)
+	assert.Len(t, process.GetThreads(), 0)
 	process.NewThread()
 	thread := process.currentThread()
 	assert.Equal(t, thread.Stack.Len(), 1)

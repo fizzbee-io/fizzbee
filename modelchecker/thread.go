@@ -389,6 +389,9 @@ func NewThread(Process *Process, files []*ast.File, fileIndex int, action string
 }
 
 func (t *Thread) HashCode() string {
+	if t == nil {
+		return ""
+	}
 	h := sha256.New()
 	h.Write([]byte(t.Stack.HashCode()))
 	return fmt.Sprintf("%x", h.Sum(nil))
@@ -456,13 +459,13 @@ func (t *Thread) Execute() ([]*Process, bool) {
 	var forks []*Process
 	yield := false
 	hasNonEndOfBlockStmts := false
-	initialThreads := len(t.Process.Threads)
+	initialThreads := t.Process.GetThreadsCount()
 	defer t.Process.propagateEnabled()
 	for t.Stack.Len() > 0 {
 		for t.currentFrame().pc == "" || strings.HasSuffix(t.currentFrame().pc, ".Block.$") {
 			yield = t.executeEndOfBlock()
 			if yield {
-				if !hasNonEndOfBlockStmts && len(t.Process.Threads) < initialThreads && t.Process.Parent != nil && t.Process.Parent.Enabled {
+				if !hasNonEndOfBlockStmts && t.Process.GetThreadsCount() < initialThreads && t.Process.Parent != nil && t.Process.Parent.Enabled {
 					t.Process.Fairness = t.Fairness
 					t.Process.Enable()
 				}
@@ -1202,6 +1205,18 @@ func ContainsInt(skipstmts []int, i int) bool {
 
 func (t *Thread) currentPc() string {
 	return t.currentFrame().pc
+}
+
+type CodeSnippet interface {
+	GetSourceInfo() *ast.SourceInfo
+}
+
+func (t *Thread) CurrentPcSourceInfo() *ast.SourceInfo {
+	protoMsg := GetProtoFieldByPath(t.currentFileAst(), t.currentPc())
+
+	snippet := protoMsg.(CodeSnippet)
+	info := snippet.GetSourceInfo()
+	return info
 }
 
 func (t *Thread) FindNextProgramCounter() string {

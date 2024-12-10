@@ -61,6 +61,8 @@ func main() {
     }
 
     dirPath := filepath.Dir(jsonFilename)
+
+    sourceFileName := filepath.Join(dirPath, f.SourceInfo.GetFileName())
     //fmt.Println("dirPath:", dirPath)
     // Calculate the relative path
     configFileName := filepath.Join(dirPath, "fizz.yaml")
@@ -213,7 +215,7 @@ func main() {
                 if simulation {
                     fmt.Println("seed:", p1.Seed)
                 }
-                dumpFailedNode(deadlock, rootNode, outDir)
+                dumpFailedNode(sourceFileName, deadlock, rootNode, outDir)
                 return
             }
             if !simulation {
@@ -257,7 +259,7 @@ func main() {
                 } else {
                     fmt.Printf("Invariant: %s\n", f.Invariants[failedInvariant.InvariantIndex].Name)
                 }
-                GenerateFailurePath(failurePath, failedInvariant, outDir)
+                GenerateFailurePath(sourceFileName, failurePath, failedInvariant, outDir)
                 _, _, err = modelchecker.GenerateErrorPathProtoOfJson(failurePath, outDir+"/")
                 if err != nil {
                     fmt.Println("Error writing files", err)
@@ -275,7 +277,7 @@ func main() {
             if simulation {
                 fmt.Println("seed:", p1.Seed)
             }
-            dumpFailedNode(failedNode, rootNode, outDir)
+            dumpFailedNode(sourceFileName, failedNode, rootNode, outDir)
             return
         }
     }
@@ -326,7 +328,7 @@ func startHeapProfile() {
 }
 
 
-func dumpFailedNode(failedNode *modelchecker.Node, rootNode *modelchecker.Node, outDir string) {
+func dumpFailedNode(srcFileName string, failedNode *modelchecker.Node, rootNode *modelchecker.Node, outDir string) {
     failurePath := make([]*modelchecker.Link, 0)
     node := failedNode
     for node != nil {
@@ -342,14 +344,14 @@ func dumpFailedNode(failedNode *modelchecker.Node, rootNode *modelchecker.Node, 
         node = node.Inbound[0].Node
     }
     slices.Reverse(failurePath)
-    GenerateFailurePath(failurePath, nil, outDir)
+    GenerateFailurePath(srcFileName, failurePath, nil, outDir)
     _, _, err := modelchecker.GenerateErrorPathProtoOfJson(failurePath, outDir+"/")
     if err != nil {
         fmt.Println("Error writing files", err)
     }
 }
 
-func GenerateFailurePath(failurePath []*modelchecker.Link, invariant *modelchecker.InvariantPosition, outDir string) {
+func GenerateFailurePath(srcFileName string, failurePath []*modelchecker.Link, invariant *modelchecker.InvariantPosition, outDir string) {
     for _, link := range failurePath {
         node := link.Node
         stepName := link.Name
@@ -391,7 +393,7 @@ func GenerateFailurePath(failurePath []*modelchecker.Link, invariant *modelcheck
         fmt.Printf("Writen graph dotfile: %s\nTo generate an image file, run: \n"+
             "dot -Tsvg %s -o error-graph.svg && open error-graph.svg\n", dotFileName, dotFileName)
     }
-    err = GenerateFailurePathHtml(failurePath, invariant, outDir)
+    err = GenerateFailurePathHtml(srcFileName, failurePath, invariant, outDir)
     if err != nil {
         return 
     }
@@ -441,14 +443,27 @@ func createDiffURL(leftBase64, rightBase64 string) string {
 }
 
 // Helper to write a single row in the HTML table
-func writeRow(tmpl *template.Template, file *os.File, rowNum int, name, nodeName, diffURL, yieldDiffURL string) error {
-    if name == nodeName {
+func writeRow(tmpl *template.Template, file *os.File, rowNum, lineNum int, name string, lane, maxLanes int, nodeName, diffURL, yieldDiffURL string) error {
+    if nodeName != "yield" {
         nodeName = ""
     }
-
+    contentStr := name
+    if lineNum > 0 {
+        contentStr = fmt.Sprintf("%s<br><p id=\"line-%d-ref\" class=\"line-num\">Next Instr: %d<p>", name, lineNum, lineNum)
+    }
+    content := template.HTML(contentStr)
+    lanes := make([]template.HTML, maxLanes)
+    for i := 0; i < maxLanes; i++ {
+        if i == lane {
+            lanes[i] = content // Replace with actual value for this lane
+        } else {
+            lanes[i] = "" // Empty for the other lanes
+        }
+    }
     data := map[string]interface{}{
         "RowNum":       rowNum,
         "Name":         name,
+        "Lanes":        lanes,
         "NodeName":     nodeName,
         "DiffURL":      diffURL,
         "YieldDiffURL": yieldDiffURL,
@@ -461,7 +476,11 @@ func writeRow(tmpl *template.Template, file *os.File, rowNum int, name, nodeName
 const htmlTemplate = `
 <tr>
 	<td>{{.RowNum}}</td>
-	<td>{{.Name}}</td>
+	{{range .Lanes}} 
+		<td>{{.}}</td>
+	{{else}}
+		<td></td>  <!-- Empty column if no lane is filled -->
+	{{end}}
 	<td>{{.NodeName}}</td>
 	<td style="min-width:6em; text-align:center;">{{if .DiffURL}}<a href="{{.DiffURL}}" target="_blank">Show diff</a>{{end}}</td>
 	<td style="min-width:6em; text-align:center;">{{if .YieldDiffURL}}<a href="{{.YieldDiffURL}}" target="_blank">Show yield diff</a>{{end}}</td>
@@ -469,7 +488,7 @@ const htmlTemplate = `
 `
 
 // GenerateFailurePathHtml creates an HTML file showing differences between adjacent failurePath Links
-func GenerateFailurePathHtml(failurePath []*modelchecker.Link, invariant *modelchecker.InvariantPosition, outDir string) error {
+func GenerateFailurePathHtml(srcFileName string, failurePath []*modelchecker.Link, invariant *modelchecker.InvariantPosition, outDir string) error {
     // Create the output file in the specified directory
     outputFilePath := filepath.Join(outDir, "error-states.html")
     file, err := os.Create(outputFilePath)
@@ -477,6 +496,12 @@ func GenerateFailurePathHtml(failurePath []*modelchecker.Link, invariant *modelc
         return fmt.Errorf("failed to create file: %w", err)
     }
     defer file.Close()
+    maxLanes := 0
+    for _, link := range failurePath {
+        if link.ReqId + 1 > maxLanes {
+            maxLanes = link.ReqId + 1
+        }
+    }
 
     // Start writing the HTML file
     file.WriteString(`
@@ -487,13 +512,121 @@ func GenerateFailurePathHtml(failurePath []*modelchecker.Link, invariant *modelc
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Error States Comparison</title>
 </head>
+<style>
+/* styles.css */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body, html {
+  height: 100%;
+  font-family: Arial, sans-serif;
+}
+
+.container {
+  display: flex;
+  height: 100vh;
+  padding: 10px;
+}
+
+.content {
+  flex: 1;
+  padding-right: 20px;
+}
+.content td, .content th {
+  padding: 4px 8px;
+}
+.code-container {
+  width: 50%;
+  position: relative;
+  overflow: hidden;
+}
+
+.code {
+  counter-reset: lineNumber;
+  overflow-y: auto;
+  height: 100%;
+  white-space: nowrap;
+  padding-top: 10px;
+}
+
+.code-line-numbers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding-top: 10px;
+  padding-right: 10px;
+  text-align: right;
+  font-family: monospace;
+  background-color: #f4f4f4;
+  color: #888;
+  user-select: none;
+}
+.line-number {
+  line-height: 1.6;
+}
+.line-num:hover {
+    cursor: pointer;
+}
+.code pre {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  font-family: monospace;
+  line-height: 1.6;
+  padding-left: 3em;
+  position: relative;
+}
+.code pre:before {
+    counter-increment: lineNumber;
+    content: counter(lineNumber) " ";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 2.5em;
+    text-align: right;
+    color: #888;
+    background-color: #f4f4f4;
+    user-select: none;
+    font-family: monospace;
+}
+
+code {
+  display: block;
+}
+
+.highlight {
+  background-color: yellow;
+  animation: highlight 1s ease-out;
+}
+
+@keyframes highlight {
+  0% {
+    background-color: yellow;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+</style>
 <body>
+<div class="container">
+  <!-- Main content area (left) -->
+  <div class="content">
     <h1>Error States Diff</h1>
     <table border="1">
         <tr>
-            <th>Row</th>
-            <th>Name</th>
-            <th>Node.Name</th>
+            <th>Row</th>`)
+    for i := 0; i < maxLanes; i++ {
+        file.WriteString(fmt.Sprintf("<th>Thread %d</th>", i))
+    }
+    
+    file.WriteString(`
+            <th>Yield?</th>
             <th style="min-width:6em; text-align:center;">Diff Link</th>
             <th style="min-width:6em; text-align:center;">Yield Diff</th>
         </tr>
@@ -507,19 +640,26 @@ func GenerateFailurePathHtml(failurePath []*modelchecker.Link, invariant *modelc
 
     var lastYieldObj *modelchecker.Link
 
+    lane := 0
+
     // Process the first element (0th object) separately
     if len(failurePath) > 0 {
         firstLink := failurePath[0]
-        writeRow(tmpl, file, 1, firstLink.Name, firstLink.Node.Name, "", "")
+        lineNum := getLineNumber(firstLink)
+        writeRow(tmpl, file, 1, lineNum, firstLink.Name, lane, maxLanes, firstLink.Node.Name, "", "")
         if firstLink.Node.Name == "yield" {
             lastYieldObj = firstLink
         }
+
+        lane = firstLink.ReqId
     }
 
     // Iterate through remaining pairs
     for i := 1; i < len(failurePath); i++ {
         leftLink := failurePath[i-1]
         rightLink := failurePath[i]
+        lane = rightLink.ReqId
+        lineNum := getLineNumber(rightLink)
 
         // Convert both Links to base64 JSON
         leftBase64, err := linkToBase64(leftLink)
@@ -552,15 +692,101 @@ func GenerateFailurePathHtml(failurePath []*modelchecker.Link, invariant *modelc
         }
 
         // Write the row to the HTML file
-        writeRow(tmpl, file, i+1, rightLink.Name, rightLink.Node.Name, diffURL, yieldDiffURL)
+        writeRow(tmpl, file, i+1, lineNum, rightLink.Name, lane, maxLanes, rightLink.Node.Name, diffURL, yieldDiffURL)
     }
 
     // Close the table and HTML file
     file.WriteString(`
     </table>
+  </div>
+    <!-- Code block area (right) -->
+    <div class="code-container">
+      <div class="code-line-numbers" id="line-numbers">
+        <!-- Line numbers will be added dynamically here -->
+      </div>
+      <div class="code" id="code">`)
+    srcFileBytes, err := os.ReadFile(srcFileName)
+    srcFileString := ""
+    if err != nil {
+        fmt.Println("Error reading source file:", err)
+    } else {
+        srcFileString = string(srcFileBytes)
+    }
+    lines := strings.Split(srcFileString, "\n")
+    for _, line := range lines {
+        if strings.TrimSpace(line) == "" {
+            line = "&nbsp;"
+        }
+        file.WriteString(fmt.Sprintf("<pre><code>%s</code></pre>\n", line))
+    }
+    //file.WriteString(`
+    //    <!-- Code lines will be added here -->
+    //    <pre><code>def my_function():</code></pre>
+    //    <pre><code>    print("Hello World")</code></pre>
+    //    <pre><code>    return True</code></pre>
+    //    <pre><code>def another_function():</code></pre>
+    //    <pre><code>    print("This is another function")</code></pre>
+    //    <pre><code>    return False</code></pre>
+    //    <!-- Add more lines of code as needed -->`)
+    file.WriteString(`
+      </div>
+    </div>
+</div>
 </body>
+<script>
+// script.js
+
+document.addEventListener("DOMContentLoaded", function() {
+  const codeLines = document.querySelectorAll("#code pre");
+  //const lineNumbers = document.getElementById("line-numbers");
+  const codeDiv = document.getElementById("code");
+  
+  //// Function to create line numbers and assign them as clickable
+  //codeLines.forEach((line, index) => {
+  //  const lineNumber = document.createElement("div");
+  //  lineNumber.textContent = index + 1; // Line numbers are 1-indexed
+  //  lineNumber.classList.add("line-number");
+  //  lineNumber.addEventListener("click", () => highlightLine(index));
+  //  lineNumbers.appendChild(lineNumber);
+  //});
+
+  // Function to highlight a line in the code block
+  function highlightLine(lineIndex) {
+    // Remove existing highlight
+    const highlighted = codeDiv.querySelector(".highlight");
+    if (highlighted) {
+      highlighted.classList.remove("highlight");
+    }
+  
+    // Add highlight to clicked line
+    const targetLine = codeLines[lineIndex];
+    if (!targetLine) return;
+    targetLine.classList.add("highlight");
+  
+    // Scroll the code block to the target line
+    targetLine.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  // Scroll the code block to make a specific line visible when a reference in content is clicked
+  document.querySelectorAll("[id^='line-']").forEach(element => {
+    element.addEventListener("click", function() {
+      const lineNumber = parseInt(this.id.split('-')[1], 10) - 1; // Get line number from ID
+      highlightLine(lineNumber);
+    });
+  });
+});
+
+</script>
 </html>
 `)
 
     return nil
+}
+
+func getLineNumber(link *modelchecker.Link) int {
+    if link.Node.Threads[link.ReqId] == nil {
+        return 0
+    }
+    sourceInfo := link.Node.Threads[link.ReqId].CurrentPcSourceInfo()
+    return int(sourceInfo.GetStart().GetLine())
 }

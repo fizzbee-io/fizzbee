@@ -78,15 +78,15 @@ func CheckAssertion(process *Process, invariant *ast.Invariant, index int) bool 
 	cloned := process.CloneForAssert(nil, 0)
 	cloned.Heap.state["__returns__"] = NewDictFromStringDict(cloned.Returns)
 
-	numThreads := len(cloned.Threads)
+	numThreads := cloned.GetThreadsCount()
 	assertThread := cloned.NewThread()
-	cloned.Current = numThreads
+	//cloned.Current = numThreads
 
 	assertThread.currentFrame().pc = fmt.Sprintf("Invariants[%d]", index)
 	assertThread.currentFrame().Name = invariant.Name
 	for {
 		forks, _ := assertThread.Execute()
-		if len(cloned.Threads) <= numThreads {
+		if cloned.GetThreadsCount() <= numThreads {
 			return bool(cloned.Returns[invariant.Name].Truth())
 		}
 		if len(forks) > 0 {
@@ -136,7 +136,7 @@ func CheckStrictLiveness(node *Node) ([]*Link, *InvariantPosition) {
 	for i, file := range process.Files {
 		for j, invariant := range file.Invariants {
 			predicate := func(n *Node) (bool, bool) {
-				return len(n.Process.Threads) == 0 || n.Name == "yield", n.Process.Witness[i][j]
+				return n.Process.GetThreadsCount() == 0 || n.Name == "yield", n.Process.Witness[i][j]
 			}
 			eventuallyAlways := false
 			alwaysEventually := false
@@ -185,7 +185,7 @@ func CheckFastLiveness(allNodes []*Node) ([]*Link, *InvariantPosition) {
 	for i, file := range process.Files {
 		for j, invariant := range file.Invariants {
 			predicate := func(n *Node) (bool, bool) {
-				return len(n.Process.Threads) == 0, n.Process.Witness[i][j]
+				return n.Process.GetThreadsCount() == 0, n.Process.Witness[i][j]
 			}
 			eventuallyAlways := false
 			alwaysEventually := false
@@ -260,7 +260,7 @@ func AlwaysEventuallyFast(nodes []*Node, predicate Predicate) ([]*Link, bool) {
 
 		for node, _ := range falseNodes {
 			//fmt.Println("-\n",node.String(), count)
-			if closestDeadNode == nil || (len(closestDeadNode.Threads) > 0 && len(node.Threads) == 0) {
+			if closestDeadNode == nil || (closestDeadNode.GetThreadsCount() > 0 && node.GetThreadsCount() == 0) {
 				closestDeadNode = node
 				continue
 			}

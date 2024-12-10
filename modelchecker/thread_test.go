@@ -347,7 +347,7 @@ func TestThread_ExecuteEndOfBlock(t *testing.T) {
 		assert.Len(t, forks, 0)
 		thread.currentFrame().pc = "Actions[0].Block.$"
 		yield := thread.executeEndOfBlock()
-		assert.Len(t, process.Threads, 0)
+		assert.Len(t, process.GetThreads(), 0)
 		assert.Equal(t, thread.Stack.Len(), 0)
 		assert.True(t, yield)
 	})
@@ -372,7 +372,7 @@ func TestThread_ExecuteEndOfBlock(t *testing.T) {
 
 		thread.currentFrame().pc = "Actions[0].Block.Stmts[2].Block.$"
 		yield := thread.executeEndOfBlock()
-		assert.Len(t, process.Threads, 1)
+		assert.Len(t, process.GetThreads(), 1)
 		assert.Equal(t, 1, thread.Stack.Len())
 		assert.False(t, yield)
 	})
@@ -420,7 +420,7 @@ func TestThread_Execute(t *testing.T) {
 		assert.Equal(t, thread.Stack.Len(), 0)
 		assert.Len(t, forks, 0)
 		assert.True(t, yield)
-		assert.Len(t, process.Threads, 0)
+		assert.Len(t, process.GetThreads(), 0)
 
 		assert.Equal(t, starlark.MakeInt(13), process.Heap.state["a"])
 		assert.Equal(t, starlark.MakeInt(26), process.Heap.state["b"])
@@ -438,14 +438,14 @@ func TestThread_Execute(t *testing.T) {
 		assert.Equal(t, 1, thread.Stack.Len())
 		assert.Len(t, oneofForks, 5)
 		assert.False(t, yield)
-		assert.Len(t, process.Threads, 1)
+		assert.Len(t, process.GetThreads(), 1)
 
 		assert.Equal(t, starlark.MakeInt(10), process.Heap.state["a"])
 		assert.Equal(t, starlark.MakeInt(20), process.Heap.state["b"])
 
 		fork := oneofForks[0]
 		forks, yield := fork.currentThread().Execute()
-		assert.Len(t, fork.Threads, 0)
+		assert.Len(t, fork.GetThreads(), 0)
 		assert.Len(t, forks, 0)
 		assert.True(t, yield)
 
@@ -454,7 +454,7 @@ func TestThread_Execute(t *testing.T) {
 
 		fork = oneofForks[1]
 		forks, yield = fork.currentThread().Execute()
-		assert.Len(t, fork.Threads, 0)
+		assert.Len(t, fork.GetThreads(), 0)
 		assert.Len(t, forks, 0)
 		assert.True(t, yield)
 
@@ -472,14 +472,14 @@ func TestThread_Execute(t *testing.T) {
 			thread = fork.currentThread()
 			assert.Equal(t, 1, thread.Stack.Len())
 			assert.False(t, yield)
-			assert.Len(t, fork.Threads, 1)
+			assert.Len(t, fork.GetThreads(), 1)
 
 			assert.Equal(t, starlark.MakeInt(10), fork.Heap.state["a"])
 			assert.Equal(t, starlark.MakeInt(20), fork.Heap.state["b"])
 		}
 		fork = nestedForks[0]
 		forks, yield = fork.currentThread().Execute()
-		assert.Len(t, fork.Threads, 0)
+		assert.Len(t, fork.GetThreads(), 0)
 		assert.Len(t, forks, 0)
 		assert.True(t, yield)
 
@@ -488,7 +488,7 @@ func TestThread_Execute(t *testing.T) {
 
 		fork = nestedForks[1]
 		forks, yield = fork.currentThread().Execute()
-		assert.Len(t, fork.Threads, 0)
+		assert.Len(t, fork.GetThreads(), 0)
 		assert.Len(t, forks, 0)
 		assert.True(t, yield)
 
@@ -499,7 +499,7 @@ func TestThread_Execute(t *testing.T) {
 
 		fork = oneofForks[3]
 		forks, yield = fork.currentThread().Execute()
-		assert.Len(t, fork.Threads, 0)
+		assert.Len(t, fork.GetThreads(), 0)
 		assert.Len(t, forks, 0)
 		assert.True(t, yield)
 
@@ -508,7 +508,7 @@ func TestThread_Execute(t *testing.T) {
 
 		fork = oneofForks[4]
 		forks, yield = fork.currentThread().Execute()
-		assert.Len(t, fork.Threads, 0)
+		assert.Len(t, fork.GetThreads(), 0)
 		assert.Len(t, forks, 0)
 		assert.True(t, yield)
 
