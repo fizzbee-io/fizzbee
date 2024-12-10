@@ -11,6 +11,7 @@ import (
     "github.com/fizzbee-io/fizzbee/modelchecker"
     "google.golang.org/protobuf/encoding/protojson"
     "google.golang.org/protobuf/proto"
+    "html"
     "html/template"
     "os"
     "os/signal"
@@ -714,10 +715,11 @@ code {
     }
     lines := strings.Split(srcFileString, "\n")
     for _, line := range lines {
-        if strings.TrimSpace(line) == "" {
-            line = "&nbsp;"
+        escapedString := html.EscapeString(line)
+        if strings.TrimSpace(escapedString) == "" {
+            escapedString = "&nbsp;"
         }
-        file.WriteString(fmt.Sprintf("<pre><code>%s</code></pre>\n", line))
+        file.WriteString(fmt.Sprintf("<pre><code>%s</code></pre>\n", escapedString))
     }
     //file.WriteString(`
     //    <!-- Code lines will be added here -->
