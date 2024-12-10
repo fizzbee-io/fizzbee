@@ -701,27 +701,27 @@ class BuildAstVisitor(FizzParserVisitor):
             print("childProto is None for visitStmt", childStmt)
             return None
         if isinstance(childProto, ast.PyStmt):
-            return ast.Statement(py_stmt=childProto)
+            return ast.Statement(source_info=get_source_info(ctx), py_stmt=childProto)
         elif isinstance(childProto, ast.Block):
-            return ast.Statement(block=childProto)
+            return ast.Statement(source_info=get_source_info(ctx), block=childProto)
         elif isinstance(childProto, ast.IfStmt):
-            return ast.Statement(if_stmt=childProto)
+            return ast.Statement(source_info=get_source_info(ctx), if_stmt=childProto)
         elif isinstance(childProto, ast.AnyStmt):
-            return ast.Statement(any_stmt=childProto)
+            return ast.Statement(source_info=get_source_info(ctx), any_stmt=childProto)
         elif isinstance(childProto, ast.ForStmt):
-            return ast.Statement(for_stmt=childProto)
+            return ast.Statement(source_info=get_source_info(ctx), for_stmt=childProto)
         elif isinstance(childProto, ast.WhileStmt):
-            return ast.Statement(while_stmt=childProto)
+            return ast.Statement(source_info=get_source_info(ctx), while_stmt=childProto)
         elif isinstance(childProto, ast.BreakStmt):
-            return ast.Statement(break_stmt=childProto)
+            return ast.Statement(source_info=get_source_info(ctx), break_stmt=childProto)
         elif isinstance(childProto, ast.ContinueStmt):
-            return ast.Statement(continue_stmt=childProto)
+            return ast.Statement(source_info=get_source_info(ctx), continue_stmt=childProto)
         elif isinstance(childProto, ast.ReturnStmt):
-            return ast.Statement(return_stmt=childProto)
+            return ast.Statement(source_info=get_source_info(ctx), return_stmt=childProto)
         elif isinstance(childProto, ast.CallStmt):
-            return ast.Statement(call_stmt=childProto)
+            return ast.Statement(source_info=get_source_info(ctx), call_stmt=childProto)
         elif isinstance(childProto, ast.RequireStmt):
-            return ast.Statement(require_stmt=childProto)
+            return ast.Statement(source_info=get_source_info(ctx), require_stmt=childProto)
 
         elif isinstance(childProto, ast.StateVars):
             return childProto

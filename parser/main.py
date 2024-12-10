@@ -62,7 +62,11 @@ def main(argv):
     print(yaml_frontmatter)
     print("FizzBee code:", len(content_without_frontmatter.splitlines()))
     print(content_without_frontmatter)
-    num_lines = len(initial_spaces.splitlines()) + len(yaml_frontmatter.splitlines()) + 2
+    if initial_spaces == '' and yaml_frontmatter == '':
+        print("No YAML frontmatter found")
+        num_lines = 0
+    else:
+        num_lines = len(initial_spaces.splitlines()) + len(yaml_frontmatter.splitlines()) + 2
     # prefix content_without_frontmatter with the empty new lines so the line numbers match
     content_without_frontmatter = "\n" * num_lines + content_without_frontmatter
     yaml_frontmatter = "\n" * len(initial_spaces.splitlines()) + yaml_frontmatter
