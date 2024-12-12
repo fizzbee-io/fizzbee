@@ -766,7 +766,7 @@ document.addEventListener("DOMContentLoaded", function() {
     targetLine.classList.add("highlight");
   
     // Scroll the code block to the target line
-    targetLine.scrollIntoView({ behavior: "smooth", block: "center" });
+    targetLine.scrollIntoView({ behavior: "auto",  block: "center" });
   }
 
   // Scroll the code block to make a specific line visible when a reference in content is clicked
