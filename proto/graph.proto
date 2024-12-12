@@ -28,6 +28,8 @@ message Link {
   double weight = 5;
   repeated Message messages = 6;
   int64 req_id = 7;
+  map<int64, int64> new_to_old_threads = 8;
+  string type = 9;
 }
 
 message Links {

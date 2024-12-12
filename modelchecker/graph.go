@@ -68,19 +68,27 @@ func GenerateProtoOfJson(nodes []*Node, pathPrefix string) ([]string, []string, 
 				Dest:   int64(i),
 				Name:   "end",
 				Weight: 1.0,
+				Type:   "action",
 			})
 		}
 		numLinks := len(node.Outbound)
 		for _, outboundLink := range node.Outbound {
+			intMap := make(map[int64]int64)
+			for k, v := range outboundLink.ThreadsMap {
+				intMap[int64(k)] = int64(v)
+			}
 			links = append(links, &proto.Link{
-				ReqId: int64(outboundLink.ReqId),
-				Src:    int64(i),
-				Dest:   int64(indexMap[outboundLink.Node]),
-				Name:   outboundLink.Name,
-				Labels: outboundLink.Labels,
-				Messages: outboundLink.Messages,
-				Weight: 1.0 / float64(numLinks),
+				ReqId:           int64(outboundLink.ReqId),
+				Src:             int64(i),
+				Dest:            int64(indexMap[outboundLink.Node]),
+				Name:            outboundLink.Name,
+				Labels:          outboundLink.Labels,
+				Messages:        outboundLink.Messages,
+				Weight:          1.0 / float64(numLinks),
+				NewToOldThreads: intMap,
+				Type:            outboundLink.Type,
 			})
+
 			if len(links) >= linksShardSize {
 				err := writeProtoMsgToFile(&proto.Links{TotalNodes: int64(n), Links: links}, adjListFileName)
 				if err != nil {
@@ -103,7 +111,6 @@ func GenerateProtoOfJson(nodes []*Node, pathPrefix string) ([]string, []string, 
 
 	return jsonFileNames, linksFileNames, nil
 }
-
 
 func GenerateErrorPathProtoOfJson(errorPath []*Link, pathPrefix string) ([]string, []string, error) {
 	dir := filepath.Dir(pathPrefix)
@@ -276,7 +283,7 @@ func GenerateDotFile(node *Node, visited map[*Node]bool) string {
 			}
 		}
 		penwidth := 1
-		if n.Process != nil && (n.GetThreadsCount() == 0 || n.Name == "yield"){
+		if n.Process != nil && (n.GetThreadsCount() == 0 || n.Name == "yield") {
 			penwidth = 2
 		}
 		stateString := re.ReplaceAllString(n.String(), "\\")
@@ -378,14 +385,12 @@ func GenerateFailurePath(nodes []*Link, invariant *InvariantPosition) string {
 		parentID = nodeID
 	}
 
-
-
 	builder.WriteString("}\n")
 	return builder.String()
 }
 
 type Pair[T1 any, T2 any] struct {
-	First T1
+	First  T1
 	Second T2
 }
 
@@ -530,7 +535,6 @@ func GenerateCommunicationGraph(messages []string) string {
 			}
 		}
 	}
-
 
 	builder.WriteString("}\n")
 	return builder.String()

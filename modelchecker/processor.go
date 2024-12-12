@@ -50,18 +50,18 @@ var forkLock sync.Mutex
 const enableCaptureStackTrace = false
 
 type Definition struct {
-	DefType    DefType
-	name       string
-	fileIndex  int
-	path   string
-	params []*ast.Parameter
+	DefType   DefType
+	name      string
+	fileIndex int
+	path      string
+	params    []*ast.Parameter
 	roleIndex int
-	roleName string
+	roleName  string
 }
 
 type Stats struct {
-	TotalActions int         `json:"totalActions"`
-	Counts map[string]int    `json:"counts"`
+	TotalActions int            `json:"totalActions"`
+	Counts       map[string]int `json:"counts"`
 }
 
 // NewStats returns a new Stats object
@@ -74,7 +74,7 @@ func NewStats() *Stats {
 func (s *Stats) Clone() *Stats {
 	stats := &Stats{
 		TotalActions: s.TotalActions,
-		Counts: make(map[string]int),
+		Counts:       make(map[string]int),
 	}
 	for k, v := range s.Counts {
 		stats.Counts[k] = v
@@ -86,7 +86,6 @@ func (s *Stats) Increment(action string) {
 	s.TotalActions++
 	s.Counts[action]++
 }
-
 
 func HandleModules(path string) map[string]starlark.Value {
 	//module_file := path + "/sample.star"
@@ -111,7 +110,6 @@ func getFileNameWithoutExt(filePath string) string {
 	// Get filename without extension
 	return fileNameWithExt[:len(fileNameWithExt)-len(filepath.Ext(fileNameWithExt))]
 }
-
 
 func LoadModule(moduleFile string) starlark.StringDict {
 	thread := &starlark.Thread{
@@ -154,17 +152,17 @@ type Process struct {
 	// that in-turn makes the link fair.
 	Fairness ast.FairnessLevel `json:"-"`
 
-	Enabled bool `json:"-"`
+	Enabled        bool `json:"-"`
 	ThreadProgress bool `json:"-"`
 
 	Roles []*lib.Role `json:"roles"`
 
-	CachedHashCode string `json:"-"`
-	CachedThreadHashes []string	`json:"-"`
+	CachedHashCode     string   `json:"-"`
+	CachedThreadHashes []string `json:"-"`
 
-	Modules            map[string]starlark.Value `json:"-"`
-	EnableCheckpoint   bool                      `json:"-"`
-	ChoiceFairness     ast.FairnessLevel         `json:"-"`
+	Modules          map[string]starlark.Value `json:"-"`
+	EnableCheckpoint bool                      `json:"-"`
+	ChoiceFairness   ast.FairnessLevel         `json:"-"`
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
@@ -187,7 +185,7 @@ func NewProcess(name string, files []*ast.File, parent *Process) *Process {
 			}
 			for r, role := range file.Roles {
 				for j, function := range role.Functions {
-					symbolTable[role.Name + "." + function.Name] = &Definition{
+					symbolTable[role.Name+"."+function.Name] = &Definition{
 						DefType:   Function,
 						name:      function.Name,
 						params:    function.Params,
@@ -229,15 +227,15 @@ func NewProcess(name string, files []*ast.File, parent *Process) *Process {
 
 func (p *Process) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
-		"state":     p.Heap,
-		"threads":   p.GetThreads(),
-		"current":   p.Current,
-		"name":      p.Name,
+		"state":            p.Heap,
+		"threads":          p.GetThreads(),
+		"current":          p.Current,
+		"name":             p.Name,
 		"failedInvariants": p.FailedInvariants,
-		"stats":     p.Stats,
-		"witness":   p.Witness,
-		"returns":   StringDictToJsonString(p.Returns),
-		"roles":     p.Roles,
+		"stats":            p.Stats,
+		"witness":          p.Witness,
+		"returns":          StringDictToJsonString(p.Returns),
+		"roles":            p.Roles,
 	})
 }
 
@@ -290,9 +288,9 @@ func (p *Process) Fork() *Process {
 		Files:       p.Files,
 		Returns:     make(starlark.StringDict),
 		SymbolTable: p.SymbolTable,
-		Modules: 	 p.Modules,
+		Modules:     p.Modules,
 		Labels:      make([]string, 0),
-		Messages: 	 make([]*ast.Message, 0),
+		Messages:    make([]*ast.Message, 0),
 		Stats:       p.Stats.Clone(),
 	}
 	p2.Witness = make([][]bool, len(p.Files))
@@ -339,9 +337,9 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 		Files:       p.Files,
 		Returns:     make(starlark.StringDict),
 		SymbolTable: p.SymbolTable,
-		Modules: 	 p.Modules,
+		Modules:     p.Modules,
 		Labels:      make([]string, 0),
-		Messages: 	 make([]*ast.Message, 0),
+		Messages:    make([]*ast.Message, 0),
 		Stats:       p.Stats.Clone(),
 	}
 	p2.Witness = make([][]bool, len(p.Files))
@@ -650,7 +648,7 @@ func (p *Process) NewModelError(sourceInfo *ast.SourceInfo, msg string, nestedEr
 	return NewModelError(sourceInfo, msg, p, nestedError)
 }
 
-func (p *Process) PanicOnError(sourceInfo *ast.SourceInfo, msg string, nestedError error)  {
+func (p *Process) PanicOnError(sourceInfo *ast.SourceInfo, msg string, nestedError error) {
 	if nestedError != nil {
 		panic(p.NewModelError(sourceInfo, msg, nestedError))
 	}
@@ -689,7 +687,7 @@ func (p *Process) RecordReturn(callerFrame *CallFrame, receiverFrame *CallFrame,
 		return
 	}
 	msg := &ast.Message{
-		Name: receiverFrame.Name,
+		Name:     receiverFrame.Name,
 		IsReturn: true,
 	}
 
@@ -725,7 +723,7 @@ type Node struct {
 	forkDepth  int
 	stacktrace string
 
-	DuplicateOf    *Node
+	DuplicateOf *Node
 }
 
 type Link struct {
@@ -795,7 +793,6 @@ func (n *Node) CreateNewToOldThreadIndexMap(other *Node) map[int]int {
 	}
 	return threadsMap
 }
-
 
 func (n *Node) Attach() {
 	if len(n.Inbound) == 0 {
@@ -867,8 +864,8 @@ type Processor struct {
 	dirPath             string
 	intermediate_states lib.LinearCollection[*Node]
 	simulation          bool
-	random rand.Rand
-	Seed   int64
+	random              rand.Rand
+	Seed                int64
 }
 
 func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string) *Processor {
@@ -904,7 +901,6 @@ func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation 
 func (p *Processor) GetVisitedNodesCount() int {
 	return len(p.visited)
 }
-
 
 func (p *Processor) InitializeNode() (*Node, *Node, error) {
 	process := NewProcess("init", p.Files, nil)
@@ -1018,7 +1014,7 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 	if p.config.GetLiveness() == "" || p.config.GetLiveness() == "strict" {
 		for _, file := range p.Files {
 			for _, invariant := range file.Invariants {
-				if invariant.Eventually || slices.Contains(invariant.TemporalOperators, "eventually")  {
+				if invariant.Eventually || slices.Contains(invariant.TemporalOperators, "eventually") {
 					livenessEnabled = true
 					break
 				}
@@ -1048,16 +1044,16 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 			panic("queue should not be empty")
 		}
 
-		if livenessEnabled && !liveness && node.actionDepth > int(p.config.Options.MaxActions - 1)  {
+		if livenessEnabled && !liveness && node.actionDepth > int(p.config.Options.MaxActions-1) {
 			//fmt.Println("Max actions reached, switching to liveness", p.config.Options.MaxActions)
 			liveness = true
-			p.config.Options.MaxActions = 2*maxActions
+			p.config.Options.MaxActions = 2 * maxActions
 			*p.config.Options.CrashOnYield = false
 		} else if (liveness || !livenessEnabled) && node.actionDepth > int(p.config.Options.MaxActions) {
 			//fmt.Println("Max actions reached", p.config.Options.MaxActions)
 			continue
 		}
-		if liveness && node.actionDepth > 0  && node.actionDepth > int(randMaxActions) {
+		if liveness && node.actionDepth > 0 && node.actionDepth > int(randMaxActions) {
 			if node.currentThread().Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_UNFAIR ||
 				node.currentThread().Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN {
 				livenessNode = node
@@ -1100,7 +1096,7 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 				break
 			}
 
-			if node.Process != nil && (node.Name == "yield" || node.Name == "crash") && p.simulation && (!inCrashPath || node.Enabled){
+			if node.Process != nil && (node.Name == "yield" || node.Name == "crash") && p.simulation && (!inCrashPath || node.Enabled) {
 				p.intermediate_states.ClearAll()
 				break
 			}
@@ -1128,7 +1124,6 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 					prevLen = p.queue.Len()
 				}
 			}
-
 
 		}
 		p.intermediate_states.ClearAll()
@@ -1179,10 +1174,10 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 			for j, invariant := range file.Invariants {
 				hasEventually := slices.Contains(invariant.TemporalOperators, "eventually") || invariant.Eventually
 				if hasEventually {
-						if !livenessNode.Inbound[0].Node.Process.Witness[i][j] {
-							failedNode = livenessNode.Inbound[0].Node
-							break
-						}
+					if !livenessNode.Inbound[0].Node.Process.Witness[i][j] {
+						failedNode = livenessNode.Inbound[0].Node
+						break
+					}
 
 				}
 			}
@@ -1326,7 +1321,6 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 			return false, false
 		}
 		crashNode.Attach()
-
 
 		//if other, ok := p.visited[node.HashCode()]; ok {
 		//	// Check if visited before scheduling children
@@ -1557,11 +1551,11 @@ func (p *Processor) ExceedsActionCountLimits(action *ast.Action, statProcess *Pr
 	}
 	//fmt.Println("Concurrent stats", concurrentStats, actionName, concurrentStats[actionName], p.config.ActionOptions[actionName])
 	if p.config.ActionOptions[actionName] != nil &&
-		int(p.config.ActionOptions[actionName].MaxActions) > 0 && statProcess.Stats.Counts[actionName] >= int(p.config.ActionOptions[actionName].MaxActions)  {
+		int(p.config.ActionOptions[actionName].MaxActions) > 0 && statProcess.Stats.Counts[actionName] >= int(p.config.ActionOptions[actionName].MaxActions) {
 		return true
 	}
 	if p.config.ActionOptions[actionName] != nil &&
-		int(p.config.ActionOptions[actionName].GetMaxConcurrentActions()) > 0 && concurrentStats[actionName] >= int(p.config.ActionOptions[actionName].GetMaxConcurrentActions())  {
+		int(p.config.ActionOptions[actionName].GetMaxConcurrentActions()) > 0 && concurrentStats[actionName] >= int(p.config.ActionOptions[actionName].GetMaxConcurrentActions()) {
 		return true
 	}
 	if role == nil {
@@ -1585,7 +1579,7 @@ func (p *Processor) ExceedsActionCountLimits(action *ast.Action, statProcess *Pr
 	actionCount := 0
 	for k, count := range statProcess.Stats.Counts {
 
-		if strings.HasPrefix(k, role.Name + "#") && strings.HasSuffix(k, "." + action.Name) {
+		if strings.HasPrefix(k, role.Name+"#") && strings.HasSuffix(k, "."+action.Name) {
 			actionCount += count
 		}
 	}
@@ -1718,7 +1712,6 @@ func (p *Processor) checkAlwaysEventually(fileIndex, invariantIndex int, node *N
 	// If the invariant was never true in the cycle, it fails
 	return currentNode, false
 }
-
 
 func captureStackTrace() string {
 	if !enableCaptureStackTrace {
