@@ -525,21 +525,28 @@ func traverseBFS(rootNode *Node, maxActions int64) ([]*Node, []string, *Node, in
 			maxDepth = node.forkDepth
 		}
 		enabledLinks := make([]*Link, 0)
+		crashLinks := 0
 		for _, link := range node.Outbound {
 			if !link.Node.Enabled {
 				continue
 			}
 			enabledLinks = append(enabledLinks, link)
+			if link.Name == "crash" {
+				crashLinks++
+			}
 		}
 		node.Outbound = enabledLinks
-		if len(enabledLinks) == 0 && visited[entry.yieldNode].deadNode == nil {
+
+		if len(enabledLinks)-crashLinks == 0 && visited[entry.yieldNode].deadNode == nil {
 			visited[entry.yieldNode].deadNode = node
 		}
 
 		for _, link := range node.Outbound {
 			yieldNode := entry.yieldNode
 			if link.Node.Name == "yield" || link.Node.Name == "init" || link.Node.Name == "crash" {
-				visited[yieldNode].livePaths++
+				if link.Name != "crash" {
+					visited[yieldNode].livePaths++
+				}
 				yieldNode = link.Node
 			}
 			queue.Enqueue(&queuedEntry{
