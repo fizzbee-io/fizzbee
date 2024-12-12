@@ -1,6 +1,7 @@
 package lib
 
 import (
+	ast "fizz/proto"
 	"fmt"
 	"go.starlark.net/starlark"
 	"strings"
@@ -16,16 +17,18 @@ var (
 	roleRefs = map[string]int{}
 )
 
-func ClearRoleRefs()  {
+func ClearRoleRefs() {
 	roleRefs = map[string]int{}
 }
+
 type Role struct {
-	Ref  int
-	Name string
-	Symmetric bool
-	Params *Struct
-	Fields *Struct
-	Methods map[string]*starlark.Function
+	Ref         int
+	Name        string
+	Symmetric   bool
+	Params      *Struct
+	Fields      *Struct
+	Methods     map[string]*starlark.Function
+	RoleMethods map[string]*starlark.Builtin
 }
 
 func (r *Role) AddMethod(name string, val starlark.Value) error {
@@ -73,7 +76,7 @@ func (r *Role) Attr(name string) (starlark.Value, error) {
 	} else if v, ok := r.Methods[name]; ok {
 		return starlark.NewBuiltin(name, AddSelfParamBuiltin(r, v)), nil
 	}
-	return BuiltinAttr(r, name, roleMethods)
+	return BuiltinAttr(r, name, r.RoleMethods)
 }
 
 func (r *Role) GetId() starlark.Value {
@@ -84,7 +87,7 @@ func (r *Role) GetId() starlark.Value {
 }
 
 func (r *Role) AttrNames() []string {
-	return BuiltinAttrNames(roleMethods)
+	return BuiltinAttrNames(r.RoleMethods)
 }
 
 func (r *Role) String() string {
@@ -159,7 +162,8 @@ var _ starlark.HasAttrs = (*Role)(nil)
 var _ starlark.HasSetField = (*Role)(nil)
 var _ starlark.Value = (*Role)(nil)
 
-func CreateRoleBuiltin(name string, symmetric bool, roles *[]*Role) *starlark.Builtin {
+func CreateRoleBuiltin(astRole *ast.Role, symmetric bool, roles *[]*Role) *starlark.Builtin {
+	name := astRole.Name
 	return starlark.NewBuiltin(name, func(t *starlark.Thread, b *starlark.Builtin,
 		args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		params := FromKeywords(starlark.String("params"), kwargs)
@@ -170,8 +174,17 @@ func CreateRoleBuiltin(name string, symmetric bool, roles *[]*Role) *starlark.Bu
 			roleRefs[name] = 1
 		}
 		fields := FromStringDict(starlark.String("fields"), starlark.StringDict{})
-		r := &Role{Ref: nextRef, Name: name, Symmetric: symmetric, Params: params, Fields: fields, Methods: map[string]*starlark.Function{}}
+		roleMethods := make(map[string]*starlark.Builtin)
+		for _, function := range astRole.Functions {
+			roleMethods[function.Name] = starlark.NewBuiltin(function.Name, fizz_func_always_error)
+		}
+		r := &Role{Ref: nextRef, Name: name, Symmetric: symmetric, Params: params, Fields: fields, Methods: map[string]*starlark.Function{}, RoleMethods: roleMethods}
 		*roles = append(*roles, r)
 		return r, nil
 	})
+}
+
+func fizz_func_always_error(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+
+	return starlark.None, fmt.Errorf("%s: %v", b.Name(), "Currently, fizz functions can be called only in the following ways. \n See https://fizzbee.io/tutorials/limitations/#fizz-functions-can-be-called-only-in-a-limited-ways for more details and workaround.")
 }

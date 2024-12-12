@@ -162,6 +162,7 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[strin
                 Params:    params.(*lib.Struct),
                 Fields:    fields.(*lib.Struct),
                 Methods:   r.Methods,
+                RoleMethods: r.RoleMethods,
             }
             refs[newRole.RefString()] = newRole
             return newRole, nil

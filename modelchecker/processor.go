@@ -562,7 +562,7 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 	for _, file := range p.Files {
 		for _, role := range file.Roles {
 			symmetric := slices.Contains(role.Modifiers, "symmetric")
-			dict[role.Name] = lib.CreateRoleBuiltin(role.Name, symmetric, &p.Roles)
+			dict[role.Name] = lib.CreateRoleBuiltin(role, symmetric, &p.Roles)
 		}
 	}
 	return dict
@@ -589,7 +589,7 @@ func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
 	for _, file := range p.Files {
 		for _, role := range file.Roles {
 			symmetric := slices.Contains(role.Modifiers, "symmetric")
-			dict[role.Name] = lib.CreateRoleBuiltin(role.Name, symmetric, &p.Roles)
+			dict[role.Name] = lib.CreateRoleBuiltin(role, symmetric, &p.Roles)
 		}
 	}
 	return dict
