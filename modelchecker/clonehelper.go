@@ -1,11 +1,12 @@
 package modelchecker
 
 import (
-	"github.com/fizzbee-io/fizzbee/lib"
-	"github.com/jayaprabhakar/go-clone"
-	"go.starlark.net/starlark"
 	"reflect"
 	"unsafe"
+
+	"github.com/fizzbee-io/fizzbee/lib"
+	"github.com/huandu/go-clone"
+	"go.starlark.net/starlark"
 )
 
 func init() {
@@ -29,6 +30,7 @@ func init() {
 }
 
 const sizeOfPointers = unsafe.Sizeof((interface{})(0)) / unsafe.Sizeof(uintptr(0))
+
 // interfaceData is the underlying data of an interface.
 // As the reflect.Value's interfaceData method is deprecated,
 // it may be broken in any Go release.
@@ -42,6 +44,7 @@ type interfaceData struct {
 }
 
 var typeOfInterface = reflect.TypeOf((*interface{})(nil)).Elem()
+
 // forceClearROFlag clears all RO flags in v to make v accessible.
 // It's a hack based on the fact that InterfaceData is always available on RO data.
 // This hack can be broken in any Go version.
@@ -78,7 +81,6 @@ func parseReflectValue(v reflect.Value) interfaceData {
 	ptr := *(*unsafe.Pointer)(pv)
 	return *(*interfaceData)(ptr)
 }
-
 
 func roleResolveCloneFn(refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
 	return func(allocator *clone.Allocator, old, new reflect.Value) {
