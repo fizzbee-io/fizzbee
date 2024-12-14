@@ -1,7 +1,7 @@
 load("@protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_go//go:def.bzl", "go_library")
 load("@rules_go//proto:def.bzl", "go_proto_library")
-load("@rules_python//python:proto.bzl", "py_proto_library")
+load("@protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 
 proto_library(
     name = "ast_proto",
@@ -53,7 +53,7 @@ go_library(
 
 py_proto_library(
     name = "perf_py_proto",
-    deps = ["performance_model.proto"],
+    deps = [":perf_proto"],
     visibility = ["//visibility:public"],
 )
 
@@ -106,6 +106,6 @@ go_proto_library(
 
 py_proto_library(
     name = "graph_py_proto",
-    deps = ["graph.proto"],
+    deps = [":proto_proto"],
     visibility = ["//visibility:public"],
 )
