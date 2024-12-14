@@ -112,7 +112,6 @@ proto_library(
     visibility = ["//visibility:public"],
 )
 
-
 py_proto_library(
     name = "graph_py_proto",
     deps = [":graph_proto"],

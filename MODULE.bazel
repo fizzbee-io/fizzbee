@@ -24,10 +24,7 @@ use_repo(
 )
 
 # Proto
-bazel_dep(
-    name = "protobuf",
-    version = "26.0",
-)
+bazel_dep(name = "protobuf", version = "26.0")
 
 # Python
 bazel_dep(name = "rules_python", version = "1.0.0")
