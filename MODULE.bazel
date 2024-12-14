@@ -48,5 +48,5 @@ pip.parse(
 use_repo(pip, "my_deps")
 
 # Go toolchain
-go = use_extension("@rules_go//go:extensions.bzl", "go")
+go = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go")
 go.toolchain(version = "1.22.0")
