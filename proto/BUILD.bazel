@@ -104,8 +104,17 @@ go_proto_library(
     visibility = ["//visibility:public"],
 )
 
+proto_library(
+    name = "graph_proto",
+    srcs = [
+        "graph.proto",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+
 py_proto_library(
     name = "graph_py_proto",
-    deps = [":proto_proto"],
+    deps = [":graph_proto"],
     visibility = ["//visibility:public"],
 )
