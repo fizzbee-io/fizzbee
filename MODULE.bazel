@@ -7,7 +7,6 @@ module(
 bazel_dep(
     name = "rules_go",
     version = "0.46.0",
-    repo_name = "io_bazel_rules_go",
 )
 bazel_dep(name = "gazelle", version = "0.34.0")
 bazel_dep(name = "rules_proto", version = "5.3.0-21.7")
@@ -48,5 +47,5 @@ pip.parse(
 use_repo(pip, "my_deps")
 
 # Go toolchain
-go = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go")
+go = use_extension("@rules_go//go:extensions.bzl", "go")
 go.toolchain(version = "1.22.0")
