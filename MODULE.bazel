@@ -1,10 +1,10 @@
 module(name = "fizzbee")
 
-# Core dependencies use legacy repo names
+# Go with gazelle see https://github.com/bazel-contrib/rules_go/blob/master/docs/go/core/bzlmod.md
 bazel_dep(name = "rules_go", version = "0.46.0")
 bazel_dep(name = "gazelle", version = "0.34.0")
 
-# Go dependencies setup
+# External go deps
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//:go.mod")
 
@@ -19,10 +19,6 @@ use_repo(
     "org_golang_google_protobuf",
     "org_golang_x_sys",
 )
-
-# Go toolchain
-go = use_extension("@rules_go//go:extensions.bzl", "go")
-go.toolchain(version = "1.22.0")
 
 # Proto
 bazel_dep(name = "rules_proto", version = "5.3.0-21.7")
