@@ -7,18 +7,7 @@ bazel_dep(name = "gazelle", version = "0.34.0", repo_name = "bazel_gazelle")
 
 # Go dependencies setup
 go_deps = use_extension("@bazel_gazelle//:extensions.bzl", "go_deps")
-go_deps.module(path = "go.starlark.net", version = "v0.0.0-20231121155337-90ade8b19d09")
-go_deps.module(path = "github.com/stretchr/testify", version = "v1.8.4")
-go_deps.module(path = "github.com/davecgh/go-spew", version = "v1.1.1")
-go_deps.module(path = "gopkg.in/yaml.v3", version = "v3.0.1")
-go_deps.module(path = "github.com/golang/glog", version = "v1.2.0")
-go_deps.module(path = "github.com/jayaprabhakar/go-clone", version = "v0.0.0-20240501195431-177708839df4")
-go_deps.module(path = "github.com/zeroflucs-given/generics", version = "v0.0.0-20231105071439-febf5a852473")
-go_deps.module(path = "github.com/pkg/profile", version = "v1.7.0")
-go_deps.module(path = "github.com/felixge/fgprof", version = "v0.9.3")
-go_deps.module(path = "github.com/google/pprof", version = "v0.0.0-20240207164012-fb44976bdcd5")
-go_deps.module(path = "google.golang.org/protobuf", version = "v1.32.0")
-go_deps.module(path = "golang.org/x/sys", version = "v0.17.0")
+go_deps.from_file(go_mod = "//:go.mod")
 use_repo(go_deps,
     "net_starlark_go",
     "com_github_stretchr_testify",
