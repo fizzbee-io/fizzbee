@@ -25,7 +25,7 @@ go_library(
         "//proto",
         "//proto:options",
         "@com_github_golang_glog//:glog",
-        "@com_github_jayaprabhakar_go_clone//:go-clone",
+        "@com_github_huandu_go_clone//:go-clone",
         "@org_golang_google_protobuf//encoding/protojson:go_default_library",
         "@org_golang_google_protobuf//proto:go_default_library",
         "@net_starlark_go//starlark",

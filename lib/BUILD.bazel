@@ -20,7 +20,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//proto",
-        "@com_github_jayaprabhakar_go_clone//:go-clone",
+        "@com_github_huandu_go_clone//:go-clone",
         "@in_gopkg_yaml_v3//:yaml_v3",
         "@net_starlark_go//lib/math",
         "@net_starlark_go//starlark",
