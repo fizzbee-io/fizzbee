@@ -32,11 +32,12 @@ bazel_dep(
 )
 
 # Python rules and dependencies
-bazel_dep(name = "rules_python", version = "0.31.0")
+bazel_dep(name = "rules_python", version = "1.0.0")
 
-pip = use_extension("@rules_python//python:extensions.bzl", "pip")
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 pip.parse(
-    name = "my_deps",
+    hub_name = "pip",
+    python_version = "3.11",
     requirements_lock = "//third_party:requirements_lock.txt",
 )
-use_repo(pip, "my_deps")
+use_repo(pip, "pip")
