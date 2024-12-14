@@ -3,51 +3,77 @@ load("@rules_go//go:def.bzl", "go_library")
 load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 
+# Base proto libraries
 proto_library(
     name = "ast_proto",
     srcs = ["fizz_ast.proto"],
     visibility = ["//visibility:public"],
 )
 
+proto_library(
+    name = "options_proto",
+    srcs = ["statespace_options.proto"],
+    visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "graph_proto",
+    srcs = ["graph.proto"],
+    deps = [":ast_proto"],  # Add dependencies if needed
+    visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "perf_proto",
+    srcs = ["performance_model.proto"],
+    visibility = ["//visibility:public"],
+)
+
+# Go proto libraries
 go_proto_library(
     name = "ast_go_proto",
-    importpath = "fizz/ast",
+    importpath = "github.com/fizzbee-io/fizzbee/proto",
     proto = ":ast_proto",
     visibility = ["//visibility:public"],
 )
 
+go_proto_library(
+    name = "options_go_proto",
+    importpath = "github.com/fizzbee-io/fizzbee/proto",
+    proto = ":options_proto",
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "graph_go_proto",
+    importpath = "github.com/fizzbee-io/fizzbee/proto",
+    proto = ":graph_proto",
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "perf_go_proto",
+    importpath = "github.com/fizzbee-io/fizzbee/proto",
+    proto = ":perf_proto",
+    visibility = ["//visibility:public"],
+)
+
+# Python proto libraries
 py_proto_library(
     name = "ast_py_proto",
     deps = [":ast_proto"],
     visibility = ["//visibility:public"],
 )
 
-go_library(
-    name = "ast",
-    embed = [":ast_go_proto"],
-    importpath = "fizz/ast",
+py_proto_library(
+    name = "options_py_proto",
+    deps = [":options_proto"],
     visibility = ["//visibility:public"],
 )
 
-proto_library(
-    name = "perf_proto",
-    srcs = [
-        "performance_model.proto",
-    ],
-    visibility = ["//visibility:public"],
-)
-
-go_proto_library(
-    name = "perf_go_proto",
-    importpath = "fizz/perf",
-    proto = ":perf_proto",
-    visibility = ["//visibility:public"],
-)
-
-go_library(
-    name = "perf",
-    embed = [":perf_go_proto"],
-    importpath = "fizz/perf",
+py_proto_library(
+    name = "graph_py_proto",
+    deps = [":graph_proto"],
     visibility = ["//visibility:public"],
 )
 
@@ -57,25 +83,16 @@ py_proto_library(
     visibility = ["//visibility:public"],
 )
 
+# Go libraries
 go_library(
     name = "proto",
-    embed = [":proto_go_proto"],
-    importpath = "fizz/proto",
-    visibility = ["//visibility:public"],
-)
-
-proto_library(
-    name = "options_proto",
-    srcs = [
-        "statespace_options.proto",
+    embed = [
+        ":ast_go_proto",
+        ":graph_go_proto",
+        ":options_go_proto",
+        ":perf_go_proto",
     ],
-    visibility = ["//visibility:public"],
-)
-
-go_proto_library(
-    name = "options_go_proto",
-    importpath = "fizz/proto",
-    proto = ":options_proto",
+    importpath = "github.com/fizzbee-io/fizzbee/proto",
     visibility = ["//visibility:public"],
 )
 
@@ -83,29 +100,5 @@ go_library(
     name = "options",
     embed = [":options_go_proto"],
     importpath = "fizz/proto",
-    visibility = ["//visibility:public"],
-)
-
-proto_library(
-    name = "proto_proto",
-    srcs = [
-        "fizz_ast.proto",
-        "graph.proto",
-        "performance_model.proto",
-        "statespace_options.proto",
-    ],
-    visibility = ["//visibility:public"],
-)
-
-go_proto_library(
-    name = "proto_go_proto",
-    importpath = "fizz/proto",
-    proto = ":proto_proto",
-    visibility = ["//visibility:public"],
-)
-
-py_proto_library(
-    name = "graph_py_proto",
-    deps = [":proto_proto"],
     visibility = ["//visibility:public"],
 )
