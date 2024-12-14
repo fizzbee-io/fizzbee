@@ -581,7 +581,7 @@
     },
     "@@gazelle+//internal/bzlmod:non_module_deps.bzl%non_module_deps": {
       "general": {
-        "bzlTransitiveDigest": "AjbsH9WZCj0ipLarbbkp25YBRrRhWYvO7OIiTcHyyok=",
+        "bzlTransitiveDigest": "GeI1KqKsnhvbi49bPuwToU3bgv1qPDQ9bT46teLkIB4=",
         "usagesDigest": "VU6Xvc6lWOQTJS023wArw0l9hXCQRX5EcsGjCUeGkuk=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
@@ -590,7 +590,7 @@
           "bazel_gazelle_go_repository_cache": {
             "repoRuleId": "@@gazelle+//internal:go_repository_cache.bzl%go_repository_cache",
             "attributes": {
-              "go_sdk_name": "@rules_go++go_sdk+go_default_sdk",
+              "go_sdk_name": "@rules_go++go_sdk+fizzbee__download_0",
               "go_env": {}
             }
           },
@@ -620,8 +620,8 @@
           ],
           [
             "rules_go++go_sdk+go_host_compatible_sdk_label",
-            "go_default_sdk",
-            "rules_go++go_sdk+go_default_sdk"
+            "fizzbee__download_0",
+            "rules_go++go_sdk+fizzbee__download_0"
           ]
         ]
       }
@@ -645,7 +645,7 @@
     "@@rules_go+//go:extensions.bzl%go_sdk": {
       "os:osx,arch:aarch64": {
         "bzlTransitiveDigest": "h7k/GTVoMxC+9RKg49N3l+He3L2n/dIZYOYUkjzEUgU=",
-        "usagesDigest": "9WUdtwMNxQMIp54gOxEBVws3WnIUdQcvX9pRfBtrtvQ=",
+        "usagesDigest": "RS0xNI0eRbsozf+doOH6ATtaMhHrpJyNspa2YJPfCWo=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -658,6 +658,82 @@
                 "'@@//:__subpackages__'"
               ],
               "excludes": []
+            }
+          },
+          "fizzbee__download_0": {
+            "repoRuleId": "@@rules_go+//go/private:sdk.bzl%go_download_sdk_rule",
+            "attributes": {
+              "goos": "",
+              "goarch": "",
+              "sdks": {},
+              "experiments": [],
+              "patches": [],
+              "patch_strip": 0,
+              "urls": [
+                "https://dl.google.com/go/{}"
+              ],
+              "version": "1.22.4",
+              "strip_prefix": "go"
+            }
+          },
+          "fizzbee__download_0_darwin_amd64": {
+            "repoRuleId": "@@rules_go+//go/private:sdk.bzl%go_download_sdk_rule",
+            "attributes": {
+              "goos": "",
+              "goarch": "",
+              "sdks": {},
+              "urls": [
+                "https://dl.google.com/go/{}"
+              ],
+              "version": "1.22.4"
+            }
+          },
+          "fizzbee__download_0_linux_amd64": {
+            "repoRuleId": "@@rules_go+//go/private:sdk.bzl%go_download_sdk_rule",
+            "attributes": {
+              "goos": "",
+              "goarch": "",
+              "sdks": {},
+              "urls": [
+                "https://dl.google.com/go/{}"
+              ],
+              "version": "1.22.4"
+            }
+          },
+          "fizzbee__download_0_linux_arm64": {
+            "repoRuleId": "@@rules_go+//go/private:sdk.bzl%go_download_sdk_rule",
+            "attributes": {
+              "goos": "",
+              "goarch": "",
+              "sdks": {},
+              "urls": [
+                "https://dl.google.com/go/{}"
+              ],
+              "version": "1.22.4"
+            }
+          },
+          "fizzbee__download_0_windows_amd64": {
+            "repoRuleId": "@@rules_go+//go/private:sdk.bzl%go_download_sdk_rule",
+            "attributes": {
+              "goos": "",
+              "goarch": "",
+              "sdks": {},
+              "urls": [
+                "https://dl.google.com/go/{}"
+              ],
+              "version": "1.22.4"
+            }
+          },
+          "fizzbee__download_0_windows_arm64": {
+            "repoRuleId": "@@rules_go+//go/private:sdk.bzl%go_download_sdk_rule",
+            "attributes": {
+              "goos": "",
+              "goarch": "",
+              "sdks": {},
+              "urls": [
+                "https://dl.google.com/go/{}"
+              ],
+              "version": "1.22.4"
             }
           },
           "go_default_sdk": {
@@ -739,21 +815,33 @@
           "go_host_compatible_sdk_label": {
             "repoRuleId": "@@rules_go+//go/private:extensions.bzl%host_compatible_toolchain",
             "attributes": {
-              "toolchain": "@go_default_sdk//:ROOT"
+              "toolchain": "@fizzbee__download_0//:ROOT"
             }
           },
           "go_toolchains": {
             "repoRuleId": "@@rules_go+//go/private:sdk.bzl%go_multiple_toolchains",
             "attributes": {
               "prefixes": [
-                "_0000_go_default_sdk_",
-                "_0001_rules_go__download_0_darwin_amd64_",
-                "_0002_rules_go__download_0_linux_amd64_",
-                "_0003_rules_go__download_0_linux_arm64_",
-                "_0004_rules_go__download_0_windows_amd64_",
-                "_0005_rules_go__download_0_windows_arm64_"
+                "_0000_fizzbee__download_0_",
+                "_0001_fizzbee__download_0_darwin_amd64_",
+                "_0002_fizzbee__download_0_linux_amd64_",
+                "_0003_fizzbee__download_0_linux_arm64_",
+                "_0004_fizzbee__download_0_windows_amd64_",
+                "_0005_fizzbee__download_0_windows_arm64_",
+                "_0006_go_default_sdk_",
+                "_0007_rules_go__download_0_darwin_amd64_",
+                "_0008_rules_go__download_0_linux_amd64_",
+                "_0009_rules_go__download_0_linux_arm64_",
+                "_0010_rules_go__download_0_windows_amd64_",
+                "_0011_rules_go__download_0_windows_arm64_"
               ],
               "geese": [
+                "",
+                "darwin",
+                "linux",
+                "linux",
+                "windows",
+                "windows",
                 "",
                 "darwin",
                 "linux",
@@ -767,9 +855,21 @@
                 "amd64",
                 "arm64",
                 "amd64",
+                "arm64",
+                "",
+                "amd64",
+                "amd64",
+                "arm64",
+                "amd64",
                 "arm64"
               ],
               "sdk_repos": [
+                "fizzbee__download_0",
+                "fizzbee__download_0_darwin_amd64",
+                "fizzbee__download_0_linux_amd64",
+                "fizzbee__download_0_linux_arm64",
+                "fizzbee__download_0_windows_amd64",
+                "fizzbee__download_0_windows_arm64",
                 "go_default_sdk",
                 "rules_go__download_0_darwin_amd64",
                 "rules_go__download_0_linux_amd64",
@@ -783,9 +883,21 @@
                 "remote",
                 "remote",
                 "remote",
+                "remote",
+                "remote",
+                "remote",
+                "remote",
+                "remote",
+                "remote",
                 "remote"
               ],
               "sdk_versions": [
+                "1.22.4",
+                "1.22.4",
+                "1.22.4",
+                "1.22.4",
+                "1.22.4",
+                "1.22.4",
                 "1.21.1",
                 "1.21.1",
                 "1.21.1",
