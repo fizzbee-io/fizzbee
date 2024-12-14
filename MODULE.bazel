@@ -18,6 +18,7 @@ go_deps.module(path = "github.com/pkg/profile", version = "v1.7.0")
 go_deps.module(path = "github.com/felixge/fgprof", version = "v0.9.3")
 go_deps.module(path = "github.com/google/pprof", version = "v0.0.0-20240207164012-fb44976bdcd5")
 go_deps.module(path = "google.golang.org/protobuf", version = "v1.32.0")
+go_deps.module(path = "golang.org/x/sys", version = "v0.17.0")
 use_repo(go_deps,
     "net_starlark_go",
     "com_github_stretchr_testify",
@@ -30,6 +31,7 @@ use_repo(go_deps,
     "com_github_felixge_fgprof",
     "com_github_google_pprof",
     "org_golang_google_protobuf",
+    "org_golang_x_sys",
 )
 
 # Go toolchain
