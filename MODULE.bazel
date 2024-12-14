@@ -17,6 +17,7 @@ go_deps.module(path = "github.com/zeroflucs-given/generics", version = "v0.0.0-2
 go_deps.module(path = "github.com/pkg/profile", version = "v1.7.0")
 go_deps.module(path = "github.com/felixge/fgprof", version = "v0.9.3")
 go_deps.module(path = "github.com/google/pprof", version = "v0.0.0-20240207164012-fb44976bdcd5")
+go_deps.module(path = "google.golang.org/protobuf", version = "v1.32.0")
 use_repo(go_deps,
     "net_starlark_go",
     "com_github_stretchr_testify",
@@ -28,6 +29,7 @@ use_repo(go_deps,
     "com_github_pkg_profile",
     "com_github_felixge_fgprof",
     "com_github_google_pprof",
+    "org_golang_google_protobuf",
 )
 
 # Go toolchain
@@ -36,7 +38,11 @@ go.toolchain(version = "1.22.0")
 
 # Proto
 bazel_dep(name = "rules_proto", version = "5.3.0-21.7")
-bazel_dep(name = "protobuf", version = "26.0")
+bazel_dep(
+    name = "protobuf",
+    version = "26.0",
+    repo_name = "com_google_protobuf",
+)
 
 # Python rules and dependencies
 bazel_dep(name = "rules_python", version = "0.31.0")
