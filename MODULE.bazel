@@ -12,12 +12,7 @@ go_deps.module(path = "github.com/stretchr/testify", version = "v1.8.4")
 go_deps.module(path = "github.com/davecgh/go-spew", version = "v1.1.1")
 go_deps.module(path = "gopkg.in/yaml.v3", version = "v3.0.1")
 go_deps.module(path = "github.com/golang/glog", version = "v1.2.0")
-go_deps.module(path = "github.com/jayaprabhakar/go-clone")
-git_override(
-    module_name = "github.com/jayaprabhakar/go-clone",
-    commit = "177708839df446d83f1a721c099b481a8e1ce59a",
-    remote = "https://github.com/jayaprabhakar/go-clone.git",
-)
+go_deps.module(path = "github.com/jayaprabhakar/go-clone", version = "v0.0.0-20240501195431-177708839df4")
 go_deps.module(path = "github.com/zeroflucs-given/generics", version = "v0.0.0-20231105071439-febf5a852473")
 go_deps.module(path = "github.com/pkg/profile", version = "v1.7.0")
 go_deps.module(path = "github.com/felixge/fgprof", version = "v0.9.3")
