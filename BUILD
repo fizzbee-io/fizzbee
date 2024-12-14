@@ -1,5 +1,5 @@
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
-load("@bazel_gazelle//:def.bzl", "gazelle")
+load("@gazelle//:def.bzl", "gazelle")
 
 # gazelle:prefix github.com/fizzbee-io/fizzbee
 gazelle(name = "gazelle")

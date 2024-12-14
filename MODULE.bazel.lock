@@ -150,7 +150,7 @@
     "@@gazelle+//:extensions.bzl%go_deps": {
       "general": {
         "bzlTransitiveDigest": "nsDQnndMzdULQ+7W4lHxU3l/gbZHXSnFeUjfvmZ48o8=",
-        "usagesDigest": "OVy+vMAjtr3DIpSpjv94rGjqPzIRKpnFr0w2SgkW5vc=",
+        "usagesDigest": "SlKg9giTsCSCjOmeYqron5RRs0/1En8rHRD6UCdZmwc=",
         "recordedFileInputs": {
           "@@//go.mod": "01b39b5a34fe974ce0da44803ece7ddd213374220ce29cdbdb6b318b096f5d22",
           "@@//go.sum": "f6124ea2dcb0c3df3bf29e7fbbdc1a4d32f38a2bfb88bba88c6b682b8abf2d9c",
