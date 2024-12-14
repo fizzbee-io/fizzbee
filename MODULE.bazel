@@ -31,7 +31,7 @@ bazel_dep(
     repo_name = "com_google_protobuf",
 )
 
-# Python rules and dependencies
+# Python
 bazel_dep(name = "rules_python", version = "1.0.0")
 
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
