@@ -18,8 +18,8 @@ go_proto_library(
 
 py_proto_library(
     name = "ast_py_proto",
-    deps = [":ast_proto"],
     visibility = ["//visibility:public"],
+    deps = [":ast_proto"],
 )
 
 go_library(
@@ -53,37 +53,8 @@ go_library(
 
 py_proto_library(
     name = "perf_py_proto",
+    visibility = ["//visibility:public"],
     deps = [":perf_proto"],
-    visibility = ["//visibility:public"],
-)
-
-go_library(
-    name = "proto",
-    embed = [":proto_go_proto"],
-    importpath = "fizz/proto",
-    visibility = ["//visibility:public"],
-)
-
-proto_library(
-    name = "options_proto",
-    srcs = [
-        "statespace_options.proto",
-    ],
-    visibility = ["//visibility:public"],
-)
-
-go_proto_library(
-    name = "options_go_proto",
-    importpath = "fizz/proto",
-    proto = ":options_proto",
-    visibility = ["//visibility:public"],
-)
-
-go_library(
-    name = "options",
-    embed = [":options_go_proto"],
-    importpath = "fizz/proto",
-    visibility = ["//visibility:public"],
 )
 
 proto_library(
@@ -114,6 +85,6 @@ proto_library(
 
 py_proto_library(
     name = "graph_py_proto",
-    deps = [":graph_proto"],
     visibility = ["//visibility:public"],
+    deps = [":graph_proto"],
 )

@@ -22,15 +22,13 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//lib",
-        "//proto",
-        "//proto:options",
+        "//proto:proto_go_proto",
         "@com_github_golang_glog//:glog",
         "@com_github_huandu_go_clone//:go-clone",
-        "@org_golang_google_protobuf//encoding/protojson:go_default_library",
-        "@org_golang_google_protobuf//proto:go_default_library",
         "@net_starlark_go//starlark",
         "@net_starlark_go//starlarkstruct",
         "@net_starlark_go//syntax",
+        "@org_golang_google_protobuf//proto",
     ],
 )
 
@@ -53,11 +51,11 @@ go_test(
     embed = [":modelchecker"],
     deps = [
         "//lib",
-        "//proto",
+        "//proto:proto_go_proto",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
         "@net_starlark_go//starlark",
         "@net_starlark_go//syntax",
-        "@org_golang_google_protobuf//encoding/protojson:go_default_library",
+        "@org_golang_google_protobuf//encoding/protojson",
     ],
 )
