@@ -1,5 +1,5 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
-load("@bazel_gazelle//:def.bzl", "gazelle")
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@gazelle//:def.bzl", "gazelle")
 
 # gazelle:prefix github.com/fizzbee-io/fizzbee
 gazelle(name = "gazelle")
@@ -29,9 +29,9 @@ go_library(
     deps = [
         "//lib",
         "//modelchecker",
-        "//proto",
-        "@org_golang_google_protobuf//encoding/protojson:go_default_library",
-        "@org_golang_google_protobuf//proto:go_default_library",
+        "//proto:proto_go_proto",
+        "@org_golang_google_protobuf//encoding/protojson",
+        "@org_golang_google_protobuf//proto",
     ],
 )
 

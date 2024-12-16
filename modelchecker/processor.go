@@ -18,12 +18,6 @@ import (
 	"encoding/json"
 	ast "fizz/proto"
 	"fmt"
-	"github.com/fizzbee-io/fizzbee/lib"
-	"github.com/jayaprabhakar/go-clone"
-	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
-	"go.starlark.net/syntax"
-	"google.golang.org/protobuf/proto"
 	"log"
 	"maps"
 	"math/rand"
@@ -36,6 +30,13 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/fizzbee-io/fizzbee/lib"
+	"github.com/huandu/go-clone"
+	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
+	"go.starlark.net/syntax"
+	"google.golang.org/protobuf/proto"
 )
 
 // DefType is a custom enum-like type
@@ -1545,8 +1546,8 @@ func (p *Processor) ExceedsActionCountLimits(action *ast.Action, statProcess *Pr
 		concurrentStats[name]++
 		nameParts := strings.Split(name, ".")
 		if len(nameParts) > 1 && rootFrame.obj != nil {
-			concurrentStats[nameParts[0] + "#." + nameParts[1]]++
-			concurrentStats[rootFrame.obj.RefStringShort() + "." + nameParts[1]]++
+			concurrentStats[nameParts[0]+"#."+nameParts[1]]++
+			concurrentStats[rootFrame.obj.RefStringShort()+"."+nameParts[1]]++
 		}
 	}
 	//fmt.Println("Concurrent stats", concurrentStats, actionName, concurrentStats[actionName], p.config.ActionOptions[actionName])
@@ -1561,9 +1562,9 @@ func (p *Processor) ExceedsActionCountLimits(action *ast.Action, statProcess *Pr
 	if role == nil {
 		return false
 	}
-	if p.config.ActionOptions[role.Name + "#." + action.Name] != nil {
-		perRoleActionLimit := p.config.ActionOptions[role.Name + "#." + action.Name].MaxActions
-		perRoleActionConcurrency := p.config.ActionOptions[role.Name + "#." + action.Name].GetMaxConcurrentActions()
+	if p.config.ActionOptions[role.Name+"#."+action.Name] != nil {
+		perRoleActionLimit := p.config.ActionOptions[role.Name+"#."+action.Name].MaxActions
+		perRoleActionConcurrency := p.config.ActionOptions[role.Name+"#."+action.Name].GetMaxConcurrentActions()
 		//fmt.Println("Per role action limit", role.Name + "#." + action.Name, perRoleActionLimit)
 		if int(perRoleActionLimit) > 0 && statProcess.Stats.Counts[actionName] >= int(perRoleActionLimit) {
 			return true

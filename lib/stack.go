@@ -2,8 +2,9 @@ package lib
 
 import (
 	"encoding/json"
-	"github.com/jayaprabhakar/go-clone"
 	"sync"
+
+	"github.com/huandu/go-clone"
 )
 
 type Stack[T any] struct {
@@ -131,7 +132,6 @@ func (s *Stack[T]) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(s.s)
 }
-
 
 // Ensures Queue implements LinearCollection
 var _ LinearCollection[interface{}] = (*(Stack[interface{}]))(nil)

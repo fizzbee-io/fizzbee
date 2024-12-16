@@ -1,4 +1,4 @@
-load("@my_deps//:requirements.bzl", "requirement")
+load("@pypi//:requirements.bzl", "requirement")
 
 py_library(
     name = "fizz",
