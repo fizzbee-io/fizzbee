@@ -27,6 +27,40 @@ Example:
 Note: Generally, you won't need to rebuild the binary,
 but most likely will be required after each `git pull`.
 
+### Build error in Mac
+If you see a build error in Mac like this:
+```
+ERROR: /private/var/tmp/_bazel_jp/64463e3d7652188cb285edbcf54b686c/external/protobuf+/src/google/protobuf/io/BUILD.bazel:99:11: Compiling src/google/protobuf/io/printer.cc [for tool] failed: (Exit 1): cc_wrapper.sh failed: error executing CppCompile command (from target @@protobuf+//src/google/protobuf/io:printer) external/rules_cc++cc_configure_extension+local_config_cc/cc_wrapper.sh -U_FORTIFY_SOURCE -fstack-protector -Wall -Wthread-safety -Wself-assign -Wunused-but-set-parameter -Wno-free-nonheap-object ... (remaining 50 arguments skipped)
+
+Use --sandbox_debug to see verbose messages from the sandbox and retain the sandbox build root for debugging
+In file included from external/protobuf+/src/google/protobuf/io/printer.cc:12:
+bazel-out/darwin_arm64-opt-exec-ST-d57f47055a04/bin/external/protobuf+/src/google/protobuf/io/_virtual_includes/printer/google/protobuf/io/printer.h:918:19: error: 'get<std::function<bool ()>, std::string, std::function<bool ()>>' is unavailable: introduced in macOS 10.13
+    value = absl::get<Callback>(that.value);
+                  ^
+bazel-out/darwin_arm64-opt-exec-ST-d57f47055a04/bin/external/protobuf+/src/google/protobuf/io/_virtual_includes/printer/google/protobuf/io/printer.h:863:11: note: in instantiation of function template specialization 'google::protobuf::io::Printer::ValueImpl<false>::operator=<true>' requested here
+    *this = that;
+          ^
+bazel-out/darwin_arm64-opt-exec-ST-d57f47055a04/bin/external/protobuf+/src/google/protobuf/io/_virtual_includes/printer/google/protobuf/io/printer.h:1150:12: note: in instantiation of function template specialization 'google::protobuf::io::Printer::ValueImpl<false>::ValueImpl<true>' requested here
+    return ValueView(it->second);
+           ^
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/variant:1577:22: note: 'get<std::function<bool ()>, std::string, std::function<bool ()>>' has been explicitly marked unavailable here
+constexpr const _Tp& get(const variant<_Types...>& __v) {
+                     ^
+1 error generated.
+```
+This is a known issue with protobuf compilation in the recent version of protobuf.
+You can fix it by adding the following to your `.bazelrc` file:
+
+```
+build --host_cxxopt=-std=c++14 --cxxopt=-std=c++14
+```
+The .bazelrc file is located in the root directory of the project. If it does not exist, you can create it.
+
+That is, run the following command:
+```
+echo "build --host_cxxopt=-std=c++14 --cxxopt=-std=c++14" >> .bazelrc
+```
+
 # Development
 
 ## Bazel build
