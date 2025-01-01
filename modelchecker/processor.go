@@ -754,6 +754,9 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 	if yield && !n.Enabled {
 		return
 	}
+	if n.Name != "crash" && other.Name == "crash" {
+		other.Name = n.Name
+	}
 	parent := n.Inbound[0].Node
 	other.Inbound = append(other.Inbound, n.Inbound[0])
 	newOutLink := &Link{
@@ -1322,6 +1325,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 			return false, false
 		}
 		crashNode.Attach()
+		p.visited[crashNode.HashCode()] = crashNode
 
 		//if other, ok := p.visited[node.HashCode()]; ok {
 		//	// Check if visited before scheduling children
