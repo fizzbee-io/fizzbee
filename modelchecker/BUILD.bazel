@@ -6,6 +6,7 @@ go_library(
         "checker.go",
         "clone.go",
         "clonehelper.go",
+        "durability.go",
         "error.go",
         "graph.go",
         "invariants.go",

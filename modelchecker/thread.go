@@ -97,7 +97,6 @@ func normalizeTypes(stringDict starlark.StringDict) starlark.StringDict {
 	return m
 }
 
-
 func StringDictToMap(stringDict starlark.StringDict) map[string]string {
 	m := make(map[string]string, len(stringDict))
 	for k, v := range stringDict {
@@ -187,7 +186,7 @@ func (h *Heap) insert(k string, v starlark.Value) bool {
 }
 
 func (h *Heap) Clone(refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Heap {
-	return &Heap{state:CloneDict(h.state, refs, permutations, alt), globals:h.globals}
+	return &Heap{state: CloneDict(h.state, refs, permutations, alt), globals: h.globals}
 }
 
 type Scope struct {
@@ -377,7 +376,7 @@ type Thread struct {
 	Stack   *CallStack  `json:"stack"`
 
 	Fairness ast.FairnessLevel `json:"fairness"`
-	Aborted  bool       `json:"-"`
+	Aborted  bool              `json:"-"`
 }
 
 func NewThread(Process *Process, files []*ast.File, fileIndex int, action string) *Thread {
@@ -572,7 +571,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 	protobuf := GetProtoFieldByPath(t.currentFileAst(), currentFrame.pc)
 	stmt := convertToStatement(protobuf)
 	if stmt.Label != "" {
-		t.Process.Labels = append(t.Process.Labels, currentFrame.Name + "." + stmt.Label)
+		t.Process.Labels = append(t.Process.Labels, currentFrame.Name+"."+stmt.Label)
 	}
 	t.Process.Fairness = t.Fairness
 	oldRolesCount := len(t.Process.Roles)
@@ -780,7 +779,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 				} else if _, ok := action.(*ast.Role); ok {
 					actionPath = pathComp[0] + "." + pathComp[1]
 					action1 = GetProtoFieldByPath(fileAst, actionPath).(*ast.Action)
-					t.Process.Returns[oldFrame.obj.RefStringShort() + "." + convertToAction(action1).Name] = val
+					t.Process.Returns[oldFrame.obj.RefStringShort()+"."+convertToAction(action1).Name] = val
 					t.Process.Enable()
 				} else {
 					panic(fmt.Sprintf("Unknown protobuf type: %T, value %v at path %s", action, action, currentFrame.pc))
@@ -950,7 +949,7 @@ func (t *Thread) getDefinition(stmt *ast.Statement) (*lib.Role, *Definition) {
 		if receiver, ok := vars[stmt.CallStmt.Receiver]; ok {
 			if receiver.Type() == "role" {
 				role := receiver.(*lib.Role)
-				return role, t.Process.SymbolTable[role.Name + "." + stmt.CallStmt.Name]
+				return role, t.Process.SymbolTable[role.Name+"."+stmt.CallStmt.Name]
 			} else {
 				return nil, nil
 			}
@@ -981,14 +980,14 @@ func findRoleInitAction(process *Process, role *lib.Role) (int, string) {
 				for k, action := range r.Actions {
 					if action.Name == "Init" {
 						nextPath := fmt.Sprintf("Roles[%d].Actions[%d].Block", j, k)
-						return i,nextPath
+						return i, nextPath
 					}
 
 				}
 			}
 		}
 	}
-	return -1,""
+	return -1, ""
 }
 
 func (t *Thread) executeForStatement() ([]*Process, bool) {
@@ -1116,7 +1115,7 @@ func (t *Thread) executeEndOfBlock() bool {
 		return false
 	}
 	for {
-		
+
 		oldScope := frame.scope
 		frame.scope = frame.scope.parent
 		if frame.scope == nil {
@@ -1167,6 +1166,10 @@ func (t *Thread) executeEndOfBlock() bool {
 					if len(oldFrame.callerAssignVarNames) > 1 {
 						panic("Multiple return values not supported yet")
 					}
+					if isRole && isInitAction {
+						t.CopyInitValuesForEphemeralFields(oldFrame)
+					}
+
 					returnedVars := starlark.StringDict{}
 					for _, name := range oldFrame.callerAssignVarNames {
 						returnedVars[name] = starlark.None
@@ -1174,7 +1177,7 @@ func (t *Thread) executeEndOfBlock() bool {
 					}
 					t.Process.updateAllVariablesInScope(returnedVars)
 					t.Process.RecordReturn(t.currentFrame(), oldFrame, starlark.None, oldScope.flow)
-					_,yield := t.executeEndOfStatement()
+					_, yield := t.executeEndOfStatement()
 					return yield
 				}
 
@@ -1196,6 +1199,26 @@ func (t *Thread) executeEndOfBlock() bool {
 		return t.Process.Enabled
 	}
 	return false
+}
+
+func (t *Thread) CopyInitValuesForEphemeralFields(oldFrame *CallFrame) {
+	fields := oldFrame.obj.Fields
+	fieldsCloned, err := deepCloneStarlarkValue(fields, nil)
+	if err != nil {
+		panic(err)
+	}
+	fieldsClonedStruct := fieldsCloned.(*lib.Struct)
+	for _, fieldName := range fieldsClonedStruct.AttrNames() {
+		isDurable := t.Process.durabilitySpec.IsFieldDurable(oldFrame.obj.Name, fieldName)
+		if isDurable {
+			continue
+		} else {
+			attr, err := fieldsClonedStruct.Attr(fieldName)
+			if err == nil {
+				oldFrame.obj.InitValues.SetField(fieldName, attr)
+			}
+		}
+	}
 }
 
 func ContainsInt(skipstmts []int, i int) bool {
