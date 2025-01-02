@@ -11,6 +11,8 @@ go_sdk.download(version = "1.22.4")
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//:go.mod")
 
+bazel_dep(name = "platforms", version = "0.0.10")
+
 # run "bazel mod tidy" to update these after updating go.mod
 use_repo(
     go_deps,
