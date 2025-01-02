@@ -34,6 +34,7 @@ message Role {
   repeated Action actions = 7;
   repeated Function functions = 8;
   repeated Statement stmts = 9;
+  repeated Decorator decorators = 10;
 }
 
 enum FairnessLevel {
@@ -241,4 +242,10 @@ message Position {
 message Expr {
   SourceInfo source_info = 1;
   string py_expr = 2;
+}
+
+message Decorator {
+  SourceInfo source_info = 1;
+  string name = 2;
+  repeated Argument args = 3;
 }

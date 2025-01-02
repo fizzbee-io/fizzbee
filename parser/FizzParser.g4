@@ -77,7 +77,7 @@ compound_stmt
     | TRY COLON suite (except_clause+ else_clause? finally_clause? | finally_clause) # try_stmt
     | ASYNC? WITH with_item (COMMA with_item)* COLON suite                           # with_stmt
     | decorator* (classdef | funcdef)                                                # class_or_func_def_stmt
-    | roledef                                                                        # role_def_stmt
+    | decorator* roledef                                                             # role_def_stmt
 
     | fairness? ANY exprlist IN testlist COLON suite                                           # any_stmt
     | INIT COLON suite                                                               # init_stmt

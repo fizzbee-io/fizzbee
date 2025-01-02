@@ -164,6 +164,7 @@ type Process struct {
 	Modules          map[string]starlark.Value `json:"-"`
 	EnableCheckpoint bool                      `json:"-"`
 	ChoiceFairness   ast.FairnessLevel         `json:"-"`
+	durabilitySpec   *DurabilitySpec           `json:"-"`
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
@@ -252,6 +253,7 @@ func (p *Process) HasFailedInvariants() bool {
 	return false
 }
 
+// GetThreads returns the active threads
 func (p *Process) GetThreads() []*Thread {
 	activeThreads := make([]*Thread, 0)
 	for _, thread := range p.Threads {
@@ -263,6 +265,9 @@ func (p *Process) GetThreads() []*Thread {
 }
 
 func (p *Process) GetThreadsCount() int {
+	if p == nil {
+		return 0
+	}
 	return len(p.GetThreads())
 }
 
@@ -280,11 +285,14 @@ func (p *Process) Fork() *Process {
 	clone.SetCustomFunc(reflect.TypeOf(starlark.Set{}), starlarkSetResolveFn(refs, nil, 0))
 	clone.SetCustomFunc(reflect.TypeOf(starlark.Dict{}), starlarkDictResolveFn(refs, nil, 0))
 	p2 := &Process{
-		Name:        p.Name,
-		Heap:        p.Heap.Clone(refs, nil, 0),
-		Current:     p.Current,
-		Parent:      p,
-		Evaluator:   p.Evaluator,
+		Name:      p.Name,
+		Heap:      p.Heap.Clone(refs, nil, 0),
+		Current:   p.Current,
+		Parent:    p,
+		Evaluator: p.Evaluator,
+
+		durabilitySpec: p.durabilitySpec,
+
 		Children:    []*Process{},
 		Files:       p.Files,
 		Returns:     make(starlark.StringDict),
@@ -329,11 +337,14 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 	clone.SetCustomFunc(reflect.TypeOf(starlark.Set{}), starlarkSetResolveFn(refs, permutations, alt))
 	clone.SetCustomFunc(reflect.TypeOf(lib.SymmetricValue{}), symmetricValueResolveFn(refs, permutations, alt))
 	p2 := &Process{
-		Name:        p.Name,
-		Heap:        p.Heap.Clone(refs, permutations, alt),
-		Current:     p.Current,
-		Parent:      p,
-		Evaluator:   p.Evaluator,
+		Name:      p.Name,
+		Heap:      p.Heap.Clone(refs, permutations, alt),
+		Current:   p.Current,
+		Parent:    p,
+		Evaluator: p.Evaluator,
+
+		durabilitySpec: p.durabilitySpec,
+
 		Children:    []*Process{},
 		Files:       p.Files,
 		Returns:     make(starlark.StringDict),
@@ -518,20 +529,21 @@ func (p *Process) currentThread() *Thread {
 }
 
 func (p *Process) removeCurrentThread() {
+	current := p.Current
+	p.removeThread(current)
+}
+
+func (p *Process) removeThread(threadIndex int) {
 	if len(p.Threads) == 0 {
 		return
 	}
-	p.Threads[p.Current] = nil
+	p.Threads[threadIndex] = nil
 	for i, thread := range p.Threads {
 		if thread != nil {
 			p.Current = i
 			return
 		}
 	}
-	//p.Current = -1
-	//p.Threads = append(p.Threads[:p.Current],
-	//	p.Threads[p.Current+1:]...)
-	//p.Current = 0
 }
 
 // GetAllVariables returns all variables visible in the Current thread.
@@ -859,35 +871,44 @@ func (n *Node) ForkForAlternatePaths(process *Process, name string) *Node {
 }
 
 type Processor struct {
-	Init                *Node
-	Files               []*ast.File
-	queue               lib.LinearCollection[*Node]
-	visited             map[string]*Node
-	config              *ast.StateSpaceOptions
-	stopped             bool
-	dirPath             string
-	intermediate_states lib.LinearCollection[*Node]
-	simulation          bool
-	random              rand.Rand
-	Seed                int64
+	Init               *Node
+	Files              []*ast.File
+	queue              lib.LinearCollection[*Node]
+	visited            map[string]*Node
+	config             *ast.StateSpaceOptions
+	stopped            bool
+	dirPath            string
+	intermediateStates lib.LinearCollection[*Node]
+	simulation         bool
+	random             rand.Rand
+	Seed               int64
+	durabilitySpec     *DurabilitySpec
 }
 
 func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string) *Processor {
 
 	var collection lib.LinearCollection[*Node]
-	var intermediate_states lib.LinearCollection[*Node]
+	var intermediateStates lib.LinearCollection[*Node]
 	if seed == 0 {
 		seed = time.Now().UnixMicro()
 	}
 	random := *rand.New(rand.NewSource(seed))
 	if simulation {
 		collection = lib.NewRandomQueue[*Node](random)
-		intermediate_states = lib.NewRandomQueue[*Node](random)
+		intermediateStates = lib.NewRandomQueue[*Node](random)
 	} else {
 		collection = lib.NewQueue[*Node]()
-		intermediate_states = lib.NewQueue[*Node]()
+		intermediateStates = lib.NewQueue[*Node]()
 	}
 	lib.ClearRoleRefs()
+	durabilitySpec := &DurabilitySpec{RoleDurabilitySpec: make(map[string]RoleDurabilitySpec)}
+	mc := NewModelChecker("example")
+	for _, file := range files {
+		for _, role := range file.Roles {
+			durabilitySpec.AddDurabilitySpec(mc, role)
+		}
+	}
+
 	return &Processor{
 		Files:   files,
 		queue:   collection,
@@ -895,10 +916,12 @@ func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation 
 		config:  proto.Clone(options).(*ast.StateSpaceOptions),
 		dirPath: dirPath,
 
-		intermediate_states: intermediate_states,
-		simulation:          simulation,
-		random:              random,
-		Seed:                seed,
+		durabilitySpec: durabilitySpec,
+
+		intermediateStates: intermediateStates,
+		simulation:         simulation,
+		random:             random,
+		Seed:               seed,
 	}
 }
 
@@ -908,6 +931,7 @@ func (p *Processor) GetVisitedNodesCount() int {
 
 func (p *Processor) InitializeNode() (*Node, *Node, error) {
 	process := NewProcess("init", p.Files, nil)
+	process.durabilitySpec = p.durabilitySpec
 
 	modules := make(map[string]starlark.Value)
 	if p.dirPath != "" {
@@ -984,10 +1008,10 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 			}
 			invariantFailure, symmetryFound = p.processNode(node)
 
-			if p.intermediate_states.Len() == 0 {
+			if p.intermediateStates.Len() == 0 {
 				break
 			}
-			node, _ = p.intermediate_states.Remove()
+			node, _ = p.intermediateStates.Remove()
 		}
 
 		if symmetryFound {
@@ -999,6 +1023,15 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 		}
 		if invariantFailure && !p.config.ContinueOnInvariantFailures {
 			break
+		}
+		if node.Process != nil && *p.config.Options.CrashOnYield {
+			failedCrashNode := p.crashProcess(node)
+			if failedCrashNode != nil && failedNode == nil {
+				failedNode = failedCrashNode
+			}
+			if failedCrashNode != nil && !p.config.ContinueOnInvariantFailures {
+				break
+			}
 		}
 	}
 	fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
@@ -1101,14 +1134,14 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 			}
 
 			if node.Process != nil && (node.Name == "yield" || node.Name == "crash") && p.simulation && (!inCrashPath || node.Enabled) {
-				p.intermediate_states.ClearAll()
+				p.intermediateStates.ClearAll()
 				break
 			}
 			if !inCrashPath {
-				if p.intermediate_states.Len() == 0 {
+				if p.intermediateStates.Len() == 0 {
 					break
 				}
-				node, _ = p.intermediate_states.Remove()
+				node, _ = p.intermediateStates.Remove()
 			} else {
 				has_another_crash_action := false
 				var anotherCrashNode *Node
@@ -1130,7 +1163,7 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 			}
 
 		}
-		p.intermediate_states.ClearAll()
+		p.intermediateStates.ClearAll()
 
 		if symmetryFound {
 			continue
@@ -1286,7 +1319,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	if !yield {
 		for _, fork := range forks {
 			newNode := node.ForkForAlternatePaths(fork, fork.Name)
-			p.intermediate_states.Add(newNode)
+			p.intermediateStates.Add(newNode)
 		}
 		return false, false
 	}
@@ -1310,34 +1343,103 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 			return false, false
 		}
 
-		crashFork := node.Process.Fork()
-		crashFork.Name = "crash"
-		crashFork.removeCurrentThread()
-		crashNode := node.ForkForAlternatePaths(crashFork, "crash")
-		// TODO: We could just copy the failed invariants from the parent
-		// instead of checking again
-		CheckInvariants(crashFork)
-		if node.Process.Enabled {
-			crashNode.Enable()
-		}
-		if other, ok := p.visited[crashNode.HashCode()]; ok {
-			crashNode.Duplicate(other, true)
-			return false, false
-		}
-		crashNode.Attach()
-		p.visited[crashNode.HashCode()] = crashNode
-
-		//if other, ok := p.visited[node.HashCode()]; ok {
-		//	// Check if visited before scheduling children
-		//	node.Duplicate(other)
-		//	return false
-		//} else {
-		//	node.Attach()
-		//}
-		p.YieldNode(crashNode)
+		p.crashThread(node)
 		return false, false
 	}
 	return false, false
+}
+
+func (p *Processor) crashProcess(node *Node) *Node {
+	// For each thread, iterate over the stack frames from the deepest to the top.
+	// find all the roles that present in the nested layers of the stack frames, but not at the top in each thread.
+	safeRolesList := make([]*lib.Role, 0)
+	for _, thread := range node.GetThreads() {
+		frames := thread.Stack.RawArray()
+		if len(frames) <= 1 {
+			continue
+		}
+		topFrame := frames[len(frames)-1]
+		for _, frame := range frames[0 : len(frames)-1] {
+			role := frame.obj
+			if role == nil || role == topFrame.obj {
+				continue
+			}
+			safeRolesList = append(safeRolesList, role)
+		}
+	}
+	roleMap := make(map[string]int)
+	for i, role := range p.Files[0].Roles {
+		roleMap[role.Name] = i
+	}
+	for _, role := range node.Roles {
+		if !slices.Contains(safeRolesList, role) {
+			failedNode := p.crashRole(node, role)
+			if failedNode != nil {
+				return failedNode
+			}
+		}
+	}
+	return nil
+}
+
+func (p *Processor) crashRole(node *Node, role *lib.Role) *Node {
+	if !p.durabilitySpec.HasDurabilitySpec(role.Name) {
+		return nil
+	}
+	crashFork := node.Process.Fork()
+	crashFork.Name = "crash"
+	crashFork.Labels = append(crashFork.Labels, fmt.Sprintf("crash-%s", role.RefString()))
+	crashNode := node.ForkForAlternatePaths(crashFork, fmt.Sprintf("crash-%s", role.RefString()))
+
+	for i, thread := range crashNode.Threads {
+		if thread == nil || thread.currentFrame().obj == nil || thread.currentFrame().obj.Name != role.Name {
+			continue
+		}
+		crashNode.removeThread(i)
+	}
+	// Reset ephemeral variables
+	p.ResetEphemeralVariables(crashNode, role)
+	crashNode.Enable()
+
+	failedInvariants := CheckInvariants(crashFork)
+	if len(failedInvariants[0]) > 0 {
+		crashNode.Process.FailedInvariants = failedInvariants
+		if !p.config.ContinuePathOnInvariantFailures {
+			return crashNode
+		}
+	}
+	if node.Process.Enabled {
+		crashNode.Enable()
+	}
+	if other, ok := p.visited[crashNode.HashCode()]; ok {
+		crashNode.Duplicate(other, true)
+		return nil
+	}
+	crashNode.Attach()
+	p.visited[crashNode.HashCode()] = crashNode
+
+	p.YieldNode(crashNode)
+	return nil
+}
+
+func (p *Processor) crashThread(node *Node) {
+	crashFork := node.Process.Fork()
+	crashFork.Name = "crash"
+	crashFork.removeCurrentThread()
+	crashNode := node.ForkForAlternatePaths(crashFork, "crash")
+	// TODO: We could just copy the failed invariants from the parent
+	// instead of checking again
+	CheckInvariants(crashFork)
+	if node.Process.Enabled {
+		crashNode.Enable()
+	}
+	if other, ok := p.visited[crashNode.HashCode()]; ok {
+		crashNode.Duplicate(other, true)
+		return
+	}
+	crashNode.Attach()
+	p.visited[crashNode.HashCode()] = crashNode
+	p.YieldNode(crashNode)
 }
 
 func (p *Process) getSymmetryTranslations() []string {
@@ -1460,9 +1562,7 @@ func (p *Processor) scheduleRoleActions(node *Node, process *Process) {
 		roleAst := p.Files[0].Roles[index]
 		for i, action := range roleAst.Actions {
 			p.scheduleAction(node, process, role, index, action, i)
-
 		}
-
 	}
 }
 
@@ -1494,7 +1594,6 @@ func (p *Processor) YieldFork(node *Node, process *Process) {
 
 func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role, roleIndex int,
 	action *ast.Action, actionIndex int) {
-
 	statProcess := process
 	if process == nil {
 		statProcess = node.Process
@@ -1502,6 +1601,7 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 	if action.Name == "Init" {
 		return
 	}
+
 	if p.ExceedsActionCountLimits(action, statProcess, role) {
 		return
 	}
@@ -1716,6 +1816,23 @@ func (p *Processor) checkAlwaysEventually(fileIndex, invariantIndex int, node *N
 
 	// If the invariant was never true in the cycle, it fails
 	return currentNode, false
+}
+
+func (p *Processor) ResetEphemeralVariables(node *Node, oldRole *lib.Role) {
+	var role *lib.Role
+	for _, r := range node.Roles {
+		if r.RefStringShort() == oldRole.RefStringShort() {
+			role = r
+			break
+		}
+	}
+	if role == nil {
+		return
+	}
+	for _, fieldName := range role.InitValues.AttrNames() {
+		attr, _ := role.InitValues.Attr(fieldName)
+		role.Fields.SetField(fieldName, attr)
+	}
 }
 
 func captureStackTrace() string {

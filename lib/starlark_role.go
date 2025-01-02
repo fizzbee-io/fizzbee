@@ -29,6 +29,7 @@ type Role struct {
 	Fields      *Struct
 	Methods     map[string]*starlark.Function
 	RoleMethods map[string]*starlark.Builtin
+	InitValues  *Struct
 }
 
 func (r *Role) AddMethod(name string, val starlark.Value) error {
@@ -174,11 +175,12 @@ func CreateRoleBuiltin(astRole *ast.Role, symmetric bool, roles *[]*Role) *starl
 			roleRefs[name] = 1
 		}
 		fields := FromStringDict(starlark.String("fields"), starlark.StringDict{})
+		initValues := FromStringDict(starlark.String("init_values"), starlark.StringDict{})
 		roleMethods := make(map[string]*starlark.Builtin)
 		for _, function := range astRole.Functions {
 			roleMethods[function.Name] = starlark.NewBuiltin(function.Name, fizz_func_always_error)
 		}
-		r := &Role{Ref: nextRef, Name: name, Symmetric: symmetric, Params: params, Fields: fields, Methods: map[string]*starlark.Function{}, RoleMethods: roleMethods}
+		r := &Role{Ref: nextRef, Name: name, Symmetric: symmetric, Params: params, Fields: fields, Methods: map[string]*starlark.Function{}, RoleMethods: roleMethods, InitValues: initValues}
 		*roles = append(*roles, r)
 		return r, nil
 	})

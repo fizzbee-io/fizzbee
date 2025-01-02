@@ -76,10 +76,80 @@ class BuildAstVisitor(FizzParserVisitor):
         print("file", file)
         return file
 
+    # Visit a parse tree produced by FizzParser#decorator.
+    def visitDecorator(self, ctx:FizzParser.DecoratorContext):
+        print("\n\nvisitDecorator",ctx.__class__.__name__)
+        print("visitDecorator",ctx.getText())
+        print("visitDecorator",dir(ctx))
+        print("visitDecorator children count",ctx.getChildCount())
+        print("visitDecorator full text\n", self.get_py_str(ctx))
+
+        decorator = ast.Decorator(source_info=get_source_info(ctx))
+#         args = []
+#         decorator_name = ""
+        for i, child in enumerate(ctx.getChildren()):
+            print()
+            print("visitDecorator child index",i,child.getText())
+            if hasattr(child, 'toStringTree'):
+                childProto = self.visit(child)
+                print("visitDecorator childProto",childProto)
+                if isinstance(child, FizzParser.ArglistContext):
+                    decorator.args.extend(self.visitArglist(child))
+                    continue
+                elif isinstance(childProto, str):
+                    decorator.name = childProto
+                else:
+                    raise Exception("visitDecorator childProto (unknown) type", child, childProto.__class__.__name__, dir(child), childProto)
+            elif hasattr(child, 'getSymbol'):
+                if child.getSymbol().type == FizzParser.LINE_BREAK:
+                    continue
+                self.log_symbol(child)
+            else:
+                print("visitDecorator child (unknown) type",child.__class__.__name__, dir(child))
+                raise Exception("visitDecorator child (unknown) type")
+
+        print("decorator", decorator)
+        return decorator
+
+    # Visit a parse tree produced by FizzParser#role_def_stmt.
+    def visitRole_def_stmt(self, ctx:FizzParser.Role_def_stmtContext):
+        print("\n\nvisitRole_def_stmt",ctx.__class__.__name__)
+        print("visitRole_def_stmt",ctx.getText())
+        print("visitRole_def_stmt",dir(ctx))
+        print("visitRole_def_stmt children count",ctx.getChildCount())
+        print("visitRole_def_stmt full text\n", self.get_py_str(ctx))
+        decorators = []
+        for i, child in enumerate(ctx.getChildren()):
+            print()
+            print("visitRole_def_stmt child index",i,child.getText())
+            if hasattr(child, 'toStringTree'):
+                if isinstance(child, FizzParser.NameContext):
+                    role_name = child.getText()
+                    print("visitRole_def_stmt role_name", role_name)
+                    continue
+                childProto = self.visit(child)
+                print("visitRole_def_stmt childProto",childProto)
+                if isinstance(childProto, ast.Role):
+                    print("visitRole_def_stmt childProto is role",childProto)
+                    role = childProto
+                elif isinstance(childProto, ast.Decorator):
+                    print("visitRole_def_stmt childProto is decorator",childProto)
+                    decorators.append(childProto)
+                else:
+                    raise Exception("visitRole_def_stmt childProto (unknown) type", child, childProto.__class__.__name__, dir(child), childProto)
+            elif hasattr(child, 'getSymbol'):
+                if child.getSymbol().type == FizzParser.LINE_BREAK:
+                    continue
+                self.log_symbol(child)
+            else:
+                print("visitRole_def_stmt child (unknown) type",child.__class__.__name__, dir(child))
+                raise Exception("visitRole_def_stmt child (unknown) type")
+        role.decorators.extend(decorators)
+        return role
 
     # Visit a parse tree produced by FizzParser#roledef.
     def visitRoledef(self, ctx:FizzParser.RoledefContext):
-        # Almost the same as vistRole_def_stmt
+        # Almost the same as visitRole_def_stmt
         print("\n\nvisitRoledef",ctx.__class__.__name__)
         print("visitRoledef",ctx.getText())
         print("visitRoledef",dir(ctx))
@@ -548,6 +618,9 @@ class BuildAstVisitor(FizzParserVisitor):
         param = ast.Parameter(name=child.getText(), source_info=get_source_info(ctx))
         return param
 
+    # Visit a parse tree produced by FizzParser#dotted_name.
+    def visitDotted_name(self, ctx:FizzParser.Dotted_nameContext):
+        return ".".join([child.getText() for child in ctx.getChildren()])
 
     # Visit a parse tree produced by FizzParser#expr_stmt.
     def visitExpr_stmt(self, ctx:FizzParser.Expr_stmtContext):
