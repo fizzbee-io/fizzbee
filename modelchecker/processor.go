@@ -377,7 +377,14 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 func MapRoleValuesInOrder(m map[string]*lib.Role, oldList []*lib.Role) []*lib.Role {
 	r := make([]*lib.Role, 0, len(m))
 	for _, v := range oldList {
-		r = append(r, m[v.RefString()])
+		if v != nil {
+			if role, ok := m[v.RefString()]; ok {
+				r = append(r, role)
+			}
+		}
+	}
+	for _, role := range r {
+		PanicIfFalse(role != nil, "Role should not be nil")
 	}
 	return r
 }
@@ -1383,7 +1390,7 @@ func (p *Processor) crashProcess(node *Node) *Node {
 }
 
 func (p *Processor) crashRole(node *Node, role *lib.Role) *Node {
-	if !p.durabilitySpec.HasDurabilitySpec(role.Name) {
+	if role == nil || !p.durabilitySpec.HasDurabilitySpec(role.Name) {
 		return nil
 	}
 	crashFork := node.Process.Fork()
@@ -1460,7 +1467,7 @@ func (p *Process) symmetricHash(permutations map[lib.SymmetricValue][]lib.Symmet
 func (p *Process) GetSymmetryRoles() []*lib.SymmetricValues {
 	m := make(map[string][]lib.SymmetricValue)
 	for _, role := range p.Roles {
-		if role.IsSymmetric() {
+		if role != nil && role.IsSymmetric() {
 			m[role.Name] = append(m[role.Name], lib.NewSymmetricValue(role.Name, role.Ref))
 		}
 	}
@@ -1555,6 +1562,9 @@ func (p *Processor) scheduleRoleActions(node *Node, process *Process) {
 		roleMap[role.Name] = i
 	}
 	for _, role := range node.Roles {
+		if role == nil {
+			continue
+		}
 		if _, ok := roleMap[role.Name]; !ok {
 			panic("Role not found: " + role.Name)
 		}
@@ -1616,7 +1626,7 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 	frame := thread.currentFrame()
 	if role != nil {
 		for _, r := range newNode.Roles {
-			if r.RefStringShort() == role.RefStringShort() {
+			if r != nil && r.RefStringShort() == role.RefStringShort() {
 				frame.obj = r
 				break
 			}
