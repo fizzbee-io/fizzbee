@@ -774,7 +774,11 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 		return
 	}
 	if n.Name != "crash" && other.Name == "crash" {
-		other.Name = n.Name
+		if yield {
+			other.Name = "yield"
+		} else {
+			other.Name = n.Name
+		}
 	}
 	parent := n.Inbound[0].Node
 	other.Inbound = append(other.Inbound, n.Inbound[0])
@@ -1289,6 +1293,11 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		// We will keep the enabled state in the node, during execution but have to be
 		// copied to the link/transition when attaching/merging similar to Fairness.
 		if other.Enabled || !node.Enabled {
+			if yield && other.Name == "crash" {
+				if p.shouldThreadCrash(other) {
+					p.crashThread(other)
+				}
+			}
 			node.Duplicate(other, yield)
 			return false, false
 		} else {
@@ -1301,6 +1310,11 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		for _, hash := range hashes {
 			if other, ok := p.visited[hash]; ok {
 				if other.Enabled || !node.Enabled {
+					if yield && other.Name == "crash" {
+						if p.shouldThreadCrash(other) {
+							p.crashThread(other)
+						}
+					}
 					node.Duplicate(other, yield)
 					return false, true
 				}
@@ -1341,16 +1355,11 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 			p.YieldNode(node)
 		}
 		node.Name = "yield"
-		if node.Process.GetThreadsCount() == 0 || node.Process.Current == -1 || !*p.config.Options.CrashOnYield {
-			return false, false
-		}
-		frameName := node.Process.currentThread().Stack.RawArray()[0].Name
 
-		if p.config.ActionOptions[frameName] != nil && p.config.ActionOptions[frameName].CrashOnYield != nil && !p.config.ActionOptions[frameName].GetCrashOnYield() {
-			return false, false
+		if p.shouldThreadCrash(node) {
+			p.crashThread(node)
 		}
 
-		p.crashThread(node)
 		return false, false
 	}
 	return false, false
@@ -1843,6 +1852,18 @@ func (p *Processor) ResetEphemeralVariables(node *Node, oldRole *lib.Role) {
 		attr, _ := role.InitValues.Attr(fieldName)
 		role.Fields.SetField(fieldName, attr)
 	}
+}
+
+func (p *Processor) shouldThreadCrash(node *Node) bool {
+	if node.Process.GetThreadsCount() == 0 || node.Process.Current == -1 || !*p.config.Options.CrashOnYield {
+		return false
+	}
+	frameName := node.Process.currentThread().Stack.RawArray()[0].Name
+
+	if p.config.ActionOptions[frameName] != nil && p.config.ActionOptions[frameName].CrashOnYield != nil && !p.config.ActionOptions[frameName].GetCrashOnYield() {
+		return false
+	}
+	return true
 }
 
 func captureStackTrace() string {
