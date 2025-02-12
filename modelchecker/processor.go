@@ -758,6 +758,14 @@ type Link struct {
 	ThreadsMap     map[int]int
 }
 
+func (l *Link) IsCrashLink() bool {
+	return isCrashLinkName(l.Name)
+}
+
+func isCrashLinkName(linkName string) bool {
+	return linkName == "crash" || strings.HasPrefix(linkName, "crash-role")
+}
+
 func NewNode(process *Process) *Node {
 	return &Node{
 		Process:     process,
@@ -1019,6 +1027,15 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 			}
 			invariantFailure, symmetryFound = p.processNode(node)
 
+			if node.Process != nil && *p.config.Options.CrashOnYield && node.Enabled && (node.Name == "yield" || node.Name == "crash") {
+				failedCrashNode := p.crashProcess(node)
+				if failedCrashNode != nil && failedNode == nil {
+					failedNode = failedCrashNode
+				}
+				if failedCrashNode != nil && !p.config.ContinueOnInvariantFailures {
+					break
+				}
+			}
 			if p.intermediateStates.Len() == 0 {
 				break
 			}
@@ -1035,15 +1052,15 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 		if invariantFailure && !p.config.ContinueOnInvariantFailures {
 			break
 		}
-		if node.Process != nil && *p.config.Options.CrashOnYield {
-			failedCrashNode := p.crashProcess(node)
-			if failedCrashNode != nil && failedNode == nil {
-				failedNode = failedCrashNode
-			}
-			if failedCrashNode != nil && !p.config.ContinueOnInvariantFailures {
-				break
-			}
-		}
+		//if node.Process != nil && *p.config.Options.CrashOnYield && node.Enabled {
+		//	failedCrashNode := p.crashProcess(node)
+		//	if failedCrashNode != nil && failedNode == nil {
+		//		failedNode = failedCrashNode
+		//	}
+		//	if failedCrashNode != nil && !p.config.ContinueOnInvariantFailures {
+		//		break
+		//	}
+		//}
 	}
 	fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
 	return p.Init, failedNode, err
@@ -1387,20 +1404,45 @@ func (p *Processor) crashProcess(node *Node) *Node {
 	for i, role := range p.Files[0].Roles {
 		roleMap[role.Name] = i
 	}
+	failedNode := p.crashRoles(node, slices.Clone(safeRolesList))
+	if failedNode != nil {
+		return failedNode
+	}
+	//for _, role := range node.Roles {
+	//	if !slices.Contains(safeRolesList, role) {
+	//		failedNode := p.crashRoles(node, role, slices.Clone(safeRolesList))
+	//		if failedNode != nil {
+	//			return failedNode
+	//		}
+	//	}
+	//}
+	return nil
+}
+
+func (p *Processor) crashRoles(node *Node, safeRolesList []*lib.Role) *Node {
+	var failedNode *Node
+	var crashNode *Node
 	for _, role := range node.Roles {
 		if !slices.Contains(safeRolesList, role) {
-			failedNode := p.crashRole(node, role)
+			crashNode, failedNode = p.crashRole(node, role)
+			if failedNode != nil {
+				return failedNode
+			}
+			if crashNode == nil {
+				continue
+			}
+			failedNode = p.crashRoles(crashNode, slices.Clone(append(safeRolesList, role)))
 			if failedNode != nil {
 				return failedNode
 			}
 		}
 	}
-	return nil
+	return failedNode
 }
 
-func (p *Processor) crashRole(node *Node, role *lib.Role) *Node {
+func (p *Processor) crashRole(node *Node, role *lib.Role) (*Node, *Node) {
 	if role == nil || !p.durabilitySpec.HasDurabilitySpec(role.Name) {
-		return nil
+		return nil, nil
 	}
 	crashFork := node.Process.Fork()
 	crashFork.Name = "crash"
@@ -1421,7 +1463,7 @@ func (p *Processor) crashRole(node *Node, role *lib.Role) *Node {
 	if len(failedInvariants[0]) > 0 {
 		crashNode.Process.FailedInvariants = failedInvariants
 		if !p.config.ContinuePathOnInvariantFailures {
-			return crashNode
+			return crashNode, crashNode
 		}
 	}
 	if node.Process.Enabled {
@@ -1429,13 +1471,13 @@ func (p *Processor) crashRole(node *Node, role *lib.Role) *Node {
 	}
 	if other, ok := p.visited[crashNode.HashCode()]; ok {
 		crashNode.Duplicate(other, true)
-		return nil
+		return nil, nil
 	}
 	crashNode.Attach()
 	p.visited[crashNode.HashCode()] = crashNode
 
 	p.YieldNode(crashNode)
-	return nil
+	return crashNode, nil
 }
 
 func (p *Processor) crashThread(node *Node) {

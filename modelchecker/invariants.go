@@ -538,7 +538,7 @@ func isFairCycle(path []*Link, debugLog bool) (bool, *CycleCallbackResult) {
 			return false, nil
 		}
 		isChoiceLink := false
-		if node.Name != "init" && node.Name != "yield" {
+		if node.Name != "init" && node.Name != "yield" && node.Name != "crash" {
 			if debugLog {
 				fmt.Println("Node is not init or yield")
 			}
@@ -557,7 +557,9 @@ func isFairCycle(path []*Link, debugLog bool) (bool, *CycleCallbackResult) {
 				fmt.Println("Fair Any choice node")
 			}
 		}
-
+		if debugLog {
+			fmt.Println("isChoiceLink", isChoiceLink)
+		}
 		if firstYield == -1 {
 			firstYield = i
 		}
@@ -567,7 +569,7 @@ func isFairCycle(path []*Link, debugLog bool) (bool, *CycleCallbackResult) {
 			if debugLog {
 				fmt.Println("Outlink:", outLink.Name, outLink.Fairness, outLink.Labels, outLink.Node.Name, outLink.ChoiceFairness, linkName, fairness)
 			}
-			if linkName != "crash" {
+			if !isCrashLinkName(linkName) {
 				prevNodeHasNonCrashLink = true
 			} else if outLink.Node == path[(i+1)%chainLen].Node {
 				nextNodeIsCrash = true

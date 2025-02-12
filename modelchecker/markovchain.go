@@ -531,7 +531,7 @@ func traverseBFS(rootNode *Node, maxActions int64) ([]*Node, []string, *Node, in
 				continue
 			}
 			enabledLinks = append(enabledLinks, link)
-			if link.Name == "crash" {
+			if link.IsCrashLink() {
 				crashLinks++
 			}
 		}
@@ -544,7 +544,7 @@ func traverseBFS(rootNode *Node, maxActions int64) ([]*Node, []string, *Node, in
 		for _, link := range node.Outbound {
 			yieldNode := entry.yieldNode
 			if link.Node.Name == "yield" || link.Node.Name == "init" || link.Node.Name == "crash" {
-				if link.Name != "crash" {
+				if !link.IsCrashLink() {
 					visited[yieldNode].livePaths++
 				}
 				yieldNode = link.Node
