@@ -1,4 +1,4 @@
-FROM chainguard/bazel:latest
+FROM gcr.io/bazel-public/bazel:latest
 
 WORKDIR /app
 
