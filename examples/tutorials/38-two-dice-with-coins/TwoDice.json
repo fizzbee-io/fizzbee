@@ -1,11 +1,13 @@
 {
   "sourceInfo": {
+    "fileName": "TwoDice.fizz",
     "start": {
-      "line": 2
+      "line": 2,
+      "column": 1
     },
     "end": {
       "line": 23,
-      "column": 20
+      "column": 21
     }
   },
   "invariants": [
@@ -13,11 +15,11 @@
       "sourceInfo": {
         "start": {
           "line": 3,
-          "column": 2
+          "column": 3
         },
         "end": {
           "line": 4,
-          "column": 2
+          "column": 3
         }
       },
       "always": true,
@@ -27,10 +29,11 @@
       "sourceInfo": {
         "start": {
           "line": 4,
-          "column": 2
+          "column": 3
         },
         "end": {
-          "line": 6
+          "line": 6,
+          "column": 1
         }
       },
       "always": true,
@@ -42,11 +45,12 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 20
+          "line": 20,
+          "column": 1
         },
         "end": {
           "line": 23,
-          "column": 20
+          "column": 21
         }
       },
       "name": "TwoDice",
@@ -58,25 +62,35 @@
         "sourceInfo": {
           "start": {
             "line": 21,
-            "column": 2
+            "column": 3
           },
           "end": {
             "line": 23,
-            "column": 20
+            "column": 21
           }
         },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
+            "sourceInfo": {
+              "start": {
+                "line": 21,
+                "column": 3
+              },
+              "end": {
+                "line": 22,
+                "column": 3
+              }
+            },
             "callStmt": {
               "sourceInfo": {
                 "start": {
                   "line": 21,
-                  "column": 2
+                  "column": 3
                 },
                 "end": {
                   "line": 21,
-                  "column": 17
+                  "column": 18
                 }
               },
               "vars": [
@@ -86,15 +100,25 @@
             }
           },
           {
+            "sourceInfo": {
+              "start": {
+                "line": 22,
+                "column": 3
+              },
+              "end": {
+                "line": 23,
+                "column": 3
+              }
+            },
             "callStmt": {
               "sourceInfo": {
                 "start": {
                   "line": 22,
-                  "column": 2
+                  "column": 3
                 },
                 "end": {
                   "line": 22,
-                  "column": 17
+                  "column": 18
                 }
               },
               "vars": [
@@ -104,15 +128,25 @@
             }
           },
           {
+            "sourceInfo": {
+              "start": {
+                "line": 23,
+                "column": 3
+              },
+              "end": {
+                "line": 23,
+                "column": 21
+              }
+            },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
                   "line": 23,
-                  "column": 2
+                  "column": 3
                 },
                 "end": {
                   "line": 23,
-                  "column": 16
+                  "column": 17
                 }
               },
               "pyExpr": "die1 + die2",
@@ -120,11 +154,11 @@
                 "sourceInfo": {
                   "start": {
                     "line": 23,
-                    "column": 9
+                    "column": 10
                   },
                   "end": {
                     "line": 23,
-                    "column": 16
+                    "column": 17
                   }
                 },
                 "pyExpr": "die1 + die2"
@@ -139,10 +173,12 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 6
+          "line": 6,
+          "column": 1
         },
         "end": {
-          "line": 11
+          "line": 11,
+          "column": 1
         }
       },
       "name": "Toss",
@@ -151,24 +187,35 @@
         "sourceInfo": {
           "start": {
             "line": 8,
-            "column": 8
+            "column": 9
           },
           "end": {
-            "line": 11
+            "line": 11,
+            "column": 1
           }
         },
         "flow": "FLOW_ONEOF",
         "stmts": [
           {
+            "sourceInfo": {
+              "start": {
+                "line": 8,
+                "column": 9
+              },
+              "end": {
+                "line": 9,
+                "column": 9
+              }
+            },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
                   "line": 8,
-                  "column": 8
+                  "column": 9
                 },
                 "end": {
                   "line": 8,
-                  "column": 15
+                  "column": 16
                 }
               },
               "pyExpr": "0",
@@ -176,11 +223,11 @@
                 "sourceInfo": {
                   "start": {
                     "line": 8,
-                    "column": 15
+                    "column": 16
                   },
                   "end": {
                     "line": 8,
-                    "column": 15
+                    "column": 16
                   }
                 },
                 "pyExpr": "0"
@@ -188,15 +235,25 @@
             }
           },
           {
+            "sourceInfo": {
+              "start": {
+                "line": 9,
+                "column": 9
+              },
+              "end": {
+                "line": 11,
+                "column": 1
+              }
+            },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
                   "line": 9,
-                  "column": 8
+                  "column": 9
                 },
                 "end": {
                   "line": 9,
-                  "column": 15
+                  "column": 16
                 }
               },
               "pyExpr": "1",
@@ -204,11 +261,11 @@
                 "sourceInfo": {
                   "start": {
                     "line": 9,
-                    "column": 15
+                    "column": 16
                   },
                   "end": {
                     "line": 9,
-                    "column": 15
+                    "column": 16
                   }
                 },
                 "pyExpr": "1"
@@ -221,10 +278,12 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 11
+          "line": 11,
+          "column": 1
         },
         "end": {
-          "line": 20
+          "line": 20,
+          "column": 1
         }
       },
       "name": "RollDie",
@@ -233,24 +292,35 @@
         "sourceInfo": {
           "start": {
             "line": 12,
-            "column": 2
+            "column": 3
           },
           "end": {
-            "line": 20
+            "line": 20,
+            "column": 1
           }
         },
         "flow": "FLOW_ATOMIC",
         "stmts": [
           {
+            "sourceInfo": {
+              "start": {
+                "line": 12,
+                "column": 3
+              },
+              "end": {
+                "line": 13,
+                "column": 3
+              }
+            },
             "callStmt": {
               "sourceInfo": {
                 "start": {
                   "line": 12,
-                  "column": 2
+                  "column": 3
                 },
                 "end": {
                   "line": 12,
-                  "column": 15
+                  "column": 16
                 }
               },
               "vars": [
@@ -260,14 +330,25 @@
             }
           },
           {
+            "sourceInfo": {
+              "start": {
+                "line": 13,
+                "column": 3
+              },
+              "end": {
+                "line": 20,
+                "column": 1
+              }
+            },
             "whileStmt": {
               "sourceInfo": {
                 "start": {
                   "line": 13,
-                  "column": 2
+                  "column": 3
                 },
                 "end": {
-                  "line": 20
+                  "line": 20,
+                  "column": 1
                 }
               },
               "pyExpr": "True",
@@ -275,23 +356,34 @@
                 "sourceInfo": {
                   "start": {
                     "line": 14,
-                    "column": 4
+                    "column": 5
                   },
                   "end": {
-                    "line": 20
+                    "line": 20,
+                    "column": 1
                   }
                 },
                 "stmts": [
                   {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 14,
+                        "column": 5
+                      },
+                      "end": {
+                        "line": 15,
+                        "column": 5
+                      }
+                    },
                     "callStmt": {
                       "sourceInfo": {
                         "start": {
                           "line": 14,
-                          "column": 4
+                          "column": 5
                         },
                         "end": {
                           "line": 14,
-                          "column": 17
+                          "column": 18
                         }
                       },
                       "vars": [
@@ -301,15 +393,25 @@
                     }
                   },
                   {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 15,
+                        "column": 5
+                      },
+                      "end": {
+                        "line": 17,
+                        "column": 5
+                      }
+                    },
                     "callStmt": {
                       "sourceInfo": {
                         "start": {
                           "line": 15,
-                          "column": 4
+                          "column": 5
                         },
                         "end": {
                           "line": 15,
-                          "column": 17
+                          "column": 18
                         }
                       },
                       "vars": [
@@ -319,14 +421,25 @@
                     }
                   },
                   {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 17,
+                        "column": 5
+                      },
+                      "end": {
+                        "line": 20,
+                        "column": 1
+                      }
+                    },
                     "ifStmt": {
                       "sourceInfo": {
                         "start": {
                           "line": 17,
-                          "column": 4
+                          "column": 5
                         },
                         "end": {
-                          "line": 20
+                          "line": 20,
+                          "column": 1
                         }
                       },
                       "branches": [
@@ -334,10 +447,11 @@
                           "sourceInfo": {
                             "start": {
                               "line": 17,
-                              "column": 7
+                              "column": 8
                             },
                             "end": {
-                              "line": 20
+                              "line": 20,
+                              "column": 1
                             }
                           },
                           "condition": "(toss0 != toss1 or toss0 != toss2)",
@@ -345,23 +459,34 @@
                             "sourceInfo": {
                               "start": {
                                 "line": 18,
-                                "column": 6
+                                "column": 7
                               },
                               "end": {
-                                "line": 20
+                                "line": 20,
+                                "column": 1
                               }
                             },
                             "stmts": [
                               {
+                                "sourceInfo": {
+                                  "start": {
+                                    "line": 18,
+                                    "column": 7
+                                  },
+                                  "end": {
+                                    "line": 20,
+                                    "column": 1
+                                  }
+                                },
                                 "returnStmt": {
                                   "sourceInfo": {
                                     "start": {
                                       "line": 18,
-                                      "column": 6
+                                      "column": 7
                                     },
                                     "end": {
                                       "line": 18,
-                                      "column": 37
+                                      "column": 38
                                     }
                                   },
                                   "pyExpr": "4 * toss0 + 2 * toss1 + toss2",
@@ -369,11 +494,11 @@
                                     "sourceInfo": {
                                       "start": {
                                         "line": 18,
-                                        "column": 13
+                                        "column": 14
                                       },
                                       "end": {
                                         "line": 18,
-                                        "column": 37
+                                        "column": 38
                                       }
                                     },
                                     "pyExpr": "4 * toss0 + 2 * toss1 + toss2"
@@ -386,11 +511,11 @@
                             "sourceInfo": {
                               "start": {
                                 "line": 17,
-                                "column": 7
+                                "column": 8
                               },
                               "end": {
                                 "line": 17,
-                                "column": 40
+                                "column": 41
                               }
                             },
                             "pyExpr": "(toss0 != toss1 or toss0 != toss2)"
@@ -405,11 +530,11 @@
                 "sourceInfo": {
                   "start": {
                     "line": 13,
-                    "column": 8
+                    "column": 9
                   },
                   "end": {
                     "line": 13,
-                    "column": 8
+                    "column": 9
                   }
                 },
                 "pyExpr": "True"
@@ -419,5 +544,6 @@
         ]
       }
     }
-  ]
+  ],
+  "frontMatter": {}
 }
