@@ -1,2 +1,3 @@
+liveness: probabilistic
 options:
   max_actions: 1
