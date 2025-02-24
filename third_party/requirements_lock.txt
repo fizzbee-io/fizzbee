@@ -14,7 +14,7 @@ fonttools==4.55.3
     # via matplotlib
 kiwisolver==1.4.7
     # via matplotlib
-matplotlib==3.9.4
+matplotlib==3.8.2
     # via -r requirements.in
 numpy==1.26.4
     # via
@@ -34,7 +34,7 @@ python-dateutil==2.9.0.post0
     # via matplotlib
 pyyaml==6.0.1
     # via -r requirements.in
-scipy==1.14.1
+scipy==1.12.0
     # via -r requirements.in
 six==1.17.0
     # via python-dateutil

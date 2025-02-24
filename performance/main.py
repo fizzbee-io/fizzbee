@@ -110,11 +110,15 @@ def main(argv):
     plot_cdf(metrics)
 
     for i,invariant in enumerate(source_model.invariants):
-        print(invariant)
+
 
         if "always" not in invariant.temporal_operators or  "eventually" not in invariant.temporal_operators:
             continue
-        elif "eventually" == invariant.temporal_operators[0] and "always" == invariant.temporal_operators[1]:
+        inv_copy = ast.Invariant()
+        inv_copy.CopyFrom(invariant)
+        inv_copy.ClearField("source_info")
+        print(inv_copy)
+        if "eventually" == invariant.temporal_operators[0] and "always" == invariant.temporal_operators[1]:
             print(invariant.name, "eventually always")
             witness_nodes = []
             for j,prob,node in steady_state_nodes:
