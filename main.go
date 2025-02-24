@@ -29,6 +29,7 @@ var internalProfile bool
 var saveStates bool
 var seed int64
 var maxRuns int
+
 func main() {
     flag.BoolVar(&isPlayground, "playground", false, "is for playground")
     flag.BoolVar(&simulation, "simulation", false, "Runs in simulation mode (DFS). Default=false for no simulation (BFS)")
@@ -75,8 +76,8 @@ func main() {
                 deadlockDetection := true
                 crashOnYield := true
                 stateConfig = &ast.StateSpaceOptions{
-                    Options: &ast.Options{MaxActions: 100, MaxConcurrentActions: 2, CrashOnYield: &crashOnYield},
-                    Liveness: "strict",
+                    Options:           &ast.Options{MaxActions: 100, MaxConcurrentActions: 2, CrashOnYield: &crashOnYield},
+                    Liveness:          "strict",
                     DeadlockDetection: &deadlockDetection,
                 }
             } else {
@@ -126,10 +127,15 @@ func main() {
         fmt.Println("Seed:", seed)
     }
     if simulation && maxRuns == 0 {
-        fmt.Println("MaxRuns: unlimited")
+        fmt.Println("MaxRuns: unlimited. Press CTRL+C to stop")
     }
     stopped := false
     runs := 0
+
+    if simulation {
+        defer func() { fmt.Println("Runs:", runs) }()
+    }
+
     var p1 *modelchecker.Processor
     if simulation {
         c := make(chan os.Signal)
@@ -144,6 +150,7 @@ func main() {
         }()
     }
     i := 0
+    var allNodes []*modelchecker.Node
     for !stopped && (maxRuns <= 0 || i < maxRuns) {
         i++
 
@@ -171,7 +178,7 @@ func main() {
                 return
             }
             if !isPlayground && !simulation {
-                fmt.Printf("Writen graph dotfile: %s\nTo generate svg, run: \n" +
+                fmt.Printf("Writen graph dotfile: %s\nTo generate svg, run: \n"+
                     "dot -Tsvg %s -o graph.svg && open graph.svg\n", dotFileName, dotFileName)
             }
         } else if !simulation {
@@ -205,7 +212,7 @@ func main() {
                     return
                 }
                 if !isPlayground {
-                    fmt.Printf("Writen communication diagram dotfile: %s\nTo generate svg, run: \n" +
+                    fmt.Printf("Writen communication diagram dotfile: %s\nTo generate svg, run: \n"+
                         "dot -Tsvg %s -o communication.svg && open communication.svg\n", dotFileName, dotFileName)
                 }
             }
@@ -232,13 +239,13 @@ func main() {
                 }
             }
             if !simulation && !p1.Stopped() {
-                if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "enabled" || stateConfig.GetLiveness() == "true"  || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
+                if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "enabled" || stateConfig.GetLiveness() == "true" || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
                     failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode)
                 } else if stateConfig.GetLiveness() == "eventual" || stateConfig.GetLiveness() == "nondeterministic" {
                     failurePath, failedInvariant = modelchecker.CheckFastLiveness(nodes)
                 }
-               fmt.Printf("IsLive: %t\n", failedInvariant == nil)
-               fmt.Printf("Time taken to check liveness: %v\n", time.Now().Sub(endTime))
+                fmt.Printf("IsLive: %t\n", failedInvariant == nil)
+                fmt.Printf("Time taken to check liveness: %v\n", time.Now().Sub(endTime))
             }
 
             if failedInvariant == nil && !simulation {
@@ -266,8 +273,9 @@ func main() {
                     fmt.Println("Error writing files", err)
                 }
                 return
+            } else if simulation {
+                allNodes = nodes
             }
-
 
         } else if failedNode != nil {
             if failedNode.FailedInvariants != nil && len(failedNode.FailedInvariants) > 0 && len(failedNode.FailedInvariants[0]) > 0 {
@@ -283,8 +291,17 @@ func main() {
         }
     }
     fmt.Println("Stopped after", runs, "runs at ", time.Now())
+    if saveStates {
+        nodeFiles, linkFileNames, err := modelchecker.GenerateProtoOfJson(allNodes, outDir+"/")
+        if err != nil {
+            fmt.Println("Error generating proto files:", err)
+            return
+        }
+        if !isPlayground {
+            fmt.Printf("Writen %d node files and %d link files to dir %s\n", len(nodeFiles), len(linkFileNames), outDir)
+        }
+    }
 }
-
 
 func startModelChecker(err error, p1 *modelchecker.Processor) (*modelchecker.Node, *modelchecker.Node, time.Time) {
     if simulation {
@@ -327,7 +344,6 @@ func startHeapProfile() {
         panic(err)
     }
 }
-
 
 func dumpFailedNode(srcFileName string, failedNode *modelchecker.Node, rootNode *modelchecker.Node, outDir string) {
     failurePath := make([]*modelchecker.Link, 0)
@@ -396,7 +412,7 @@ func GenerateFailurePath(srcFileName string, failurePath []*modelchecker.Link, i
     }
     err = GenerateFailurePathHtml(srcFileName, failurePath, invariant, outDir)
     if err != nil {
-        return 
+        return
     }
     if !isPlayground {
         fmt.Printf("Writen error states as html: %s/error-states.html\nTo open: \n"+
@@ -499,7 +515,7 @@ func GenerateFailurePathHtml(srcFileName string, failurePath []*modelchecker.Lin
     defer file.Close()
     maxLanes := 0
     for _, link := range failurePath {
-        if link.ReqId + 1 > maxLanes {
+        if link.ReqId+1 > maxLanes {
             maxLanes = link.ReqId + 1
         }
     }
@@ -625,7 +641,7 @@ code {
     for i := 0; i < maxLanes; i++ {
         file.WriteString(fmt.Sprintf("<th>Thread %d</th>", i))
     }
-    
+
     file.WriteString(`
             <th>Yield?</th>
             <th style="min-width:6em; text-align:center;">Diff Link</th>
