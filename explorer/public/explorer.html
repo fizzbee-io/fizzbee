@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sequence Diagram Generator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/protobufjs/6.11.2/protobuf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script src="https://unpkg.com/@viz-js/viz@3.4.0/lib/viz-standalone.js"></script>
+  <script src="https://unpkg.com/svg2roughjs/dist/svg2roughjs.umd.min.js"></script>
+  <script src="https://unpkg.com/d3@5.16.0/dist/d3.min.js"></script>
+  <script src="https://unpkg.com/@hpcc-js/wasm@0.3.11/dist/index.min.js"></script>
+  <script src="https://unpkg.com/d3-graphviz@3.0.5/build/d3-graphviz.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Shadows+Into+Light&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      display: flex;
+      height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    #left {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #ccc;
+      padding: 10px;
+      width: 40%;
+      min-width: 40%;
+      max-width: 40%;
+    }
+    #right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+      width: 60%;
+      min-width: 40%;
+      max-width: 60%;
+    }
+    #mermaidContainer {
+      /*display: none;*/
+      visibility: hidden;
+      height: 0;
+      width: 0;
+    }
+    #graphvizContainer {
+      /*display: none;*/
+      visibility: hidden;
+      height: 0;
+      width: 0;
+    }
+    #seqDiagramContainer {
+      flex: 1;
+      border: 1px solid #ccc;
+      padding: 10px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      resize: vertical;
+      position: relative;
+      width: 96%;
+      height: calc(100% - 4em);
+    }
+    .buttons {
+      margin-bottom: 10px;
+    }
+    #visual_config_container, #content, #historyDisplay {
+      flex: 1;
+      white-space: pre-wrap;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      overflow-y: auto;
+      resize: vertical;
+    }
+
+    #visual_config {
+      width: 100%;
+      height: 50%;
+      max-height: 75%;
+    }
+    #sequenceDisplay {
+      display: none;
+    }
+    #link-buttons {
+      display: flex;           /* Enable flexbox layout */
+      flex-wrap: wrap;         /* Allow items to wrap to the next line */
+      gap: 0px 10px;               /* Optional: space between buttons */
+      /*padding: 10px;           !* Optional: padding around the container *!*/
+      /*border: 1px solid #ddd;  !* Optional: border for better visualization *!*/
+    }
+
+    .buttons button {
+      display: block;
+      margin: 5px 0;
+    }
+    #mermaidContainerWrapper {
+      position: relative;
+      max-height: 60vh;
+      overflow: hidden;
+    }
+
+    #openInNewTabButton {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #007bff; /* Adjust color as needed */
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    #openInNewTabButton:hover {
+      background-color: #007bff;
+      color: #fff;
+    }
+
+    #openInNewTabButton i {
+      font-size: 20px; /* Adjust icon size as needed */
+    }
+  </style>
+</head>
+<body>
+<div id="mermaidContainer"></div>
+<div id="graphvizContainer"></div>
+<div id="sequenceDisplay"></div> <!-- Mermaid text -->
+<div id="left">
+  <div id="mermaidContainerWrapper">
+    <div id="seqDiagramContainer"></div>
+    <div id="instructionMessage">Click the action buttons to begin exploring.</div>
+    <input type="checkbox" id="roughSketch" name="roughSketch" value="rough" onclick="updateSVGs()">
+    <label for="roughSketch">Rough Sketch</label><br>
+
+    <button id="openInNewTabButton" title="Open in New Tab">
+      <i class="fas fa-external-link-alt"></i>
+    </button>
+  </div>
+
+  <div class="buttons">
+    <button id="undo">Undo</button>
+    <div id="link-buttons"></div>
+  </div>
+  <div id="visual_config_container">
+    <div>Custom config for visualization</div>
+    <textarea id="visual_config" name="visual_config">
+# yaml config for visualization
+#
+#
+# For example: If you have an array variable `elements` and
+# integer variables j and k that are used to index elements array,
+# you can add a tracking link between j/k to elements[j],elements[k]
+#
+#variables:
+#  j:
+#    index_of: elements
+#  k:
+#    index_of: elements
+#
+# Learn more at https://fizzbee.io/tutorials/visualizations/
+#
+</textarea>
+  </div>
+</div>
+<div id="right">
+  <div id="content"></div> <!-- Current state display -->
+  <div id="historyDisplay"></div> <!-- History display -->
+</div>
+<script>
+  function determineFormat(jsonArray) {
+    console.log('Determining format for JSON array:', jsonArray);
+    if (!Array.isArray(jsonArray) || jsonArray.length === 0 || typeof jsonArray[0] !== 'object') {
+      console.log('Prefer row per element format:', typeof jsonArray[0], jsonArray);
+      return null;  // Prefer row-per-element format
+    }
+    const MAX_UNIQUE_FIELDS = 20;  // Threshold for the maximum number of unique fields for column-per-field format
+    const COMMON_FIELDS_RATIO = 0.75; // Threshold ratio of common fields for column-per-field format
+
+    let uniqueKeys = new Set();
+    let commonKeys = null;
+    let maxNestingLevel = 0;
+
+    // Helper function to determine the nesting level of an object
+    function getNestingLevel(obj, level = 1) {
+      if (typeof obj === 'object' && obj !== null) {
+        if (Array.isArray(obj)) {
+          return Math.max(...obj.map(item => getNestingLevel(item, level + 1)), level);
+        } else {
+          return Math.max(...Object.values(obj).map(value => getNestingLevel(value, level + 1)), level);
+        }
+      }
+      return level;
+    }
+
+    // Analyze the JSON array
+    jsonArray.forEach((obj) => {
+      const objKeys = Object.keys(obj);
+      objKeys.forEach(key => uniqueKeys.add(key));
+
+      if (commonKeys === null) {
+        commonKeys = new Set(objKeys);
+      } else {
+        commonKeys = new Set([...commonKeys].filter(key => objKeys.includes(key)));
+      }
+
+      maxNestingLevel = Math.max(maxNestingLevel, getNestingLevel(obj));
+    });
+
+    const numUniqueKeys = uniqueKeys.size;
+    const numCommonKeys = commonKeys.size;
+
+    console.log('Unique keys:', numUniqueKeys, uniqueKeys, "numCommonKeys", numCommonKeys, "ratio", (numCommonKeys / numUniqueKeys), "maxNestingLevel", maxNestingLevel);
+    // Determine format based on heuristic
+    if (maxNestingLevel > 3) {
+      return null;  // Prefer row-per-element format due to high nesting
+    }
+
+    if (numUniqueKeys <= MAX_UNIQUE_FIELDS && (numCommonKeys / numUniqueKeys) >= COMMON_FIELDS_RATIO) {
+      return [...uniqueKeys];  // Return list of columns for column-per-field format
+    } else {
+      return null;  // Prefer row-per-element format
+    }
+  }
+
+  // Define URLs using the project name
+  const protoUrl = '/graph.proto';
+  let nodesUrl = `/data/nodes_000000_of_000000.pb`;
+  let linksUrl = `/data/adjacency_lists_000000_of_000000.pb`;
+
+
+  // // URLs of the serialized protobuf files
+  // const protoUrl = '/test/graph.proto';
+  // nodesUrl = '/test/nodes_000000_of_000000.pb';
+  // linksUrl = '/test/adjacency_lists_000000_of_000000.pb';
+
+  let nodes = [];
+  let links = [];
+  let history = [];
+  let threadToLane = new Map();
+  let nextReqId = 1;
+
+  // Load the protobuf definition
+  protobuf.load(protoUrl, function(err, root) {
+    if (err) {
+      console.error(err);
+      return;
+    }
+
+    // Obtain message types
+    const Nodes = root.lookupType("Nodes");
+    const Links = root.lookupType("Links");
+
+    // Fetch and parse the Nodes
+    fetch(nodesUrl)
+            .then(response => response.arrayBuffer())
+            .then(buffer => {
+              const nodesMessage = Nodes.decode(new Uint8Array(buffer));
+              // Parse the JSON strings in nodesMessage.json
+              nodes = nodesMessage.json.map(jsonStr => {
+                try {
+                  return JSON.parse(jsonStr);
+                } catch (e) {
+                  console.error('Error parsing JSON string:', jsonStr, e);
+                  return jsonStr; // Return the raw string if parsing fails
+                }
+              });
+              return nodes;
+            })
+            .then(nodes => {
+              // Fetch and parse the Links
+              fetch(linksUrl)
+                      .then(response => response.arrayBuffer())
+                      .then(buffer => {
+                        const linksMessage = Links.decode(new Uint8Array(buffer));
+                        links = linksMessage.links;
+
+                        // Display initial node and its outlinks
+                        displayNodeAndOutlinks(0);
+                      })
+                      .catch(error => console.error('Error fetching or decoding links:', error));
+            })
+            .catch(error => console.error('Error fetching or decoding nodes:', error));
+  });
+
+  // Helper function to get a text representation of a node
+  function getNodeText(nodeIndex) {
+    try {
+      return JSON.stringify(nodes[nodeIndex], null, 2);
+    } catch (e) {
+      console.error('Error stringifying node:', nodes[nodeIndex], e);
+      return `Node ${nodeIndex} (invalid JSON)`;
+    }
+  }
+
+  function customStringify(obj) {
+    if (obj === null) return 'null';
+    if (obj === undefined) return 'undefined';
+    if (typeof obj === 'boolean' || typeof obj === 'number') return obj.toString();
+    if (typeof obj === 'string') return `'${obj}'`;
+    if (Array.isArray(obj)) {
+      return `[${obj.map(customStringify).join(', ')}]`;
+    }
+    if (typeof obj === 'object') {
+      const entries = Object.entries(obj).map(([key, value]) => {
+        // If the key is a number, it does not need quotes
+        const formattedKey = typeof key === 'number' ? key : key;
+        return `${formattedKey}: ${customStringify(value)}`;
+      });
+      return `\{${entries.join(', ')}\}`;
+    }
+    if (typeof obj === 'function') {
+      return obj.toString();
+    }
+    return obj.toString();
+  }
+
+  function convertJSONToGraphviz(nodeText) {
+    // const handwrittingFont = 'Bradley Hand, Helvetica, cursive';
+    const json = JSON.parse(nodeText);
+    let graphvizCode = 'digraph G {\ncompound=true;\ntarget="_blank";\n';
+
+    // Function to quote names for Graphviz
+    function quoteName(name) {
+      return `"${name}"`;
+    }
+    function escapeString(value) {
+      return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    }
+    // Function to generate the placeholder node within each role's cluster
+    function generatePlaceholderNode(roleName) {
+      const placeholderName = `${roleName}_placeholder`;
+      return `${quoteName(placeholderName)} [label="" shape=point width=0 height=0 style=invis];\n`;
+    }
+    // Function to identify if a string references a role
+    function isRoleReference(str) {
+      const roleRegex = /^role .+#\d+$/;
+      return roleRegex.test(str);
+    }
+    function is2DArray(jsonObject) {
+      if (Array.isArray(jsonObject)) {
+        // Check if the first element is also an array
+        return jsonObject.every(row => Array.isArray(row));
+      }
+      return false;
+    }
+
+    function convertPrimitiveArrayToGraphviz(roleName, variableName, quotedVarName, data) {
+      console.log('convertPrimitiveArrayToGraphviz', roleName, variableName, quotedVarName, data);
+
+      let variableCode = `subgraph ${quoteName(`cluster_${roleName}.${variableName}`)} {\nstyle=dashed;\nlabel=${quoteName(variableName)};\n`;
+
+      // For non-string type, create a horizontal table (all elements in a single row)
+      let joinSeparator = '\n';
+      let beforeSide = '"r"';
+      let afterSide = '"l"';
+      let stringer = function (value) {
+        return String(value);
+      };
+      let columns = undefined;
+      if (!isRoleReference(data[0])) {
+        columns = determineFormat(data);
+      }
+
+      if (typeof data[0] === 'string' || isRoleReference(data[0])) {
+        // For string type, keep the table as a vertical list (each element in a new row)
+        joinSeparator = '</tr>\n<tr>';
+        beforeSide = '"b"';
+        afterSide = '"t"';
+      } else if ( !columns) {
+        // if any element is an object, use customStringify
+        for (let i = 0; i < data.length; i++) {
+          if (typeof data[i] === 'object') {
+            joinSeparator = '</tr>\n<tr>';
+            beforeSide = '"b"';
+            afterSide = '"t"'
+            stringer = customStringify
+            break;
+          }
+        }
+
+      }
+
+      console.log(columns)
+      if (columns) {
+        // Column-per-field format
+        let fields = []
+        if (!is2DArray(data)) {
+          fields.push(columns.map((field, index) => `<td><b>${field}</b></td>`).join("\n"));
+        }
+        fields.push(`<td colspan="100" port="before" sides="b" cellpadding="0"></td>`);
+        // for each element in data, create a row in the table, with the value of each column
+        data.forEach((row, rowIndex) => {
+          let rowFields = columns.map((field, colIndex) => {
+            let value = row[field];
+            if (value === null || value === undefined) {
+              value = '';
+            } else if (typeof value === 'object') {
+              value = customStringify(value);
+            } else {
+              value = escapeString(wrapText(`${value}`, 40, "\n"));
+            }
+            return `<td port="${rowIndex}">${value}</td>`;
+          }).join("\n");
+          fields.push( rowFields);
+        });
+        fields.push(`<td colspan="100" port="after"  sides="t" cellpadding="0"></td>`);
+        const htmlTable = `<table border="0" cellborder="1" cellspacing="0" cellpadding="6"><tr>\n${fields.join("</tr>\n<tr>")}\n</tr></table>`;
+        variableCode += `${quotedVarName} [shape=plaintext, label=<${htmlTable}>];\n`;
+        variableCode += '}\n';
+      } else {
+        let fields = data.map((value, index) => `<td port="${index}">${wrapText(stringer(value), 40, "<br/>")}</td>`).join(joinSeparator);
+        fields = `<td port="before" sides=${beforeSide}></td>` + joinSeparator +
+                fields + joinSeparator +
+                `<td port="after" sides=${afterSide}></td>`;
+        const htmlTable = `<table border="0" cellborder="1" cellspacing="0" cellpadding="6"><tr>\n${fields}\n</tr></table>`;
+        variableCode += `${quotedVarName} [shape=plaintext, label=<${htmlTable}>];\n`;
+        variableCode += '}\n';
+      }
+
+      // Generate edges for array elements that are role references
+      const edges = data
+              .filter(value => typeof value === 'string' && isRoleReference(value))
+              .map((value, index) => {
+                const targetRole = value.split(' ')[1]; // Extract the role name after "role "
+                const placeholderNode = quoteName(`${targetRole}_placeholder`);
+                const targetRoleCluster = quoteName(`cluster_${targetRole}`);
+                return `${quotedVarName}:${index} -> ${placeholderNode} [lhead=${targetRoleCluster}];`;
+              })
+              .join('\n');
+
+      variableCode += edges + '\n';
+      return variableCode;
+    }
+
+    // Function to generate Graphviz code for individual variables
+    function generateVariableCode(variableName, data, roleName = null) {
+      let variableCode = '';
+
+      // Quote the variable name, prefix with role's ref_string if applicable
+      let quotedVarName = quoteName(roleName ? `${roleName}.${variableName}` : variableName);
+
+      console.log('Variable:', variableName, data, Array.isArray(data), is2DArray(data), typeof data);
+      if (data === null) {
+        variableCode = `${quotedVarName} [label="${variableName} = null" shape=ellipse];\n`;
+        return variableCode;
+      }
+      if (Array.isArray(data) ) {
+        console.log('Array:', data, typeof data[0]);
+        if (typeof data[0] === 'object' ) { // Array of records
+          return convertPrimitiveArrayToGraphviz(roleName, variableName, quotedVarName, data);
+        } else { // Array of primitive types or strings
+          return convertPrimitiveArrayToGraphviz(roleName, variableName, quotedVarName, data);
+        }
+      } else if (typeof data === 'object') { // 2D array or struct
+        console.log('Object:', data, Array.isArray(Object.values(data)[0]));
+        if (is2DArray(data)) { // 2D array
+          const rows = Object.keys(data);
+          variableCode += `subgraph ${quoteName(`cluster_${roleName}.${variableName}`)} {\nstyle=dashed;\nlabel=${quoteName(variableName)};\n`;
+          variableCode += 'node [shape=record, style=filled, fillcolor=white];\n';
+
+          rows.forEach(row => {
+            console.log('Row:', row, data[row]);
+            const fields = data[row].map((value, colIndex) => `<${row},${colIndex}>${value}`).join('|');
+            variableCode += `${quoteName(`${roleName}_${row}`)} [label="{ ${fields} }"];\n`;
+          });
+
+          variableCode += '}\n';
+        } else { // Struct
+          console.log('Struct:', data);
+          // Generate subgraph code with HTML-like table nodes
+          variableCode += `subgraph ${quoteName(`cluster_${roleName}.${variableName}`)} {\nstyle=dashed;\nlabel=${quoteName(variableName)};\n`;
+
+          // Start the HTML table representation
+          variableCode += `${quotedVarName} [shape=plaintext, label=<\n`;
+          variableCode += `<table border="0" cellborder="1" cellspacing="0" cellpadding="4">\n`;
+
+          // Create a row for each key-value pair in the data
+          Object.entries(data).forEach(([key, value]) => {
+            let content = customStringify(value);
+            let tooltip = '';
+            if (content.length > 120-4) {
+              const jsonString = JSON.stringify(value, null, 2); // `null, 2` is used to pretty-print the JSON with 2 spaces
+              // Create a Blob from the JSON string
+              const blob = new Blob([jsonString], { type: 'application/json' });
+              // Create a Blob URL
+              const blobUrl = URL.createObjectURL(blob);
+              tooltip = ` title="Open formatted json" href="${blobUrl}" target="_blank"`;
+              content = content.substring(0, 120-4) + '...';
+
+            }
+            variableCode += `  <tr>\n`;
+            variableCode += `    <td port="key${key}">${key}</td>\n`;  // Key cell with port
+
+            variableCode += `    <td port="value${key}" ${tooltip}>${wrapText(content, 40, "<br/>")}</td>\n`;  // Value cell with port
+              variableCode += `  </tr>\n`;
+          });
+          if (Object.entries(data).length === 0) {
+            variableCode += `  <tr>\n`;
+            variableCode += `    <td colspan="2"></td>\n`;  // Key cell with port
+            variableCode += `  </tr>\n`;
+          }
+
+          // Close the HTML table and node label
+          variableCode += `</table>\n>];\n`;
+          variableCode += '}\n';
+
+
+        }
+      } else if (typeof data === 'string') { // Primitive types or strings
+        data = escapeString(wrapText(data, 40, "\n"));
+        variableCode += `${quotedVarName} [label="${variableName} = ${data}" shape=ellipse];\n`;
+        if (isRoleReference(data)) {
+          const targetRole = data.split(' ')[1]; // Extract the role name after "role "
+          const placeholderNode = quoteName(`${targetRole}_placeholder`);
+          const targetRoleCluster = quoteName(`cluster_${targetRole}`);
+          variableCode += `${quotedVarName} -> ${placeholderNode} [lhead=${targetRoleCluster}];\n`;
+        }
+
+      } else {
+        variableCode += `${quotedVarName} [label="${variableName} = ${data}" shape=ellipse];\n`;
+      }
+
+      return variableCode;
+    }
+
+    if (json.roles) {
+      // Process each role
+      json.roles.forEach(role => {
+        let roleName = quoteName(role.ref_string);
+        graphvizCode += `subgraph ${quoteName(`cluster_${role.ref_string}`)} {\nstyle=dashed;\nlabel=${roleName};\n`;
+        graphvizCode += generatePlaceholderNode(role.ref_string);
+        Object.entries(role.fields).forEach(([variableName, data]) => {
+          graphvizCode += generateVariableCode(variableName, data, role.ref_string);
+        });
+        graphvizCode += '}\n';
+      });
+    }
+
+    // Process top-level state variables with sorted keys
+    Object.keys(json.state).sort().forEach(variableName => {
+      const data = json.state[variableName];
+      graphvizCode += generateVariableCode(variableName, data);
+    });
+
+    const yamlString = document.getElementById('visual_config').value;
+    // Parse YAML string to JavaScript object
+    const parsedObject = jsyaml.load(yamlString);
+    if (!parsedObject || !parsedObject.variables) {
+      return graphvizCode + '}\n';
+    }
+    console.log(parsedObject, parsedObject.variables);
+    for (const parsedObjectKey in parsedObject.variables) {
+      console.log(parsedObjectKey, parsedObject.variables[parsedObjectKey]);
+      // add an edge from parsedObjectKey to parsedObject.variables[parsedObjectKey]
+      let stateElement = json.state[parsedObjectKey];
+      if (stateElement < 0) {
+        stateElement = 'before';
+      } else if (stateElement >= json.state[parsedObject.variables[parsedObjectKey].index_of].length) {
+        stateElement = 'after';
+      }
+      // graphvizCode += `${quoteName(parsedObjectKey)} -> ${quoteName(parsedObject.variables[parsedObjectKey].index_of)}:${stateElement};\n`;
+      // This makes the arrow show up from bottom to top
+      graphvizCode += `${quoteName(parsedObject.variables[parsedObjectKey].index_of)}:${stateElement} -> ${quoteName(parsedObjectKey)} [dir=back] ;\n`;
+    }
+    graphvizCode += '}\n';
+    return graphvizCode;
+  }
+
+
+  function updateThreadToLaneMap(link) {
+    console.log("Updating threadToLane with link", link, "threadToLane", threadToLane);
+
+    if (link.type === "action") {
+      threadToLane.set(link.reqId, nextReqId++);
+      console.log("New Action Added new reqId:", link.reqId, "with lane:", nextReqId);
+      return
+    }
+    let newThreadToLane = new Map();
+    if (!threadToLane.has(link.reqId)) {
+      // If reqId is not found, add it to threadToLane with the value equal to reqId
+      newThreadToLane.set(link.reqId, link.reqId);
+
+      console.log("Added new reqId:", link.reqId, "with lane:", link.reqId);
+    }
+    for (const newToOldThread of Object.entries(link.newToOldThreads)) {
+      let newThreadId = newToOldThread[0];
+      let oldThreadId = newToOldThread[1];
+      if (threadToLane.has(parseInt(oldThreadId))) {
+        newThreadToLane.set(parseInt(newThreadId), threadToLane.get(parseInt(oldThreadId)));
+        }
+    }
+
+    newThreadToLane.forEach((value, key) => {
+      threadToLane.set(key, value);
+    });
+  }
+
+  // Helper function to get text for a link button
+  function getLinkText(link, threadToLane) {
+    console.log("link", link);
+    console.log("newToOldLinks", link.newToOldThreads);
+    console.log("threadToLane", threadToLane);
+    linkName = link.name;
+
+    // Check if link.reqId is already in threadToLane
+    var lane = link.reqId;
+    if (threadToLane.has(link.reqId)) {
+      // If reqId is already present, assign the lane to the variable
+      lane = threadToLane.get(link.reqId);
+      console.log("Lane for the given reqId:", lane);
+    }
+
+    if (link.name.startsWith("thread-")) {
+      linkName = `action-${lane}`;
+    }
+    // if (link.labels.length > 0) {
+    //   return linkName + "[" + link.labels.join(", ") + "]";
+    // }
+    return linkName;
+  }
+
+  // Helper function to generate sequence diagram
+  function generateSequence(links) {
+    const diagram = [];
+    const maxLength = 80;
+    diagram.push("sequenceDiagram");
+    let roles = [];
+    let activeRoleName = "";
+
+    links.forEach(link => {
+      const node = nodes[link.src];
+      let destNode = nodes[link.dest];
+      if (node.roles) {
+        node.roles.forEach(role => {
+          if (!roles.includes(role.name)) {
+            roles.push(role.name);
+          }
+        });
+      }
+
+      if (link.name === "NoOp") return;
+      if (link.name === "crash") {
+        diagram.push(`\t${wrapQuote(activeRoleName)}->>${wrapQuote(activeRoleName)}: crash`);
+        return;
+      }
+      if (link.name !== "yield" && !link.name.startsWith("thread")) {
+        const actionParts = link.name.split(".");
+        if (actionParts.length >= 2) {
+          activeRoleName = actionParts[0];
+          const actionName = actionParts[1];
+          diagram.push(`\tnote left of ${wrapQuote(activeRoleName)}: ${actionName}`);
+        }
+      }
+      link.messages.forEach(message => {
+        if (!message.sender || !message.receivers || message.receivers.length === 0) return;
+
+        if (!message.isReturn) {
+          let msg = message.name || ".";
+          let values = message.values.map(value => `${value.name}: ${value.value}`).join(", ");
+          let text = `\t${wrapQuote(message.sender)} ->> ${wrapQuote(message.receivers[0])}: ${msg}(${values})`;
+          diagram.push(wrapText(text, maxLength, "<br/>"));
+        } else {
+          let values = message.values.filter(value => value.value !== "None").map(value => value.value).join(", ");
+          let text = `\t${wrapQuote(message.receivers[0])} -->> ${wrapQuote(message.sender)}: ${values ? `(${values})` : "."}`;
+          diagram.push(wrapText(text, maxLength, "<br/>"));
+        }
+      });
+
+      if (destNode !== null && destNode.name === "yield" && destNode.returns !== "{}") {
+        Object.entries(JSON.parse(destNode.returns)).forEach(([key, value]) => {
+          const actionParts = key.split(".");
+          if (actionParts.length >= 2) {
+            activeRoleName = actionParts[0];
+            const actionName = actionParts[1];
+            diagram.push(`\tnote left of ${wrapQuote(activeRoleName)}: ${actionName} returns ${value}`);
+          }
+        });
+      }
+    });
+
+    return diagram.join("\n");
+  }
+
+  function convertSvgToRough(targetSelector, svg) {
+    const svgConverter = new svg2roughjs.Svg2Roughjs(targetSelector)
+    svgConverter.svg = svg
+    svgConverter.fontFamily = 'Bradley Hand, Caveat, Helvetica, cursive'
+    svgConverter.seed = 1
+    svgConverter.randomize = false
+    svgConverter.sketchPatterns = true
+    svgConverter.pencilFilter = true
+    svgConverter.roughConfig = {'roughness':1, bowing:1}
+    svgConverter.sketch()
+  }
+
+  function updateSVGs() {
+    const isRough = document.getElementById('roughSketch').checked;
+
+    const mermaidDiv = document.getElementById("mermaidContainer");
+    const sequenceDiagramContainer = document.getElementById("seqDiagramContainer");
+
+    let currentSeqSvg = sequenceDiagramContainer.innerHTML
+    sequenceDiagramContainer.innerHTML = "";
+    if (isRough) {
+      console.log("isRough", currentSeqSvg);
+      mermaidContainer.firstElementChild.innerHTML = currentSeqSvg;
+      convertSvgToRough('#seqDiagramContainer',
+              mermaidContainer.firstElementChild.querySelector('svg'));
+    } else {
+      sequenceDiagramContainer.appendChild(mermaidContainer.firstElementChild.querySelector('svg'));
+    }
+
+    const contentDiv = document.getElementById("content");
+    const currentGraphvizSvg = contentDiv.innerHTML;
+    contentDiv.innerHTML = "";
+    if (isRough) {
+      const graphvizContainerDiv = document.getElementById("graphvizContainer");
+      graphvizContainerDiv.innerHTML = currentGraphvizSvg;
+      convertSvgToRough('#content', graphvizContainerDiv.querySelector('svg'));
+    } else {
+      const graphvizContainerDiv = document.getElementById("graphvizContainer");
+      contentDiv.appendChild(graphvizContainerDiv.querySelector('svg'));
+    }
+  }
+
+  // Function to display a node's content and its outlinks
+  function displayNodeAndOutlinks(nodeIndex, clickedLink = null) {
+    // const animate = document.getElementById('animate').checked;
+    const animate = false;
+    const isRough = document.getElementById('roughSketch').checked;
+    const contentDiv = document.getElementById("content");
+    const linkButtonsDiv = document.getElementById("link-buttons");
+
+    // Update content
+    const nodeText = getNodeText(nodeIndex);
+    const graphVizCode = convertJSONToGraphviz(nodeText);
+    console.log(graphVizCode);
+    if (animate) {
+      const duration = clickedLink? 1500: 0 ;
+      const t = d3.transition()
+              .duration(duration)
+              // .delay(500)
+              // .delay((d, i) => i * 1000)
+              .ease(easing);
+      d3.select("#content").graphviz()
+              .transition(t)
+              .renderDot(graphVizCode);
+    } else {
+      Viz.instance().then(function(viz) {
+        let newSvg = viz.renderSVGElement(graphVizCode);
+
+        contentDiv.innerHTML = "";
+        const graphvizContainerDiv = document.getElementById("graphvizContainer");
+        graphvizContainerDiv.innerHTML = newSvg.outerHTML;
+        if (isRough) {
+          convertSvgToRough('#content', newSvg);
+        } else {
+          contentDiv.appendChild(newSvg);
+        }
+
+      });
+    }
+
+
+    // Store the current state and the clicked link (if any)
+    if (clickedLink !== null) {
+      history.push({ nodeIndex, nodeText, link: clickedLink, threadToLane: new Map(threadToLane), nextReqId: nextReqId });
+      updateThreadToLaneMap(clickedLink);
+    } else {
+      // Initial state has no associated link
+      history.push({ nodeIndex, nodeText, link: null, threadToLane: new Map(threadToLane), nextReqId: nextReqId });
+    }
+    // Clear previous link buttons
+    linkButtonsDiv.innerHTML = '';
+
+    // Find and display outlinks
+    const outlinks = links.filter(link => link.src === nodeIndex);
+    const buttonArray = [];
+    outlinks.forEach((link, i) => {
+      const button = document.createElement("button");
+      const buttonText = getLinkText(link, threadToLane);
+      button.textContent = buttonText;
+      button.onclick = () => {
+        displayNodeAndOutlinks(link.dest, link);
+      };
+      buttonArray.push({ button, buttonText });
+    });
+    // Sort the buttons by their textContent (buttonText)
+    buttonArray.sort((a, b) => a.buttonText.localeCompare(b.buttonText));
+    buttonArray.forEach(item => {
+      linkButtonsDiv.appendChild(item.button);
+    });
+    // Update the history display
+    updateHistoryDisplay();
+
+    // Generate and display the sequence diagram
+    const sequenceDiagram = generateSequence(history.map(entry => entry.link).filter(link => link !== null));
+    const sequenceDisplay = document.getElementById("sequenceDisplay");
+    sequenceDisplay.textContent = sequenceDiagram;
+
+    // Render the Mermaid chart
+    renderMermaidChart(isRough);
+    scrollToEnd();
+    setTimeout(scrollToEnd, 30);
+    if (history.length > 1) {
+      document.getElementById("instructionMessage").style.display = "none";
+    }
+  }
+
+  // Undo functionality
+  document.getElementById("undo").onclick = () => {
+    if (history.length > 1) {
+      history.pop(); // Remove the current state
+      const lastState = history.pop(); // Get the last state
+      threadToLane = new Map(lastState.threadToLane);
+      nextReqId = lastState.nextReqId;
+      displayNodeAndOutlinks(lastState.nodeIndex, lastState.link);
+    } else {
+      alert("No more steps to undo.");
+    }
+    updateHistoryDisplay();
+  };
+
+  // Function to update the history display
+  function updateHistoryDisplay() {
+    const historyDiv = document.getElementById("historyDisplay");
+    const linkHistory = history
+            .map((entry, index) => entry.link ? `Step ${index + 1}: ${getLinkText(entry.link, entry.threadToLane)}` : 'Initial state')
+            .join('\n');
+    historyDiv.textContent = linkHistory;
+  }
+
+  // Helper function to wrap a string in single quotes
+  function wrapQuote(s) {
+    return `'${s}'`;
+  }
+
+  const wrapText = (s, w, newLine) => s.replace(
+          new RegExp(`(?![^\\n]{1,${w}}$)([^\\n]{1,${w}})\\s`, 'g'), `$1${newLine}`
+  );
+
+  // Function to render the Mermaid chart
+  function renderMermaidChart(isRough) {
+    const sequenceDisplay = document.getElementById("sequenceDisplay");
+    const mermaidContainer = document.getElementById("mermaidContainer");
+
+    // Get the Mermaid sequence diagram text
+    const mermaidText = sequenceDisplay.textContent;
+
+    // Render the Mermaid chart
+    mermaidContainer.innerHTML = `<pre id="mermaid-pre" class="mermaid">${mermaidText}</pre>`;
+    mermaid.init(); // Initialize Mermaid rendering
+
+    setTimeout(() => {
+      const mc = document.getElementById("seqDiagramContainer");
+      mc.innerHTML = "";
+      if (isRough) {
+        convertSvgToRough('#seqDiagramContainer',
+                mermaidContainer.firstElementChild.querySelector('svg'));
+      } else {
+        mc.appendChild(mermaidContainer.firstElementChild.querySelector('svg'));
+      }
+    }, 10);
+  }
+
+  function scrollToEnd() {
+    const sequenceDisplay = document.getElementById('seqDiagramContainer');
+    sequenceDisplay.scrollTop = sequenceDisplay.scrollHeight;
+  }
+
+  // Function to open the Mermaid diagram in a new tab
+  function openInNewTab() {
+    const sequenceDisplay = document.getElementById('seqDiagramContainer');
+    const svgElement = sequenceDisplay.querySelector('svg');
+    if (svgElement) {
+      // Serialize the SVG content to a string
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      // Create a Blob object containing the SVG data
+      const blob = new Blob([svgData], { type: 'image/svg+xml' });
+      // Create an object URL for the Blob
+      const url = URL.createObjectURL(blob);
+      // Open the object URL in a new tab
+      window.open(url, '_blank');
+      // Optional: Revoke the object URL after some time
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    }
+  }
+  document.getElementById('openInNewTabButton').addEventListener('click', openInNewTab);
+
+</script>
+</body>
+</html>

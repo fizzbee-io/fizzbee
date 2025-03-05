@@ -1,0 +1,19 @@
+{
+  "name": "explorer",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "serve.js",
+  "scripts": {
+    "start": "node serve.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "get-port": "^7.1.0",
+    "open": "^10.1.0",
+    "path": "^0.12.7"
+  }
+}
