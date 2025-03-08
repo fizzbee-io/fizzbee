@@ -435,7 +435,9 @@ func linkToBase64(link *modelchecker.Link) (string, error) {
     if err != nil {
         return "", err
     }
-    return base64.StdEncoding.EncodeToString(jsonBytes), nil
+    str := string(jsonBytes)
+    str = strings.ReplaceAll(str, lib.SymmetryPrefix, "")
+    return base64.StdEncoding.EncodeToString([]byte(str)), nil
 }
 
 // Helper to create the JSON diff URL
