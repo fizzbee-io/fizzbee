@@ -694,7 +694,8 @@ func (p *Process) RecordCall(callerFrame *CallFrame, receiverFrame *CallFrame, f
 		msg.Receivers = []string{receiverFrame.obj.RefStringShort()}
 	}
 	for name, value := range receiverFrame.vars {
-		msg.Values = append(msg.Values, &ast.NameValue{Name: name, Value: value.String()})
+		str := strings.ReplaceAll(value.String(), lib.SymmetryPrefix, "")
+		msg.Values = append(msg.Values, &ast.NameValue{Name: name, Value: str})
 	}
 	if flow != ast.Flow_FLOW_ATOMIC {
 		msg.Lossy = true
@@ -718,7 +719,8 @@ func (p *Process) RecordReturn(callerFrame *CallFrame, receiverFrame *CallFrame,
 		msg.Receivers = []string{receiverFrame.obj.RefStringShort()}
 	}
 	if val != nil {
-		msg.Values = append(msg.Values, &ast.NameValue{Value: val.String()})
+		str := strings.ReplaceAll(val.String(), lib.SymmetryPrefix, "")
+		msg.Values = append(msg.Values, &ast.NameValue{Value: str})
 	}
 	if flow != ast.Flow_FLOW_ATOMIC {
 		msg.Lossy = true
