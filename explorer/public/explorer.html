@@ -284,6 +284,18 @@
 
                         // Display initial node and its outlinks
                         displayNodeAndOutlinks(0);
+                        // For errors, render everything
+                        if (nodesUrl.endsWith("_errors.pb")) {
+                          for (let i = 0; i < links.length - 1; i++) {
+                            displayNodeAndOutlinks(links[i].dest, links[i])
+                          }
+                          const linkButtons = document.getElementById("link-buttons")
+                          if (linkButtons.childElementCount === 1) {
+                            setTimeout(function () {
+                              linkButtons.children[0].click()
+                            }, 20)
+                          }
+                        }
                       })
                       .catch(error => console.error('Error fetching or decoding links:', error));
             })
@@ -709,13 +721,16 @@
 
     let currentSeqSvg = sequenceDiagramContainer.innerHTML
     sequenceDiagramContainer.innerHTML = "";
+    let svgElement = mermaidContainer.firstElementChild.querySelector('svg');
+    if (!svgElement) {
+      return
+    }
     if (isRough) {
       console.log("isRough", currentSeqSvg);
       mermaidContainer.firstElementChild.innerHTML = currentSeqSvg;
-      convertSvgToRough('#seqDiagramContainer',
-              mermaidContainer.firstElementChild.querySelector('svg'));
+      convertSvgToRough('#seqDiagramContainer', svgElement);
     } else {
-      sequenceDiagramContainer.appendChild(mermaidContainer.firstElementChild.querySelector('svg'));
+      sequenceDiagramContainer.appendChild(svgElement);
     }
 
     const contentDiv = document.getElementById("content");
@@ -862,11 +877,15 @@
     setTimeout(() => {
       const mc = document.getElementById("seqDiagramContainer");
       mc.innerHTML = "";
+      const svgElement = mermaidContainer.firstElementChild.querySelector('svg');
+      if (!svgElement) {
+        return
+      }
       if (isRough) {
         convertSvgToRough('#seqDiagramContainer',
-                mermaidContainer.firstElementChild.querySelector('svg'));
+                svgElement);
       } else {
-        mc.appendChild(mermaidContainer.firstElementChild.querySelector('svg'));
+        mc.appendChild(svgElement);
       }
     }, 10);
   }
