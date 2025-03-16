@@ -82,7 +82,7 @@ func parseReflectValue(v reflect.Value) interfaceData {
 	return *(*interfaceData)(ptr)
 }
 
-func roleResolveCloneFn(refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
+func roleResolveCloneFn(refs map[string]*lib.Role, channelRefs map[int]*lib.Channel, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
 	return func(allocator *clone.Allocator, old, new reflect.Value) {
 
 		var oldRole *lib.Role
@@ -99,7 +99,7 @@ func roleResolveCloneFn(refs map[string]*lib.Role, permutations map[lib.Symmetri
 		}
 
 		newRolePtr := new.Addr().Interface().(**lib.Role)
-		value, err := deepCloneStarlarkValueWithPermutations(oldRole, refs, permutations, alt)
+		value, err := deepCloneStarlarkValueWithPermutations(oldRole, refs, channelRefs, permutations, alt)
 		if err != nil {
 			panic(err)
 		}
@@ -107,20 +107,20 @@ func roleResolveCloneFn(refs map[string]*lib.Role, permutations map[lib.Symmetri
 	}
 }
 
-func symmetricValueResolveFn(refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
+func symmetricValueResolveFn(refs map[string]*lib.Role, channelRefs map[int]*lib.Channel, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
 	return func(allocator *clone.Allocator, old, new reflect.Value) {
 		value := new.Addr().Interface().(*lib.SymmetricValue)
 		oldVal := old.Interface().(lib.SymmetricValue)
-		newVal, _ := deepCloneStarlarkValueWithPermutations(oldVal, refs, permutations, alt)
+		newVal, _ := deepCloneStarlarkValueWithPermutations(oldVal, refs, channelRefs, permutations, alt)
 		*value = newVal.(lib.SymmetricValue)
 	}
 }
 
-func starlarkDictResolveFn(refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
+func starlarkDictResolveFn(refs map[string]*lib.Role, channelRefs map[int]*lib.Channel, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
 	return func(allocator *clone.Allocator, old, new reflect.Value) {
 		value := new.Addr().Interface().(*starlark.Dict)
 		oldVal := old.Addr().Interface().(*starlark.Dict)
-		newVal, _ := deepCloneStarlarkValueWithPermutations(oldVal, refs, permutations, alt)
+		newVal, _ := deepCloneStarlarkValueWithPermutations(oldVal, refs, channelRefs, permutations, alt)
 		newDict := newVal.(*starlark.Dict)
 		for _, item := range newDict.Items() {
 			_ = value.SetKey(item[0], item[1])
@@ -128,11 +128,11 @@ func starlarkDictResolveFn(refs map[string]*lib.Role, permutations map[lib.Symme
 	}
 }
 
-func starlarkSetResolveFn(refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
+func starlarkSetResolveFn(refs map[string]*lib.Role, channelRefs map[int]*lib.Channel, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
 	return func(allocator *clone.Allocator, old, new reflect.Value) {
 		value := new.Addr().Interface().(*starlark.Set)
 		oldVal := old.Addr().Interface().(*starlark.Set)
-		newVal, _ := deepCloneStarlarkValueWithPermutations(oldVal, refs, permutations, alt)
+		newVal, _ := deepCloneStarlarkValueWithPermutations(oldVal, refs, channelRefs, permutations, alt)
 		newSet := newVal.(*starlark.Set)
 		iter := newSet.Iterate()
 		defer iter.Done()
