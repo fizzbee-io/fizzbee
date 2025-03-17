@@ -15,7 +15,7 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[strin
 	// "builtin_function_or_method".
 	switch value.Type() {
 
-	case "NoneType", "int", "float", "bool", "string", "bytes", "function", "range", "struct", "symmetric_values", "model_value":
+	case "NoneType", "int", "float", "bool", "string", "bytes", "function", "range", "struct", "symmetric_values", "model_value", "Channel":
 		//case starlark.Bool, starlark.String, starlark.Int:
 		// For simple values, just return a copy
 		// Also starlark struct is immutable
@@ -80,7 +80,13 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[strin
 		v.ToStringDict(dict)
 		newDict := CloneDict(dict, refs, permutations, alt)
 		return lib.FromStringDict(v.Constructor(), newDict), nil
-
+	case "RoleStub":
+		r := value.(*lib.RoleStub)
+		role, err := deepCloneStarlarkValueWithPermutations(r.Role, refs, permutations, alt)
+		if err != nil {
+			return nil, err
+		}
+		return lib.NewRoleStub(role.(*lib.Role), r.Channel), nil
 	case "genericset":
 		s := value.(*lib.GenericSet)
 		newSet := lib.NewGenericSet()

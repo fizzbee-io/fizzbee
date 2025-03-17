@@ -10,6 +10,7 @@ go_library(
         "queue.go",
         "randomqueue.go",
         "stack.go",
+        "starlark_channels.go",
         "starlark_role.go",
         "starlark_types.go",
         "starlarkstruct.go",
