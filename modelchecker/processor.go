@@ -156,7 +156,10 @@ type Process struct {
 	Enabled        bool `json:"-"`
 	ThreadProgress bool `json:"-"`
 
-	Roles []*lib.Role `json:"roles"`
+	Roles    []*lib.Role          `json:"roles"`
+	Channels map[int]*lib.Channel `json:"channels"`
+
+	ChannelMessages map[int][]*ChannelMessage `json:"channel_messages"`
 
 	CachedHashCode     string   `json:"-"`
 	CachedThreadHashes []string `json:"-"`
@@ -164,7 +167,7 @@ type Process struct {
 	Modules          map[string]starlark.Value `json:"-"`
 	EnableCheckpoint bool                      `json:"-"`
 	ChoiceFairness   ast.FairnessLevel         `json:"-"`
-	durabilitySpec   *DurabilitySpec           `json:"-"`
+	durabilitySpec   *DurabilitySpec
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
@@ -223,7 +226,8 @@ func NewProcess(name string, files []*ast.File, parent *Process) *Process {
 		p.Witness[i] = make([]bool, len(file.Invariants))
 	}
 	p.Children = append(p.Children, p)
-
+	p.Channels = make(map[int]*lib.Channel)
+	p.ChannelMessages = make(map[int][]*ChannelMessage)
 	return p
 }
 
@@ -238,6 +242,8 @@ func (p *Process) MarshalJSON() ([]byte, error) {
 		"witness":          p.Witness,
 		"returns":          StringDictToJsonString(p.Returns),
 		"roles":            p.Roles,
+		"channels":         p.Channels,
+		"channel_messages": p.ChannelMessages,
 	})
 }
 
@@ -318,6 +324,14 @@ func (p *Process) Fork() *Process {
 	}
 	p2.Threads = clonedThreads
 	p2.Roles = MapRoleValuesInOrder(refs, p.Roles)
+	p2.Channels = make(map[int]*lib.Channel)
+	p2.ChannelMessages = make(map[int][]*ChannelMessage)
+	for i, msgs := range p.ChannelMessages {
+		p2.ChannelMessages[i] = make([]*ChannelMessage, len(msgs))
+		for j, msg := range msgs {
+			p2.ChannelMessages[i][j] = msg.Clone(refs, nil, 0)
+		}
+	}
 
 	return p2
 }
@@ -369,6 +383,14 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 	}
 	p2.Threads = clonedThreads
 	p2.Roles = MapRoleValuesInOrder(refs, p.Roles)
+	p2.Channels = make(map[int]*lib.Channel)
+	p2.ChannelMessages = make(map[int][]*ChannelMessage)
+	for i, msgs := range p.ChannelMessages {
+		p2.ChannelMessages[i] = make([]*ChannelMessage, len(msgs))
+		for j, msg := range msgs {
+			p2.ChannelMessages[i][j] = msg.Clone(refs, nil, 0)
+		}
+	}
 	return p2
 }
 
@@ -527,6 +549,16 @@ func (p *Process) HashCode() string {
 	// hash the heap variables as well
 	heapHash := p.Heap.HashCode()
 	h.Write([]byte(heapHash))
+
+	for i, channel := range p.Channels {
+		h.Write([]byte(fmt.Sprintf("%d:%s", i, channel.String())))
+	}
+	for i, messages := range p.ChannelMessages {
+		// TODO: Sort the messages, for unordered channels
+		for _, message := range messages {
+			h.Write([]byte(fmt.Sprintf("%d:%s", i, message.HashCode())))
+		}
+	}
 	p.CachedHashCode = fmt.Sprintf("%x", h.Sum(nil))
 	return p.CachedHashCode
 }
@@ -585,6 +617,7 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 			dict[role.Name] = lib.CreateRoleBuiltin(role, symmetric, &p.Roles)
 		}
 	}
+	dict["Channel"] = lib.CreateChannelBuiltin(p.Channels)
 	return dict
 }
 
@@ -612,6 +645,7 @@ func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
 			dict[role.Name] = lib.CreateRoleBuiltin(role, symmetric, &p.Roles)
 		}
 	}
+	dict["Channel"] = lib.CreateChannelBuiltin(p.Channels)
 	return dict
 }
 
@@ -1531,6 +1565,21 @@ func (p *Process) GetSymmetryRoles() []*lib.SymmetricValues {
 	return roleSymValues
 }
 
+func (p *Process) addChannelMessage(channel *lib.Channel, roleShortRef string, frame *CallFrame, name string, vars starlark.StringDict) {
+	newMsg := &ChannelMessage{
+		receiver: roleShortRef,
+		frame:    frame,
+		function: name,
+		params:   vars,
+	}
+	if msgs, ok := p.ChannelMessages[channel.Id]; ok {
+		msgs = append(msgs, newMsg)
+		p.ChannelMessages[channel.Id] = msgs
+	} else {
+		p.ChannelMessages[channel.Id] = []*ChannelMessage{newMsg}
+	}
+}
+
 func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.SymmetricValue, int) {
 	defs := process.Heap.GetSymmetryDefs()
 	values := make([][]lib.SymmetricValue, len(defs))
@@ -1594,7 +1643,7 @@ func (p *Processor) YieldNode(node *Node) {
 		newNode.ThreadProgress = true
 		p.queue.Add(newNode)
 	}
-
+	p.scheduleChannelMessages(node)
 	if node.actionDepth >= int(p.config.Options.MaxActions) ||
 		node.GetThreadsCount() >= int(p.config.Options.MaxConcurrentActions) {
 		return
@@ -1641,6 +1690,7 @@ func (p *Processor) YieldFork(node *Node, process *Process) {
 		newNode.ThreadProgress = true
 		p.queue.Add(newNode)
 	}
+	p.scheduleChannelMessages(node)
 	if node.actionDepth >= int(p.config.Options.MaxActions) ||
 		process.GetThreadsCount() >= int(p.config.Options.MaxConcurrentActions) {
 
@@ -1652,6 +1702,28 @@ func (p *Processor) YieldFork(node *Node, process *Process) {
 
 	if len(node.Roles) > 0 {
 		p.scheduleRoleActions(node, process)
+	}
+}
+
+func (p *Processor) scheduleChannelMessages(node *Node) {
+	for i, msgs := range node.ChannelMessages {
+		for j, _ := range msgs {
+			newNode := node.ForkForAlternatePaths(node.Process.Fork(), fmt.Sprintf("channel-%d-message-%d", i, j))
+			newMsg := newNode.ChannelMessages[i][j]
+			newNode.ChannelMessages[i] = append(newNode.ChannelMessages[i][:j], newNode.ChannelMessages[i][j+1:]...)
+			thread := newNode.Process.NewThread()
+			newNode.Inbound[0].ReqId = newNode.Process.Current
+			thread.Stack.Pop()
+
+			frame := newMsg.Frame()
+
+			thread.Stack.Push(frame)
+			p.queue.Add(newNode)
+
+			// TODO(jp): Handle the case where the messages get dropped
+			// It could be done here at the time of processing the message
+			// or at the time of sending the message itself.
+		}
 	}
 }
 

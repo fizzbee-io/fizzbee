@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "modelchecker",
     srcs = [
+        "channel_message.go",
         "checker.go",
         "clone.go",
         "clonehelper.go",
