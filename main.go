@@ -403,19 +403,44 @@ func GenerateFailurePath(srcFileName string, failurePath []*modelchecker.Link, i
 }
 
 func createOutputDir(dirPath string) (string, error) {
-	// Create the directory name with current date and time
-	dateTimeStr := time.Now().Format("2006-01-02_15-04-05") // Format: YYYY-MM-DD_HH-MM-SS
-	newDirName := fmt.Sprintf("run_%s", dateTimeStr)
+    // Create the directory name with current date and time
+    dateTimeStr := time.Now().Format("2006-01-02_15-04-05") // Format: YYYY-MM-DD_HH-MM-SS
+    newDirName := fmt.Sprintf("run_%s", dateTimeStr)
 
-	// Create the full path for the new directory
-	newDirPath := filepath.Join(dirPath, "out", newDirName)
+    // Create the full path for the new directory
+    newDirPath := filepath.Join(dirPath, "out", newDirName)
 
-	// Create the directory
-	if err := os.MkdirAll(newDirPath, 0755); err != nil {
-		fmt.Println("Error creating directory:", err)
-		return newDirPath, err
-	}
-	return newDirPath, nil
+    // Create the directory
+    if err := os.MkdirAll(newDirPath, 0755); err != nil {
+        fmt.Println("Error creating directory:", err)
+        return newDirPath, err
+    }
+
+    // Define the symlink path
+    latestSymlinkPath := filepath.Join(dirPath, "out", "latest")
+
+    // Remove the existing symlink if it exists
+    if _, err := os.Lstat(latestSymlinkPath); err == nil {
+        if err := os.Remove(latestSymlinkPath); err != nil {
+            fmt.Println("Error removing existing symlink:", err)
+            return newDirPath, err
+        }
+    }
+    // Convert to absolute path
+    absNewDirPath, err := filepath.Abs(newDirPath)
+    if err != nil {
+        fmt.Println("Error resolving absolute path:", err)
+        return "", err
+    }
+    // Create the new symlink
+    if err := os.Symlink(absNewDirPath, latestSymlinkPath); err != nil {
+        fmt.Println("Error creating symlink:", err)
+        return newDirPath, err
+    }
+    // Still returning the newDirPath instead of the symlink path
+    // So, all the output logs will still point to the newDirPath.
+    // This reduces issues when multiple executions are run in parallel.
+    return newDirPath, nil
 }
 
 // Helper to remove Messages and Labels from the Links
