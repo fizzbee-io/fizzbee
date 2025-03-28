@@ -1,7 +1,6 @@
 # fizzbee
 
-A Formal specification language and model checker
-to specify distributed systems.
+A Formal specification language and model checker to specify distributed systems.
 Try out now at [Fizzbee Online Playground](https://fizzbee.io/). No installation needed.
 
 # Docs
@@ -9,9 +8,7 @@ If you are familiar with [TLA+](https://lamport.azurewebsites.net/tla/tla.html),
 [From TLA+ to Fizz](https://github.com/fizzbee-io/fizzbee/blob/main/docs/fizzbee-quick-start-for-tlaplus-users.md)
 
 # Run a model checker
-We now provide prebuilt binaries for **macOS**, **Linux**, and **Windows**.  
-
-[Download the latest release](https://github.com/fizzbee-io/fizzbee/releases/tag/fizzbee-latest)
+We now provide prebuilt binaries for macOS, Linux, and Windows. Please click the link below to get the latest release: [Download the latest release](https://github.com/fizzbee-io/fizzbee/releases/tag/fizzbee-latest)
 
 But you can try without installation at https://fizzbee.io/play 
 
