@@ -1,4 +1,5 @@
 import json
+import time
 import sys
 
 import performance.files as files
@@ -66,7 +67,31 @@ def main(argv):
     parser.add_argument('-m', '--perf', type=str, help='Path for the performance model spec file')
     parser.add_argument('-b', '--source', type=str, help='Path for the behaviour model spec file')
 
+    # Boolean flags with explicit enable/disable options
+    parser.add_argument('--steady_state', dest='steady_state', action='store_true', help='Enable steady state (default: True)')
+    parser.add_argument('--no_steady_state', dest='steady_state', action='store_false', help='Disable steady state')
+
+    parser.add_argument('--include_witness_in_init', dest='include_witness_in_init', action='store_true', help='Include witness in init (default: True)')
+    parser.add_argument('--no_include_witness_in_init', dest='include_witness_in_init', action='store_false', help='Disable witness in init')
+
+    # Choice-based argument
+    parser.add_argument('--init_nodes', choices=['root', 'init', 'all', 'steady_state'], default='root', help='Specify initialization nodes')
+
+    # List of strings (comma-separated values)
+    parser.add_argument('--invariants', type=lambda s: s.split(','), default=None,
+                        help='Comma-separated list of invariants (default: None means all, empty list means actually empty)')
+
+    parser.set_defaults(steady_state=True, include_witness_in_init=True)
+
     args = parser.parse_args()
+
+    print("States Path:", args.states)
+    print("Performance Model Path:", args.perf)
+    print("Behavior Model Path:", args.source)
+    print("Steady State Enabled:", args.steady_state)
+    print("Include Witness in Init:", args.include_witness_in_init)
+    print("Init Nodes:", args.init_nodes)
+    print("Invariants:", args.invariants)
 
     if not args.states:
         print("--states (the path prefix for the states data) is required")
@@ -95,43 +120,74 @@ def main(argv):
     trans_matrix = markov_chain.create_transition_matrix_sparse(links, perf_model)
     cost_matrices = markov_chain.create_cost_matrices_sparse(links, perf_model)
     #print('perf_model', perf_model)
-    steady_state,metrics = markov_chain.steady_state_sparse(links, perf_model)
-    #print(steady_state)
-    print(metrics)
+    if args.steady_state or args.init_nodes == 'steady_state':
+        steady_state,metrics = markov_chain.steady_state_sparse(links, perf_model)
+        #print(steady_state)
+        print(metrics)
 
-    steady_state_nodes = [(i, prob, nodes[i]) for i, prob in enumerate(steady_state) if prob > 1e-5]
-    if len(steady_state_nodes) < 30:
-        for i, prob, node in steady_state_nodes:
-            print(f'{i:4d}: {prob:.4f} {fmt.get_state_string(node)}')
-    else:
-        print(f'{len(steady_state_nodes)} states in steady state')
+        steady_state_nodes = [(i, prob, nodes[i]) for i, prob in enumerate(steady_state) if prob > 1e-5]
+        if len(steady_state_nodes) < 30:
+            for i, prob, node in steady_state_nodes:
+                print(f'{i:4d}: {prob:.4f} {fmt.get_state_string(node)}')
+        else:
+            print(f'{len(steady_state_nodes)} states in steady state')
 
-    # plot_histogram(metrics.histogram)
-    plot_cdf(metrics)
+        # plot_histogram(metrics.histogram)
+        plot_cdf(metrics)
+
 
     for i,invariant in enumerate(source_model.invariants):
-
-
         if "always" not in invariant.temporal_operators or  "eventually" not in invariant.temporal_operators:
             continue
+        if args.invariants and invariant.name not in args.invariants:
+            continue
+
+        init_nodes = []
+        if args.init_nodes == 'root':
+            init_nodes = [0]
+        elif args.init_nodes == 'init':
+#             init_nodes = [i for i,node in enumerate(nodes) if node['name'] in ("init", "yield", "crash") and node['stats']['totalActions'] == 0 and (not node["witness"][0][i] or args.include_witness_in_init)]
+            init_nodes = [
+                k for k, node in enumerate(nodes)
+                    if node['name'] in ("init", "yield", "crash")
+                        and node['stats']['totalActions'] == 0
+                        and (not node["witness"] or not node["witness"][0] or not node["witness"][0][i] or args.include_witness_in_init)
+            ]
+        elif args.init_nodes == 'all':
+            init_nodes = [
+                k for k, node in enumerate(nodes)
+                    if node['name'] in ("init", "yield", "crash")
+                        and (not node["witness"] or not node["witness"][0] or not node["witness"][0][i] or args.include_witness_in_init)
+            ]
+        elif args.init_nodes == 'steady_state':
+            init_nodes = [
+                k for k, prob in enumerate(steady_state)
+                    if prob > 1e-5
+                        and node['name'] in ("init", "yield", "crash")
+                        and (not node["witness"] or not node["witness"][0] or not node["witness"][0][i] or args.include_witness_in_init)
+            ]
+
+#         for k, node in enumerate(nodes):
+#             print(k, node['name'], node['stats'], node)
+#             if node['name'] in ("init", "yield") and node['stats']['totalActions'] == 0 and not node["witness"][0][i]:
+#                 print("Init node", k, node["witness"][0][i])
+#                 init_nodes.append(k)
+        print(init_nodes)
         inv_copy = ast.Invariant()
         inv_copy.CopyFrom(invariant)
         inv_copy.ClearField("source_info")
-        print(inv_copy)
+#         print(inv_copy)
         if "eventually" == invariant.temporal_operators[0] and "always" == invariant.temporal_operators[1]:
             print(invariant.name, "eventually always")
             witness_nodes = []
-            for j,prob,node in steady_state_nodes:
-                if len(node['threads']) != 0:
-                    continue
-                if node['witness'][0][i]:
-                    print("LIVE", i,j,prob,node)
-                    witness_nodes.append(j)
-                else:
-                    print("DEAD", i,j,prob,node)
+            for j,node in filter(lambda x: x[1]['witness'][0][i], enumerate(nodes)):
+                print(j, node)
+                witness_nodes.append(j)
+            print("Witness nodes", witness_nodes)
             if len(witness_nodes) > 0:
                 new_matrix = markov_chain.make_terminal_nodes_sparse(trans_matrix, witness_nodes)
-                initial_distribution = markov_chain.initial_distribution_from_init_state(links.total_nodes)
+#                 initial_distribution = markov_chain.initial_distribution_from_init_state(links.total_nodes)
+                initial_distribution = markov_chain.initial_distribution_from_init_states(links.total_nodes, init_nodes)
                 first_stable_states,stabilization_metrics = markov_chain.analyze_sparse(new_matrix, cost_matrices,initial_distribution)
                 print(first_stable_states)
                 print(stabilization_metrics)

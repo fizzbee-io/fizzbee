@@ -387,7 +387,13 @@ def initial_distribution_from_init_state(n):
     v[0] = 1
     return v
 
-
+def initial_distribution_from_init_states(n, init_nodes):
+    # Create a vector of length n with all elements = 0 except the first element = 1
+    p = 1.0 / len(init_nodes)
+    v = np.zeros(n)
+    for node in init_nodes:
+        v[node] = p
+    return v
 def initial_distribution_from_any_states(n):
     # Create a vector of length n with all elements = 0 except the first element = 1
     v = np.full((n), 1/n)
