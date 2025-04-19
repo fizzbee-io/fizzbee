@@ -29,6 +29,7 @@ var internalProfile bool
 var saveStates bool
 var seed int64
 var maxRuns int
+var explorationStrategy string
 
 func main() {
 	flag.BoolVar(&isPlayground, "playground", false, "is for playground")
@@ -37,6 +38,7 @@ func main() {
 	flag.BoolVar(&saveStates, "save_states", false, "Save states to disk")
 	flag.Int64Var(&seed, "seed", 0, "Seed for random number generator used in simulation mode")
 	flag.IntVar(&maxRuns, "max_runs", 0, "Maximum number of simulation runs/paths to explore. Default=0 for unlimited")
+        flag.StringVar(&explorationStrategy, "exploration_strategy", "bfs", "Exploration strategy for exhaustive model checking. Options: bfs (default), dfs, random.")
 	flag.Parse()
 
 	args := flag.Args()
@@ -148,7 +150,7 @@ func main() {
 	for !stopped && (maxRuns <= 0 || i < maxRuns) {
 		i++
 
-		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath)
+		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy)
 		if !simulation {
 			c := make(chan os.Signal)
 			signal.Notify(c, os.Interrupt, syscall.SIGTERM)

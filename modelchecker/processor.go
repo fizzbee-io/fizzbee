@@ -951,7 +951,7 @@ type Processor struct {
 	durabilitySpec     *DurabilitySpec
 }
 
-func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string) *Processor {
+func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string, strategy string) *Processor {
 
 	var collection lib.LinearCollection[*Node]
 	var intermediateStates lib.LinearCollection[*Node]
@@ -962,6 +962,12 @@ func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation 
 	if simulation {
 		collection = lib.NewRandomQueue[*Node](random)
 		intermediateStates = lib.NewRandomQueue[*Node](random)
+        } else if strategy == "dfs" {
+                collection = lib.NewStack[*Node]()
+                intermediateStates = lib.NewQueue[*Node]()
+        } else if strategy == "random" {
+                collection = lib.NewRandomQueue[*Node](random)
+                intermediateStates = lib.NewRandomQueue[*Node](random)
 	} else {
 		collection = lib.NewQueue[*Node]()
 		intermediateStates = lib.NewQueue[*Node]()

@@ -4,7 +4,7 @@ SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")"
 WORKING_DIR="$(pwd)"
 
 usage() {
-  echo "Usage: $0 [-x|--simulation] [--seed int64Number] [-- max_runs intNumber] filename"
+  echo "Usage: $0 [-x|--simulation] [--seed int64Number] [--max_runs intNumber] [--exploration_strategy dfs] filename"
   exit 1
 }
 
@@ -12,6 +12,7 @@ usage() {
 simulation=false
 seed=0
 max_runs=0
+exploration_strategy=bfs
 
 # Parse options
 while [[ "$1" =~ ^- ]]; do
@@ -35,6 +36,15 @@ while [[ "$1" =~ ^- ]]; do
         shift 2
       else
         echo "Error: --max_runs requires a numeric value." 1>&2
+        usage
+      fi
+      ;;
+    --exploration_strategy )
+      if [[ -n "$2" ]]; then
+        exploration_strategy="$2"
+        shift 2
+      else
+        echo "Error: --exploration_strategy requires a string value one of [bfs, dfs, random]." 1>&2
         usage
       fi
       ;;
@@ -112,6 +122,9 @@ if [ "$seed" -ne 0 ]; then
 fi
 if [ "$max_runs" -ne 0 ]; then
   args+=("--max_runs" "$max_runs")
+fi
+if [ "$exploration_strategy" != "bfs" ]; then
+  args+=("--exploration_strategy" "$exploration_strategy")
 fi
 
 args+=("$json_filename")
