@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"hash"
 	"maps"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -425,6 +426,7 @@ func (t *Thread) InsertNewScope() *Scope {
 	t.currentFrame().scope = scope
 	if scope.parent != nil {
 		scope.flow = scope.parent.flow
+		scope.vars = scope.parent.vars
 	}
 	return scope
 }
@@ -1181,7 +1183,7 @@ func (t *Thread) executeEndOfBlock() bool {
 					}
 					variables := oldScope.GetAllVisibleVariables(roleRefs)
 					for s, value := range variables {
-						if !t.Process.Heap.globals.Has(s) {
+						if !t.Process.Heap.globals.Has(s) && slices.Contains(t.Process.topLevelVars, s) {
 							t.Process.Heap.insert(s, value)
 						}
 					}
