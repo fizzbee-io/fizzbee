@@ -168,6 +168,8 @@ type Process struct {
 	EnableCheckpoint bool                      `json:"-"`
 	ChoiceFairness   ast.FairnessLevel         `json:"-"`
 	durabilitySpec   *DurabilitySpec
+
+	topLevelVars []string
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
@@ -308,6 +310,11 @@ func (p *Process) Fork() *Process {
 		Messages:    make([]*ast.Message, 0),
 		Stats:       p.Stats.Clone(),
 	}
+
+	if p.Stats.TotalActions <= 1 {
+		p2.topLevelVars = slices.Clone(p.topLevelVars)
+	}
+
 	p2.Witness = make([][]bool, len(p.Files))
 	for i, file := range p.Files {
 		p2.Witness[i] = make([]bool, len(file.Invariants))
@@ -685,6 +692,10 @@ func (p *Process) updateVariableInternal(key string, val starlark.Value, frame *
 	}
 	// Declare the variable to the Current scope
 	frame.scope.vars[key] = val
+
+	if p.Stats.TotalActions == 0 && frame.scope.parent == nil && p.currentThread().Stack.Len() == 1 {
+		p.topLevelVars = append(p.topLevelVars, key)
+	}
 }
 
 func (p *Process) updateScopedVariable(scope *Scope, key string, val starlark.Value) bool {
@@ -1301,7 +1312,14 @@ func processPreInit(init *Node, stmts []*ast.Statement) {
 			panic("Not supported: No non-determinism at top level in stmt" + stmt.String())
 		}
 	}
-	globals := thread.currentFrame().scope.GetAllVisibleVariables(nil)
+	vars := thread.currentFrame().scope.GetAllVisibleVariables(nil)
+	globals := starlark.StringDict{}
+	for name, _ := range vars {
+		if slices.Contains(init.Process.topLevelVars, name) {
+			globals[name] = vars[name]
+		}
+	}
+
 	globals.Freeze()
 	init.Process.Heap.globals = globals
 	init.removeCurrentThread()
