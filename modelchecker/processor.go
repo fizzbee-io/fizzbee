@@ -1182,10 +1182,8 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 		invariantFailure := false
 		symmetryFound := false
 		prevLen := p.queue.Len()
-		if !liveness || node.actionDepth <= int(maxActions) {
-			p.visited = make(map[string]*Node)
-		}
-		for true {
+
+		for {
 			inCrashPath := false
 			if len(node.Inbound) > 0 {
 				if node.Inbound[0].Node.Name == "crash" {
@@ -1224,17 +1222,17 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 				}
 				node, _ = p.intermediateStates.Remove()
 			} else {
-				has_another_crash_action := false
+				hasAnotherCrashAction := false
 				var anotherCrashNode *Node
 				for p.queue.Len() != 0 {
 					anotherCrashNode, _ = p.queue.Remove()
 					if anotherCrashNode.Inbound[0].Node.Name == "crash" {
-						has_another_crash_action = true
+						hasAnotherCrashAction = true
 						break
 					}
 				}
 
-				if !has_another_crash_action {
+				if !hasAnotherCrashAction {
 					prevLen = 0
 					break
 				} else {
