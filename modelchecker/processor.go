@@ -1375,7 +1375,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	// determined by the statement, and we include program counter in the hash code,
 	// this may not be an issue.
 	hashCode := node.HashCode()
-	if node.actionDepth > 1 {
+	if node.actionDepth > 0 {
 		failedInvariants := CheckTransitionInvariants(node.Process)
 		if len(failedInvariants[0]) > 0 {
 			node.Inbound[0].FailedInvariants = failedInvariants

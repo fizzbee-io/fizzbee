@@ -361,7 +361,8 @@ class BuildAstVisitor(FizzParserVisitor):
                 childProto = self.visit(child)
                 if isinstance(childProto, ast.Block):
                     invariant.block.CopyFrom(childProto)
-
+                elif BuildAstVisitor.is_list_of_type(childProto, ast.Parameter):
+                    invariant.params.extend(childProto)
                 print("visitAssertiondef childProto",childProto)
             elif hasattr(child, 'getSymbol'):
 
