@@ -128,9 +128,15 @@ func CheckTransitionAssertion(process *Process, invariant *ast.Invariant, index 
 	if process.Parent == nil {
 		return true
 	}
+	beforeParam, afterParam := "before", "after"
+	if len(invariant.Params) == 2 {
+		beforeParam, afterParam = invariant.Params[0].GetName(), invariant.Params[1].GetName()
+	} else if len(invariant.Params) != 0 {
+		panic("Invariant should not have params or exactly 2 params")
+	}
 	cloned := process.CloneForAssert(nil, 0)
-	cloned.Heap.state["after"] = starlarkstruct.FromStringDict(starlark.String("after"), cloned.Heap.state)
-	cloned.Heap.state["before"] = starlarkstruct.FromStringDict(starlark.String("before"), process.Parent.Heap.state)
+	cloned.Heap.state[afterParam] = starlarkstruct.FromStringDict(starlark.String(afterParam), cloned.Heap.state)
+	cloned.Heap.state[beforeParam] = starlarkstruct.FromStringDict(starlark.String(beforeParam), process.Parent.Heap.state)
 
 	return execAssertionFunction(cloned, index, invariant)
 }

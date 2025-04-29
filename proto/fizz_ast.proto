@@ -209,6 +209,8 @@ message Invariant {
   repeated string temporal_operators = 7;
   Block block = 8;
   string py_code = 9;
+
+  repeated Parameter params = 10;
 }
 
 message StateVars {
