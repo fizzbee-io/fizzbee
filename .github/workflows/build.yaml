@@ -30,7 +30,7 @@ jobs:
       - name: Build Releases
         run: |
           export FIZZBEE_RELEASE_VERSION=test
-          export DISABLE_CLENAUP=true
+          export DISABLE_CLEANUP=true
           ./release/build_release.sh
 
       - name: Test Releases
