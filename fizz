@@ -2,6 +2,12 @@
 
 SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")"
 WORKING_DIR="$(pwd)"
+SCRIPT_ENV_FILE="$SCRIPT_DIR/fizz.env"
+
+# load envs
+if [[ -f $SCRIPT_ENV_FILE ]]; then
+  source $SCRIPT_ENV_FILE
+fi
 
 usage() {
   echo "Usage: $0 [-x|--simulation] [--seed int64Number] [--max_runs intNumber] [--exploration_strategy dfs] filename"
@@ -93,8 +99,8 @@ if [ "$SCRIPT_DIR" = "$WORKING_DIR" ]; then
 fi
 
 # Set the paths for the binaries relative to the script directory
-PARSER_BIN="$SCRIPT_DIR/bazel-bin/parser/parser_bin"
-FIZZBEE_BIN="$SCRIPT_DIR/bazel-bin/fizzbee_/fizzbee"
+PARSER_BIN="${PARSER_BIN:-$SCRIPT_DIR/bazel-bin/parser/parser_bin}"
+FIZZBEE_BIN="${FIZZBEE_BIN:-$SCRIPT_DIR/bazel-bin/fizzbee_/fizzbee}"
 
 # Call the first binary and redirect output to a temporary file
 temp_output=$(mktemp)
