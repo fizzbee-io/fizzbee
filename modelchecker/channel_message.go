@@ -49,7 +49,7 @@ func (cm *ChannelMessage) HashCode() string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func (cm *ChannelMessage) Clone(refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *ChannelMessage {
+func (cm *ChannelMessage) Clone(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *ChannelMessage {
 	frame, err := cm.frame.Clone(refs, permutations, alt)
 	PanicOnError(err)
 	params := CloneDict(cm.params, refs, permutations, alt)

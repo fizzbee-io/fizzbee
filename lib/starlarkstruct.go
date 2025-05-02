@@ -83,6 +83,15 @@ func FromStringDict(constructor starlark.Value, d starlark.StringDict) *Struct {
     return s
 }
 
+func (s *Struct) ReplaceEntriesFromStringDict(d starlark.StringDict) {
+       values := make(entries, 0, len(d))
+       for k, v := range d {
+               values = append(values, entry{k, v})
+       }
+       sort.Sort(values)
+       s.entries = values
+}
+
 // Struct is an immutable Starlark type that maps field names to values.
 // It is not iterable and does not support len.
 //
@@ -176,7 +185,7 @@ func (s *Struct) MarshalJSON() ([]byte, error) {
         }
         buf.WriteString(fmt.Sprintf("\"%s\"", e.name))
         buf.WriteString(" : ")
-        marshalled, err := MarshalJSONStarlarkValue(e.value)
+        marshalled, err := MarshalJSONStarlarkValue(e.value, 0)
         if err != nil {
             return nil, err
         }
