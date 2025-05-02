@@ -23,6 +23,10 @@ after extracting downloaded package, run:
 ./fizz path_to_spec.fizz
 ```
 
+If you are a Mac user,
+and have trouble if you download the pre-built binary through browser,
+please check https://github.com/fizzbee-io/fizzbee/issues/152.
+
 ## Build from Source
 
 Dependencies:
