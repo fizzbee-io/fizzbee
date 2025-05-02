@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# fail on error
+set -e
+
 SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")"
 WORKING_DIR="$(pwd)"
 SCRIPT_ENV_FILE="$SCRIPT_DIR/fizz.env"
@@ -82,21 +85,6 @@ if [ "$simulation" = true ]; then
 fi
 
 input_filename=$1
-
-# Check if the script directory and working directory are the same
-if [ "$SCRIPT_DIR" = "$WORKING_DIR" ]; then
-
-    # Check if parser_bin exists, otherwise run bazel build
-    if ! test -f bazel-bin/parser/parser_bin; then
-      echo "bazel-bin/parser/parser_bin not found. Running 'bazel build parser/parser_bin'!"
-      bazel build parser/parser_bin
-    fi
-    # Check if fizzbee exists, otherwise run bazel build
-    if ! test -f bazel-bin/fizzbee_/fizzbee; then
-        echo "bazel-bin/fizzbee_/fizzbee not found. Running 'bazel build //:fizzbee'!"
-        bazel build //:fizzbee
-    fi
-fi
 
 # Set the paths for the binaries relative to the script directory
 PARSER_BIN="${PARSER_BIN:-$SCRIPT_DIR/bazel-bin/parser/parser_bin}"
