@@ -105,6 +105,7 @@ ASSERTION      : 'assertion';
 INVARIANTS     : 'invariants';
 ALWAYS         : 'always';
 EVENTUALLY     : 'eventually';
+TRANSITION     : 'transition';
 
 // Operators
 

@@ -20,8 +20,9 @@ import (
 var nextActionId = atomic.Int32{}
 
 type Heap struct {
-	state   starlark.StringDict
-	globals starlark.StringDict
+	state          starlark.StringDict
+	globals        starlark.StringDict
+	CachedHashCode string
 }
 
 func (h *Heap) GetSymmetryDefs() []*lib.SymmetricValues {
@@ -169,9 +170,13 @@ func (h *Heap) String() string {
 
 // HashCode returns a string hash of the global state.
 func (h *Heap) HashCode() string {
+	if h.CachedHashCode != "" {
+		return h.CachedHashCode
+	}
 	hashBuf := sha256.New()
 	hashBuf.Write([]byte(h.ToJson()))
-	return fmt.Sprintf("%x", hashBuf.Sum(nil))
+	h.CachedHashCode = fmt.Sprintf("%x", hashBuf.Sum(nil))
+	return h.CachedHashCode
 }
 
 func (h *Heap) update(k string, v starlark.Value) bool {

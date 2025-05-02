@@ -361,7 +361,8 @@ class BuildAstVisitor(FizzParserVisitor):
                 childProto = self.visit(child)
                 if isinstance(childProto, ast.Block):
                     invariant.block.CopyFrom(childProto)
-
+                elif BuildAstVisitor.is_list_of_type(childProto, ast.Parameter):
+                    invariant.params.extend(childProto)
                 print("visitAssertiondef childProto",childProto)
             elif hasattr(child, 'getSymbol'):
 
@@ -370,7 +371,7 @@ class BuildAstVisitor(FizzParserVisitor):
                         or child.getSymbol().type == FizzParser.COLON
                 ):
                     continue
-                if child.getSymbol().type in [FizzParser.EVENTUALLY, FizzParser.ALWAYS, FizzParser.EXISTS]:
+                if child.getSymbol().type in [FizzParser.EVENTUALLY, FizzParser.ALWAYS, FizzParser.EXISTS, FizzParser.TRANSITION]:
                     invariant.temporal_operators.append(child.getText())
                     continue
 

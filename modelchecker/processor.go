@@ -210,7 +210,7 @@ func NewProcess(name string, files []*ast.File, parent *Process) *Process {
 	}
 	p := &Process{
 		Name:        name,
-		Heap:        &Heap{starlark.StringDict{}, starlark.StringDict{}},
+		Heap:        &Heap{starlark.StringDict{}, starlark.StringDict{}, ""},
 		Threads:     []*Thread{},
 		Current:     0,
 		Files:       files,
@@ -794,15 +794,16 @@ type Node struct {
 }
 
 type Link struct {
-	Node           *Node
-	Type           string
-	Name           string
-	Labels         []string
-	Fairness       ast.FairnessLevel
-	ChoiceFairness ast.FairnessLevel
-	Messages       []*ast.Message
-	ReqId          int
-	ThreadsMap     map[int]int
+	Node             *Node
+	Type             string
+	Name             string
+	Labels           []string
+	Fairness         ast.FairnessLevel
+	ChoiceFairness   ast.FairnessLevel
+	Messages         []*ast.Message
+	ReqId            int
+	ThreadsMap       map[int]int
+	FailedInvariants map[int][]int
 }
 
 func (l *Link) IsCrashLink() bool {
@@ -812,7 +813,17 @@ func (l *Link) IsCrashLink() bool {
 func isCrashLinkName(linkName string) bool {
 	return linkName == "crash" || strings.HasPrefix(linkName, "crash-role")
 }
-
+func (l *Link) HasFailedInvariants() bool {
+	if l == nil || l.FailedInvariants == nil {
+		return false
+	}
+	for _, invIndex := range l.FailedInvariants {
+		if len(invIndex) > 0 {
+			return true
+		}
+	}
+	return false
+}
 func NewNode(process *Process) *Node {
 	return &Node{
 		Process:     process,
@@ -890,6 +901,8 @@ func (n *Node) Attach() {
 		ChoiceFairness: n.Inbound[0].ChoiceFairness,
 		Messages:       n.Inbound[0].Messages,
 		ReqId:          n.Inbound[0].ReqId,
+
+		FailedInvariants: n.Inbound[0].FailedInvariants,
 	}
 	parent.Outbound = append(parent.Outbound, newOutLink)
 }
@@ -962,12 +975,12 @@ func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation 
 	if simulation {
 		collection = lib.NewRandomQueue[*Node](random)
 		intermediateStates = lib.NewRandomQueue[*Node](random)
-        } else if strategy == "dfs" {
-                collection = lib.NewStack[*Node]()
-                intermediateStates = lib.NewQueue[*Node]()
-        } else if strategy == "random" {
-                collection = lib.NewRandomQueue[*Node](random)
-                intermediateStates = lib.NewRandomQueue[*Node](random)
+	} else if strategy == "dfs" {
+		collection = lib.NewStack[*Node]()
+		intermediateStates = lib.NewQueue[*Node]()
+	} else if strategy == "random" {
+		collection = lib.NewRandomQueue[*Node](random)
+		intermediateStates = lib.NewRandomQueue[*Node](random)
 	} else {
 		collection = lib.NewQueue[*Node]()
 		intermediateStates = lib.NewQueue[*Node]()
@@ -1362,6 +1375,20 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	// determined by the statement, and we include program counter in the hash code,
 	// this may not be an issue.
 	hashCode := node.HashCode()
+	if node.actionDepth > 0 {
+		failedInvariants := CheckTransitionInvariants(node.Process)
+		if len(failedInvariants[0]) > 0 {
+			node.Inbound[0].FailedInvariants = failedInvariants
+			if !p.config.ContinuePathOnInvariantFailures {
+				if yield {
+					node.Name = "yield"
+				}
+				node.Attach()
+				return true, false
+			}
+		}
+	}
+
 	if other, ok := p.visited[hashCode]; ok {
 		// This is a bit inefficient.
 		// TODO: Enabled should be a property of the link/transition, not the node.

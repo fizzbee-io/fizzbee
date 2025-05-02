@@ -157,7 +157,7 @@ functiondef
     ;
 
 assertiondef
-    : (EXISTS | ALWAYS | EVENTUALLY)+ ASSERTION name COLON suite
+    : (EXISTS | ALWAYS | EVENTUALLY | TRANSITION)+ ASSERTION name (OPEN_PAREN typedargslist? CLOSE_PAREN)? COLON suite
     ;
 
 // python 3 paramters
