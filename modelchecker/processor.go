@@ -288,7 +288,7 @@ func (p *Process) Fork() *Process {
 	forkLock.Lock()
 	defer forkLock.Unlock()
 
-	refs := make(map[starlark.Value]starlark.Value)
+	refs := make(map[string]*lib.Role)
 	clone.SetCustomPtrFunc(reflect.TypeOf(&lib.Role{}), roleResolveCloneFn(refs, nil, 0))
 	clone.SetCustomFunc(reflect.TypeOf(starlark.Set{}), starlarkSetResolveFn(refs, nil, 0))
 	clone.SetCustomFunc(reflect.TypeOf(starlark.Dict{}), starlarkDictResolveFn(refs, nil, 0))
@@ -352,7 +352,7 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 	forkLock.Lock()
 	defer forkLock.Unlock()
 
-	refs := make(map[starlark.Value]starlark.Value)
+	refs := make(map[string]*lib.Role)
 	clone.SetCustomPtrFunc(reflect.TypeOf(&lib.Role{}), roleResolveCloneFn(refs, permutations, alt))
 	clone.SetCustomFunc(reflect.TypeOf(starlark.Dict{}), starlarkDictResolveFn(refs, permutations, alt))
 	clone.SetCustomFunc(reflect.TypeOf(starlark.Set{}), starlarkSetResolveFn(refs, permutations, alt))
@@ -403,12 +403,12 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 
 // MapRoleValuesInOrder returns the values of the map m.
 // The values will be in an indeterminate order.
-func MapRoleValuesInOrder(m map[starlark.Value]starlark.Value, oldList []*lib.Role) []*lib.Role {
+func MapRoleValuesInOrder(m map[string]*lib.Role, oldList []*lib.Role) []*lib.Role {
 	r := make([]*lib.Role, 0, len(m))
 	for _, v := range oldList {
 		if v != nil {
-			if role, ok := m[v]; ok {
-				r = append(r, role.(*lib.Role))
+			if role, ok := m[v.RefString()]; ok {
+				r = append(r, role)
 			}
 		}
 	}
@@ -598,9 +598,9 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 	// Shallow clone the globals
 	dict := maps.Clone(p.Heap.globals)
 
-	roleRefs := make(map[starlark.Value]starlark.Value)
-	for _, role := range p.Roles {
-		roleRefs[role] = role
+	roleRefs := make(map[string]*lib.Role)
+	for i, role := range p.Roles {
+		roleRefs[role.RefString()] = p.Roles[i]
 	}
 
 	CopyDict(p.Heap.state, dict, roleRefs, nil, 0)
@@ -1329,7 +1329,7 @@ func processPreInit(init *Node, stmts []*ast.Statement) {
 			panic("Not supported: No non-determinism at top level in stmt" + stmt.String())
 		}
 	}
-	vars := thread.currentFrame().scope.GetAllVisibleVariables(make(map[starlark.Value]starlark.Value))
+	vars := thread.currentFrame().scope.GetAllVisibleVariables(nil)
 	globals := starlark.StringDict{}
 	for name, _ := range vars {
 		if slices.Contains(init.Process.topLevelVars, name) {
