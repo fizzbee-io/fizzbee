@@ -192,7 +192,7 @@ func (h *Heap) insert(k string, v starlark.Value) bool {
 	return true
 }
 
-func (h *Heap) Clone(refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Heap {
+func (h *Heap) Clone(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Heap {
 	return &Heap{state: CloneDict(h.state, refs, permutations, alt), globals: h.globals}
 }
 
@@ -262,13 +262,13 @@ func (s *Scope) Lookup(name string) (starlark.Value, bool) {
 }
 
 // GetAllVisibleVariables returns all variables visible in this scope.
-func (s *Scope) GetAllVisibleVariables(roleRefs map[string]*lib.Role) starlark.StringDict {
+func (s *Scope) GetAllVisibleVariables(roleRefs map[starlark.Value]starlark.Value) starlark.StringDict {
 	dict := starlark.StringDict{}
 	s.getAllVisibleVariablesResolveRoles(dict, roleRefs)
 	return dict
 }
 
-func (s *Scope) getAllVisibleVariablesResolveRoles(dict starlark.StringDict, roleRefs map[string]*lib.Role) {
+func (s *Scope) getAllVisibleVariablesResolveRoles(dict starlark.StringDict, roleRefs map[starlark.Value]starlark.Value) {
 	if s.parent != nil {
 		s.parent.getAllVisibleVariablesResolveRoles(dict, roleRefs)
 	}
@@ -284,15 +284,15 @@ func (s *Scope) getAllVisibleVariablesToDictNoCopy(dict starlark.StringDict) {
 }
 
 func (s *Scope) getAllVisibleVariablesToDict(dict starlark.StringDict) {
-	s.getAllVisibleVariablesResolveRoles(dict, make(map[string]*lib.Role))
+	s.getAllVisibleVariablesResolveRoles(dict, make(map[starlark.Value]starlark.Value))
 }
 
-func CloneDict(oldDict starlark.StringDict, refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) starlark.StringDict {
+func CloneDict(oldDict starlark.StringDict, refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) starlark.StringDict {
 	return CopyDict(oldDict, nil, refs, permutations, alt)
 }
 
 // CopyDict copies values `from` to `to` overriding existing values. If the `to` is nil, creates a new dict.
-func CopyDict(from starlark.StringDict, to starlark.StringDict, refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) starlark.StringDict {
+func CopyDict(from starlark.StringDict, to starlark.StringDict, refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) starlark.StringDict {
 	if to == nil {
 		to = make(starlark.StringDict)
 	}
@@ -348,7 +348,7 @@ func (c *CallFrame) HashCode() string {
 	}
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
-func (c *CallFrame) Clone(refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) (*CallFrame, error) {
+func (c *CallFrame) Clone(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) (*CallFrame, error) {
 	obj := c.obj
 	if c.obj != nil {
 		cloned, err := deepCloneStarlarkValueWithPermutations(c.obj, refs, permutations, alt)
@@ -1182,9 +1182,9 @@ func (t *Thread) executeEndOfBlock() bool {
 
 			if action, ok := protobuf.(*ast.Action); ok {
 				if action.Name == "Init" {
-					roleRefs := make(map[string]*lib.Role)
-					for i, role := range t.Process.Roles {
-						roleRefs[role.RefString()] = t.Process.Roles[i]
+					roleRefs := make(map[starlark.Value]starlark.Value)
+					for _, role := range t.Process.Roles {
+						roleRefs[role] = role
 					}
 					variables := oldScope.GetAllVisibleVariables(roleRefs)
 					for s, value := range variables {
