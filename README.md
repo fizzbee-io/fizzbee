@@ -9,13 +9,38 @@ If you are familiar with [TLA+](https://lamport.azurewebsites.net/tla/tla.html),
 [From TLA+ to Fizz](https://github.com/fizzbee-io/fizzbee/blob/main/docs/fizzbee-quick-start-for-tlaplus-users.md)
 
 # Run a model checker
-For now, no prebuilt binaries. But you can try without installation at https://fizzbee.io/play 
 
-Or Install from source.
+## Online Playground
+
+You can try without installation at https://fizzbee.io/play.
+
+## Pre-built Binary
+
+If you want to run the model checker locally,
+Download a correct pre-built release from https://github.com/fizzbee-io/fizzbee/releases,
+after extracting downloaded package, run:
+```
+./fizz path_to_spec.fizz
+```
+
+If you are a Mac user,
+and have trouble if you download the pre-built binary through browser,
+please check https://github.com/fizzbee-io/fizzbee/issues/152.
+
+## Build from Source
+
+Dependencies:
+
 - Bazel: You need bazel installed to build. [Bazelisk](https://github.com/bazelbuild/bazelisk?tab=readme-ov-file#installation) is the recommended way to use bazel. Rename the binary to bazel and put it part of your PATH.
 - gcc: This project uses protobuf. Bazel proto_library does not use precompiled protoc, and it builds from scratch. It requires g++ compiler. `sudo apt update; sudo apt install g++`
 
+Build:
+```
+bazel build parser/parser_bin
+bazel build //:fizzbee
+```
 
+Run:
 ```
 ./fizz path_to_spec.fizz  
 ```

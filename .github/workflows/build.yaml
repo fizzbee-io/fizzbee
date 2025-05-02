@@ -1,0 +1,38 @@
+name: Build
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    paths-ignore:
+      - "**.md"
+
+  push:
+    branches: [ "main" ]
+    paths-ignore:
+      - "**.md"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: bazel-contrib/setup-bazel@0.14.0
+        with:
+          # Avoid downloading Bazel every time.
+          bazelisk-cache: true
+          # Store build cache per workflow.
+          disk-cache: ${{ github.workflow }}
+          # Share repository cache between workflows.
+          repository-cache: true
+
+      - name: Build Releases
+        run: |
+          export FIZZBEE_RELEASE_VERSION=test
+          export DISABLE_CLEANUP=true
+          ./release/build_release.sh
+
+      - name: Test Releases
+        run: |
+          ./fizzbee-test-linux_x86/fizz examples/tutorials/00-no-op/Counter.fizz
