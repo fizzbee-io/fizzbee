@@ -16,7 +16,7 @@ func MarshalJSON(obj interface{}) ([]byte, error) {
 		return m.MarshalJSON()
 	}
 	if m, ok := obj.(starlark.Value); ok {
-		return MarshalJSONStarlarkValue(m, 0)
+		return MarshalJSONStarlarkValue(m)
 	}
 	if m, ok := obj.(starlark.StringDict); ok {
 		buf := strings.Builder{}
@@ -31,7 +31,7 @@ func MarshalJSON(obj interface{}) ([]byte, error) {
 			buf.WriteString("\"")
 			buf.WriteString(k)
 			buf.WriteString("\":")
-			b, err := MarshalJSONStarlarkValue(v, 0)
+			b, err := MarshalJSONStarlarkValue(v)
 			if err != nil {
 				return nil, err
 			}
@@ -43,13 +43,7 @@ func MarshalJSON(obj interface{}) ([]byte, error) {
 	return json.Marshal(obj)
 }
 
-func MarshalJSONStarlarkValue(m starlark.Value, depth int) ([]byte, error) {
-	// TODO: using depth to limit the depth of recursion for json export to handle circular references.
-	// Ideally, this should be dealt with by managing the visited nodes in the graph.
-	// But for now, we just limit the depth.
-	if depth > 20 {
-		return []byte("\"TOO_DEEP\""), nil
-	}
+func MarshalJSONStarlarkValue(m starlark.Value) ([]byte, error) {
 	switch m.Type() {
 	case "NoneType":
 		return []byte("null"), nil
@@ -74,7 +68,7 @@ func MarshalJSONStarlarkValue(m starlark.Value, depth int) ([]byte, error) {
 			} else {
 				first = false
 			}
-			b, err := MarshalJSONStarlarkValue(x, depth+1)
+			b, err := MarshalJSONStarlarkValue(x)
 			if err != nil {
 				return nil, err
 			}
@@ -97,11 +91,11 @@ func MarshalJSONStarlarkValue(m starlark.Value, depth int) ([]byte, error) {
 			if k.Type() != "string" {
 				k = starlark.String(k.String())
 			}
-			kb, err := MarshalJSONStarlarkValue(k, depth+1)
+			kb, err := MarshalJSONStarlarkValue(k)
 			if err != nil {
 				return nil, err
 			}
-			vb, err := MarshalJSONStarlarkValue(v, depth+1)
+			vb, err := MarshalJSONStarlarkValue(v)
 			if err != nil {
 				return nil, err
 			}
@@ -129,33 +123,7 @@ func MarshalJSONStarlarkValue(m starlark.Value, depth int) ([]byte, error) {
 			if err != nil {
 				return nil, err
 			}
-			b, err := MarshalJSONStarlarkValue(v, depth+1)
-			if err != nil {
-				return nil, err
-			}
-			buf.Write(b)
-		}
-		buf.WriteString("}")
-		return []byte(buf.String()), nil
-	case "record":
-		st := m.(*Struct)
-		buf := strings.Builder{}
-		buf.WriteString("{")
-		first := true
-		for _, attrName := range st.AttrNames() {
-			if !first {
-				buf.WriteString(",")
-			} else {
-				first = false
-			}
-			buf.WriteString("\"")
-			buf.WriteString(attrName)
-			buf.WriteString("\":")
-			v, err := st.Attr(attrName)
-			if err != nil {
-				return nil, err
-			}
-			b, err := MarshalJSONStarlarkValue(v, depth+1)
+			b, err := MarshalJSONStarlarkValue(v)
 			if err != nil {
 				return nil, err
 			}
@@ -186,7 +154,7 @@ func MarshalJSONStarlarkValue(m starlark.Value, depth int) ([]byte, error) {
 		buf.Write(b)
 		buf.WriteString("}")
 		return []byte(buf.String()), nil
-	case "model_value", "symmetric_value", "Channel":
+	case "record", "model_value", "symmetric_value", "Channel":
 		return json.Marshal(m)
 	default:
 		fmt.Println("Warn: unknown type: ", m.Type(), " value: ", m.String(), " using default json.Marshal")
