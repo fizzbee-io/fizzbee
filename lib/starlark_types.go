@@ -1050,14 +1050,14 @@ func (b *Bag) InsertAll(v starlark.Iterable) error {
     return nil
 }
 
-func (b *Bag) Delete(k starlark.Value) (found bool, err error) {
+func (b *Bag) Delete(k starlark.Value) (bool, error) {
     index, err := b.Find(k)
     if err != nil || index < 0 {
         return index >= 0, err
     }
     b.elems = append(b.elems[:index], b.elems[index+1:]...)
 
-    return
+    return true, nil
 }
 
 func (b *Bag) Has(x starlark.Value) (found bool, err error) {
