@@ -74,7 +74,7 @@ func TestMarshalJSONStarlarkValue(t *testing.T) {
 
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            got, err := MarshalJSONStarlarkValue(tt.m)
+            got, err := MarshalJSONStarlarkValue(tt.m, 0)
             assert.Nil(t, err)
             assert.Equal(t, tt.want, string(got))
         })
