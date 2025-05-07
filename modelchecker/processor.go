@@ -1389,6 +1389,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 					node.Name = "yield"
 				}
 				node.Attach()
+				p.intermediateStates.ClearAll()
 				return true, false
 			}
 		}
@@ -1441,6 +1442,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		node.Process.FailedInvariants = failedInvariants
 		if !p.config.ContinuePathOnInvariantFailures {
 			node.Name = "yield"
+			p.intermediateStates.ClearAll()
 			return true, false
 		}
 	}
