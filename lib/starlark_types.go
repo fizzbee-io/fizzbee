@@ -39,6 +39,19 @@ var (
         "math": math.Module,
     }
 
+    StarlarkPtrTypes = []starlark.Value{
+		&starlark.Set{},
+		&starlark.List{},
+		&starlark.Dict{},
+		&starlarkstruct.Struct{},
+		&starlark.Tuple{},
+		&Struct{},
+		&Bag{},
+		&GenericSet{},
+		&GenericMap{},
+		&Role{},
+    }
+
     mapMethods = map[string]*starlark.Builtin{
         "clear":      starlark.NewBuiltin("clear", dict_clear),
         "get":        starlark.NewBuiltin("get", dict_get),

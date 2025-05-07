@@ -289,9 +289,10 @@ func (p *Process) Fork() *Process {
 	defer forkLock.Unlock()
 
 	refs := make(map[starlark.Value]starlark.Value)
-	clone.SetCustomPtrFunc(reflect.TypeOf(&lib.Role{}), roleResolveCloneFn(refs, nil, 0))
-	clone.SetCustomFunc(reflect.TypeOf(starlark.Set{}), starlarkSetResolveFn(refs, nil, 0))
-	clone.SetCustomFunc(reflect.TypeOf(starlark.Dict{}), starlarkDictResolveFn(refs, nil, 0))
+	for _, ptrType := range lib.StarlarkPtrTypes {
+		clone.SetCustomPtrFunc(reflect.TypeOf(ptrType), starlarkValuePtrResolveFn(refs, nil, 0))
+	}
+
 	p2 := &Process{
 		Name:      p.Name,
 		Heap:      p.Heap.Clone(refs, nil, 0),
@@ -353,9 +354,9 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 	defer forkLock.Unlock()
 
 	refs := make(map[starlark.Value]starlark.Value)
-	clone.SetCustomPtrFunc(reflect.TypeOf(&lib.Role{}), roleResolveCloneFn(refs, permutations, alt))
-	clone.SetCustomFunc(reflect.TypeOf(starlark.Dict{}), starlarkDictResolveFn(refs, permutations, alt))
-	clone.SetCustomFunc(reflect.TypeOf(starlark.Set{}), starlarkSetResolveFn(refs, permutations, alt))
+	for _, ptrType := range lib.StarlarkPtrTypes {
+		clone.SetCustomPtrFunc(reflect.TypeOf(ptrType), starlarkValuePtrResolveFn(refs, nil, 0))
+	}
 	clone.SetCustomFunc(reflect.TypeOf(lib.SymmetricValue{}), symmetricValueResolveFn(refs, permutations, alt))
 	p2 := &Process{
 		Name:      p.Name,
@@ -673,6 +674,10 @@ func (p *Process) updateVariableInternal(key string, val starlark.Value, frame *
 		// Check local variables in the scope, starting from
 		// deepest to its parent. If present, update that
 		// and continue
+		return
+	}
+	if _, ok := frame.vars[key]; ok {
+		frame.vars[key] = val
 		return
 	}
 	if p.Heap.update(key, val) {
