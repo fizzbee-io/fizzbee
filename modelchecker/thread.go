@@ -723,6 +723,8 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		if len(forks) > 0 {
 			if stmt.AnyStmt.Block == nil {
 				t.Process.Enable()
+				// This is required to ensure this step doesn't get deduplicated with the previous yield point
+				t.currentFrame().pc = t.currentFrame().pc + ".any"
 			}
 			return forks, false
 		} else if stmt.AnyStmt.Block != nil {
