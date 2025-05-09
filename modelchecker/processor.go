@@ -355,7 +355,7 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 
 	refs := make(map[starlark.Value]starlark.Value)
 	for _, ptrType := range lib.StarlarkPtrTypes {
-		clone.SetCustomPtrFunc(reflect.TypeOf(ptrType), starlarkValuePtrResolveFn(refs, nil, 0))
+		clone.SetCustomPtrFunc(reflect.TypeOf(ptrType), starlarkValuePtrResolveFn(refs, permutations, alt))
 	}
 	clone.SetCustomFunc(reflect.TypeOf(lib.SymmetricValue{}), symmetricValueResolveFn(refs, permutations, alt))
 	p2 := &Process{
@@ -396,7 +396,7 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 	for i, msgs := range p.ChannelMessages {
 		p2.ChannelMessages[i] = make([]*ChannelMessage, len(msgs))
 		for j, msg := range msgs {
-			p2.ChannelMessages[i][j] = msg.Clone(refs, nil, 0)
+			p2.ChannelMessages[i][j] = msg.Clone(refs, permutations, alt)
 		}
 	}
 	return p2
@@ -886,6 +886,9 @@ func (n *Node) CreateNewToOldThreadIndexMap(other *Node) map[int]int {
 			continue
 		}
 
+		if _, ok := oldThreadHashToIndex[hash]; !ok {
+			continue
+		}
 		threadsMap[i] = oldThreadHashToIndex[hash][0]
 		oldThreadHashToIndex[hash] = oldThreadHashToIndex[hash][1:]
 	}

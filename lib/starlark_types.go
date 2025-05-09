@@ -157,9 +157,6 @@ func MakeGenericMap(thread *starlark.Thread, _ *starlark.Builtin, args starlark.
     if len(args) > 1 {
         return nil, fmt.Errorf("genericmap: got %d arguments, want at most 1", len(args))
     }
-    if len(args) > 0 {
-        return nil, fmt.Errorf("genericmap: genericmap with another map not implemented yet")
-    }
     dict := new(GenericMap)
     err := updateDict(dict, args, kwargs)
     if err != nil {
@@ -173,6 +170,17 @@ func NewGenericMap() *GenericMap {
 }
 
 func updateDict(dict *GenericMap, args starlark.Tuple, kwargs []starlark.Tuple) error {
+    if len(args) == 1 {
+               arg := args[0]
+               if mapping, ok := arg.(starlark.IterableMapping); ok {
+                       items := mapping.Items()
+                       for _, item := range items {
+                               dict.entries = append(dict.entries, item)
+                       }
+               } else {
+                       return fmt.Errorf("genericmap: got %s, want mapping", arg.Type())
+               }
+    }
     for _, kwarg := range kwargs {
         dict.entries = append(dict.entries, kwarg)
     }

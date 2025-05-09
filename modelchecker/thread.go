@@ -103,7 +103,8 @@ func normalizeTypes(stringDict starlark.StringDict) starlark.StringDict {
 func StringDictToMap(stringDict starlark.StringDict) map[string]string {
 	m := make(map[string]string, len(stringDict))
 	for k, v := range stringDict {
-		if v.Type() == "set" {
+		if v.Type() == "set" || v.Type() == "genericset" || v.Type() == "bag" {
+
 			// Convert set to a list.
 			iter := v.(starlark.Iterable).Iterate()
 
@@ -116,10 +117,18 @@ func StringDictToMap(stringDict starlark.StringDict) map[string]string {
 			m[k] = fmt.Sprintf("%v", list)
 			iter.Done()
 			continue
-		} else if v.Type() == "dict" {
+		} else if v.Type() == "dict" || v.Type() == "genericmap" {
 			// Convert map keys to a sorted list and add re-add them.
-			dict := v.(*starlark.Dict)
-			keys := dict.Keys()
+
+			var keys []starlark.Value
+			var dict starlark.Mapping
+			if v.Type() == "dict" {
+				dict = v.(*starlark.Dict)
+				keys = v.(*starlark.Dict).Keys()
+			} else {
+				dict = v.(*lib.GenericMap)
+				keys = v.(*lib.GenericMap).Keys()
+			}
 
 			var list []string
 			var keyMap = make(map[string]starlark.Value)
