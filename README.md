@@ -1,14 +1,15 @@
-# fizzbee
+# Fizzbee
 
-A Formal specification language and model checker to specify distributed systems.
+A formal specification language and model checker to specify distributed systems.
+
 Try out now at [Fizzbee Online Playground](https://fizzbee.io/). No installation needed.
 
 # Docs
-If you are familiar with [TLA+](https://lamport.azurewebsites.net/tla/tla.html), this would be a quick start
+If you are familiar with [TLA+](https://lamport.azurewebsites.net/tla/tla.html), this would be a quick start:
 [From TLA+ to Fizz](https://github.com/fizzbee-io/fizzbee/blob/main/docs/fizzbee-quick-start-for-tlaplus-users.md)
 
 # Run a model checker
-We now provide prebuilt binaries for macOS and Linux. Please click the link below to get the latest release: [Download the latest release](https://github.com/fizzbee-io/fizzbee/releases/tag/fizzbee-latest)
+We now provide prebuilt binaries for macOS and Linux. Please click the link below to get the latest release: [Download the latest release](https://github.com/fizzbee-io/fizzbee/releases/latest).
 
 But you can try without installation at https://fizzbee.io/play 
 
@@ -25,10 +26,13 @@ Example:
 ./fizz examples/tutorials/19-for-stmt-serial-check-again/ForLoop.fizz 
 ```
 
-Note: Generally, you won't need to rebuild the binary,
-but most likely will be required after each `git pull`.
+Note: Generally, you won't need to rebuild the binary, but most likely will be required after each `git pull`.
 
-### Build error in Mac
+### Troubleshooting on macOS
+
+<details>
+<summary><strong> 1. Build error on macOS with Protobuf</strong></summary>
+
 If you see a build error in Mac like this:
 ```
 ERROR: /private/var/tmp/_bazel_jp/64463e3d7652188cb285edbcf54b686c/external/protobuf+/src/google/protobuf/io/BUILD.bazel:99:11: Compiling src/google/protobuf/io/printer.cc [for tool] failed: (Exit 1): cc_wrapper.sh failed: error executing CppCompile command (from target @@protobuf+//src/google/protobuf/io:printer) external/rules_cc++cc_configure_extension+local_config_cc/cc_wrapper.sh -U_FORTIFY_SOURCE -fstack-protector -Wall -Wthread-safety -Wself-assign -Wunused-but-set-parameter -Wno-free-nonheap-object ... (remaining 50 arguments skipped)
@@ -61,6 +65,25 @@ That is, run the following command:
 ```
 echo "build --host_cxxopt=-std=c++14 --cxxopt=-std=c++14" >> .bazelrc
 ```
+
+</details>
+
+<details>
+<summary><strong> 2. macOS quarantine warning for prebuilt binaries</strong></summary>
+
+When running the `fizzbee-20250213-macos_arm` binary on macOS Sequoia 15.3 (build 24D60), you may encounter this warning:
+
+```
+Apple could not verify "python3" is free of malware that may harm your Mac or compromise your privacy.
+```
+
+To fix this, you can download the `macos_arm` release archive manually using this command:
+
+```bash
+curl -sL $(curl -s https://api.github.com/repos/fizzbee-io/fizzbee/releases/latest | grep "http.*macos_arm.tar.gz" | awk '{print $2}' | sed 's|[\"\,]*||g') | tar xzvf -
+```
+
+</details>
 
 # Development
 
@@ -98,7 +121,7 @@ TODO: Automate this using gen-rule, so the generated files are not required in t
 ## Cross compilation to linux
 Only the go model checker is cross compiled to linux.
 
-On local machine, run `bazel build //:fizzbee`
+On local machine, run `bazel build //:fizzbee`.
 
 To dockerize or to run on the linux server:
 ```
@@ -108,13 +131,15 @@ or
 ```
 bazel build --platforms=//:linux_x86  //:fizzbee
 ```
-Python seems to work without platforms flag but unfortunately, 
-passing platforms flag actually breaks the build.
+
+Python seems to work without platforms flag but unfortunately, passing platforms flag actually breaks the build.
 
 # Running the Fizz with Docker
+
 This guide will walk you through the steps needed to build and run the application using Docker.
 
 ## Clone the Repository 
+
 If you haven't already cloned the project, you can do so by running the following command:
 
 ```bash
@@ -123,6 +148,7 @@ cd fizzbee
 ```
 
 ## Build the Docker Image
+
 To build the Docker image, run the following command from the root directory of the project:
 
 ```bash
@@ -130,12 +156,14 @@ docker build -t fizzbee-app .
 ```
 
 ## Run the Docker Container
+
 Once the image is built, you can run the container using:
 ```bash
 docker run --rm -it fizzbee-app
 ```
 
 ## Using Shell Alias for Easier CLI Access
+
 To make running CLI commands from Docker easier, you can create a shell alias. Add the following to your `.bashrc` or `.zshrc`:
 
 ```bash
