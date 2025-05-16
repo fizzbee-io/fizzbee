@@ -13,7 +13,7 @@ if [[ -f $SCRIPT_ENV_FILE ]]; then
 fi
 
 usage() {
-  echo "Usage: $0 [-x|--simulation] [--seed int64Number] [--max_runs intNumber] [--exploration_strategy dfs] filename"
+  echo "Usage: $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--exploration_strategy dfs] filename"
   exit 1
 }
 
@@ -22,12 +22,17 @@ simulation=false
 seed=0
 max_runs=0
 exploration_strategy=bfs
+test=false
 
 # Parse options
 while [[ "$1" =~ ^- ]]; do
   case $1 in
     -x | --simulation )
       simulation=true
+      shift
+      ;;
+    --test )
+      test=true
       shift
       ;;
     --seed )
@@ -107,6 +112,9 @@ echo "Model checking" $json_filename
 args=()
 if [ "$simulation" = true ]; then
   args+=("--simulation")
+fi
+if [ "$test" = true ]; then
+  args+=("--test")
 fi
 if [ "$internal_profile" = true ]; then
   args+=("--internal_profile")

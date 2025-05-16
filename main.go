@@ -31,6 +31,8 @@ var seed int64
 var maxRuns int
 var explorationStrategy string
 
+var isTest bool
+
 func main() {
 	flag.BoolVar(&isPlayground, "playground", false, "is for playground")
 	flag.BoolVar(&simulation, "simulation", false, "Runs in simulation mode (DFS). Default=false for no simulation (BFS)")
@@ -38,7 +40,8 @@ func main() {
 	flag.BoolVar(&saveStates, "save_states", false, "Save states to disk")
 	flag.Int64Var(&seed, "seed", 0, "Seed for random number generator used in simulation mode")
 	flag.IntVar(&maxRuns, "max_runs", 0, "Maximum number of simulation runs/paths to explore. Default=0 for unlimited")
-        flag.StringVar(&explorationStrategy, "exploration_strategy", "bfs", "Exploration strategy for exhaustive model checking. Options: bfs (default), dfs, random.")
+	flag.StringVar(&explorationStrategy, "exploration_strategy", "bfs", "Exploration strategy for exhaustive model checking. Options: bfs (default), dfs, random.")
+	flag.BoolVar(&isTest, "test", false, "Testing mode (prevents printing timestamps and other non-deterministic behavior. Default=false")
 	flag.Parse()
 
 	args := flag.Args()
@@ -116,7 +119,7 @@ func main() {
 		crashOnYield := true
 		stateConfig.Options.CrashOnYield = &crashOnYield
 	}
-	outDir, err := createOutputDir(dirPath)
+	outDir, err := createOutputDir(dirPath, isTest)
 	if err != nil {
 		return
 	}
@@ -150,7 +153,7 @@ func main() {
 	for !stopped && (maxRuns <= 0 || i < maxRuns) {
 		i++
 
-		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy)
+		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy, isTest)
 		if !simulation {
 			c := make(chan os.Signal)
 			signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -230,7 +233,9 @@ func main() {
 					for i2, invariant := range invariants {
 						fmt.Printf("Invariant %d: %s\n", i2, f.Invariants[invariant.InvariantIndex].Name)
 					}
-					fmt.Println("Time taken to check invariant: ", time.Now().Sub(endTime))
+					if !isTest {
+						fmt.Println("Time taken to check invariant: ", time.Now().Sub(endTime))
+					}
 					return
 				}
 			}
@@ -241,7 +246,9 @@ func main() {
 					failurePath, failedInvariant = modelchecker.CheckFastLiveness(nodes)
 				}
 				fmt.Printf("IsLive: %t\n", failedInvariant == nil)
-				fmt.Printf("Time taken to check liveness: %v\n", time.Now().Sub(endTime))
+				if !isTest {
+					fmt.Printf("Time taken to check liveness: %v\n", time.Now().Sub(endTime))
+				}
 			}
 
 			if failedInvariant == nil && !simulation {
@@ -299,7 +306,9 @@ func startModelChecker(err error, p1 *modelchecker.Processor) (*modelchecker.Nod
 	startTime := time.Now()
 	rootNode, failedNode, err := p1.Start()
 	endTime := time.Now()
-	fmt.Printf("Time taken for model checking: %v\n", endTime.Sub(startTime))
+	if !isTest {
+		fmt.Printf("Time taken for model checking: %v\n", endTime.Sub(startTime))
+	}
 	if internalProfile {
 		startHeapProfile()
 	}
@@ -404,10 +413,15 @@ func GenerateFailurePath(srcFileName string, failurePath []*modelchecker.Link, i
 	}
 }
 
-func createOutputDir(dirPath string) (string, error) {
-    // Create the directory name with current date and time
-    dateTimeStr := time.Now().Format("2006-01-02_15-04-05") // Format: YYYY-MM-DD_HH-MM-SS
-    newDirName := fmt.Sprintf("run_%s", dateTimeStr)
+func createOutputDir(dirPath string, testing bool) (string, error) {
+	var newDirName string
+	if testing {
+		newDirName = "run_test"
+	} else {
+		// Create the directory name with current date and time
+		dateTimeStr := time.Now().Format("2006-01-02_15-04-05") // Format: YYYY-MM-DD_HH-MM-SS
+		newDirName = fmt.Sprintf("run_%s", dateTimeStr)
+	}
 
     // Create the full path for the new directory
     newDirPath := filepath.Join(dirPath, "out", newDirName)
