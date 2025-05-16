@@ -970,9 +970,10 @@ type Processor struct {
 	random             rand.Rand
 	Seed               int64
 	durabilitySpec     *DurabilitySpec
+	isTest             bool
 }
 
-func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string, strategy string) *Processor {
+func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string, strategy string, test bool) *Processor {
 
 	var collection lib.LinearCollection[*Node]
 	var intermediateStates lib.LinearCollection[*Node]
@@ -1015,6 +1016,8 @@ func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation 
 		simulation:         simulation,
 		random:             random,
 		Seed:               seed,
+
+		isTest: test,
 	}
 }
 
@@ -1094,9 +1097,13 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 
 		invariantFailure := false
 		symmetryFound := false
-		for true {
+		for {
 			if len(p.visited)%20000 == 0 && len(p.visited) != prevCount {
-				fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
+				if p.isTest {
+					fmt.Printf("Nodes: %d, queued: %d\n", len(p.visited), p.queue.Len())
+				} else {
+					fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
+				}
 				prevCount = len(p.visited)
 			}
 			invariantFailure, symmetryFound = p.processNode(node)
@@ -1136,7 +1143,12 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 		//	}
 		//}
 	}
-	fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
+	if p.isTest {
+		fmt.Printf("Nodes: %d, queued: %d\n", len(p.visited), p.queue.Len())
+	} else {
+		fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
+	}
+
 	return p.Init, failedNode, err
 }
 
