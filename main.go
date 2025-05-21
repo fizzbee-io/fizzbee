@@ -54,20 +54,8 @@ func main() {
 	stateConfig := loadStateOptions(dirPath, f.GetFrontMatter())
 
 	fmt.Printf("StateSpaceOptions: %+v\n", stateConfig)
-	if stateConfig.Options.MaxActions == 0 {
-		stateConfig.Options.MaxActions = 100
-	}
-	if stateConfig.Options.MaxConcurrentActions == 0 {
-		stateConfig.Options.MaxConcurrentActions = min(2, stateConfig.Options.MaxActions)
-	}
-	if stateConfig.DeadlockDetection == nil {
-		deadlockDetection := true
-		stateConfig.DeadlockDetection = &deadlockDetection
-	}
-	if stateConfig.Options.CrashOnYield == nil {
-		crashOnYield := true
-		stateConfig.Options.CrashOnYield = &crashOnYield
-	}
+	applyDefaultStateOptions(stateConfig)
+
 	outDir, err := createOutputDir(dirPath, isTest)
 	if err != nil {
 		return
@@ -241,6 +229,23 @@ func main() {
 		}
 	}
 	fmt.Println("Stopped after", runs, "runs at ", time.Now())
+}
+
+func applyDefaultStateOptions(stateConfig *ast.StateSpaceOptions) {
+	if stateConfig.Options.MaxActions == 0 {
+		stateConfig.Options.MaxActions = 100
+	}
+	if stateConfig.Options.MaxConcurrentActions == 0 {
+		stateConfig.Options.MaxConcurrentActions = min(2, stateConfig.Options.MaxActions)
+	}
+	if stateConfig.DeadlockDetection == nil {
+		deadlockDetection := true
+		stateConfig.DeadlockDetection = &deadlockDetection
+	}
+	if stateConfig.Options.CrashOnYield == nil {
+		crashOnYield := true
+		stateConfig.Options.CrashOnYield = &crashOnYield
+	}
 }
 
 func loadStateOptions(dirPath string, f *ast.FrontMatter) *ast.StateSpaceOptions {
