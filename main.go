@@ -34,17 +34,7 @@ var explorationStrategy string
 var isTest bool
 
 func main() {
-	flag.BoolVar(&isPlayground, "playground", false, "is for playground")
-	flag.BoolVar(&simulation, "simulation", false, "Runs in simulation mode (DFS). Default=false for no simulation (BFS)")
-	flag.BoolVar(&internalProfile, "internal_profile", false, "Enables CPU and memory profiling of the model checker")
-	flag.BoolVar(&saveStates, "save_states", false, "Save states to disk")
-	flag.Int64Var(&seed, "seed", 0, "Seed for random number generator used in simulation mode")
-	flag.IntVar(&maxRuns, "max_runs", 0, "Maximum number of simulation runs/paths to explore. Default=0 for unlimited")
-	flag.StringVar(&explorationStrategy, "exploration_strategy", "bfs", "Exploration strategy for exhaustive model checking. Options: bfs (default), dfs, random.")
-	flag.BoolVar(&isTest, "test", false, "Testing mode (prevents printing timestamps and other non-deterministic behavior. Default=false")
-	flag.Parse()
-
-	args := flag.Args()
+	args := parseFlags()
 	// Check if the correct number of arguments is provided
 	if len(args) != 1 {
 		fmt.Println("Usage:", os.Args[0], "<json_file>")
@@ -292,6 +282,21 @@ func main() {
 		}
 	}
 	fmt.Println("Stopped after", runs, "runs at ", time.Now())
+}
+
+func parseFlags() []string {
+	flag.BoolVar(&isPlayground, "playground", false, "is for playground")
+	flag.BoolVar(&simulation, "simulation", false, "Runs in simulation mode (DFS). Default=false for no simulation (BFS)")
+	flag.BoolVar(&internalProfile, "internal_profile", false, "Enables CPU and memory profiling of the model checker")
+	flag.BoolVar(&saveStates, "save_states", false, "Save states to disk")
+	flag.Int64Var(&seed, "seed", 0, "Seed for random number generator used in simulation mode")
+	flag.IntVar(&maxRuns, "max_runs", 0, "Maximum number of simulation runs/paths to explore. Default=0 for unlimited")
+	flag.StringVar(&explorationStrategy, "exploration_strategy", "bfs", "Exploration strategy for exhaustive model checking. Options: bfs (default), dfs, random.")
+	flag.BoolVar(&isTest, "test", false, "Testing mode (prevents printing timestamps and other non-deterministic behavior. Default=false")
+	flag.Parse()
+
+	args := flag.Args()
+	return args
 }
 
 func startModelChecker(err error, p1 *modelchecker.Processor) (*modelchecker.Node, *modelchecker.Node, time.Time) {
