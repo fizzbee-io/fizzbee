@@ -44,18 +44,7 @@ func main() {
 	// Get the input JSON file name from command line argument
 	jsonFilename := args[0]
 
-	// Read the content of the JSON file
-	jsonContent, err := os.ReadFile(jsonFilename)
-	if err != nil {
-		fmt.Println("Error reading JSON file:", err)
-		os.Exit(1)
-	}
-	f := &ast.File{}
-	err = protojson.Unmarshal(jsonContent, f)
-	if err != nil {
-		fmt.Println("Error unmarshalling JSON:", err)
-		os.Exit(1)
-	}
+	f := loadInputJSON(jsonFilename)
 
 	dirPath := filepath.Dir(jsonFilename)
 
@@ -282,6 +271,22 @@ func main() {
 		}
 	}
 	fmt.Println("Stopped after", runs, "runs at ", time.Now())
+}
+
+func loadInputJSON(jsonFilename string) *ast.File {
+	// Read the content of the JSON file
+	jsonContent, err := os.ReadFile(jsonFilename)
+	if err != nil {
+		fmt.Println("Error reading JSON file:", err)
+		os.Exit(1)
+	}
+	f := &ast.File{}
+	err = protojson.Unmarshal(jsonContent, f)
+	if err != nil {
+		fmt.Println("Error unmarshalling JSON:", err)
+		os.Exit(1)
+	}
+	return f
 }
 
 func parseFlags() []string {
