@@ -18,6 +18,8 @@ message File {
   repeated string py_code = 11;
 
   FrontMatter front_matter = 12;
+
+  Composition composition = 13;
 }
 
 message FrontMatter {
@@ -35,6 +37,17 @@ message Role {
   repeated Function functions = 8;
   repeated Statement stmts = 9;
   repeated Decorator decorators = 10;
+}
+
+message SpecEntry {
+  SourceInfo source_info = 1;
+  string name = 2;  // The spec name, e.g. "abstract_spec"
+  Expr expr = 3;    // The associated expression
+}
+
+message Composition {
+  SourceInfo source_info = 1;
+  repeated SpecEntry specs = 2;
 }
 
 enum FairnessLevel {

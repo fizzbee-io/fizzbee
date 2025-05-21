@@ -107,6 +107,9 @@ ALWAYS         : 'always';
 EVENTUALLY     : 'eventually';
 TRANSITION     : 'transition';
 
+COMPOSE : 'compose';
+REFINE  : 'refine';
+
 // Operators
 
 DOT                : '.';
