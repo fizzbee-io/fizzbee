@@ -59,6 +59,8 @@ class BuildAstVisitor(FizzParserVisitor):
                     file.stmts.append(childProto)
                 elif isinstance(childProto, ast.Role):
                     file.roles.append(childProto)
+                elif isinstance(childProto, ast.Composition):
+                    file.composition.CopyFrom(childProto)
                 else:
                     print("visitFile_input childProto (unknown) type",childProto.__class__.__name__, dir(child), dir(child.start), childProto)
                     errorStr = f"Error: Line: {child.start.line}: Unexpected {self.get_py_str(child)}"
@@ -387,7 +389,63 @@ class BuildAstVisitor(FizzParserVisitor):
         print("assertion", invariant)
         return invariant
 
+    # Visit a parse tree produced by FizzParser#composedef.
+    def visitComposedef(self, ctx:FizzParser.ComposedefContext):
+        print("\n\nvisitComposedef",ctx.__class__.__name__)
+        print("visitComposedef",ctx.getText())
+        print("visitComposedef",dir(ctx))
+        print("visitComposedef children count",ctx.getChildCount())
+        print("visitComposedef full text\n", self.get_py_str(ctx))
 
+        composition = ast.Composition(source_info=get_source_info(ctx))
+        for i, child in enumerate(ctx.getChildren()):
+            print()
+            print("visitComposedef child index",i,child.getText())
+            if hasattr(child, 'toStringTree'):
+
+                self.log_childtree(child)
+                childProto = self.visit(child)
+                if isinstance(childProto, ast.SpecEntry):
+                    composition.specs.append(childProto)
+                    continue
+                print("visitComposedef childProto",childProto)
+            elif hasattr(child, 'getSymbol'):
+                if (child.getSymbol().type == FizzParser.LINE_BREAK
+                        or child.getSymbol().type == FizzParser.ACTION
+                        or child.getSymbol().type == FizzParser.COLON
+                ):
+                    continue
+
+                self.log_symbol(child)
+            else:
+                print("visitComposedef child (unknown) type",child.__class__.__name__, dir(child))
+                raise Exception("visitComposedef child (unknown) type")
+        print("composition", composition)
+        return composition
+
+    # Visit a parse tree produced by FizzParser#compose_entry.
+    def visitCompose_entry(self, ctx:FizzParser.Compose_entryContext):
+        print("\n\nvisitCompose_entry",ctx.__class__.__name__)
+        print("visitCompose_entry",ctx.getText())
+        print("visitCompose_entry",dir(ctx))
+        print("visitCompose_entry children count",ctx.getChildCount())
+        print("visitCompose_entry full text\n", self.get_py_str(ctx))
+        entry = ast.SpecEntry(source_info=get_source_info(ctx))
+        # entry is defined "name COLON test" in antlr4 parser spec
+        for i, child in enumerate(ctx.getChildren()):
+            print()
+            print("visitCompose_entry child index",i,child.getText())
+            if hasattr(child, 'toStringTree'):
+                if isinstance(child, FizzParser.NameContext):
+                    entry.name = child.getText()
+                    continue
+                if isinstance(child, FizzParser.TestContext):
+                    entry.expr.py_expr = self.get_py_str(child)
+                    entry.expr.source_info.CopyFrom(get_source_info(child))
+                    continue
+
+        print("spec_entry", entry)
+        return entry
     # Visit a parse tree produced by FizzParser#functiondef.
     def visitFunctiondef(self, ctx:FizzParser.FunctiondefContext):
         print("\n\nvisitFunctiondef",ctx.__class__.__name__)
@@ -808,6 +866,8 @@ class BuildAstVisitor(FizzParserVisitor):
         elif isinstance(childProto, ast.Statement):
             return childProto
         elif isinstance(childProto, ast.Role):
+            return childProto
+        elif isinstance(childProto, ast.Composition):
             return childProto
         elif BuildAstVisitor.is_list_of_type(childProto, ast.Invariant):
             return childProto
@@ -1247,12 +1307,21 @@ class BuildAstVisitor(FizzParserVisitor):
         print("log_childtree child",child.getChildCount())
         print("log_childtree child",child.getRuleIndex())
         print("log_childtree child",child.getRuleContext())
-        print("log_childtree child payloand",child.getPayload())
+        print("log_childtree child payload",child.getPayload())
         print("log_childtree child full text\n", self.get_py_str(child))
         print("---")
 
 def get_source_info(ctx):
     start = ast.Position(line=ctx.start.line, column=ctx.start.column+1)
-    end = ast.Position(line=ctx.stop.line, column=ctx.stop.column+1)
+    # Token only has start column, not the end column.
+    # So using the length to calculate the end column, it works for all cases
+    # except multi line strings.
+    # TODO: Handle multi line strings
+    print(dir(ctx.stop))
+    endTokenStart = ctx.stop.column
+    endTokenLength = len(ctx.stop.text)
+    endTokenEnd = endTokenStart + endTokenLength
+
+    end = ast.Position(line=ctx.stop.line, column=endTokenEnd)
     source_info = ast.SourceInfo(start=start, end=end)
     return source_info
