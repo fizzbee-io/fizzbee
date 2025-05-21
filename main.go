@@ -51,37 +51,7 @@ func main() {
 	sourceFileName := filepath.Join(dirPath, f.SourceInfo.GetFileName())
 	//fmt.Println("dirPath:", dirPath)
 	// Calculate the relative path
-	configFileName := filepath.Join(dirPath, "fizz.yaml")
-	fmt.Println("configFileName:", configFileName)
-	stateConfig, err := modelchecker.ReadOptionsFromYaml(configFileName)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			if isPlayground {
-				deadlockDetection := true
-				crashOnYield := true
-				stateConfig = &ast.StateSpaceOptions{
-					Options:           &ast.Options{MaxActions: 100, MaxConcurrentActions: 2, CrashOnYield: &crashOnYield},
-					Liveness:          "strict",
-					DeadlockDetection: &deadlockDetection,
-				}
-			} else {
-				fmt.Println("fizz.yaml not found. Using default options")
-				stateConfig = &ast.StateSpaceOptions{Options: &ast.Options{MaxActions: 100, MaxConcurrentActions: 2}}
-			}
-		} else {
-			fmt.Println("Error reading fizz.yaml:", err)
-			os.Exit(1)
-		}
-
-	}
-	if f.GetFrontMatter().GetYaml() != "" {
-		fmStateConfig, err := modelchecker.ReadOptionsFromYamlString(f.GetFrontMatter().GetYaml())
-		if err != nil {
-			fmt.Println("Error parsing YAML frontmatter:", err)
-			os.Exit(1)
-		}
-		proto.Merge(stateConfig, fmStateConfig)
-	}
+	stateConfig := loadStateOptions(dirPath, f.GetFrontMatter())
 
 	fmt.Printf("StateSpaceOptions: %+v\n", stateConfig)
 	if stateConfig.Options.MaxActions == 0 {
@@ -271,6 +241,41 @@ func main() {
 		}
 	}
 	fmt.Println("Stopped after", runs, "runs at ", time.Now())
+}
+
+func loadStateOptions(dirPath string, f *ast.FrontMatter) *ast.StateSpaceOptions {
+	configFileName := filepath.Join(dirPath, "fizz.yaml")
+	fmt.Println("configFileName:", configFileName)
+	stateConfig, err := modelchecker.ReadOptionsFromYaml(configFileName)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			if isPlayground {
+				deadlockDetection := true
+				crashOnYield := true
+				stateConfig = &ast.StateSpaceOptions{
+					Options:           &ast.Options{MaxActions: 100, MaxConcurrentActions: 2, CrashOnYield: &crashOnYield},
+					Liveness:          "strict",
+					DeadlockDetection: &deadlockDetection,
+				}
+			} else {
+				fmt.Println("fizz.yaml not found. Using default options")
+				stateConfig = &ast.StateSpaceOptions{Options: &ast.Options{MaxActions: 100, MaxConcurrentActions: 2}}
+			}
+		} else {
+			fmt.Println("Error reading fizz.yaml:", err)
+			os.Exit(1)
+		}
+
+	}
+	if f.GetYaml() != "" {
+		fmStateConfig, err := modelchecker.ReadOptionsFromYamlString(f.GetYaml())
+		if err != nil {
+			fmt.Println("Error parsing YAML frontmatter:", err)
+			os.Exit(1)
+		}
+		proto.Merge(stateConfig, fmStateConfig)
+	}
+	return stateConfig
 }
 
 func loadInputJSON(jsonFilename string) *ast.File {
