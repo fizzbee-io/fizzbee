@@ -19,6 +19,7 @@ import (
 	"runtime/pprof"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -74,32 +75,16 @@ func main() {
 	stopped := false
 	runs := 0
 	var p1 *modelchecker.Processor
-	if simulation {
-		c := make(chan os.Signal)
-		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-		go func() {
-			<-c
-			fmt.Println("\nInterrupted. Stopping state exploration")
-			stopped = true
-			if p1 != nil {
-				p1.Stop()
-			}
-		}()
-	}
+	var holder atomic.Pointer[modelchecker.Processor]
+
+	setupSignalHandler(&holder, &stopped)
+
 	i := 0
 	for !stopped && (maxRuns <= 0 || i < maxRuns) {
 		i++
 
 		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy, isTest)
-		if !simulation {
-			c := make(chan os.Signal)
-			signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-			go func() {
-				<-c
-				fmt.Println("\nInterrupted. Stopping state exploration")
-				p1.Stop()
-			}()
-		}
+		holder.Store(p1)
 
 		rootNode, failedNode, endTime := startModelChecker(err, p1)
 		runs++
@@ -189,6 +174,10 @@ func main() {
 			}
 
 			if failedInvariant == nil && !simulation {
+				if p1.Stopped() {
+					fmt.Println("Model checker stopped")
+					return
+				}
 				fmt.Println("PASSED: Model checker completed successfully")
 				//nodes, _, _ := modelchecker.GetAllNodes(rootNode)
 				if saveStates || !isPlayground {
@@ -229,6 +218,20 @@ func main() {
 		}
 	}
 	fmt.Println("Stopped after", runs, "runs at ", time.Now())
+}
+
+func setupSignalHandler(holder *atomic.Pointer[modelchecker.Processor], stopped *bool) {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		fmt.Println("\nInterrupted. Stopping state exploration")
+		*stopped = true
+		p1 := holder.Load()
+		if p1 != nil {
+			p1.Stop()
+		}
+	}()
 }
 
 func applyDefaultStateOptions(stateConfig *ast.StateSpaceOptions) {
