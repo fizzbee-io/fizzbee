@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"hash"
 	"maps"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -19,8 +20,9 @@ import (
 var nextActionId = atomic.Int32{}
 
 type Heap struct {
-	state   starlark.StringDict
-	globals starlark.StringDict
+	state          starlark.StringDict
+	globals        starlark.StringDict
+	CachedHashCode string
 }
 
 func (h *Heap) GetSymmetryDefs() []*lib.SymmetricValues {
@@ -101,7 +103,8 @@ func normalizeTypes(stringDict starlark.StringDict) starlark.StringDict {
 func StringDictToMap(stringDict starlark.StringDict) map[string]string {
 	m := make(map[string]string, len(stringDict))
 	for k, v := range stringDict {
-		if v.Type() == "set" {
+		if v.Type() == "set" || v.Type() == "genericset" || v.Type() == "bag" {
+
 			// Convert set to a list.
 			iter := v.(starlark.Iterable).Iterate()
 
@@ -114,10 +117,18 @@ func StringDictToMap(stringDict starlark.StringDict) map[string]string {
 			m[k] = fmt.Sprintf("%v", list)
 			iter.Done()
 			continue
-		} else if v.Type() == "dict" {
+		} else if v.Type() == "dict" || v.Type() == "genericmap" {
 			// Convert map keys to a sorted list and add re-add them.
-			dict := v.(*starlark.Dict)
-			keys := dict.Keys()
+
+			var keys []starlark.Value
+			var dict starlark.Mapping
+			if v.Type() == "dict" {
+				dict = v.(*starlark.Dict)
+				keys = v.(*starlark.Dict).Keys()
+			} else {
+				dict = v.(*lib.GenericMap)
+				keys = v.(*lib.GenericMap).Keys()
+			}
 
 			var list []string
 			var keyMap = make(map[string]starlark.Value)
@@ -168,9 +179,13 @@ func (h *Heap) String() string {
 
 // HashCode returns a string hash of the global state.
 func (h *Heap) HashCode() string {
+	if h.CachedHashCode != "" {
+		return h.CachedHashCode
+	}
 	hashBuf := sha256.New()
 	hashBuf.Write([]byte(h.ToJson()))
-	return fmt.Sprintf("%x", hashBuf.Sum(nil))
+	h.CachedHashCode = fmt.Sprintf("%x", hashBuf.Sum(nil))
+	return h.CachedHashCode
 }
 
 func (h *Heap) update(k string, v starlark.Value) bool {
@@ -186,7 +201,7 @@ func (h *Heap) insert(k string, v starlark.Value) bool {
 	return true
 }
 
-func (h *Heap) Clone(refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Heap {
+func (h *Heap) Clone(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Heap {
 	return &Heap{state: CloneDict(h.state, refs, permutations, alt), globals: h.globals}
 }
 
@@ -256,13 +271,13 @@ func (s *Scope) Lookup(name string) (starlark.Value, bool) {
 }
 
 // GetAllVisibleVariables returns all variables visible in this scope.
-func (s *Scope) GetAllVisibleVariables(roleRefs map[string]*lib.Role) starlark.StringDict {
+func (s *Scope) GetAllVisibleVariables(roleRefs map[starlark.Value]starlark.Value) starlark.StringDict {
 	dict := starlark.StringDict{}
 	s.getAllVisibleVariablesResolveRoles(dict, roleRefs)
 	return dict
 }
 
-func (s *Scope) getAllVisibleVariablesResolveRoles(dict starlark.StringDict, roleRefs map[string]*lib.Role) {
+func (s *Scope) getAllVisibleVariablesResolveRoles(dict starlark.StringDict, roleRefs map[starlark.Value]starlark.Value) {
 	if s.parent != nil {
 		s.parent.getAllVisibleVariablesResolveRoles(dict, roleRefs)
 	}
@@ -278,15 +293,15 @@ func (s *Scope) getAllVisibleVariablesToDictNoCopy(dict starlark.StringDict) {
 }
 
 func (s *Scope) getAllVisibleVariablesToDict(dict starlark.StringDict) {
-	s.getAllVisibleVariablesResolveRoles(dict, make(map[string]*lib.Role))
+	s.getAllVisibleVariablesResolveRoles(dict, make(map[starlark.Value]starlark.Value))
 }
 
-func CloneDict(oldDict starlark.StringDict, refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) starlark.StringDict {
+func CloneDict(oldDict starlark.StringDict, refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) starlark.StringDict {
 	return CopyDict(oldDict, nil, refs, permutations, alt)
 }
 
 // CopyDict copies values `from` to `to` overriding existing values. If the `to` is nil, creates a new dict.
-func CopyDict(from starlark.StringDict, to starlark.StringDict, refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) starlark.StringDict {
+func CopyDict(from starlark.StringDict, to starlark.StringDict, refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) starlark.StringDict {
 	if to == nil {
 		to = make(starlark.StringDict)
 	}
@@ -342,7 +357,7 @@ func (c *CallFrame) HashCode() string {
 	}
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
-func (c *CallFrame) Clone(refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) (*CallFrame, error) {
+func (c *CallFrame) Clone(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) (*CallFrame, error) {
 	obj := c.obj
 	if c.obj != nil {
 		cloned, err := deepCloneStarlarkValueWithPermutations(c.obj, refs, permutations, alt)
@@ -425,6 +440,7 @@ func (t *Thread) InsertNewScope() *Scope {
 	t.currentFrame().scope = scope
 	if scope.parent != nil {
 		scope.flow = scope.parent.flow
+		scope.vars = scope.parent.vars
 	}
 	return scope
 }
@@ -707,6 +723,8 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		if len(forks) > 0 {
 			if stmt.AnyStmt.Block == nil {
 				t.Process.Enable()
+				// This is required to ensure this step doesn't get deduplicated with the previous yield point
+				t.currentFrame().pc = t.currentFrame().pc + ".any"
 			}
 			return forks, false
 		} else if stmt.AnyStmt.Block != nil {
@@ -1175,13 +1193,13 @@ func (t *Thread) executeEndOfBlock() bool {
 
 			if action, ok := protobuf.(*ast.Action); ok {
 				if action.Name == "Init" {
-					roleRefs := make(map[string]*lib.Role)
-					for i, role := range t.Process.Roles {
-						roleRefs[role.RefString()] = t.Process.Roles[i]
+					roleRefs := make(map[starlark.Value]starlark.Value)
+					for _, role := range t.Process.Roles {
+						roleRefs[role] = role
 					}
 					variables := oldScope.GetAllVisibleVariables(roleRefs)
 					for s, value := range variables {
-						if !t.Process.Heap.globals.Has(s) {
+						if !t.Process.Heap.globals.Has(s) && slices.Contains(t.Process.topLevelVars, s) {
 							t.Process.Heap.insert(s, value)
 						}
 					}

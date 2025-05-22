@@ -82,32 +82,7 @@ func parseReflectValue(v reflect.Value) interfaceData {
 	return *(*interfaceData)(ptr)
 }
 
-func roleResolveCloneFn(refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
-	return func(allocator *clone.Allocator, old, new reflect.Value) {
-
-		var oldRole *lib.Role
-		if !old.CanInterface() {
-			old = forceClearROFlag(old)
-		}
-		old = forceClearROFlag(old)
-		if old.CanInterface() {
-			oldRole = old.Interface().(*lib.Role)
-		} else if old.CanAddr() {
-			oldRole = reflect.NewAt(old.Type(), unsafe.Pointer(old.UnsafeAddr())).Elem().Interface().(*lib.Role)
-		} else {
-			panic("roleResolveCloneFn: oldRole is not accessible")
-		}
-
-		newRolePtr := new.Addr().Interface().(**lib.Role)
-		value, err := deepCloneStarlarkValueWithPermutations(oldRole, refs, permutations, alt)
-		if err != nil {
-			panic(err)
-		}
-		*newRolePtr = value.(*lib.Role)
-	}
-}
-
-func symmetricValueResolveFn(refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
+func symmetricValueResolveFn(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
 	return func(allocator *clone.Allocator, old, new reflect.Value) {
 		value := new.Addr().Interface().(*lib.SymmetricValue)
 		oldVal := old.Interface().(lib.SymmetricValue)
@@ -116,29 +91,25 @@ func symmetricValueResolveFn(refs map[string]*lib.Role, permutations map[lib.Sym
 	}
 }
 
-func starlarkDictResolveFn(refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
+func starlarkValuePtrResolveFn(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
 	return func(allocator *clone.Allocator, old, new reflect.Value) {
-		value := new.Addr().Interface().(*starlark.Dict)
-		oldVal := old.Addr().Interface().(*starlark.Dict)
-		newVal, _ := deepCloneStarlarkValueWithPermutations(oldVal, refs, permutations, alt)
-		newDict := newVal.(*starlark.Dict)
-		for _, item := range newDict.Items() {
-			_ = value.SetKey(item[0], item[1])
+		var oldStarlarkValue starlark.Value
+		if !old.CanInterface() {
+			old = forceClearROFlag(old)
 		}
-	}
-}
+		old = forceClearROFlag(old)
+		if old.CanInterface() {
+			oldStarlarkValue = old.Interface().(starlark.Value)
+		} else if old.CanAddr() {
+			oldStarlarkValue = reflect.NewAt(old.Type(), unsafe.Pointer(old.UnsafeAddr())).Elem().Interface().(starlark.Value)
+		} else {
+			panic("starlarkValuePtrResolveFn: oldStarlarkValue is not accessible")
+		}
 
-func starlarkSetResolveFn(refs map[string]*lib.Role, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
-	return func(allocator *clone.Allocator, old, new reflect.Value) {
-		value := new.Addr().Interface().(*starlark.Set)
-		oldVal := old.Addr().Interface().(*starlark.Set)
-		newVal, _ := deepCloneStarlarkValueWithPermutations(oldVal, refs, permutations, alt)
-		newSet := newVal.(*starlark.Set)
-		iter := newSet.Iterate()
-		defer iter.Done()
-		var x starlark.Value
-		for iter.Next(&x) {
-			_ = value.Insert(x)
+		value, err := deepCloneStarlarkValueWithPermutations(oldStarlarkValue, refs, permutations, alt)
+		if err != nil {
+			panic(err)
 		}
+		new.Set(reflect.ValueOf(value.(starlark.Value)))
 	}
 }

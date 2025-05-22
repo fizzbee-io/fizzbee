@@ -179,6 +179,15 @@ class FizzParserListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by FizzParser#compose_stmt.
+    def enterCompose_stmt(self, ctx:FizzParser.Compose_stmtContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#compose_stmt.
+    def exitCompose_stmt(self, ctx:FizzParser.Compose_stmtContext):
+        pass
+
+
     # Enter a parse tree produced by FizzParser#flow_stmt.
     def enterFlow_stmt(self, ctx:FizzParser.Flow_stmtContext):
         pass
@@ -320,6 +329,24 @@ class FizzParserListener(ParseTreeListener):
 
     # Exit a parse tree produced by FizzParser#functiondef.
     def exitFunctiondef(self, ctx:FizzParser.FunctiondefContext):
+        pass
+
+
+    # Enter a parse tree produced by FizzParser#composedef.
+    def enterComposedef(self, ctx:FizzParser.ComposedefContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#composedef.
+    def exitComposedef(self, ctx:FizzParser.ComposedefContext):
+        pass
+
+
+    # Enter a parse tree produced by FizzParser#compose_entry.
+    def enterCompose_entry(self, ctx:FizzParser.Compose_entryContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#compose_entry.
+    def exitCompose_entry(self, ctx:FizzParser.Compose_entryContext):
         pass
 
 

@@ -168,6 +168,8 @@ type Process struct {
 	EnableCheckpoint bool                      `json:"-"`
 	ChoiceFairness   ast.FairnessLevel         `json:"-"`
 	durabilitySpec   *DurabilitySpec
+
+	topLevelVars []string
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
@@ -208,7 +210,7 @@ func NewProcess(name string, files []*ast.File, parent *Process) *Process {
 	}
 	p := &Process{
 		Name:        name,
-		Heap:        &Heap{starlark.StringDict{}, starlark.StringDict{}},
+		Heap:        &Heap{starlark.StringDict{}, starlark.StringDict{}, ""},
 		Threads:     []*Thread{},
 		Current:     0,
 		Files:       files,
@@ -286,10 +288,11 @@ func (p *Process) Fork() *Process {
 	forkLock.Lock()
 	defer forkLock.Unlock()
 
-	refs := make(map[string]*lib.Role)
-	clone.SetCustomPtrFunc(reflect.TypeOf(&lib.Role{}), roleResolveCloneFn(refs, nil, 0))
-	clone.SetCustomFunc(reflect.TypeOf(starlark.Set{}), starlarkSetResolveFn(refs, nil, 0))
-	clone.SetCustomFunc(reflect.TypeOf(starlark.Dict{}), starlarkDictResolveFn(refs, nil, 0))
+	refs := make(map[starlark.Value]starlark.Value)
+	for _, ptrType := range lib.StarlarkPtrTypes {
+		clone.SetCustomPtrFunc(reflect.TypeOf(ptrType), starlarkValuePtrResolveFn(refs, nil, 0))
+	}
+
 	p2 := &Process{
 		Name:      p.Name,
 		Heap:      p.Heap.Clone(refs, nil, 0),
@@ -308,6 +311,11 @@ func (p *Process) Fork() *Process {
 		Messages:    make([]*ast.Message, 0),
 		Stats:       p.Stats.Clone(),
 	}
+
+	if p.Stats.TotalActions <= 1 {
+		p2.topLevelVars = slices.Clone(p.topLevelVars)
+	}
+
 	p2.Witness = make([][]bool, len(p.Files))
 	for i, file := range p.Files {
 		p2.Witness[i] = make([]bool, len(file.Invariants))
@@ -345,10 +353,10 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 	forkLock.Lock()
 	defer forkLock.Unlock()
 
-	refs := make(map[string]*lib.Role)
-	clone.SetCustomPtrFunc(reflect.TypeOf(&lib.Role{}), roleResolveCloneFn(refs, permutations, alt))
-	clone.SetCustomFunc(reflect.TypeOf(starlark.Dict{}), starlarkDictResolveFn(refs, permutations, alt))
-	clone.SetCustomFunc(reflect.TypeOf(starlark.Set{}), starlarkSetResolveFn(refs, permutations, alt))
+	refs := make(map[starlark.Value]starlark.Value)
+	for _, ptrType := range lib.StarlarkPtrTypes {
+		clone.SetCustomPtrFunc(reflect.TypeOf(ptrType), starlarkValuePtrResolveFn(refs, permutations, alt))
+	}
 	clone.SetCustomFunc(reflect.TypeOf(lib.SymmetricValue{}), symmetricValueResolveFn(refs, permutations, alt))
 	p2 := &Process{
 		Name:      p.Name,
@@ -388,7 +396,7 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 	for i, msgs := range p.ChannelMessages {
 		p2.ChannelMessages[i] = make([]*ChannelMessage, len(msgs))
 		for j, msg := range msgs {
-			p2.ChannelMessages[i][j] = msg.Clone(refs, nil, 0)
+			p2.ChannelMessages[i][j] = msg.Clone(refs, permutations, alt)
 		}
 	}
 	return p2
@@ -396,12 +404,12 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 
 // MapRoleValuesInOrder returns the values of the map m.
 // The values will be in an indeterminate order.
-func MapRoleValuesInOrder(m map[string]*lib.Role, oldList []*lib.Role) []*lib.Role {
+func MapRoleValuesInOrder(m map[starlark.Value]starlark.Value, oldList []*lib.Role) []*lib.Role {
 	r := make([]*lib.Role, 0, len(m))
 	for _, v := range oldList {
 		if v != nil {
-			if role, ok := m[v.RefString()]; ok {
-				r = append(r, role)
+			if role, ok := m[v]; ok {
+				r = append(r, role.(*lib.Role))
 			}
 		}
 	}
@@ -591,9 +599,9 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 	// Shallow clone the globals
 	dict := maps.Clone(p.Heap.globals)
 
-	roleRefs := make(map[string]*lib.Role)
-	for i, role := range p.Roles {
-		roleRefs[role.RefString()] = p.Roles[i]
+	roleRefs := make(map[starlark.Value]starlark.Value)
+	for _, role := range p.Roles {
+		roleRefs[role] = role
 	}
 
 	CopyDict(p.Heap.state, dict, roleRefs, nil, 0)
@@ -668,6 +676,10 @@ func (p *Process) updateVariableInternal(key string, val starlark.Value, frame *
 		// and continue
 		return
 	}
+	if _, ok := frame.vars[key]; ok {
+		frame.vars[key] = val
+		return
+	}
 	if p.Heap.update(key, val) {
 		// if no scoped variable exists, check if it is state
 		// variable, then update the state variable
@@ -685,6 +697,10 @@ func (p *Process) updateVariableInternal(key string, val starlark.Value, frame *
 	}
 	// Declare the variable to the Current scope
 	frame.scope.vars[key] = val
+
+	if p.Stats.TotalActions == 0 && frame.scope.parent == nil && p.currentThread().Stack.Len() == 1 {
+		p.topLevelVars = append(p.topLevelVars, key)
+	}
 }
 
 func (p *Process) updateScopedVariable(scope *Scope, key string, val starlark.Value) bool {
@@ -783,15 +799,16 @@ type Node struct {
 }
 
 type Link struct {
-	Node           *Node
-	Type           string
-	Name           string
-	Labels         []string
-	Fairness       ast.FairnessLevel
-	ChoiceFairness ast.FairnessLevel
-	Messages       []*ast.Message
-	ReqId          int
-	ThreadsMap     map[int]int
+	Node             *Node
+	Type             string
+	Name             string
+	Labels           []string
+	Fairness         ast.FairnessLevel
+	ChoiceFairness   ast.FairnessLevel
+	Messages         []*ast.Message
+	ReqId            int
+	ThreadsMap       map[int]int
+	FailedInvariants map[int][]int
 }
 
 func (l *Link) IsCrashLink() bool {
@@ -801,7 +818,17 @@ func (l *Link) IsCrashLink() bool {
 func isCrashLinkName(linkName string) bool {
 	return linkName == "crash" || strings.HasPrefix(linkName, "crash-role")
 }
-
+func (l *Link) HasFailedInvariants() bool {
+	if l == nil || l.FailedInvariants == nil {
+		return false
+	}
+	for _, invIndex := range l.FailedInvariants {
+		if len(invIndex) > 0 {
+			return true
+		}
+	}
+	return false
+}
 func NewNode(process *Process) *Node {
 	return &Node{
 		Process:     process,
@@ -859,6 +886,9 @@ func (n *Node) CreateNewToOldThreadIndexMap(other *Node) map[int]int {
 			continue
 		}
 
+		if _, ok := oldThreadHashToIndex[hash]; !ok {
+			continue
+		}
 		threadsMap[i] = oldThreadHashToIndex[hash][0]
 		oldThreadHashToIndex[hash] = oldThreadHashToIndex[hash][1:]
 	}
@@ -879,6 +909,8 @@ func (n *Node) Attach() {
 		ChoiceFairness: n.Inbound[0].ChoiceFairness,
 		Messages:       n.Inbound[0].Messages,
 		ReqId:          n.Inbound[0].ReqId,
+
+		FailedInvariants: n.Inbound[0].FailedInvariants,
 	}
 	parent.Outbound = append(parent.Outbound, newOutLink)
 }
@@ -938,9 +970,10 @@ type Processor struct {
 	random             rand.Rand
 	Seed               int64
 	durabilitySpec     *DurabilitySpec
+	isTest             bool
 }
 
-func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string) *Processor {
+func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string, strategy string, test bool) *Processor {
 
 	var collection lib.LinearCollection[*Node]
 	var intermediateStates lib.LinearCollection[*Node]
@@ -949,6 +982,12 @@ func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation 
 	}
 	random := *rand.New(rand.NewSource(seed))
 	if simulation {
+		collection = lib.NewRandomQueue[*Node](random)
+		intermediateStates = lib.NewRandomQueue[*Node](random)
+	} else if strategy == "dfs" {
+		collection = lib.NewStack[*Node]()
+		intermediateStates = lib.NewQueue[*Node]()
+	} else if strategy == "random" {
 		collection = lib.NewRandomQueue[*Node](random)
 		intermediateStates = lib.NewRandomQueue[*Node](random)
 	} else {
@@ -977,6 +1016,8 @@ func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation 
 		simulation:         simulation,
 		random:             random,
 		Seed:               seed,
+
+		isTest: test,
 	}
 }
 
@@ -1056,9 +1097,13 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 
 		invariantFailure := false
 		symmetryFound := false
-		for true {
+		for {
 			if len(p.visited)%20000 == 0 && len(p.visited) != prevCount {
-				fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
+				if p.isTest {
+					fmt.Printf("Nodes: %d, queued: %d\n", len(p.visited), p.queue.Len())
+				} else {
+					fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
+				}
 				prevCount = len(p.visited)
 			}
 			invariantFailure, symmetryFound = p.processNode(node)
@@ -1098,7 +1143,12 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 		//	}
 		//}
 	}
-	fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
+	if p.isTest {
+		fmt.Printf("Nodes: %d, queued: %d\n", len(p.visited), p.queue.Len())
+	} else {
+		fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
+	}
+
 	return p.Init, failedNode, err
 }
 
@@ -1165,10 +1215,8 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 		invariantFailure := false
 		symmetryFound := false
 		prevLen := p.queue.Len()
-		if !liveness || node.actionDepth <= int(maxActions) {
-			p.visited = make(map[string]*Node)
-		}
-		for true {
+
+		for {
 			inCrashPath := false
 			if len(node.Inbound) > 0 {
 				if node.Inbound[0].Node.Name == "crash" {
@@ -1207,17 +1255,17 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 				}
 				node, _ = p.intermediateStates.Remove()
 			} else {
-				has_another_crash_action := false
+				hasAnotherCrashAction := false
 				var anotherCrashNode *Node
 				for p.queue.Len() != 0 {
 					anotherCrashNode, _ = p.queue.Remove()
 					if anotherCrashNode.Inbound[0].Node.Name == "crash" {
-						has_another_crash_action = true
+						hasAnotherCrashAction = true
 						break
 					}
 				}
 
-				if !has_another_crash_action {
+				if !hasAnotherCrashAction {
 					prevLen = 0
 					break
 				} else {
@@ -1301,7 +1349,14 @@ func processPreInit(init *Node, stmts []*ast.Statement) {
 			panic("Not supported: No non-determinism at top level in stmt" + stmt.String())
 		}
 	}
-	globals := thread.currentFrame().scope.GetAllVisibleVariables(nil)
+	vars := thread.currentFrame().scope.GetAllVisibleVariables(make(map[starlark.Value]starlark.Value))
+	globals := starlark.StringDict{}
+	for name, _ := range vars {
+		if slices.Contains(init.Process.topLevelVars, name) {
+			globals[name] = vars[name]
+		}
+	}
+
 	globals.Freeze()
 	init.Process.Heap.globals = globals
 	init.removeCurrentThread()
@@ -1340,6 +1395,21 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	// determined by the statement, and we include program counter in the hash code,
 	// this may not be an issue.
 	hashCode := node.HashCode()
+	if node.actionDepth > 0 {
+		failedInvariants := CheckTransitionInvariants(node.Process)
+		if len(failedInvariants[0]) > 0 {
+			node.Inbound[0].FailedInvariants = failedInvariants
+			if !p.config.ContinuePathOnInvariantFailures {
+				if yield {
+					node.Name = "yield"
+				}
+				node.Attach()
+				p.intermediateStates.ClearAll()
+				return true, false
+			}
+		}
+	}
+
 	if other, ok := p.visited[hashCode]; ok {
 		// This is a bit inefficient.
 		// TODO: Enabled should be a property of the link/transition, not the node.
@@ -1387,6 +1457,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		node.Process.FailedInvariants = failedInvariants
 		if !p.config.ContinuePathOnInvariantFailures {
 			node.Name = "yield"
+			p.intermediateStates.ClearAll()
 			return true, false
 		}
 	}
@@ -1903,7 +1974,12 @@ func (p *Processor) checkLiveness(node *Node) (*InvariantPosition, *Node, bool) 
 func (p *Processor) checkEventuallyAlways(fileIndex, invariantIndex int, node *Node) (*Node, bool) {
 	// Iterate through the outbound links of the cycle
 	currentNode := node
+	visited := make(map[*Node]bool)
 	for {
+		if visited[currentNode] {
+			break
+		}
+		visited[currentNode] = true
 		// Check if the invariant becomes permanently true at some point
 		if !currentNode.Process.Witness[fileIndex][invariantIndex] {
 			// If the invariant is false at this node, the "eventually always" condition fails
@@ -1930,7 +2006,13 @@ func (p *Processor) checkEventuallyAlways(fileIndex, invariantIndex int, node *N
 func (p *Processor) checkAlwaysEventually(fileIndex, invariantIndex int, node *Node) (*Node, bool) {
 	// Iterate through the outbound links of the cycle
 	currentNode := node
+	visited := make(map[*Node]bool)
 	for {
+		if visited[currentNode] {
+			// If we revisit a node, we can stop checking
+			break
+		}
+		visited[currentNode] = true
 		// Check if the invariant is true at least once in this cycle (eventually reappears)
 		if currentNode.Process.Witness[fileIndex][invariantIndex] {
 			// The invariant was true at some point, so "always eventually" holds

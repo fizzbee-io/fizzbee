@@ -79,12 +79,13 @@ compound_stmt
     | decorator* (classdef | funcdef)                                                # class_or_func_def_stmt
     | decorator* roledef                                                             # role_def_stmt
 
-    | fairness? ANY exprlist IN testlist COLON suite                                           # any_stmt
+    | fairness? ANY exprlist IN testlist COLON suite                                 # any_stmt
     | INIT COLON suite                                                               # init_stmt
     | INVARIANTS COLON invariants_suite                                              # invariants_stmt
     | assertiondef                                                                   # assertion_stmt
     | actiondef                                                                      # action_stmt
     | functiondef                                                                    # function_stmt
+    | composedef                                                                     # compose_stmt
     | (ATOMIC | SERIAL | PARALLEL | ONEOF) COLON suite                               # flow_stmt
     ;
 
@@ -156,8 +157,16 @@ functiondef
     : (ATOMIC | PARALLEL | SERIAL | ONEOF)? FUNC name OPEN_PAREN typedargslist? CLOSE_PAREN COLON suite
     ;
 
+composedef
+    : COMPOSE COLON LINE_BREAK INDENT (compose_entry COMMA? LINE_BREAK)+ DEDENT
+    ;
+
+compose_entry
+    : name COLON test
+    ;
+
 assertiondef
-    : (EXISTS | ALWAYS | EVENTUALLY)+ ASSERTION name COLON suite
+    : (EXISTS | ALWAYS | EVENTUALLY | TRANSITION)+ ASSERTION name (OPEN_PAREN typedargslist? CLOSE_PAREN)? COLON suite
     ;
 
 // python 3 paramters

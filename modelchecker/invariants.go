@@ -5,23 +5,44 @@ import (
 	"fmt"
 	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 	"maps"
 	"slices"
 	"strings"
 )
 
 type InvariantPosition struct {
-	FileIndex int
+	FileIndex      int
 	InvariantIndex int
 }
 
 func NewInvariantPosition(fileIndex, invariantIndex int) *InvariantPosition {
 	return &InvariantPosition{
-		FileIndex: fileIndex,
+		FileIndex:      fileIndex,
 		InvariantIndex: invariantIndex,
 	}
 }
-
+func CheckTransitionInvariants(process *Process) map[int][]int {
+	if process.Parent == nil {
+		return nil
+	}
+	if process.Heap.CachedHashCode == process.Parent.Heap.CachedHashCode && process.Parent.Heap.CachedHashCode != "" {
+		return nil
+	}
+	results := make(map[int][]int)
+	for i, file := range process.Files {
+		results[i] = make([]int, 0)
+		for j, invariant := range file.Invariants {
+			if invariant.Block != nil && slices.Contains(invariant.TemporalOperators, "transition") {
+				passed := CheckTransitionAssertion(process, invariant, j)
+				if !passed {
+					results[i] = append(results[i], j)
+				}
+			}
+		}
+	}
+	return results
+}
 func CheckInvariants(process *Process) map[int][]int {
 	if len(process.Files) > 1 {
 		panic("Invariant checking not supported for multiple files")
@@ -39,6 +60,9 @@ func CheckInvariants(process *Process) map[int][]int {
 					results[i] = append(results[i], j)
 				}
 			} else {
+				if slices.Contains(invariant.TemporalOperators, "transition") {
+					continue
+				}
 				passed = CheckAssertion(process, invariant, j)
 				if (slices.Contains(invariant.TemporalOperators, "eventually") || slices.Contains(invariant.TemporalOperators, "exists")) && passed /*&& (len(process.Threads) == 0 || process.Name == "yield")*/ {
 					process.Witness[i][j] = true
@@ -53,7 +77,7 @@ func CheckInvariants(process *Process) map[int][]int {
 
 func CheckInvariant(process *Process, invariant *ast.Invariant) bool {
 	eventuallyAlways := invariant.Eventually && invariant.GetNested().GetAlways()
-	if !invariant.Always && !(eventuallyAlways){
+	if !invariant.Always && !(eventuallyAlways) {
 		panic("Invariant checking not supported for non-always invariants")
 	}
 	if !eventuallyAlways && invariant.Nested != nil {
@@ -63,7 +87,7 @@ func CheckInvariant(process *Process, invariant *ast.Invariant) bool {
 	if eventuallyAlways && invariant.Nested != nil {
 		pyExpr = invariant.Nested.PyExpr
 	}
-	ref := make(map[string]*lib.Role)
+	ref := make(map[starlark.Value]starlark.Value)
 	vars := CloneDict(process.Heap.state, ref, nil, 0)
 	vars["__returns__"] = NewDictFromStringDict(process.Returns)
 	cond, err := process.Evaluator.EvalPyExpr(process.Files[0].GetSourceInfo().GetFileName(), pyExpr, vars)
@@ -78,9 +102,13 @@ func CheckAssertion(process *Process, invariant *ast.Invariant, index int) bool 
 	cloned := process.CloneForAssert(nil, 0)
 	cloned.Heap.state["__returns__"] = NewDictFromStringDict(cloned.Returns)
 
+	return execAssertionFunction(cloned, index, invariant)
+
+}
+
+func execAssertionFunction(cloned *Process, index int, invariant *ast.Invariant) bool {
 	numThreads := cloned.GetThreadsCount()
 	assertThread := cloned.NewThread()
-	//cloned.Current = numThreads
 
 	assertThread.currentFrame().pc = fmt.Sprintf("Invariants[%d]", index)
 	assertThread.currentFrame().Name = invariant.Name
@@ -94,8 +122,25 @@ func CheckAssertion(process *Process, invariant *ast.Invariant, index int) bool 
 		}
 
 	}
-
 }
+
+func CheckTransitionAssertion(process *Process, invariant *ast.Invariant, index int) bool {
+	if process.Parent == nil {
+		return true
+	}
+	beforeParam, afterParam := "before", "after"
+	if len(invariant.Params) == 2 {
+		beforeParam, afterParam = invariant.Params[0].GetName(), invariant.Params[1].GetName()
+	} else if len(invariant.Params) != 0 {
+		panic("Invariant should not have params or exactly 2 params")
+	}
+	cloned := process.CloneForAssert(nil, 0)
+	cloned.Heap.state[afterParam] = starlarkstruct.FromStringDict(starlark.String(afterParam), cloned.Heap.state)
+	cloned.Heap.state[beforeParam] = starlarkstruct.FromStringDict(starlark.String(beforeParam), process.Parent.Heap.state)
+
+	return execAssertionFunction(cloned, index, invariant)
+}
+
 func CheckSimpleExistsWitness(nodes []*Node) []*InvariantPosition {
 	process := nodes[0].Process
 	if len(process.Files) > 1 {
@@ -105,7 +150,7 @@ func CheckSimpleExistsWitness(nodes []*Node) []*InvariantPosition {
 	for i, file := range process.Files {
 		for j, invariant := range file.Invariants {
 			if invariant.Block != nil && slices.Contains(invariant.TemporalOperators, "exists") {
-				existsInvariantPositions = append(existsInvariantPositions, NewInvariantPosition(i,j))
+				existsInvariantPositions = append(existsInvariantPositions, NewInvariantPosition(i, j))
 			}
 		}
 	}
@@ -159,14 +204,14 @@ func CheckStrictLiveness(node *Node) ([]*Link, *InvariantPosition) {
 				fmt.Println("Checking eventually always", invariant.Name)
 				failurePath, isLive := EventuallyAlwaysFinal(node, predicate)
 				if !isLive {
-					return failurePath, NewInvariantPosition(i,j)
+					return failurePath, NewInvariantPosition(i, j)
 				}
 			} else if alwaysEventually {
 				fmt.Println("Checking always eventually", invariant.Name)
 				// Always Eventually
 				failurePath, isLive := AlwaysEventuallyFinal(node, predicate)
 				if !isLive {
-					return failurePath, NewInvariantPosition(i,j)
+					return failurePath, NewInvariantPosition(i, j)
 				}
 			}
 		}
@@ -208,14 +253,14 @@ func CheckFastLiveness(allNodes []*Node) ([]*Link, *InvariantPosition) {
 				fmt.Println("Checking eventually always", invariant.Name)
 				failurePath, isLive := EventuallyAlwaysFast(allNodes, predicate)
 				if !isLive {
-					return failurePath, NewInvariantPosition(i,j)
+					return failurePath, NewInvariantPosition(i, j)
 				}
 			} else if alwaysEventually {
 				fmt.Println("Checking always eventually", invariant.Name)
 				// Always Eventually
 				failurePath, isLive := AlwaysEventuallyFast(allNodes, predicate)
 				if !isLive {
-					return failurePath, NewInvariantPosition(i,j)
+					return failurePath, NewInvariantPosition(i, j)
 				}
 			}
 		}
@@ -249,7 +294,7 @@ func AlwaysEventuallyFast(nodes []*Node, predicate Predicate) ([]*Link, bool) {
 		for _, link := range node.Inbound {
 			if visited[link.Node] || link.Node == node ||
 				(link.Fairness != ast.FairnessLevel_FAIRNESS_LEVEL_STRONG && link.Fairness != ast.FairnessLevel_FAIRNESS_LEVEL_WEAK) {
-                continue
+				continue
 			}
 			delete(falseNodes, link.Node)
 			queue.Enqueue(link.Node)
@@ -312,8 +357,8 @@ func InitNodeToLink(node *Node) *Link {
 
 func findCyclePath(startNode *Node, nodes map[*Node]bool) []*Link {
 	type Wrapper struct {
-		link *Link
-		path []*Link
+		link    *Link
+		path    []*Link
 		visited map[*Node]bool
 	}
 	queue := lib.NewQueue[*Wrapper]()
@@ -346,8 +391,8 @@ func findCyclePath(startNode *Node, nodes map[*Node]bool) []*Link {
 		if fairCount == 0 {
 			pathCopy := slices.Clone(path)
 			pathCopy = append(pathCopy, &Link{
-				Node:     node,
-				Name:     "stutter",
+				Node: node,
+				Name: "stutter",
 			})
 			return pathCopy
 		}
@@ -419,7 +464,6 @@ func EventuallyAlwaysFast(nodes []*Node, predicate Predicate) ([]*Link, bool) {
 	})
 }
 
-
 type Predicate func(n *Node) (bool, bool)
 
 type CycleCallbackResult struct {
@@ -427,14 +471,13 @@ type CycleCallbackResult struct {
 }
 type CycleCallback func(path []*Link, cycles int) (bool, *CycleCallbackResult)
 
-
 func AlwaysEventuallyFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 	f := func(path []*Link, cycles int) (bool, *CycleCallbackResult) {
 		mergeNode := path[len(path)-1].Node
 		mergeIndex := -1
 		// iterate over the path in order to find the earliest merge node forming the largest cycle
 		// Then check if the property holds in that cycle
-		for i := 0; i < len(path) - 1; i++ {
+		for i := 0; i < len(path)-1; i++ {
 			if path[i].Node == mergeNode {
 				mergeIndex = i
 				for j := i + 1; j < len(path); j++ {
@@ -474,7 +517,7 @@ func EventuallyAlwaysFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 
 		// iterate over the path in order to find the earliest merge node forming the largest cycle
 		// Then check if the property holds in that cycle
-		for i := 0; i < len(path) - 1; i++ {
+		for i := 0; i < len(path)-1; i++ {
 			if path[i].Node == mergeNode {
 				mergeIndex = i
 				for j := i + 1; j < len(path); j++ {
@@ -487,7 +530,7 @@ func EventuallyAlwaysFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 				break
 			}
 		}
-		
+
 		if deadNodeFound {
 			isFair, cycleCallbackResult := isFairCycle(path[mergeIndex:], false)
 			if isFair {
@@ -499,7 +542,7 @@ func EventuallyAlwaysFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 			}
 			//return false, nil
 		}
-			return true, nil
+		return true, nil
 
 		//fmt.Println("Dead node NOT FOUND in the path")
 	}
@@ -520,7 +563,7 @@ func isFairCycle(path []*Link, debugLog bool) (bool, *CycleCallbackResult) {
 	if debugLog {
 		for i, link := range path {
 			//node := link.Node
-			fmt.Println("i :", i, "Link.Name", link.Name, /*"Node:", node.String(),*/ "choice fairness", link.ChoiceFairness)
+			fmt.Println("i :", i, "Link.Name", link.Name /*"Node:", node.String(),*/, "choice fairness", link.ChoiceFairness)
 		}
 		fmt.Println("Checking fairness")
 	}
@@ -685,7 +728,7 @@ func findMissingLinks(path []*Link, strongFairLinksOutOfChain map[string]bool, w
 		}
 	}
 	return &CycleCallbackResult{missingLinks: missingLinks}
-	
+
 }
 
 func CycleFinderFinal(node *Node, callback CycleCallback) ([]*Link, bool) {
@@ -723,7 +766,7 @@ func cycleFinderHelper(node *Node, callback CycleCallback, visited map[*Node]boo
 				// Add the links from last node in path to the missing link.
 				for k1, oldLink := range path {
 					if oldLink.Node == path[len(path)-1].Node {
-						for _, oldLink2 := range path[k1 + 1:] {
+						for _, oldLink2 := range path[k1+1:] {
 							pathCopy = append(pathCopy, oldLink2)
 							if oldLink2.Node == links.First {
 								break
@@ -735,7 +778,7 @@ func cycleFinderHelper(node *Node, callback CycleCallback, visited map[*Node]boo
 
 				pathCopy = append(pathCopy, l)
 				//globalVisitedCopy := maps.Clone(globalVisited)
-				failedPath, success := cycleFinderHelper(l.Node, callback, visitedCopy, cycles + 1, pathCopy, globalVisited)
+				failedPath, success := cycleFinderHelper(l.Node, callback, visitedCopy, cycles+1, pathCopy, globalVisited)
 				if !success {
 					return failedPath, false
 				}
@@ -766,8 +809,8 @@ func cycleFinderHelper(node *Node, callback CycleCallback, visited map[*Node]boo
 	if (node.Name == "yield" || node.Name == "crash" || node.Name == "init") && !hasFair && !pendingAction {
 		pathCopy := slices.Clone(path)
 		pathCopy = append(pathCopy, &Link{
-			Node:     node,
-			Name:     "stutter",
+			Node: node,
+			Name: "stutter",
 		})
 
 		isLive, _ := callback(pathCopy, cycles)
@@ -783,7 +826,7 @@ func cycleFinderHelper(node *Node, callback CycleCallback, visited map[*Node]boo
 		pathCopy = append(pathCopy, link)
 		failedPath, success := cycleFinderHelper(link.Node, callback, visitedCopy, cycles, pathCopy, globalVisited)
 		if !success {
-			return failedPath,false
+			return failedPath, false
 		}
 	}
 
@@ -798,8 +841,8 @@ func CycleFinderFinalBfs(node *Node, callback CycleCallback) ([]*Link, bool) {
 
 func cycleFinderHelperBfs(root *Node, callback CycleCallback, visited map[*Node]bool, path []*Link) ([]*Link, bool) {
 	type Wrapper struct {
-		link *Link
-		path []*Link
+		link    *Link
+		path    []*Link
 		visited map[*Node]bool
 	}
 	queue := lib.NewQueue[*Wrapper]()
@@ -838,8 +881,8 @@ func cycleFinderHelperBfs(root *Node, callback CycleCallback, visited map[*Node]
 		if fairCount == 0 {
 			pathCopy := slices.Clone(path)
 			pathCopy = append(pathCopy, &Link{
-				Node:     node,
-				Name:     "stutter",
+				Node: node,
+				Name: "stutter",
 			})
 			live, _ := callback(pathCopy, 1)
 			if live {
@@ -862,12 +905,11 @@ func NewDictFromStringDict(vals starlark.StringDict) *starlark.Dict {
 	return result
 }
 
-
 // Tarjan's algorithm helper structure
 type tarjanData struct {
-	index      int
-	lowLink    int
-	onStack    bool
+	index   int
+	lowLink int
+	onStack bool
 }
 
 func CheckLivenessSccAlwaysEventually(nodes []*Node, invPos InvariantPosition) (bool, error) {

@@ -2,8 +2,11 @@
 
 set -e  # Exit on error
 
-# Get the current date for versioning
-VERSION=$(date +%Y%m%d)
+SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")"
+PROJECT_DIR="$(dirname $SCRIPT_DIR)"
+
+# Get the current date for versioning if FIZZBEE_RELEASE_VERSION is not set
+VERSION="${FIZZBEE_RELEASE_VERSION:-$(date +%Y%m%d)}"
 RELEASE_DIR="fizzbee-$VERSION"
 mkdir -p releases
 
@@ -36,7 +39,8 @@ for PLATFORM in "${PLATFORMS[@]}"; do
 
     # Include the shell script only for macOS and Linux
     if [[ "$PLATFORM" != windows* ]]; then
-        cp release/fizz "$TARGET_DIR"
+        cp "$PROJECT_DIR/fizz" "$TARGET_DIR"
+        cp "$SCRIPT_DIR/fizz.env" "$TARGET_DIR"
     fi
 
     # Create archives
@@ -46,8 +50,11 @@ for PLATFORM in "${PLATFORMS[@]}"; do
         tar -czf "releases/$TARGET_DIR.tar.gz" "$TARGET_DIR"
     fi
 
-    echo "Packaged: $TARGET_DIR"
-    rm -rf "$TARGET_DIR"  # Cleanup
+    # if cleanup the target dir if DISABLE_CLEANUP is not set
+    if [[ "${DISABLE_CLEANUP}" != true ]]; then
+      echo "Packaged: $TARGET_DIR"
+      rm -rf "$TARGET_DIR"  # Cleanup
+    fi
 done
 
 echo "All builds completed. Archives are in the releases/ directory."

@@ -98,7 +98,7 @@ func TestProcessor_Start(t *testing.T) {
 		Options: &ast.Options{
 			MaxActions: 1,
 		},
-	}, false, 0, "")
+	}, false, 0, "", "", false)
 	root, _, _ := p1.Start()
 	assert.NotNil(t, root)
 	assert.Equal(t, 91, len(p1.visited))
@@ -532,7 +532,7 @@ func TestProcessor_Tutorials(t *testing.T) {
 				}
 			}
 
-			p1 := NewProcessor(files, stateConfig, false, 0, "")
+			p1 := NewProcessor(files, stateConfig, false, 0, "", "", false)
 			startTime := time.Now()
 			root, _, err := p1.Start()
 			require.Nil(t, err)
