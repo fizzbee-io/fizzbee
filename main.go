@@ -19,6 +19,7 @@ import (
 	"runtime/pprof"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -34,17 +35,7 @@ var explorationStrategy string
 var isTest bool
 
 func main() {
-	flag.BoolVar(&isPlayground, "playground", false, "is for playground")
-	flag.BoolVar(&simulation, "simulation", false, "Runs in simulation mode (DFS). Default=false for no simulation (BFS)")
-	flag.BoolVar(&internalProfile, "internal_profile", false, "Enables CPU and memory profiling of the model checker")
-	flag.BoolVar(&saveStates, "save_states", false, "Save states to disk")
-	flag.Int64Var(&seed, "seed", 0, "Seed for random number generator used in simulation mode")
-	flag.IntVar(&maxRuns, "max_runs", 0, "Maximum number of simulation runs/paths to explore. Default=0 for unlimited")
-	flag.StringVar(&explorationStrategy, "exploration_strategy", "bfs", "Exploration strategy for exhaustive model checking. Options: bfs (default), dfs, random.")
-	flag.BoolVar(&isTest, "test", false, "Testing mode (prevents printing timestamps and other non-deterministic behavior. Default=false")
-	flag.Parse()
-
-	args := flag.Args()
+	args := parseFlags()
 	// Check if the correct number of arguments is provided
 	if len(args) != 1 {
 		fmt.Println("Usage:", os.Args[0], "<json_file>")
@@ -54,71 +45,18 @@ func main() {
 	// Get the input JSON file name from command line argument
 	jsonFilename := args[0]
 
-	// Read the content of the JSON file
-	jsonContent, err := os.ReadFile(jsonFilename)
-	if err != nil {
-		fmt.Println("Error reading JSON file:", err)
-		os.Exit(1)
-	}
-	f := &ast.File{}
-	err = protojson.Unmarshal(jsonContent, f)
-	if err != nil {
-		fmt.Println("Error unmarshalling JSON:", err)
-		os.Exit(1)
-	}
+	f := loadInputJSON(jsonFilename)
 
 	dirPath := filepath.Dir(jsonFilename)
 
 	sourceFileName := filepath.Join(dirPath, f.SourceInfo.GetFileName())
 	//fmt.Println("dirPath:", dirPath)
 	// Calculate the relative path
-	configFileName := filepath.Join(dirPath, "fizz.yaml")
-	fmt.Println("configFileName:", configFileName)
-	stateConfig, err := modelchecker.ReadOptionsFromYaml(configFileName)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			if isPlayground {
-				deadlockDetection := true
-				crashOnYield := true
-				stateConfig = &ast.StateSpaceOptions{
-					Options:           &ast.Options{MaxActions: 100, MaxConcurrentActions: 2, CrashOnYield: &crashOnYield},
-					Liveness:          "strict",
-					DeadlockDetection: &deadlockDetection,
-				}
-			} else {
-				fmt.Println("fizz.yaml not found. Using default options")
-				stateConfig = &ast.StateSpaceOptions{Options: &ast.Options{MaxActions: 100, MaxConcurrentActions: 2}}
-			}
-		} else {
-			fmt.Println("Error reading fizz.yaml:", err)
-			os.Exit(1)
-		}
-
-	}
-	if f.GetFrontMatter().GetYaml() != "" {
-		fmStateConfig, err := modelchecker.ReadOptionsFromYamlString(f.GetFrontMatter().GetYaml())
-		if err != nil {
-			fmt.Println("Error parsing YAML frontmatter:", err)
-			os.Exit(1)
-		}
-		proto.Merge(stateConfig, fmStateConfig)
-	}
+	stateConfig := loadStateOptions(dirPath, f.GetFrontMatter())
 
 	fmt.Printf("StateSpaceOptions: %+v\n", stateConfig)
-	if stateConfig.Options.MaxActions == 0 {
-		stateConfig.Options.MaxActions = 100
-	}
-	if stateConfig.Options.MaxConcurrentActions == 0 {
-		stateConfig.Options.MaxConcurrentActions = min(2, stateConfig.Options.MaxActions)
-	}
-	if stateConfig.DeadlockDetection == nil {
-		deadlockDetection := true
-		stateConfig.DeadlockDetection = &deadlockDetection
-	}
-	if stateConfig.Options.CrashOnYield == nil {
-		crashOnYield := true
-		stateConfig.Options.CrashOnYield = &crashOnYield
-	}
+	applyDefaultStateOptions(stateConfig)
+
 	outDir, err := createOutputDir(dirPath, isTest)
 	if err != nil {
 		return
@@ -137,62 +75,26 @@ func main() {
 	stopped := false
 	runs := 0
 	var p1 *modelchecker.Processor
-	if simulation {
-		c := make(chan os.Signal)
-		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-		go func() {
-			<-c
-			fmt.Println("\nInterrupted. Stopping state exploration")
-			stopped = true
-			if p1 != nil {
-				p1.Stop()
-			}
-		}()
-	}
+	var holder atomic.Pointer[modelchecker.Processor]
+
+	setupSignalHandler(&holder, &stopped)
+
 	i := 0
 	for !stopped && (maxRuns <= 0 || i < maxRuns) {
 		i++
 
 		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy, isTest)
-		if !simulation {
-			c := make(chan os.Signal)
-			signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-			go func() {
-				<-c
-				fmt.Println("\nInterrupted. Stopping state exploration")
-				p1.Stop()
-			}()
-		}
+		holder.Store(p1)
 
-		rootNode, failedNode, endTime := startModelChecker(err, p1)
+		rootNode, failedNode, endTime, err := startModelChecker(p1)
 		runs++
 
-		if p1.GetVisitedNodesCount() < 250 {
-			dotString := modelchecker.GenerateDotFile(rootNode, make(map[*modelchecker.Node]bool))
-			dotFileName := filepath.Join(outDir, "graph.dot")
-			// Write the content to the file
-			err := os.WriteFile(dotFileName, []byte(dotString), 0644)
-			if err != nil {
-				fmt.Println("Error writing to file:", err)
-				return
-			}
-			if !isPlayground && !simulation {
-				fmt.Printf("Writen graph dotfile: %s\nTo generate svg, run: \n"+
-					"dot -Tsvg %s -o graph.svg && open graph.svg\n", dotFileName, dotFileName)
-			}
-		} else if !simulation {
-			fmt.Printf("Skipping dotfile generation. Too many nodes: %d\n", p1.GetVisitedNodesCount())
+		if writeDotFileIfNeeded(p1, rootNode, outDir) {
+			return
 		}
 
 		if err != nil {
-			var modelErr *modelchecker.ModelError
-			if errors.As(err, &modelErr) {
-				fmt.Println("Stack Trace:")
-				fmt.Println(modelErr.SprintStackTrace())
-			} else {
-				fmt.Println("Error:", err)
-			}
-			os.Exit(1)
+			printTraceAndExit(err)
 		}
 
 		//fmt.Println("root", root)
@@ -201,19 +103,8 @@ func main() {
 			var failedInvariant *modelchecker.InvariantPosition
 			nodes, messages, deadlock, yieldsCount := modelchecker.GetAllNodes(rootNode, stateConfig.GetOptions().GetMaxActions())
 
-			if len(messages) > 0 && !simulation {
-				graphDot := modelchecker.GenerateCommunicationGraph(messages)
-				dotFileName := filepath.Join(outDir, "communication.dot")
-				// Write the content to the file
-				err := os.WriteFile(dotFileName, []byte(graphDot), 0644)
-				if err != nil {
-					fmt.Println("Error writing to file:", err)
-					return
-				}
-				if !isPlayground {
-					fmt.Printf("Writen communication diagram dotfile: %s\nTo generate svg, run: \n"+
-						"dot -Tsvg %s -o communication.svg && open communication.svg\n", dotFileName, dotFileName)
-				}
+			if writeCommunicationFileIfNeeded(messages, outDir) {
+				return
 			}
 
 			if deadlock != nil && stateConfig.GetDeadlockDetection() && !p1.Stopped() && !simulation {
@@ -252,6 +143,10 @@ func main() {
 			}
 
 			if failedInvariant == nil && !simulation {
+				if p1.Stopped() {
+					fmt.Println("Model checker stopped")
+					return
+				}
 				fmt.Println("PASSED: Model checker completed successfully")
 				//nodes, _, _ := modelchecker.GetAllNodes(rootNode)
 				if saveStates || !isPlayground {
@@ -294,10 +189,156 @@ func main() {
 	fmt.Println("Stopped after", runs, "runs at ", time.Now())
 }
 
-func startModelChecker(err error, p1 *modelchecker.Processor) (*modelchecker.Node, *modelchecker.Node, time.Time) {
+func writeCommunicationFileIfNeeded(messages []string, outDir string) bool {
+	if len(messages) > 0 && !simulation {
+		graphDot := modelchecker.GenerateCommunicationGraph(messages)
+		dotFileName := filepath.Join(outDir, "communication.dot")
+		// Write the content to the file
+		err := os.WriteFile(dotFileName, []byte(graphDot), 0644)
+		if err != nil {
+			fmt.Println("Error writing to file:", err)
+			return true
+		}
+		if !isPlayground {
+			fmt.Printf("Writen communication diagram dotfile: %s\nTo generate svg, run: \n"+
+				"dot -Tsvg %s -o communication.svg && open communication.svg\n", dotFileName, dotFileName)
+		}
+	}
+	return false
+}
+
+func printTraceAndExit(err error) {
+	var modelErr *modelchecker.ModelError
+	if errors.As(err, &modelErr) {
+		fmt.Println("Stack Trace:")
+		fmt.Println(modelErr.SprintStackTrace())
+	} else {
+		fmt.Println("Error:", err)
+	}
+	os.Exit(1)
+}
+
+func writeDotFileIfNeeded(p1 *modelchecker.Processor, rootNode *modelchecker.Node, outDir string) bool {
+	if p1.GetVisitedNodesCount() < 250 {
+		dotString := modelchecker.GenerateDotFile(rootNode, make(map[*modelchecker.Node]bool))
+		dotFileName := filepath.Join(outDir, "graph.dot")
+		// Write the content to the file
+		err := os.WriteFile(dotFileName, []byte(dotString), 0644)
+		if err != nil {
+			fmt.Println("Error writing to file:", err)
+			return true
+		}
+		if !isPlayground && !simulation {
+			fmt.Printf("Writen graph dotfile: %s\nTo generate svg, run: \n"+
+				"dot -Tsvg %s -o graph.svg && open graph.svg\n", dotFileName, dotFileName)
+		}
+	} else if !simulation {
+		fmt.Printf("Skipping dotfile generation. Too many nodes: %d\n", p1.GetVisitedNodesCount())
+	}
+	return false
+}
+
+func setupSignalHandler(holder *atomic.Pointer[modelchecker.Processor], stopped *bool) {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		fmt.Println("\nInterrupted. Stopping state exploration")
+		*stopped = true
+		p1 := holder.Load()
+		if p1 != nil {
+			p1.Stop()
+		}
+	}()
+}
+
+func applyDefaultStateOptions(stateConfig *ast.StateSpaceOptions) {
+	if stateConfig.Options.MaxActions == 0 {
+		stateConfig.Options.MaxActions = 100
+	}
+	if stateConfig.Options.MaxConcurrentActions == 0 {
+		stateConfig.Options.MaxConcurrentActions = min(2, stateConfig.Options.MaxActions)
+	}
+	if stateConfig.DeadlockDetection == nil {
+		deadlockDetection := true
+		stateConfig.DeadlockDetection = &deadlockDetection
+	}
+	if stateConfig.Options.CrashOnYield == nil {
+		crashOnYield := true
+		stateConfig.Options.CrashOnYield = &crashOnYield
+	}
+}
+
+func loadStateOptions(dirPath string, f *ast.FrontMatter) *ast.StateSpaceOptions {
+	configFileName := filepath.Join(dirPath, "fizz.yaml")
+	fmt.Println("configFileName:", configFileName)
+	stateConfig, err := modelchecker.ReadOptionsFromYaml(configFileName)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			if isPlayground {
+				deadlockDetection := true
+				crashOnYield := true
+				stateConfig = &ast.StateSpaceOptions{
+					Options:           &ast.Options{MaxActions: 100, MaxConcurrentActions: 2, CrashOnYield: &crashOnYield},
+					Liveness:          "strict",
+					DeadlockDetection: &deadlockDetection,
+				}
+			} else {
+				fmt.Println("fizz.yaml not found. Using default options")
+				stateConfig = &ast.StateSpaceOptions{Options: &ast.Options{MaxActions: 100, MaxConcurrentActions: 2}}
+			}
+		} else {
+			fmt.Println("Error reading fizz.yaml:", err)
+			os.Exit(1)
+		}
+
+	}
+	if f.GetYaml() != "" {
+		fmStateConfig, err := modelchecker.ReadOptionsFromYamlString(f.GetYaml())
+		if err != nil {
+			fmt.Println("Error parsing YAML frontmatter:", err)
+			os.Exit(1)
+		}
+		proto.Merge(stateConfig, fmStateConfig)
+	}
+	return stateConfig
+}
+
+func loadInputJSON(jsonFilename string) *ast.File {
+	// Read the content of the JSON file
+	jsonContent, err := os.ReadFile(jsonFilename)
+	if err != nil {
+		fmt.Println("Error reading JSON file:", err)
+		os.Exit(1)
+	}
+	f := &ast.File{}
+	err = protojson.Unmarshal(jsonContent, f)
+	if err != nil {
+		fmt.Println("Error unmarshalling JSON:", err)
+		os.Exit(1)
+	}
+	return f
+}
+
+func parseFlags() []string {
+	flag.BoolVar(&isPlayground, "playground", false, "is for playground")
+	flag.BoolVar(&simulation, "simulation", false, "Runs in simulation mode (DFS). Default=false for no simulation (BFS)")
+	flag.BoolVar(&internalProfile, "internal_profile", false, "Enables CPU and memory profiling of the model checker")
+	flag.BoolVar(&saveStates, "save_states", false, "Save states to disk")
+	flag.Int64Var(&seed, "seed", 0, "Seed for random number generator used in simulation mode")
+	flag.IntVar(&maxRuns, "max_runs", 0, "Maximum number of simulation runs/paths to explore. Default=0 for unlimited")
+	flag.StringVar(&explorationStrategy, "exploration_strategy", "bfs", "Exploration strategy for exhaustive model checking. Options: bfs (default), dfs, random.")
+	flag.BoolVar(&isTest, "test", false, "Testing mode (prevents printing timestamps and other non-deterministic behavior. Default=false")
+	flag.Parse()
+
+	args := flag.Args()
+	return args
+}
+
+func startModelChecker(p1 *modelchecker.Processor) (*modelchecker.Node, *modelchecker.Node, time.Time, error) {
 	if simulation {
 		rootNode, failedNode, _ := p1.Start()
-		return rootNode, failedNode, time.Now()
+		return rootNode, failedNode, time.Now(), nil
 	}
 	if internalProfile {
 		startCpuProfile()
@@ -312,7 +353,7 @@ func startModelChecker(err error, p1 *modelchecker.Processor) (*modelchecker.Nod
 	if internalProfile {
 		startHeapProfile()
 	}
-	return rootNode, failedNode, endTime
+	return rootNode, failedNode, endTime, err
 }
 
 func startCpuProfile() {
@@ -423,40 +464,40 @@ func createOutputDir(dirPath string, testing bool) (string, error) {
 		newDirName = fmt.Sprintf("run_%s", dateTimeStr)
 	}
 
-    // Create the full path for the new directory
-    newDirPath := filepath.Join(dirPath, "out", newDirName)
+	// Create the full path for the new directory
+	newDirPath := filepath.Join(dirPath, "out", newDirName)
 
-    // Create the directory
-    if err := os.MkdirAll(newDirPath, 0755); err != nil {
-        fmt.Println("Error creating directory:", err)
-        return newDirPath, err
-    }
+	// Create the directory
+	if err := os.MkdirAll(newDirPath, 0755); err != nil {
+		fmt.Println("Error creating directory:", err)
+		return newDirPath, err
+	}
 
-    // Define the symlink path
-    latestSymlinkPath := filepath.Join(dirPath, "out", "latest")
+	// Define the symlink path
+	latestSymlinkPath := filepath.Join(dirPath, "out", "latest")
 
-    // Remove the existing symlink if it exists
-    if _, err := os.Lstat(latestSymlinkPath); err == nil {
-        if err := os.Remove(latestSymlinkPath); err != nil {
-            fmt.Println("Error removing existing symlink:", err)
-            return newDirPath, err
-        }
-    }
-    // Convert to absolute path
-    absNewDirPath, err := filepath.Abs(newDirPath)
-    if err != nil {
-        fmt.Println("Error resolving absolute path:", err)
-        return "", err
-    }
-    // Create the new symlink
-    if err := os.Symlink(absNewDirPath, latestSymlinkPath); err != nil {
-        fmt.Println("Error creating symlink:", err)
-        return newDirPath, err
-    }
-    // Still returning the newDirPath instead of the symlink path
-    // So, all the output logs will still point to the newDirPath.
-    // This reduces issues when multiple executions are run in parallel.
-    return newDirPath, nil
+	// Remove the existing symlink if it exists
+	if _, err := os.Lstat(latestSymlinkPath); err == nil {
+		if err := os.Remove(latestSymlinkPath); err != nil {
+			fmt.Println("Error removing existing symlink:", err)
+			return newDirPath, err
+		}
+	}
+	// Convert to absolute path
+	absNewDirPath, err := filepath.Abs(newDirPath)
+	if err != nil {
+		fmt.Println("Error resolving absolute path:", err)
+		return "", err
+	}
+	// Create the new symlink
+	if err := os.Symlink(absNewDirPath, latestSymlinkPath); err != nil {
+		fmt.Println("Error creating symlink:", err)
+		return newDirPath, err
+	}
+	// Still returning the newDirPath instead of the symlink path
+	// So, all the output logs will still point to the newDirPath.
+	// This reduces issues when multiple executions are run in parallel.
+	return newDirPath, nil
 }
 
 // Helper to remove Messages and Labels from the Links
