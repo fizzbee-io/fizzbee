@@ -86,35 +86,15 @@ func main() {
 		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy, isTest)
 		holder.Store(p1)
 
-		rootNode, failedNode, endTime := startModelChecker(err, p1)
+		rootNode, failedNode, endTime, err := startModelChecker(p1)
 		runs++
 
-		if p1.GetVisitedNodesCount() < 250 {
-			dotString := modelchecker.GenerateDotFile(rootNode, make(map[*modelchecker.Node]bool))
-			dotFileName := filepath.Join(outDir, "graph.dot")
-			// Write the content to the file
-			err := os.WriteFile(dotFileName, []byte(dotString), 0644)
-			if err != nil {
-				fmt.Println("Error writing to file:", err)
-				return
-			}
-			if !isPlayground && !simulation {
-				fmt.Printf("Writen graph dotfile: %s\nTo generate svg, run: \n"+
-					"dot -Tsvg %s -o graph.svg && open graph.svg\n", dotFileName, dotFileName)
-			}
-		} else if !simulation {
-			fmt.Printf("Skipping dotfile generation. Too many nodes: %d\n", p1.GetVisitedNodesCount())
+		if writeDotFileIfNeeded(p1, rootNode, outDir) {
+			return
 		}
 
 		if err != nil {
-			var modelErr *modelchecker.ModelError
-			if errors.As(err, &modelErr) {
-				fmt.Println("Stack Trace:")
-				fmt.Println(modelErr.SprintStackTrace())
-			} else {
-				fmt.Println("Error:", err)
-			}
-			os.Exit(1)
+			printTraceAndExit(err)
 		}
 
 		//fmt.Println("root", root)
@@ -123,19 +103,8 @@ func main() {
 			var failedInvariant *modelchecker.InvariantPosition
 			nodes, messages, deadlock, yieldsCount := modelchecker.GetAllNodes(rootNode, stateConfig.GetOptions().GetMaxActions())
 
-			if len(messages) > 0 && !simulation {
-				graphDot := modelchecker.GenerateCommunicationGraph(messages)
-				dotFileName := filepath.Join(outDir, "communication.dot")
-				// Write the content to the file
-				err := os.WriteFile(dotFileName, []byte(graphDot), 0644)
-				if err != nil {
-					fmt.Println("Error writing to file:", err)
-					return
-				}
-				if !isPlayground {
-					fmt.Printf("Writen communication diagram dotfile: %s\nTo generate svg, run: \n"+
-						"dot -Tsvg %s -o communication.svg && open communication.svg\n", dotFileName, dotFileName)
-				}
+			if writeCommunicationFileIfNeeded(messages, outDir) {
+				return
 			}
 
 			if deadlock != nil && stateConfig.GetDeadlockDetection() && !p1.Stopped() && !simulation {
@@ -218,6 +187,55 @@ func main() {
 		}
 	}
 	fmt.Println("Stopped after", runs, "runs at ", time.Now())
+}
+
+func writeCommunicationFileIfNeeded(messages []string, outDir string) bool {
+	if len(messages) > 0 && !simulation {
+		graphDot := modelchecker.GenerateCommunicationGraph(messages)
+		dotFileName := filepath.Join(outDir, "communication.dot")
+		// Write the content to the file
+		err := os.WriteFile(dotFileName, []byte(graphDot), 0644)
+		if err != nil {
+			fmt.Println("Error writing to file:", err)
+			return true
+		}
+		if !isPlayground {
+			fmt.Printf("Writen communication diagram dotfile: %s\nTo generate svg, run: \n"+
+				"dot -Tsvg %s -o communication.svg && open communication.svg\n", dotFileName, dotFileName)
+		}
+	}
+	return false
+}
+
+func printTraceAndExit(err error) {
+	var modelErr *modelchecker.ModelError
+	if errors.As(err, &modelErr) {
+		fmt.Println("Stack Trace:")
+		fmt.Println(modelErr.SprintStackTrace())
+	} else {
+		fmt.Println("Error:", err)
+	}
+	os.Exit(1)
+}
+
+func writeDotFileIfNeeded(p1 *modelchecker.Processor, rootNode *modelchecker.Node, outDir string) bool {
+	if p1.GetVisitedNodesCount() < 250 {
+		dotString := modelchecker.GenerateDotFile(rootNode, make(map[*modelchecker.Node]bool))
+		dotFileName := filepath.Join(outDir, "graph.dot")
+		// Write the content to the file
+		err := os.WriteFile(dotFileName, []byte(dotString), 0644)
+		if err != nil {
+			fmt.Println("Error writing to file:", err)
+			return true
+		}
+		if !isPlayground && !simulation {
+			fmt.Printf("Writen graph dotfile: %s\nTo generate svg, run: \n"+
+				"dot -Tsvg %s -o graph.svg && open graph.svg\n", dotFileName, dotFileName)
+		}
+	} else if !simulation {
+		fmt.Printf("Skipping dotfile generation. Too many nodes: %d\n", p1.GetVisitedNodesCount())
+	}
+	return false
 }
 
 func setupSignalHandler(holder *atomic.Pointer[modelchecker.Processor], stopped *bool) {
@@ -317,10 +335,10 @@ func parseFlags() []string {
 	return args
 }
 
-func startModelChecker(err error, p1 *modelchecker.Processor) (*modelchecker.Node, *modelchecker.Node, time.Time) {
+func startModelChecker(p1 *modelchecker.Processor) (*modelchecker.Node, *modelchecker.Node, time.Time, error) {
 	if simulation {
 		rootNode, failedNode, _ := p1.Start()
-		return rootNode, failedNode, time.Now()
+		return rootNode, failedNode, time.Now(), nil
 	}
 	if internalProfile {
 		startCpuProfile()
@@ -335,7 +353,7 @@ func startModelChecker(err error, p1 *modelchecker.Processor) (*modelchecker.Nod
 	if internalProfile {
 		startHeapProfile()
 	}
-	return rootNode, failedNode, endTime
+	return rootNode, failedNode, endTime, err
 }
 
 func startCpuProfile() {
