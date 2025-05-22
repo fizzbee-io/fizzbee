@@ -1974,7 +1974,12 @@ func (p *Processor) checkLiveness(node *Node) (*InvariantPosition, *Node, bool) 
 func (p *Processor) checkEventuallyAlways(fileIndex, invariantIndex int, node *Node) (*Node, bool) {
 	// Iterate through the outbound links of the cycle
 	currentNode := node
+	visited := make(map[*Node]bool)
 	for {
+		if visited[currentNode] {
+			break
+		}
+		visited[currentNode] = true
 		// Check if the invariant becomes permanently true at some point
 		if !currentNode.Process.Witness[fileIndex][invariantIndex] {
 			// If the invariant is false at this node, the "eventually always" condition fails
@@ -2001,7 +2006,13 @@ func (p *Processor) checkEventuallyAlways(fileIndex, invariantIndex int, node *N
 func (p *Processor) checkAlwaysEventually(fileIndex, invariantIndex int, node *Node) (*Node, bool) {
 	// Iterate through the outbound links of the cycle
 	currentNode := node
+	visited := make(map[*Node]bool)
 	for {
+		if visited[currentNode] {
+			// If we revisit a node, we can stop checking
+			break
+		}
+		visited[currentNode] = true
 		// Check if the invariant is true at least once in this cycle (eventually reappears)
 		if currentNode.Process.Witness[fileIndex][invariantIndex] {
 			// The invariant was true at some point, so "always eventually" holds
