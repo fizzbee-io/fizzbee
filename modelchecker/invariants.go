@@ -103,19 +103,23 @@ func CheckAssertion(process *Process, invariant *ast.Invariant, index int) bool 
 	cloned.Heap.state["__returns__"] = NewDictFromStringDict(cloned.Returns)
 
 	return execAssertionFunction(cloned, index, invariant)
-
 }
 
 func execAssertionFunction(cloned *Process, index int, invariant *ast.Invariant) bool {
+	returnVal := execFunction(cloned, invariant.Name, fmt.Sprintf("Invariants[%d]", index))
+	return bool(returnVal.Truth())
+}
+
+func execFunction(cloned *Process, name string, pc string) starlark.Value {
 	numThreads := cloned.GetThreadsCount()
 	assertThread := cloned.NewThread()
 
-	assertThread.currentFrame().pc = fmt.Sprintf("Invariants[%d]", index)
-	assertThread.currentFrame().Name = invariant.Name
+	assertThread.currentFrame().pc = pc
+	assertThread.currentFrame().Name = name
 	for {
 		forks, _ := assertThread.Execute()
 		if cloned.GetThreadsCount() <= numThreads {
-			return bool(cloned.Returns[invariant.Name].Truth())
+			return cloned.Returns[name]
 		}
 		if len(forks) > 0 {
 			panic("Assertions should not include non-deterministic behavior")
