@@ -41,10 +41,9 @@ func main() {
 
 	// Get the input JSON file name from command line argument
 	jsonFilename := args[0]
+	dirPath := filepath.Dir(jsonFilename)
 
 	f := loadInputJSON(jsonFilename)
-
-	dirPath := filepath.Dir(jsonFilename)
 
 	sourceFileName := filepath.Join(dirPath, f.SourceInfo.GetFileName())
 	//fmt.Println("dirPath:", dirPath)
@@ -59,6 +58,209 @@ func main() {
 		return
 	}
 
+	if f.Composition != nil {
+		runCompositionalModelChecking(f, dirPath, outDir)
+	} else {
+		modelCheckSingleSpec(f, stateConfig, dirPath, outDir, sourceFileName)
+	}
+}
+
+func runCompositionalModelChecking(f *ast.File, dirPath string, outDir string) {
+	if simulation {
+		fmt.Println("Simulation mode not supported for composition")
+		return
+	}
+	roots := make(map[string]*modelchecker.Node)
+	// create a map to store the interface preserving states
+	// key is the hash, value is the list of (list of nodes)
+	joinHashes := make(JoinHashes)
+	for i, spec := range f.Composition.GetSpecs() {
+		fmt.Printf("Composed Spec %s: %s\n", spec.Name, spec.Expr)
+		fileRef, fnRef, err := ParseFunctionRef(spec.Expr.GetPyExpr())
+		if err != nil {
+			fmt.Println("Error parsing function reference:", err)
+			return
+		} else if fileRef != spec.Name {
+			fmt.Println("File reference does not match spec name:", fileRef, "!=", spec.Name)
+			return
+		}
+		// Get the new json file name as dirPath + "/" + name + ".json"
+		composedJsonFileName := filepath.Join(dirPath, spec.Name+".json")
+		composedFile := loadInputJSON(composedJsonFileName)
+		composedSourceFileName := filepath.Join(dirPath, composedFile.SourceInfo.GetFileName())
+		composedStateConfig := loadStateOptions(dirPath, composedFile.GetFrontMatter())
+		applyDefaultStateOptions(composedStateConfig)
+		fmt.Println("modelCheckSingleSpec:", composedSourceFileName)
+		composedOutDir := filepath.Join(outDir, spec.Name)
+		if err := os.MkdirAll(composedOutDir, 0755); err != nil {
+			fmt.Println("Error creating directory:", err)
+			return
+		}
+		root := modelCheckSingleSpec(composedFile, composedStateConfig, dirPath, composedOutDir, composedSourceFileName)
+		if root == nil {
+			fmt.Println("Error in model checking composed spec:", spec.Name, "Aborting")
+			return
+		}
+		roots[spec.Name] = root
+		populateJoinHashes(joinHashes, i, root, fileRef, fnRef)
+	}
+	fmt.Println("Composed root nodes:", roots)
+
+	err := ComposeTransitions(joinHashes)
+	if err != nil {
+		fmt.Println("Error composing transitions:", err)
+		return
+	}
+	return
+}
+
+type ComposedNode = []*modelchecker.Node
+type ComposedTransition = struct {
+	From ComposedNode
+	To   ComposedNode
+}
+
+func cartesianProduct(sets []TransitionSet, handler func([]lib.Pair[*modelchecker.Node, *modelchecker.Node])) {
+	var helper func(int, []lib.Pair[*modelchecker.Node, *modelchecker.Node])
+	helper = func(depth int, current []lib.Pair[*modelchecker.Node, *modelchecker.Node]) {
+		if depth == len(sets) {
+			handler(current)
+			return
+		}
+		for t := range sets[depth] {
+			helper(depth+1, append(current, t))
+		}
+	}
+	helper(0, []lib.Pair[*modelchecker.Node, *modelchecker.Node]{})
+}
+
+func ComposeTransitions(joinHashes JoinHashes) error {
+	for key, sets := range joinHashes {
+		if len(sets) < 2 {
+			return fmt.Errorf("need at least 2 transition sets for key %s", key)
+		}
+
+		cartesianProduct(sets, func(ts []lib.Pair[*modelchecker.Node, *modelchecker.Node]) {
+			// Check if all transitions are stuttering
+			allStuttering := true
+			for _, t := range ts {
+				if t.First.Heap.HashCode() != t.Second.Heap.HashCode() {
+					allStuttering = false
+					break
+				}
+			}
+			if allStuttering {
+				return // Skip all-stuttering transitions
+			}
+
+			from := make(ComposedNode, len(ts))
+			to := make(ComposedNode, len(ts))
+			for i, t := range ts {
+				from[i] = t.First
+				to[i] = t.Second
+			}
+
+			composed := ComposedTransition{From: from, To: to}
+			// Handle composed transition
+			printComposedTransition(composed)
+		})
+	}
+	return nil
+}
+
+func printComposedTransition(composed ComposedTransition) {
+	fmt.Printf("Composed transition: ")
+	for i := range composed.From {
+		fmt.Printf("(%s -> %s) ", composed.From[i].Heap.String(), composed.To[i].Heap.String())
+	}
+	fmt.Println()
+}
+
+func ParseFunctionRef(input string) (string, string, error) {
+	input = strings.TrimSpace(input)
+
+	if input == "" {
+		return "", "", errors.New("input is empty")
+	}
+
+	parts := strings.Split(input, ".")
+	switch len(parts) {
+	//case 1:
+	//	funcName := strings.TrimSpace(parts[0])
+	//	if funcName == "" {
+	//		return "", "", errors.New("function name is required")
+	//	}
+	//	return "", funcName, nil
+	case 2:
+		fileRef := strings.TrimSpace(parts[0])
+		funcName := strings.TrimSpace(parts[1])
+		if fileRef == "" || funcName == "" {
+			return "", "", errors.New("file reference or function name is empty")
+		}
+		return fileRef, funcName, nil
+	default:
+		return "", "", errors.New("invalid function reference format. Expected format: 'fileName.funcName'")
+	}
+}
+
+type HashKey string
+
+type Transition = lib.Pair[*modelchecker.Node, *modelchecker.Node]
+
+// type NodeSet map[*modelchecker.Node]bool
+type TransitionSet map[Transition]bool
+type JoinHashes map[HashKey][]TransitionSet
+
+func populateJoinHashes(joinHashes JoinHashes, i int, root *modelchecker.Node, fileRef string, fnRef string) {
+	visited := make(map[*modelchecker.Node]bool)
+
+	var dfs func(from *modelchecker.Node, current *modelchecker.Node)
+	dfs = func(from *modelchecker.Node, current *modelchecker.Node) {
+
+		if from != nil && current.IsYieldNode() {
+			addToJoinHashes(joinHashes, i, from, current, fnRef)
+		}
+		if visited[current] {
+			return
+		}
+		visited[current] = true
+
+		if current.IsYieldNode() {
+			// Add stuttering (to, to) link for new nodes discovered
+			addToJoinHashes(joinHashes, i, current, current, fnRef)
+			from = current // update 'from' for child traversal
+		}
+
+		for _, child := range current.Outbound {
+			if child.Node != nil {
+				dfs(from, child.Node)
+			}
+		}
+	}
+
+	dfs(nil, root)
+}
+
+func addToJoinHashes(joinHashes JoinHashes, i int, from, to *modelchecker.Node, fnName string) {
+	fromState := modelchecker.ExecFunction(from.Process.CloneForAssert(nil, 0), fnName).String()
+	toState := modelchecker.ExecFunction(to.Process.CloneForAssert(nil, 0), fnName).String()
+
+	key := HashKey(fromState + "," + toState)
+
+	if _, exists := joinHashes[key]; !exists {
+		joinHashes[key] = make([]TransitionSet, i+1)
+	}
+	for len(joinHashes[key]) <= i {
+		joinHashes[key] = append(joinHashes[key], make(TransitionSet))
+	}
+	if joinHashes[key][i] == nil {
+		joinHashes[key][i] = make(TransitionSet)
+	}
+	pair := lib.NewPair(from, to)
+	joinHashes[key][i][pair] = true
+}
+
+func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPath string, outDir string, sourceFileName string) *modelchecker.Node {
 	//maxRuns := 10000
 	if !simulation || seed != 0 {
 		maxRuns = 1
@@ -87,7 +289,7 @@ func main() {
 		runs++
 
 		if writeDotFileIfNeeded(p1, rootNode, outDir) {
-			return
+			return nil
 		}
 
 		if err != nil {
@@ -101,7 +303,7 @@ func main() {
 			nodes, messages, deadlock, yieldsCount := modelchecker.GetAllNodes(rootNode, stateConfig.GetOptions().GetMaxActions())
 
 			if writeCommunicationFileIfNeeded(messages, outDir) {
-				return
+				return nil
 			}
 
 			if deadlock != nil && stateConfig.GetDeadlockDetection() && !p1.Stopped() && !simulation {
@@ -111,7 +313,7 @@ func main() {
 					fmt.Println("seed:", p1.Seed)
 				}
 				dumpFailedNode(sourceFileName, deadlock, rootNode, outDir)
-				return
+				return nil
 			}
 			if !simulation {
 				fmt.Println("Valid nodes:", len(nodes), "Unique states:", yieldsCount)
@@ -124,7 +326,7 @@ func main() {
 					if !isTest {
 						fmt.Println("Time taken to check invariant: ", time.Now().Sub(endTime))
 					}
-					return
+					return nil
 				}
 			}
 			if !simulation && !p1.Stopped() {
@@ -142,7 +344,7 @@ func main() {
 			if failedInvariant == nil && !simulation {
 				if p1.Stopped() {
 					fmt.Println("Model checker stopped")
-					return
+					return nil
 				}
 				fmt.Println("PASSED: Model checker completed successfully")
 				//nodes, _, _ := modelchecker.GetAllNodes(rootNode)
@@ -150,11 +352,11 @@ func main() {
 					nodeFiles, linkFileNames, err := modelchecker.GenerateProtoOfJson(nodes, outDir+"/")
 					if err != nil {
 						fmt.Println("Error generating proto files:", err)
-						return
+						return rootNode
 					}
 					fmt.Printf("Writen %d node files and %d link files to dir %s\n", len(nodeFiles), len(linkFileNames), outDir)
 				}
-				return
+				return rootNode
 			} else if failedInvariant != nil {
 				fmt.Println("FAILED: Liveness check failed")
 				if failedInvariant.FileIndex > 0 {
@@ -167,7 +369,7 @@ func main() {
 				if err != nil {
 					fmt.Println("Error writing files", err)
 				}
-				return
+				return nil
 			}
 
 		} else if failedNode != nil {
@@ -180,10 +382,11 @@ func main() {
 				fmt.Println("seed:", p1.Seed)
 			}
 			dumpFailedNode(sourceFileName, failedNode, rootNode, outDir)
-			return
+			return nil
 		}
 	}
 	fmt.Println("Stopped after", runs, "runs at ", time.Now())
+	return nil
 }
 
 func writeCommunicationFileIfNeeded(messages []string, outDir string) bool {

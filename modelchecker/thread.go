@@ -822,9 +822,9 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 					t.Process.Returns[convertToAction(action1).Name] = val
 					t.Process.Enable()
 				} else if invariant, ok := action.(*ast.Invariant); ok {
-					//fmt.Println("Handling invariant returns")
 					t.Process.Returns[convertToInvariant(invariant).Name] = val
-					//t.Process.Enable()
+				} else if function, ok := action.(*ast.Function); ok {
+					t.Process.Returns[convertToFunction(function).Name] = val
 				} else if _, ok := action.(*ast.Role); ok {
 					actionPath = pathComp[0] + "." + pathComp[1]
 					action1 = GetProtoFieldByPath(fileAst, actionPath).(*ast.Action)
@@ -1349,6 +1349,9 @@ func convertToAction(message proto.Message) *ast.Action {
 
 func convertToInvariant(message proto.Message) *ast.Invariant {
 	return message.(*ast.Invariant)
+}
+func convertToFunction(message proto.Message) *ast.Function {
+	return message.(*ast.Function)
 }
 
 func convertToBlock(message proto.Message) *ast.Block {

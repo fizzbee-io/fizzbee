@@ -106,11 +106,18 @@ func CheckAssertion(process *Process, invariant *ast.Invariant, index int) bool 
 }
 
 func execAssertionFunction(cloned *Process, index int, invariant *ast.Invariant) bool {
-	returnVal := execFunction(cloned, invariant.Name, fmt.Sprintf("Invariants[%d]", index))
+	returnVal := execFunctionBlock(cloned, invariant.Name, fmt.Sprintf("Invariants[%d]", index))
 	return bool(returnVal.Truth())
 }
 
-func execFunction(cloned *Process, name string, pc string) starlark.Value {
+func ExecFunction(process *Process, name string) starlark.Value {
+	def := process.SymbolTable[name]
+
+	returnVal := execFunctionBlock(process, name, def.path+".Block")
+	return returnVal
+}
+
+func execFunctionBlock(cloned *Process, name string, pc string) starlark.Value {
 	numThreads := cloned.GetThreadsCount()
 	assertThread := cloned.NewThread()
 
