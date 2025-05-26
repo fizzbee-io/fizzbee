@@ -478,7 +478,7 @@ atomic action Add:
 ```
 3. Make it fail again, by resetting n to 0 in the Add method, and rerun.
 
-## Probabilisitic Evaluation
+## Probabilistic Evaluation
 Probabilistic evaluation is not implemented fully yet. This is a work in progress
 and a bit spammy logs. Probabilistic evaluation is critical for performance evaluation
 and for some liveness properties that cannot be evaluated using TLA+.
