@@ -471,7 +471,7 @@ func EventuallyAlwaysFast(nodes []*Node, predicate Predicate) ([]*Link, bool) {
 type Predicate func(n *Node) (bool, bool)
 
 type CycleCallbackResult struct {
-	missingLinks []*Pair[*Node, []*Link]
+	missingLinks []*lib.Pair[*Node, []*Link]
 }
 type CycleCallback func(path []*Link, cycles int) (bool, *CycleCallbackResult)
 
@@ -711,7 +711,7 @@ func fairnessLinkName(node *Node, outLink *Link) (string, ast.FairnessLevel, boo
 }
 
 func findMissingLinks(path []*Link, strongFairLinksOutOfChain map[string]bool, weakFairLinksOutOfChain map[string]bool) *CycleCallbackResult {
-	missingLinks := make([]*Pair[*Node, []*Link], 0)
+	missingLinks := make([]*lib.Pair[*Node, []*Link], 0)
 	for _, link := range path {
 		node := link.Node
 		nodeMissingLinks := make([]*Link, 0)
@@ -728,7 +728,8 @@ func findMissingLinks(path []*Link, strongFairLinksOutOfChain map[string]bool, w
 			}
 		}
 		if len(nodeMissingLinks) > 0 {
-			missingLinks = append(missingLinks, &Pair[*Node, []*Link]{First: node, Second: nodeMissingLinks})
+			pair := lib.NewPair(node, nodeMissingLinks)
+			missingLinks = append(missingLinks, &pair)
 		}
 	}
 	return &CycleCallbackResult{missingLinks: missingLinks}

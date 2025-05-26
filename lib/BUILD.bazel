@@ -6,6 +6,7 @@ go_library(
         "counter.go",
         "jsonmarshaller.go",
         "linear_collection.go",
+        "pair.go",
         "permutations.go",
         "queue.go",
         "randomqueue.go",

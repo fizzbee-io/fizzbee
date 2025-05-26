@@ -411,11 +411,6 @@ func GenerateFailurePath(nodes []*Link, invariant *InvariantPosition) string {
 	return builder.String()
 }
 
-type Pair[T1 any, T2 any] struct {
-	First  T1
-	Second T2
-}
-
 func GenerateCommunicationGraph(messages []string) string {
 	// TODO: Handle assymetric communication
 	// For now, if there are 2 senders and 3 receivers, we will have 6 possible communication links
@@ -433,7 +428,7 @@ func GenerateCommunicationGraph(messages []string) string {
 	// tracks whether there are a single instance or a role or multiple instances
 	roleNames := make(map[string]bool)
 	// first key is [sender, receiver] pair, second key is message name
-	uniqueMessages := make(map[Pair[string, string]]map[string]bool)
+	uniqueMessages := make(map[lib.Pair[string, string]]map[string]bool)
 	// first key is [receiver], second key is action name, fairness level pair
 	uniqueActions := make(map[string]map[string]proto.FairnessLevel)
 
@@ -451,7 +446,7 @@ func GenerateCommunicationGraph(messages []string) string {
 			roles[receiver] = true
 			roleNames[receiverParts[0]] = roleNames[receiverParts[0]] || receiverParts[1] != "0"
 
-			pair := Pair[string, string]{senderParts[0], receiverParts[0]}
+			pair := lib.NewPair(senderParts[0], receiverParts[0])
 			if _, ok := uniqueMessages[pair]; !ok {
 				uniqueMessages[pair] = make(map[string]bool)
 			}
