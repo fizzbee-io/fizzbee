@@ -19,6 +19,7 @@ go_library(
         "starlark.go",
         "testconstants.go",
         "thread.go",
+        "visualization.go",
     ],
     importpath = "github.com/fizzbee-io/fizzbee/modelchecker",
     visibility = ["//visibility:public"],
