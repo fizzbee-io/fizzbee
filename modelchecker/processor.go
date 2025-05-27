@@ -279,6 +279,18 @@ func (p *Process) GetThreadsCount() int {
 	return len(p.GetThreads())
 }
 
+func (p *Process) IsYieldNode() bool {
+	if p == nil {
+		return false
+	}
+	switch p.Name {
+	case "yield", "crash", "init":
+		return true
+	default:
+		return false
+	}
+}
+
 func (p *Process) Fork() *Process {
 	// SetCustomPtrFunc and SetCustomFunc changes the global state,
 	// so while the clone is in progress this should not be changed :(
