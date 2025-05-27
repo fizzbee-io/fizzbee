@@ -106,7 +106,7 @@ func runCompositionalModelChecking(f *ast.File, dirPath string, outDir string) {
 	}
 	fmt.Println("Composed root nodes:", roots)
 
-	err := ComposeTransitions(joinHashes)
+	err := ComposeTransitions(f, joinHashes)
 	if err != nil {
 		fmt.Println("Error composing transitions:", err)
 		return
@@ -134,7 +134,14 @@ func cartesianProduct(sets []TransitionSet, handler func([]lib.Pair[*modelchecke
 	helper(0, []lib.Pair[*modelchecker.Node, *modelchecker.Node]{})
 }
 
-func ComposeTransitions(joinHashes JoinHashes) error {
+func ComposeTransitions(f *ast.File, joinHashes JoinHashes) error {
+	hasTransitionInvariant := false
+	for _, invariant := range f.Invariants {
+		if invariant.Block != nil && slices.Contains(invariant.TemporalOperators, "transition") {
+			hasTransitionInvariant = true
+			break
+		}
+	}
 	for key, sets := range joinHashes {
 		if len(sets) < 2 {
 			return fmt.Errorf("need at least 2 transition sets for key %s", key)
@@ -152,17 +159,38 @@ func ComposeTransitions(joinHashes JoinHashes) error {
 			if allStuttering {
 				return // Skip all-stuttering transitions
 			}
-
+			composedFrom := make(map[string]*modelchecker.Heap)
+			composedTo := make(map[string]*modelchecker.Heap)
 			from := make(ComposedNode, len(ts))
 			to := make(ComposedNode, len(ts))
 			for i, t := range ts {
 				from[i] = t.First
 				to[i] = t.Second
+
+				composedFrom[f.Composition.GetSpecs()[i].GetName()] = t.First.Heap
+				composedTo[f.Composition.GetSpecs()[i].GetName()] = t.Second.Heap
 			}
 
 			composed := ComposedTransition{From: from, To: to}
 			// Handle composed transition
 			printComposedTransition(composed)
+			processTo := modelchecker.NewProcess("yield", []*ast.File{f}, nil)
+			processTo.Heap = modelchecker.NewComposedHeap(composedTo)
+			failedInvariants := modelchecker.CheckInvariants(processTo)
+			if len(failedInvariants) > 0 {
+				processTo.FailedInvariants = failedInvariants
+				fmt.Println("Composed state failed invariants:", failedInvariants)
+			}
+			if hasTransitionInvariant {
+				processFrom := modelchecker.NewProcess("yield", []*ast.File{f}, nil)
+				processFrom.Heap = modelchecker.NewComposedHeap(composedFrom)
+				processTo.Parent = processFrom
+				failedInvariantsFrom := modelchecker.CheckTransitionInvariants(processTo)
+				if len(failedInvariantsFrom) > 0 {
+					//processTo.FailedInvariants = failedInvariants
+					fmt.Println("Composed transition failed invariants:", failedInvariantsFrom)
+				}
+			}
 		})
 	}
 	return nil

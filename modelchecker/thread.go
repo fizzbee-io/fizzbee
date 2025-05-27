@@ -8,6 +8,7 @@ import (
 	"github.com/fizzbee-io/fizzbee/lib"
 	"github.com/huandu/go-clone"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 	"google.golang.org/protobuf/proto"
 	"hash"
 	"maps"
@@ -23,6 +24,24 @@ type Heap struct {
 	state          starlark.StringDict
 	globals        starlark.StringDict
 	CachedHashCode string
+}
+
+func NewComposedHeap(composed map[string]*Heap) *Heap {
+	heap := &Heap{
+		state:   make(starlark.StringDict),
+		globals: make(starlark.StringDict),
+	}
+	for k, h := range composed {
+		// copy, heap's state and globals into heap.state[k]
+		d := make(starlark.StringDict)
+		maps.Copy(d, h.globals)
+		maps.Copy(d, h.state)
+		s := starlarkstruct.FromStringDict(starlark.String(k), d)
+		// Freezing the struct to prevent further modifications, so we don't need to deep clone
+		s.Freeze()
+		heap.state[k] = s
+	}
+	return heap
 }
 
 func (h *Heap) GetSymmetryDefs() []*lib.SymmetricValues {
