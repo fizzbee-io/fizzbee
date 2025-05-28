@@ -353,24 +353,35 @@ func printGraph(node *Node) {
 	}
 }
 
-func GenerateFailurePath(nodes []*Link, invariant *InvariantPosition) string {
+func GenerateFailurePath(nodes []*Link, name string, invariant *InvariantPosition) string {
 	re := regexp.MustCompile(`\\+`)
 
 	builder := strings.Builder{}
-	builder.WriteString("digraph G {\n")
+
+	useCluster := name != ""
+	prefix := ""
+	if useCluster {
+		builder.WriteString(fmt.Sprintf("  subgraph cluster_%s {\n", name))
+		builder.WriteString(fmt.Sprintf("    label=\"%s\";\n", name))
+		prefix = name + "_"
+	} else {
+		builder.WriteString("digraph G {\n")
+	}
 
 	parentID := ""
-
+	// The visited/cycle detection is not used when using composition for now.
 	visited := map[*Node]string{}
+
 	for i, link := range nodes {
 		node := link.Node
-		nodeID := fmt.Sprintf("\"%d\"", i)
-		if visited[node] != "" {
-			//parentID = visited[node]
-			nodeID = visited[node]
+		nodeID := fmt.Sprintf("\"%s%d\"", prefix, i)
 
+		if visited[node] != "" {
+			nodeID = visited[node]
 		} else {
-			visited[node] = nodeID
+			if name == "" {
+				visited[node] = nodeID
+			}
 			color := "black"
 			if node.Process.HasFailedInvariants() {
 				color = "red"
@@ -382,13 +393,11 @@ func GenerateFailurePath(nodes []*Link, invariant *InvariantPosition) string {
 				penwidth = 2
 			}
 			stateString := re.ReplaceAllString(node.String(), "\\")
-			builder.WriteString(fmt.Sprintf("  %s [label=\"%s\", color=\"%s\" penwidth=\"%d\" ];\n", nodeID, stateString, color, penwidth))
-
+			builder.WriteString(fmt.Sprintf("    %s [label=\"%s\", color=\"%s\" penwidth=\"%d\" ];\n", nodeID, stateString, color, penwidth))
 		}
 
 		if parentID != "" {
-			label := link.Name
-			label = strings.ReplaceAll(label, "\"", "\\\"")
+			label := strings.ReplaceAll(link.Name, "\"", "\\\"")
 			edgewidth := 1
 			edgecolor := "black"
 
@@ -402,12 +411,18 @@ func GenerateFailurePath(nodes []*Link, invariant *InvariantPosition) string {
 			if link.HasFailedInvariants() {
 				edgecolor = "red"
 			}
-			builder.WriteString(fmt.Sprintf("  %s -> %s [label=\"%s\", color=\"%s\" penwidth=\"%d\"];\n", parentID, nodeID, fmt.Sprintf("%d: %s", i, label), edgecolor, edgewidth))
+			builder.WriteString(fmt.Sprintf("    %s -> %s [label=\"%d: %s\", color=\"%s\" penwidth=\"%d\"];\n", parentID, nodeID, i, label, edgecolor, edgewidth))
 		}
+
 		parentID = nodeID
 	}
 
-	builder.WriteString("}\n")
+	if useCluster {
+		builder.WriteString("  }\n")
+	} else {
+		builder.WriteString("}\n")
+	}
+
 	return builder.String()
 }
 
