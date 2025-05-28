@@ -71,11 +71,12 @@ func runCompositionalModelChecking(f *ast.File, dirPath string, outDir string) {
 		return
 	}
 	roots := make(map[string]*modelchecker.Node)
+	rootsList := make([]*modelchecker.Node, len(f.Composition.GetSpecs()))
 	// create a map to store the interface preserving states
-	// key is the hash, value is the list of (list of nodes)
+	// key is the hash, value is the list of (list of Nodes)
 	joinHashes := make(JoinHashes)
 	for i, spec := range f.Composition.GetSpecs() {
-		fmt.Printf("Composed Spec %s: %s\n", spec.Name, spec.Expr)
+		fmt.Printf("\nComposed Spec: %s\n", spec.Name)
 		fileRef, fnRef, err := ParseFunctionRef(spec.Expr.GetPyExpr())
 		if err != nil {
 			fmt.Println("Error parsing function reference:", err)
@@ -90,23 +91,23 @@ func runCompositionalModelChecking(f *ast.File, dirPath string, outDir string) {
 		composedSourceFileName := filepath.Join(dirPath, composedFile.SourceInfo.GetFileName())
 		composedStateConfig := loadStateOptions(dirPath, composedFile.GetFrontMatter())
 		applyDefaultStateOptions(composedStateConfig)
-		fmt.Println("modelCheckSingleSpec:", composedSourceFileName)
 		composedOutDir := filepath.Join(outDir, spec.Name)
 		if err := os.MkdirAll(composedOutDir, 0755); err != nil {
 			fmt.Println("Error creating directory:", err)
 			return
 		}
+		fmt.Println("Model checking composed spec:", composedSourceFileName)
 		root := modelCheckSingleSpec(composedFile, composedStateConfig, dirPath, composedOutDir, composedSourceFileName)
 		if root == nil {
 			fmt.Println("Error in model checking composed spec:", spec.Name, "Aborting")
 			return
 		}
 		roots[spec.Name] = root
+		rootsList[i] = root
 		populateJoinHashes(joinHashes, i, root, fileRef, fnRef)
 	}
-	fmt.Println("Composed root nodes:", roots)
 
-	err := ComposeTransitions(f, joinHashes)
+	err := ComposeTransitions(f, joinHashes, rootsList, outDir)
 	if err != nil {
 		fmt.Println("Error composing transitions:", err)
 		return
@@ -114,27 +115,44 @@ func runCompositionalModelChecking(f *ast.File, dirPath string, outDir string) {
 	return
 }
 
-type ComposedNode = []*modelchecker.Node
-type ComposedTransition = struct {
-	From ComposedNode
-	To   ComposedNode
+type ComposedNode = struct {
+	*modelchecker.Node
+	Nodes []*modelchecker.Node
 }
 
-func cartesianProduct(sets []TransitionSet, handler func([]lib.Pair[*modelchecker.Node, *modelchecker.Node])) {
+type ComposedTransition = struct {
+	From *ComposedNode
+	To   *ComposedNode
+}
+
+func cartesianProduct(sets []TransitionSet, handler func(ts []lib.Pair[*modelchecker.Node, *modelchecker.Node]) (
+	*ComposedNode, *ComposedTransition)) (*ComposedNode, *ComposedTransition) {
+
 	var helper func(int, []lib.Pair[*modelchecker.Node, *modelchecker.Node])
+	var failedNode *ComposedNode
+	var failedTransition *ComposedTransition
 	helper = func(depth int, current []lib.Pair[*modelchecker.Node, *modelchecker.Node]) {
 		if depth == len(sets) {
-			handler(current)
+			failedNode, failedTransition = handler(current)
 			return
 		}
 		for t := range sets[depth] {
 			helper(depth+1, append(current, t))
+			if failedNode != nil || failedTransition != nil {
+				return // Stop further processing if a failure is found
+			}
 		}
 	}
 	helper(0, []lib.Pair[*modelchecker.Node, *modelchecker.Node]{})
+	if failedTransition != nil {
+		fmt.Println("Failed Transition:", failedTransition.From.Nodes, "->", failedTransition.To.Nodes)
+	} else if failedNode != nil {
+		fmt.Println("Failed Node:", failedNode.Nodes)
+	}
+	return failedNode, failedTransition
 }
 
-func ComposeTransitions(f *ast.File, joinHashes JoinHashes) error {
+func ComposeTransitions(f *ast.File, joinHashes JoinHashes, roots []*modelchecker.Node, outDir string) error {
 	hasTransitionInvariant := false
 	for _, invariant := range f.Invariants {
 		if invariant.Block != nil && slices.Contains(invariant.TemporalOperators, "transition") {
@@ -147,7 +165,7 @@ func ComposeTransitions(f *ast.File, joinHashes JoinHashes) error {
 			return fmt.Errorf("need at least 2 transition sets for key %s", key)
 		}
 
-		cartesianProduct(sets, func(ts []lib.Pair[*modelchecker.Node, *modelchecker.Node]) {
+		failedNode, failedTransition := cartesianProduct(sets, func(ts []lib.Pair[*modelchecker.Node, *modelchecker.Node]) (*ComposedNode, *ComposedTransition) {
 			// Check if all transitions are stuttering
 			allStuttering := true
 			for _, t := range ts {
@@ -157,49 +175,76 @@ func ComposeTransitions(f *ast.File, joinHashes JoinHashes) error {
 				}
 			}
 			if allStuttering {
-				return // Skip all-stuttering transitions
+				return nil, nil // Skip all-stuttering transitions
 			}
 			composedFrom := make(map[string]*modelchecker.Heap)
 			composedTo := make(map[string]*modelchecker.Heap)
-			from := make(ComposedNode, len(ts))
-			to := make(ComposedNode, len(ts))
+			from := &ComposedNode{Nodes: make([]*modelchecker.Node, len(ts))}
+			to := &ComposedNode{Nodes: make([]*modelchecker.Node, len(ts))}
+
 			for i, t := range ts {
-				from[i] = t.First
-				to[i] = t.Second
+				from.Nodes[i] = t.First
+				to.Nodes[i] = t.Second
 
 				composedFrom[f.Composition.GetSpecs()[i].GetName()] = t.First.Heap
 				composedTo[f.Composition.GetSpecs()[i].GetName()] = t.Second.Heap
 			}
 
-			composed := ComposedTransition{From: from, To: to}
+			composed := &ComposedTransition{From: from, To: to}
 			// Handle composed transition
-			printComposedTransition(composed)
 			processTo := modelchecker.NewProcess("yield", []*ast.File{f}, nil)
+			processTo.Enable()
 			processTo.Heap = modelchecker.NewComposedHeap(composedTo)
 			failedInvariants := modelchecker.CheckInvariants(processTo)
-			if len(failedInvariants) > 0 {
+			to.Node = modelchecker.NewNode(processTo)
+			if len(failedInvariants) > 0 && len(failedInvariants[0]) > 0 {
 				processTo.FailedInvariants = failedInvariants
 				fmt.Println("Composed state failed invariants:", failedInvariants)
+				processTo.FailedInvariants = failedInvariants
+				return to, nil
 			}
 			if hasTransitionInvariant {
 				processFrom := modelchecker.NewProcess("yield", []*ast.File{f}, nil)
+				processFrom.Enable()
 				processFrom.Heap = modelchecker.NewComposedHeap(composedFrom)
 				processTo.Parent = processFrom
-				failedInvariantsFrom := modelchecker.CheckTransitionInvariants(processTo)
-				if len(failedInvariantsFrom) > 0 {
+				failedTransitionInvariants := modelchecker.CheckTransitionInvariants(processTo)
+				if len(failedTransitionInvariants) > 0 && len(failedTransitionInvariants[0]) > 0 {
 					//processTo.FailedInvariants = failedInvariants
-					fmt.Println("Composed transition failed invariants:", failedInvariantsFrom)
+					fmt.Println("Composed transition failed invariants:", failedTransitionInvariants)
+					link := &modelchecker.Link{
+						Node:             to.Node,
+						Name:             "composed-transition",
+						FailedInvariants: failedTransitionInvariants,
+					}
+					from.Node = modelchecker.NewNode(processFrom)
+					from.Outbound = append(from.Outbound, link)
+					to.Inbound = append(to.Inbound, link)
+					return to, composed
 				}
 			}
+
+			return nil, nil
 		})
+		if failedNode != nil || failedTransition != nil {
+			if failedTransition != nil {
+				fmt.Println("Failed Composed Node:", failedTransition)
+				printComposedTransition(failedTransition)
+				dumpComposedFailedTransition(failedTransition, f.Composition, roots, outDir)
+			} else /*if failedNode != nil*/ {
+				fmt.Println("Failed Composed Node:", failedNode.Nodes)
+				dumpComposedFailedNode(failedNode, f.Composition, roots, outDir)
+			}
+			return fmt.Errorf("failed to compose transitions for key %s", key)
+		}
 	}
 	return nil
 }
 
-func printComposedTransition(composed ComposedTransition) {
+func printComposedTransition(composed *ComposedTransition) {
 	fmt.Printf("Composed transition: ")
-	for i := range composed.From {
-		fmt.Printf("(%s -> %s) ", composed.From[i].Heap.String(), composed.To[i].Heap.String())
+	for i := range composed.From.Nodes {
+		fmt.Printf("(%s -> %s) ", composed.From.Nodes[i].Heap.String(), composed.To.Nodes[i].Heap.String())
 	}
 	fmt.Println()
 }
@@ -254,7 +299,7 @@ func populateJoinHashes(joinHashes JoinHashes, i int, root *modelchecker.Node, f
 		visited[current] = true
 
 		if current.IsYieldNode() {
-			// Add stuttering (to, to) link for new nodes discovered
+			// Add stuttering (to, to) link for new Nodes discovered
 			addToJoinHashes(joinHashes, i, current, current, fnRef)
 			from = current // update 'from' for child traversal
 		}
@@ -344,7 +389,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 				return nil
 			}
 			if !simulation {
-				fmt.Println("Valid nodes:", len(nodes), "Unique states:", yieldsCount)
+				fmt.Println("Valid Nodes:", len(nodes), "Unique states:", yieldsCount)
 				invariants := modelchecker.CheckSimpleExistsWitness(nodes)
 				if len(invariants) > 0 {
 					fmt.Println("\nFAILED: Expected states never reached")
@@ -375,7 +420,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 					return nil
 				}
 				fmt.Println("PASSED: Model checker completed successfully")
-				//nodes, _, _ := modelchecker.GetAllNodes(rootNode)
+				//Nodes, _, _ := modelchecker.GetAllNodes(rootNode)
 				if saveStates || !isPlayground {
 					nodeFiles, linkFileNames, err := modelchecker.GenerateProtoOfJson(nodes, outDir+"/")
 					if err != nil {
@@ -461,7 +506,7 @@ func writeDotFileIfNeeded(p1 *modelchecker.Processor, rootNode *modelchecker.Nod
 				"dot -Tsvg %s -o graph.svg && open graph.svg\n", dotFileName, dotFileName)
 		}
 	} else if !simulation {
-		fmt.Printf("Skipping dotfile generation. Too many nodes: %d\n", p1.GetVisitedNodesCount())
+		fmt.Printf("Skipping dotfile generation. Too many Nodes: %d\n", p1.GetVisitedNodesCount())
 	}
 	return false
 }
@@ -608,8 +653,175 @@ func startHeapProfile() {
 }
 
 func dumpFailedNode(srcFileName string, failedNode *modelchecker.Node, rootNode *modelchecker.Node, outDir string) {
+
+	failurePath := extractFailurePath(failedNode, rootNode)
+	GenerateFailurePath(srcFileName, failurePath, nil, outDir)
+	_, _, err := modelchecker.GenerateErrorPathProtoOfJson(failurePath, outDir+"/")
+	if err != nil {
+		fmt.Println("Error writing files", err)
+	}
+}
+
+func GenerateComposedFailurePath(failed *ComposedNode, composition *ast.Composition, roots []*modelchecker.Node, outDir string) {
+	// Collect failure paths from each composing spec
+	componentPaths := make([][]*modelchecker.Link, len(failed.Nodes))
+	subgraphs := make([]string, len(failed.Nodes))
+	lastNodeIDs := make([]string, len(failed.Nodes))
+
+	builder := strings.Builder{}
+	builder.WriteString("digraph G {\n")
+
+	for i, node := range failed.Nodes {
+		specName := composition.GetSpecs()[i].GetName()
+		componentPaths[i] = extractFailurePath(node, roots[i])
+		subgraph := modelchecker.GenerateFailurePath(componentPaths[i], specName, nil)
+		subgraphs[i] = subgraph
+		builder.WriteString(subgraph)
+
+		// ID of the last node in this path
+		lastNodeIDs[i] = fmt.Sprintf("\"%s_%d\"", specName, len(componentPaths[i])-1)
+	}
+
+	// Add the merged virtual node
+	mergedID := "\"merged\""
+	builder.WriteString(fmt.Sprintf("  %s [label=\"merged\", shape=doubleoctagon, style=filled, fillcolor=lightgray];\n", mergedID))
+	fmt.Println(failed)
+	// Add edges from each last node to merged node
+	for _, id := range lastNodeIDs {
+		builder.WriteString(fmt.Sprintf("  %s -> %s [arrowhead=none, style=dashed, color=gray];\n", id, mergedID))
+	}
+
+	builder.WriteString("}\n")
+	dotStr := builder.String()
+	err := writeErrorDotFile(outDir, dotStr)
+	if err != nil {
+		return
+	}
+}
+
+func dumpComposedFailedNode(failed *ComposedNode, composition *ast.Composition, roots []*modelchecker.Node, outDir string) {
+	GenerateComposedFailurePath(failed, composition, roots, outDir)
+}
+
+func dumpComposedFailedTransition(failed *ComposedTransition, composition *ast.Composition, roots []*modelchecker.Node, outDir string) {
+	GenerateTransitionFailurePath(failed.From, failed.To, composition, roots, outDir)
+}
+
+func GenerateTransitionFailurePath(from, to *ComposedNode, composition *ast.Composition, roots []*modelchecker.Node, outDir string) {
+	lastFromNodeIDs := make([]string, len(from.Nodes))
+	lastToNodeIDs := make([]string, len(from.Nodes))
+
+	builder := strings.Builder{}
+	builder.WriteString("digraph G {\n")
+
+	for i := range from.Nodes {
+		specName := composition.GetSpecs()[i].GetName()
+
+		// Path from root to `from`
+		path := extractFailurePath(from.Nodes[i], roots[i])
+		lastFromIndex := len(path) - 1
+
+		// Handle transition to `to`
+		if from.Nodes[i] == to.Nodes[i] {
+			// Add stutter node manually
+			lastFromNodeIDs[i] = fmt.Sprintf("\"%s_%d\"", specName, lastFromIndex)
+			lastToNodeIDs[i] = lastFromNodeIDs[i]
+			builder.WriteString(modelchecker.GenerateFailurePath(path, specName, nil))
+			builder.WriteString(fmt.Sprintf("  %s -> %s [label=\"stutter\", color=\"red\", style=dashed];\n", lastFromNodeIDs[i], lastToNodeIDs[i]))
+			continue
+		}
+
+		// Extract transition path and append
+		transition := extractTransitionPath(from.Nodes[i], to.Nodes[i])
+		for _, link := range transition {
+			link.FailedInvariants = map[int][]int{0: {0}} // Clear failed invariants for transition links
+		}
+		path = append(path, transition...)
+
+		// Generate full path subgraph
+		builder.WriteString(modelchecker.GenerateFailurePath(path, specName, nil))
+
+		// Set FROM node id (before transition path)
+		lastFromNodeIDs[i] = fmt.Sprintf("\"%s_%d\"", specName, lastFromIndex)
+
+		// Set TO node id (end of entire path)
+		lastToIndex := len(path) - 1
+		lastToNodeIDs[i] = fmt.Sprintf("\"%s_%d\"", specName, lastToIndex)
+	}
+
+	// Virtual merge node for FROM
+	mergedFromID := "\"composite_before\""
+	addCompositeNode(builder, mergedFromID, lastFromNodeIDs)
+
+	// Virtual merge node for TO
+	mergedToID := "\"composite_after\""
+	addCompositeNode(builder, mergedToID, lastToNodeIDs)
+	builder.WriteString(fmt.Sprintf("  %s -> %s [style=dashed, color=red];\n", mergedFromID, mergedToID))
+	builder.WriteString("}\n")
+	dotStr := builder.String()
+	err := writeErrorDotFile(outDir, dotStr)
+	if err != nil {
+		return
+	}
+}
+
+func addCompositeNode(builder strings.Builder, mergedFromID string, lastFromNodeIDs []string) {
+	builder.WriteString(fmt.Sprintf("  %s [label=\"Composite before\", shape=doubleoctagon, style=filled, fillcolor=orange];\n", mergedFromID))
+	for _, id := range lastFromNodeIDs {
+		builder.WriteString(fmt.Sprintf("  %s -> %s [arrowhead=none, style=dashed, color=gray];\n", id, mergedFromID))
+	}
+}
+
+func extractTransitionPath(from *modelchecker.Node, to *modelchecker.Node) []*modelchecker.Link {
+	type pathEntry struct {
+		node *modelchecker.Node
+		path []*modelchecker.Link
+	}
+
+	visited := make(map[*modelchecker.Node]bool)
+	queue := []pathEntry{{node: from, path: []*modelchecker.Link{}}}
+
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+
+		// Prevent revisiting
+		if visited[current.node] {
+			continue
+		}
+		visited[current.node] = true
+
+		for _, link := range current.node.Outbound {
+			nextNode := link.Node
+
+			// Skip self-loops
+			if nextNode == current.node {
+				continue
+			}
+
+			newPath := append(append([]*modelchecker.Link{}, current.path...), link)
+
+			// If this is the destination node
+			if nextNode == to {
+				return newPath
+			}
+
+			// If it's not a yield node, we can go deeper
+			if !nextNode.IsYieldNode() {
+				queue = append(queue, pathEntry{node: nextNode, path: newPath})
+			} else {
+				// If it's a yield node but not the target, stop — we don't want to overshoot
+				continue
+			}
+		}
+	}
+
+	// No path found
+	return []*modelchecker.Link{}
+}
+
+func extractFailurePath(node *modelchecker.Node, rootNode *modelchecker.Node) []*modelchecker.Link {
 	failurePath := make([]*modelchecker.Link, 0)
-	node := failedNode
 	for node != nil {
 
 		if len(node.Inbound) == 0 || node.Name == "init" || node == rootNode {
@@ -619,15 +831,10 @@ func dumpFailedNode(srcFileName string, failedNode *modelchecker.Node, rootNode 
 		}
 		outLink := modelchecker.ReverseLink(node, node.Inbound[0])
 		failurePath = append(failurePath, outLink)
-		//node.Name = node.Name + "/" + node.Inbound[0].Name
 		node = node.Inbound[0].Node
 	}
 	slices.Reverse(failurePath)
-	GenerateFailurePath(srcFileName, failurePath, nil, outDir)
-	_, _, err := modelchecker.GenerateErrorPathProtoOfJson(failurePath, outDir+"/")
-	if err != nil {
-		fmt.Println("Error writing files", err)
-	}
+	return failurePath
 }
 
 func GenerateFailurePath(srcFileName string, failurePath []*modelchecker.Link, invariant *modelchecker.InvariantPosition, outDir string) {
@@ -659,18 +866,10 @@ func GenerateFailurePath(srcFileName string, failurePath []*modelchecker.Link, i
 		fmt.Printf("Writen graph json: %s\n", errJsonFileName)
 	}
 
-	dotStr := modelchecker.GenerateFailurePath(failurePath, invariant)
-	//fmt.Println(dotStr)
-	dotFileName := filepath.Join(outDir, "error-graph.dot")
-	// Write the content to the file
-	err := os.WriteFile(dotFileName, []byte(dotStr), 0644)
+	dotStr := modelchecker.GenerateFailurePath(failurePath, "", invariant)
+	err := writeErrorDotFile(outDir, dotStr)
 	if err != nil {
-		fmt.Println("Error writing to file:", err)
 		return
-	}
-	if !isPlayground {
-		fmt.Printf("Writen graph dotfile: %s\nTo generate an image file, run: \n"+
-			"dot -Tsvg %s -o error-graph.svg && open error-graph.svg\n", dotFileName, dotFileName)
 	}
 	err = modelchecker.GenerateFailurePathHtml(srcFileName, failurePath, invariant, outDir)
 	if err != nil {
@@ -680,6 +879,21 @@ func GenerateFailurePath(srcFileName string, failurePath []*modelchecker.Link, i
 		fmt.Printf("Writen error states as html: %s/error-states.html\nTo open: \n"+
 			"open %s/error-states.html\n", outDir, outDir)
 	}
+}
+
+func writeErrorDotFile(outDir string, dotStr string) error {
+	dotFileName := filepath.Join(outDir, "error-graph.dot")
+	// Write the content to the file
+	err := os.WriteFile(dotFileName, []byte(dotStr), 0644)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+		return err
+	}
+	if !isPlayground {
+		fmt.Printf("Writen graph dotfile: %s\nTo generate an image file, run: \n"+
+			"dot -Tsvg %s -o error-graph.svg && open error-graph.svg\n", dotFileName, dotFileName)
+	}
+	return nil
 }
 
 func createOutputDir(dirPath string, testing bool) (string, error) {
