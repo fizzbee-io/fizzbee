@@ -1227,7 +1227,9 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 		invariantFailure := false
 		symmetryFound := false
 		prevLen := p.queue.Len()
-
+		if livenessEnabled && (!liveness || node.actionDepth <= int(maxActions)) {
+			p.visited = make(map[string]*Node)
+		}
 		for {
 			inCrashPath := false
 			if len(node.Inbound) > 0 {
