@@ -492,7 +492,7 @@ func printTraceAndExit(err error) {
 }
 
 func writeDotFileIfNeeded(p1 *modelchecker.Processor, rootNode *modelchecker.Node, outDir string) bool {
-	if p1.GetVisitedNodesCount() < 250 {
+	if p1.GetVisitedNodesCount() < 250 || (simulation && p1.GetVisitedNodesCount() < 1000) {
 		dotString := modelchecker.GenerateDotFile(rootNode, make(map[*modelchecker.Node]bool))
 		dotFileName := filepath.Join(outDir, "graph.dot")
 		// Write the content to the file
@@ -501,7 +501,7 @@ func writeDotFileIfNeeded(p1 *modelchecker.Processor, rootNode *modelchecker.Nod
 			fmt.Println("Error writing to file:", err)
 			return true
 		}
-		if !isPlayground && !simulation {
+		if !isPlayground {
 			fmt.Printf("Writen graph dotfile: %s\nTo generate svg, run: \n"+
 				"dot -Tsvg %s -o graph.svg && open graph.svg\n", dotFileName, dotFileName)
 		}
