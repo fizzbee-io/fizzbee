@@ -86,6 +86,7 @@ compound_stmt
     | actiondef                                                                      # action_stmt
     | functiondef                                                                    # function_stmt
     | composedef                                                                     # compose_stmt
+    | refinedef                                                                      # refine_stmt
     | (ATOMIC | SERIAL | PARALLEL | ONEOF) COLON suite                               # flow_stmt
     ;
 
@@ -159,6 +160,10 @@ functiondef
 
 composedef
     : COMPOSE COLON LINE_BREAK INDENT (compose_entry COMMA? LINE_BREAK)+ DEDENT
+    ;
+
+refinedef
+    : REFINE COLON LINE_BREAK INDENT (compose_entry COMMA? LINE_BREAK)+ DEDENT
     ;
 
 compose_entry

@@ -39,7 +39,7 @@ class BuildAstVisitor(FizzParserVisitor):
         file.source_info.file_name = self.file_name
         for i, child in enumerate(ctx.getChildren()):
             print()
-            print("visitFile_input child index",i,child.getText())
+            print("visitFile_input child index",i,child.getText(), child.__class__.__name__)
             if hasattr(child, 'toStringTree'):
                 childProto = self.visit(child)
                 if isinstance(childProto, ast.StateVars):
@@ -61,6 +61,8 @@ class BuildAstVisitor(FizzParserVisitor):
                     file.roles.append(childProto)
                 elif isinstance(childProto, ast.Composition):
                     file.composition.CopyFrom(childProto)
+                elif isinstance(childProto, ast.Refinement):
+                    file.refinements.append(childProto)
                 else:
                     print("visitFile_input childProto (unknown) type",childProto.__class__.__name__, dir(child), dir(child.start), childProto)
                     errorStr = f"Error: Line: {child.start.line}: Unexpected {self.get_py_str(child)}"
@@ -388,6 +390,40 @@ class BuildAstVisitor(FizzParserVisitor):
         invariant.py_code = py_code
         print("assertion", invariant)
         return invariant
+
+    # Visit a parse tree produced by FizzParser#refinedef.
+    def visitRefinedef(self, ctx:FizzParser.RefinedefContext):
+        print("\n\nvisitRefinedef",ctx.__class__.__name__)
+        print("visitRefinedef",ctx.getText())
+        print("visitRefinedef",dir(ctx))
+        print("visitRefinedef children count",ctx.getChildCount())
+        print("visitRefinedef full text\n", self.get_py_str(ctx))
+
+        refinement = ast.Refinement(source_info=get_source_info(ctx))
+        for i, child in enumerate(ctx.getChildren()):
+            print()
+            print("visitRefinedef child index",i,child.getText())
+            if hasattr(child, 'toStringTree'):
+
+                self.log_childtree(child)
+                childProto = self.visit(child)
+                if isinstance(childProto, ast.SpecEntry):
+                    refinement.specs.append(childProto)
+                    continue
+                print("visitRefinedef childProto",childProto)
+            elif hasattr(child, 'getSymbol'):
+                if (child.getSymbol().type == FizzParser.LINE_BREAK
+                        or child.getSymbol().type == FizzParser.ACTION
+                        or child.getSymbol().type == FizzParser.COLON
+                ):
+                    continue
+
+                self.log_symbol(child)
+            else:
+                print("visitRefinedef child (unknown) type",child.__class__.__name__, dir(child))
+                raise Exception("visitRefinedef child (unknown) type")
+        print("refinement", refinement)
+        return refinement
 
     # Visit a parse tree produced by FizzParser#composedef.
     def visitComposedef(self, ctx:FizzParser.ComposedefContext):
@@ -868,6 +904,8 @@ class BuildAstVisitor(FizzParserVisitor):
         elif isinstance(childProto, ast.Role):
             return childProto
         elif isinstance(childProto, ast.Composition):
+            return childProto
+        elif isinstance(childProto, ast.Refinement):
             return childProto
         elif BuildAstVisitor.is_list_of_type(childProto, ast.Invariant):
             return childProto
