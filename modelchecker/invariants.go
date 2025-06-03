@@ -184,7 +184,7 @@ func CheckSimpleExistsWitness(nodes []*Node) []*InvariantPosition {
 	return existsInvariantPositions
 }
 
-func CheckStrictLiveness(node *Node) ([]*Link, *InvariantPosition) {
+func CheckStrictLiveness(node *Node, nodes []*Node) ([]*Link, *InvariantPosition) {
 	process := node.Process
 	if len(process.Files) > 1 {
 		panic("Invariant checking not supported for multiple files yet")
@@ -213,14 +213,14 @@ func CheckStrictLiveness(node *Node) ([]*Link, *InvariantPosition) {
 			}
 			if eventuallyAlways {
 				fmt.Println("Checking eventually always", invariant.Name)
-				failurePath, isLive := EventuallyAlwaysFinal(node, predicate)
+				failurePath, isLive := EventuallyAlwaysFinal(nodes, node, predicate)
 				if !isLive {
 					return failurePath, NewInvariantPosition(i, j)
 				}
 			} else if alwaysEventually {
 				fmt.Println("Checking always eventually", invariant.Name)
 				// Always Eventually
-				failurePath, isLive := AlwaysEventuallyFinal(node, predicate)
+				failurePath, isLive := AlwaysEventuallyFinal(nodes, node, predicate)
 				if !isLive {
 					return failurePath, NewInvariantPosition(i, j)
 				}
@@ -482,7 +482,7 @@ type CycleCallbackResult struct {
 }
 type CycleCallback func(path []*Link, cycles int) (bool, *CycleCallbackResult)
 
-func AlwaysEventuallyFinal(root *Node, predicate Predicate) ([]*Link, bool) {
+func AlwaysEventuallyFinal(nodes []*Node, root *Node, predicate Predicate) ([]*Link, bool) {
 	f := func(path []*Link, cycles int) (bool, *CycleCallbackResult) {
 		mergeNode := path[len(path)-1].Node
 		mergeIndex := -1
@@ -517,10 +517,10 @@ func AlwaysEventuallyFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 			return true, cycleCallbackResult
 		}
 	}
-	return CycleFinderFinal(root, f)
+	return CycleFinderFinal(nodes, root, f)
 }
 
-func EventuallyAlwaysFinal(root *Node, predicate Predicate) ([]*Link, bool) {
+func EventuallyAlwaysFinal(nodes []*Node, root *Node, predicate Predicate) ([]*Link, bool) {
 	f := func(path []*Link, cycles int) (bool, *CycleCallbackResult) {
 		mergeNode := path[len(path)-1].Node
 		mergeIndex := 0
@@ -557,7 +557,7 @@ func EventuallyAlwaysFinal(root *Node, predicate Predicate) ([]*Link, bool) {
 
 		//fmt.Println("Dead node NOT FOUND in the path")
 	}
-	return CycleFinderFinal(root, f)
+	return CycleFinderFinal(nodes, root, f)
 }
 
 func isFairCycle(path []*Link, debugLog bool) (bool, *CycleCallbackResult) {
@@ -619,17 +619,24 @@ func isFairCycle(path []*Link, debugLog bool) (bool, *CycleCallbackResult) {
 		}
 		prevNodeHasNonCrashLink = false
 		for _, outLink := range node.Outbound {
+			//if outLink.IsCrashLink() {
+			//	// TODO: Reevaluate if this this check here is still required
+			//	if debugLog {
+			//		fmt.Println("Skipping crash link", outLink.Name)
+			//	}
+			//	continue
+			//}
 			linkName, fairness, _ := fairnessLinkName(node, outLink)
 			if debugLog {
 				fmt.Println("Outlink:", outLink.Name, outLink.Fairness, outLink.Labels, outLink.Node.Name, outLink.ChoiceFairness, linkName, fairness)
 			}
 			if !isCrashLinkName(linkName) {
 				prevNodeHasNonCrashLink = true
-			} else if outLink.Node == path[(i+1)%chainLen].Node {
+			} else if outLink.Node == path[(i+1)%chainLen].Node && outLink == path[(i+1)%chainLen] {
 				nextNodeIsCrash = true
 			}
 			if fairness == ast.FairnessLevel_FAIRNESS_LEVEL_STRONG {
-				if outLink.Node == path[(i+1)%chainLen].Node {
+				if outLink.Node == path[(i+1)%chainLen].Node && outLink == path[(i+1)%chainLen] {
 					// outlink points to the next node in the chain
 					// It satisfies the strong fairness condition for that action
 					strongFairLinksInChain[linkName] = true
@@ -638,7 +645,7 @@ func isFairCycle(path []*Link, debugLog bool) (bool, *CycleCallbackResult) {
 					strongFairLinksOutOfChain[linkName] = true
 				}
 			} else if fairness == ast.FairnessLevel_FAIRNESS_LEVEL_WEAK {
-				if outLink.Node == path[(i+1)%chainLen].Node {
+				if outLink.Node == path[(i+1)%chainLen].Node && outLink == path[(i+1)%chainLen] {
 					if debugLog {
 						fmt.Println("Weak Fair link in chain", linkName, outLink.Node.Name)
 					}
@@ -743,12 +750,34 @@ func findMissingLinks(path []*Link, strongFairLinksOutOfChain map[string]bool, w
 
 }
 
-func CycleFinderFinal(node *Node, callback CycleCallback) ([]*Link, bool) {
+func CycleFinderFinal(nodes []*Node, root *Node, callback CycleCallback) ([]*Link, bool) {
 	visited := make(map[*Node]bool)
 	globalVisited := make(map[*Node]bool)
-	rootLink := InitNodeToLink(node)
+	rootLink := InitNodeToLink(root)
 	path := []*Link{rootLink}
-	return cycleFinderHelper(node, callback, visited, 0, path, globalVisited)
+
+	for _, node := range nodes {
+		if visited[node] {
+			continue
+		}
+		if node == root {
+			path = []*Link{rootLink}
+		} else {
+			//continue
+			link := InitNodeToLink(node)
+			link.Name = "crash"
+			path = []*Link{link}
+		}
+
+		failedPath, isLive := cycleFinderHelper(node, callback, visited, 0, path, globalVisited)
+		if !isLive {
+			//fmt.Println("CycleFinderFinal: failedPath found in node", node.String())
+			failedPathFull := ExtractFailurePath(node, root)
+
+			return append(failedPathFull, failedPath[1:]...), isLive
+		}
+	}
+	return nil, true
 }
 
 func cycleFinderHelper(node *Node, callback CycleCallback, visited map[*Node]bool, cycles int, path []*Link, globalVisited map[*Node]bool) ([]*Link, bool) {
@@ -833,6 +862,10 @@ func cycleFinderHelper(node *Node, callback CycleCallback, visited map[*Node]boo
 	}
 	// Traverse outbound links
 	for _, link := range node.Outbound {
+		if link.IsCrashLink() {
+			//fmt.Println("Skipping crash link", link.Name, "from node", node.String(), "to node", link.Node.String())
+			continue
+		}
 		pathCopy := slices.Clone(path)
 		visitedCopy := maps.Clone(visited)
 		pathCopy = append(pathCopy, link)
@@ -1008,4 +1041,21 @@ func isTerminalSCC(scc []*Node) bool {
 		}
 	}
 	return true
+}
+
+func ExtractFailurePath(node *Node, rootNode *Node) []*Link {
+	failurePath := make([]*Link, 0)
+	for node != nil {
+
+		if len(node.Inbound) == 0 || node.Name == "init" || node == rootNode {
+			link := InitNodeToLink(node)
+			failurePath = append(failurePath, link)
+			break
+		}
+		outLink := ReverseLink(node, node.Inbound[0])
+		failurePath = append(failurePath, outLink)
+		node = node.Inbound[0].Node
+	}
+	slices.Reverse(failurePath)
+	return failurePath
 }
