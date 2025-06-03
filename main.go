@@ -404,7 +404,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			}
 			if !simulation && !p1.Stopped() {
 				if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "enabled" || stateConfig.GetLiveness() == "true" || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
-					failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode)
+					failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode, nodes)
 				} else if stateConfig.GetLiveness() == "eventual" || stateConfig.GetLiveness() == "nondeterministic" {
 					failurePath, failedInvariant = modelchecker.CheckFastLiveness(nodes)
 				}
@@ -654,7 +654,7 @@ func startHeapProfile() {
 
 func dumpFailedNode(srcFileName string, failedNode *modelchecker.Node, rootNode *modelchecker.Node, outDir string) {
 
-	failurePath := extractFailurePath(failedNode, rootNode)
+	failurePath := modelchecker.ExtractFailurePath(failedNode, rootNode)
 	GenerateFailurePath(srcFileName, failurePath, nil, outDir)
 	_, _, err := modelchecker.GenerateErrorPathProtoOfJson(failurePath, outDir+"/")
 	if err != nil {
@@ -673,7 +673,7 @@ func GenerateComposedFailurePath(failed *ComposedNode, composition *ast.Composit
 
 	for i, node := range failed.Nodes {
 		specName := composition.GetSpecs()[i].GetName()
-		componentPaths[i] = extractFailurePath(node, roots[i])
+		componentPaths[i] = modelchecker.ExtractFailurePath(node, roots[i])
 		subgraph := modelchecker.GenerateFailurePath(componentPaths[i], specName, nil)
 		subgraphs[i] = subgraph
 		builder.WriteString(subgraph)
@@ -718,7 +718,7 @@ func GenerateTransitionFailurePath(from, to *ComposedNode, composition *ast.Comp
 		specName := composition.GetSpecs()[i].GetName()
 
 		// Path from root to `from`
-		path := extractFailurePath(from.Nodes[i], roots[i])
+		path := modelchecker.ExtractFailurePath(from.Nodes[i], roots[i])
 		lastFromIndex := len(path) - 1
 
 		// Handle transition to `to`
@@ -818,23 +818,6 @@ func extractTransitionPath(from *modelchecker.Node, to *modelchecker.Node) []*mo
 
 	// No path found
 	return []*modelchecker.Link{}
-}
-
-func extractFailurePath(node *modelchecker.Node, rootNode *modelchecker.Node) []*modelchecker.Link {
-	failurePath := make([]*modelchecker.Link, 0)
-	for node != nil {
-
-		if len(node.Inbound) == 0 || node.Name == "init" || node == rootNode {
-			link := modelchecker.InitNodeToLink(node)
-			failurePath = append(failurePath, link)
-			break
-		}
-		outLink := modelchecker.ReverseLink(node, node.Inbound[0])
-		failurePath = append(failurePath, outLink)
-		node = node.Inbound[0].Node
-	}
-	slices.Reverse(failurePath)
-	return failurePath
 }
 
 func GenerateFailurePath(srcFileName string, failurePath []*modelchecker.Link, invariant *modelchecker.InvariantPosition, outDir string) {
