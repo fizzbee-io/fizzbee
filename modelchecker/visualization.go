@@ -38,13 +38,16 @@ func createDiffURL(leftBase64, rightBase64 string) string {
 }
 
 // Helper to write a single row in the HTML table
-func writeRow(tmpl *template.Template, file *os.File, rowNum, lineNum int, name string, lane, maxLanes int, nodeName, diffURL, yieldDiffURL string) error {
+func writeRow(tmpl *template.Template, file *os.File, rowNum, lineNum int, name string, lane, maxLanes int, nodeName, diffURL, yieldDiffURL string, isEnd bool) error {
 	if nodeName != "yield" {
 		nodeName = ""
 	}
 	contentStr := name
 	if lineNum > 0 {
 		contentStr = fmt.Sprintf("%s<br><p id=\"line-%d-ref\" class=\"line-num\">Next Instr: %d<p>", name, lineNum, lineNum)
+	}
+	if isEnd {
+		contentStr += "<br><span style=\"color: gray; font-weight: 100;\">(thread ended)</span>"
 	}
 	content := template.HTML(contentStr)
 	lanes := make([]template.HTML, maxLanes)
@@ -241,7 +244,7 @@ code {
 	if len(failurePath) > 0 {
 		firstLink := failurePath[0]
 		lineNum := getLineNumber(firstLink)
-		writeRow(tmpl, file, 1, lineNum, firstLink.Name, lane, maxLanes, firstLink.Node.Name, "", "")
+		writeRow(tmpl, file, 1, lineNum, firstLink.Name, lane, maxLanes, firstLink.Node.Name, "", "", false)
 		if firstLink.Node.Name == "yield" {
 			lastYieldObj = firstLink
 		}
@@ -281,13 +284,20 @@ code {
 			yieldDiffURL = createDiffURL(lastYieldBase64, rightBase64)
 		}
 
+		isEnd := false
+
 		// Update last yield object and index if current Node.Name is "yield"
 		if rightLink.Node.Name == "yield" {
 			lastYieldObj = rightLink
 		}
+		if rightLink.Node.IsYieldNode() {
+			if rightLink.Node.GetThreadsCount() < leftLink.Node.GetThreadsCount() {
+				isEnd = true
+			}
+		}
 
 		// Write the row to the HTML file
-		writeRow(tmpl, file, i+1, lineNum, rightLink.Name, lane, maxLanes, rightLink.Node.Name, diffURL, yieldDiffURL)
+		writeRow(tmpl, file, i+1, lineNum, rightLink.Name, lane, maxLanes, rightLink.Node.Name, diffURL, yieldDiffURL, isEnd)
 	}
 
 	// Close the table and HTML file
