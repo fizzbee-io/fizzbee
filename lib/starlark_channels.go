@@ -115,7 +115,7 @@ var _ starlark.HasAttrs = (*RoleStub)(nil)
 
 // String representation of RoleStub
 func (rs *RoleStub) String() string {
-    return fmt.Sprintf("RoleStub(role=%s, channel=%s)", (*rs.Role).RefStringShort(), rs.Channel.RefStringShort())
+    return fmt.Sprintf("RoleStub(role=%s, channel=%s, rolevalue=%s)", (*rs.Role).RefStringShort(), rs.Channel.RefStringShort(), rs.Role.String())
 }
 
 func (rs *RoleStub) Type() string         { return "RoleStub" }
