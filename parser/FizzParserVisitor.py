@@ -109,6 +109,11 @@ class FizzParserVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by FizzParser#refine_stmt.
+    def visitRefine_stmt(self, ctx:FizzParser.Refine_stmtContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by FizzParser#flow_stmt.
     def visitFlow_stmt(self, ctx:FizzParser.Flow_stmtContext):
         return self.visitChildren(ctx)
@@ -191,6 +196,11 @@ class FizzParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by FizzParser#composedef.
     def visitComposedef(self, ctx:FizzParser.ComposedefContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by FizzParser#refinedef.
+    def visitRefinedef(self, ctx:FizzParser.RefinedefContext):
         return self.visitChildren(ctx)
 
 
