@@ -22,6 +22,33 @@ func NewInvariantPosition(fileIndex, invariantIndex int) *InvariantPosition {
 		InvariantIndex: invariantIndex,
 	}
 }
+
+func CheckRefinement(process *Process, refinement *ast.Refinement, joinHashes JoinHashes) bool {
+	if process.Parent == nil {
+		return true
+	}
+	if process.Heap.CachedHashCode == process.Parent.Heap.CachedHashCode && process.Parent.Heap.CachedHashCode != "" {
+		return true
+	}
+	fnName := ""
+	for _, entry := range refinement.GetSpecs() {
+		if entry.GetName() == "_" {
+			fnName = entry.GetExpr().GetPyExpr()
+			break
+		}
+	}
+	fromState := ExecFunction(process.Parent.CloneForAssert(nil, 0), fnName).String()
+	toState := ExecFunction(process.CloneForAssert(nil, 0), fnName).String()
+
+	key := HashKey(fromState + "," + toState)
+
+	if _, exists := joinHashes[key]; !exists {
+		fmt.Println("Join hash not found for key:", key)
+		return false
+	}
+	return true
+}
+
 func CheckTransitionInvariants(process *Process) map[int][]int {
 	if process.Parent == nil {
 		return nil

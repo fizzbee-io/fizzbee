@@ -60,8 +60,14 @@ func main() {
 
 	if f.Composition != nil {
 		runCompositionalModelChecking(f, dirPath, outDir)
+	} else if len(f.Refinements) > 0 {
+		if len(f.Refinements) > 1 {
+			fmt.Println("Multiple refinements found. Only single refinement is supported currently. Contact us if you need support for multiple refinements.")
+			return
+		}
+		runRefinementModelChecking(f, dirPath, outDir)
 	} else {
-		modelCheckSingleSpec(f, stateConfig, dirPath, outDir, sourceFileName)
+		modelCheckSingleSpec(f, stateConfig, dirPath, outDir, sourceFileName, nil)
 	}
 }
 
@@ -74,7 +80,7 @@ func runCompositionalModelChecking(f *ast.File, dirPath string, outDir string) {
 	rootsList := make([]*modelchecker.Node, len(f.Composition.GetSpecs()))
 	// create a map to store the interface preserving states
 	// key is the hash, value is the list of (list of Nodes)
-	joinHashes := make(JoinHashes)
+	joinHashes := make(modelchecker.JoinHashes)
 	for i, spec := range f.Composition.GetSpecs() {
 		fmt.Printf("\nComposed Spec: %s\n", spec.Name)
 		fileRef, fnRef, err := ParseFunctionRef(spec.Expr.GetPyExpr())
@@ -97,7 +103,7 @@ func runCompositionalModelChecking(f *ast.File, dirPath string, outDir string) {
 			return
 		}
 		fmt.Println("Model checking composed spec:", composedSourceFileName)
-		root := modelCheckSingleSpec(composedFile, composedStateConfig, dirPath, composedOutDir, composedSourceFileName)
+		root := modelCheckSingleSpec(composedFile, composedStateConfig, dirPath, composedOutDir, composedSourceFileName, nil)
 		if root == nil {
 			fmt.Println("Error in model checking composed spec:", spec.Name, "Aborting")
 			return
@@ -115,6 +121,94 @@ func runCompositionalModelChecking(f *ast.File, dirPath string, outDir string) {
 	return
 }
 
+func runRefinementModelChecking(f *ast.File, dirPath string, outDir string) {
+	if simulation {
+		fmt.Println("Simulation mode not supported for refinement")
+		return
+	}
+
+	if len(f.Refinements) == 0 {
+		fmt.Println("No refinement specification found")
+		return
+	}
+
+	// For now, assume only one refinement block
+	refinement := f.Refinements[0]
+
+	// Create map of roots for abstract specs
+	roots := make(map[string]*modelchecker.Node)
+	rootsList := make([]*modelchecker.Node, len(refinement.GetSpecs()))
+	joinHashes := make(modelchecker.JoinHashes)
+
+	var implSpecIndex int = -1
+
+	// First, run model checking for each abstract spec (not "_")
+	for i, spec := range refinement.GetSpecs() {
+		if spec.Name == "_" {
+			implSpecIndex = i
+			continue
+		}
+
+		fmt.Printf("\nRefined Spec: %s\n", spec.Name)
+		fileRef, fnRef, err := ParseFunctionRef(spec.Expr.GetPyExpr())
+		if err != nil {
+			fmt.Println("Error parsing function reference:", err)
+			return
+		} else if fileRef != spec.Name {
+			fmt.Println("File reference does not match spec name:", fileRef, "!=", spec.Name)
+			return
+		}
+
+		abstractJsonFile := filepath.Join(dirPath, spec.Name+".json")
+		abstractFile := loadInputJSON(abstractJsonFile)
+		abstractSourceFile := filepath.Join(dirPath, abstractFile.SourceInfo.GetFileName())
+
+		stateConfig := loadStateOptions(dirPath, abstractFile.GetFrontMatter())
+		applyDefaultStateOptions(stateConfig)
+
+		abstractOutDir := filepath.Join(outDir, spec.Name)
+		if err := os.MkdirAll(abstractOutDir, 0755); err != nil {
+			fmt.Println("Error creating directory:", err)
+			return
+		}
+
+		fmt.Println("Model checking abstract spec:", abstractSourceFile)
+		root := modelCheckSingleSpec(abstractFile, stateConfig, dirPath, abstractOutDir, abstractSourceFile, nil)
+		if root == nil {
+			fmt.Println("Error in model checking abstract spec:", spec.Name)
+			return
+		}
+
+		roots[spec.Name] = root
+		rootsList[i] = root
+		populateJoinHashes(joinHashes, i, root, fileRef, fnRef)
+	}
+
+	if implSpecIndex == -1 {
+		fmt.Println("Error: no implementation (_) spec found in refinement block")
+		return
+	}
+
+	// Now run model checking on the implementation (this file), using joinHashes
+	implOutDir := filepath.Join(outDir, "_")
+	if err := os.MkdirAll(implOutDir, 0755); err != nil {
+		fmt.Println("Error creating directory:", err)
+		return
+	}
+
+	fmt.Println("Model checking implementation spec (refined):", f.SourceInfo.GetFileName())
+	stateConfig := loadStateOptions(dirPath, f.GetFrontMatter())
+	applyDefaultStateOptions(stateConfig)
+
+	root := modelCheckSingleSpec(f, stateConfig, dirPath, implOutDir, f.SourceInfo.GetFileName(), joinHashes)
+	if root == nil {
+		fmt.Println("Error in model checking implementation spec")
+		return
+	}
+
+	return
+}
+
 type ComposedNode = struct {
 	*modelchecker.Node
 	Nodes []*modelchecker.Node
@@ -125,7 +219,7 @@ type ComposedTransition = struct {
 	To   *ComposedNode
 }
 
-func cartesianProduct(sets []TransitionSet, handler func(ts []lib.Pair[*modelchecker.Node, *modelchecker.Node]) (
+func cartesianProduct(sets []modelchecker.TransitionSet, handler func(ts []lib.Pair[*modelchecker.Node, *modelchecker.Node]) (
 	*ComposedNode, *ComposedTransition)) (*ComposedNode, *ComposedTransition) {
 
 	var helper func(int, []lib.Pair[*modelchecker.Node, *modelchecker.Node])
@@ -152,7 +246,7 @@ func cartesianProduct(sets []TransitionSet, handler func(ts []lib.Pair[*modelche
 	return failedNode, failedTransition
 }
 
-func ComposeTransitions(f *ast.File, joinHashes JoinHashes, roots []*modelchecker.Node, outDir string) error {
+func ComposeTransitions(f *ast.File, joinHashes modelchecker.JoinHashes, roots []*modelchecker.Node, outDir string) error {
 	hasTransitionInvariant := false
 	for _, invariant := range f.Invariants {
 		if invariant.Block != nil && slices.Contains(invariant.TemporalOperators, "transition") {
@@ -276,15 +370,7 @@ func ParseFunctionRef(input string) (string, string, error) {
 	}
 }
 
-type HashKey string
-
-type Transition = lib.Pair[*modelchecker.Node, *modelchecker.Node]
-
-// type NodeSet map[*modelchecker.Node]bool
-type TransitionSet map[Transition]bool
-type JoinHashes map[HashKey][]TransitionSet
-
-func populateJoinHashes(joinHashes JoinHashes, i int, root *modelchecker.Node, fileRef string, fnRef string) {
+func populateJoinHashes(joinHashes modelchecker.JoinHashes, i int, root *modelchecker.Node, fileRef string, fnRef string) {
 	visited := make(map[*modelchecker.Node]bool)
 
 	var dfs func(from *modelchecker.Node, current *modelchecker.Node)
@@ -314,26 +400,27 @@ func populateJoinHashes(joinHashes JoinHashes, i int, root *modelchecker.Node, f
 	dfs(nil, root)
 }
 
-func addToJoinHashes(joinHashes JoinHashes, i int, from, to *modelchecker.Node, fnName string) {
+func addToJoinHashes(joinHashes modelchecker.JoinHashes, i int, from, to *modelchecker.Node, fnName string) {
+	//fmt.Println("Adding to join hashes:", from.Heap.String(), "->", to.Heap.String(), "for function", fnName)
 	fromState := modelchecker.ExecFunction(from.Process.CloneForAssert(nil, 0), fnName).String()
 	toState := modelchecker.ExecFunction(to.Process.CloneForAssert(nil, 0), fnName).String()
 
-	key := HashKey(fromState + "," + toState)
+	key := modelchecker.HashKey(fromState + "," + toState)
 
 	if _, exists := joinHashes[key]; !exists {
-		joinHashes[key] = make([]TransitionSet, i+1)
+		joinHashes[key] = make([]modelchecker.TransitionSet, i+1)
 	}
 	for len(joinHashes[key]) <= i {
-		joinHashes[key] = append(joinHashes[key], make(TransitionSet))
+		joinHashes[key] = append(joinHashes[key], make(modelchecker.TransitionSet))
 	}
 	if joinHashes[key][i] == nil {
-		joinHashes[key][i] = make(TransitionSet)
+		joinHashes[key][i] = make(modelchecker.TransitionSet)
 	}
 	pair := lib.NewPair(from, to)
 	joinHashes[key][i][pair] = true
 }
 
-func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPath string, outDir string, sourceFileName string) *modelchecker.Node {
+func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPath string, outDir string, sourceFileName string, hashes modelchecker.JoinHashes) *modelchecker.Node {
 	//maxRuns := 10000
 	if !simulation || seed != 0 {
 		maxRuns = 1
@@ -355,7 +442,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 	for !stopped && (maxRuns <= 0 || i < maxRuns) {
 		i++
 
-		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy, isTest)
+		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy, isTest, hashes)
 		holder.Store(p1)
 
 		rootNode, failedNode, endTime, err := startModelChecker(p1)
