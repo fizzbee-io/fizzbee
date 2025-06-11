@@ -983,9 +983,10 @@ type Processor struct {
 	Seed               int64
 	durabilitySpec     *DurabilitySpec
 	isTest             bool
+	hashes             JoinHashes
 }
 
-func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string, strategy string, test bool) *Processor {
+func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string, strategy string, test bool, hashes JoinHashes) *Processor {
 
 	var collection lib.LinearCollection[*Node]
 	var intermediateStates lib.LinearCollection[*Node]
@@ -1030,6 +1031,7 @@ func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation 
 		Seed:               seed,
 
 		isTest: test,
+		hashes: hashes,
 	}
 }
 
@@ -1419,6 +1421,12 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 				}
 				node.Attach()
 				p.intermediateStates.ClearAll()
+				return true, false
+			}
+		}
+		if len(node.Process.Files[0].Refinements) > 0 {
+			result := CheckRefinement(node.Process, p.Files[0].Refinements[0], p.hashes)
+			if !result {
 				return true, false
 			}
 		}
