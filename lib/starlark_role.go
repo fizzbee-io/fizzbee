@@ -152,7 +152,8 @@ func (r *Role) Truth() starlark.Bool {
 }
 
 func (r *Role) Hash() (uint32, error) {
-	return 0, fmt.Errorf("unhashable type: role")
+	hash, _ := starlark.String(r.Name).Hash()
+	return hash + uint32(r.Ref), nil
 }
 
 func (r *Role) IsSymmetric() bool {
