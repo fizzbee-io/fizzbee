@@ -7,8 +7,8 @@ require (
 	github.com/huandu/go-clone v0.0.0
 	github.com/stretchr/testify v1.8.4
 	go.starlark.net v0.0.0-20231121155337-90ade8b19d09
-	golang.org/x/sys v0.17.0
-	google.golang.org/protobuf v1.32.0
+	golang.org/x/sys v0.30.0
+	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v3 v3.0.1
 )
 
