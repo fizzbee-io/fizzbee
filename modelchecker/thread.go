@@ -76,7 +76,12 @@ func normalizeTypes(stringDict starlark.StringDict) starlark.StringDict {
 			var x starlark.Value
 			var list []string
 			for iter.Next(&x) {
-				list = append(list, x.String())
+				if x.Type() == "role" {
+					role := x.(*lib.Role)
+					list = append(list, role.RefString())
+				} else {
+					list = append(list, x.String())
+				}
 			}
 			sort.Strings(list)
 			values := make([]starlark.Value, len(list))
