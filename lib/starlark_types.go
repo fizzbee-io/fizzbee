@@ -1197,6 +1197,8 @@ func NewModelValue(prefix string, i int) ModelValue {
 	}
 }
 
+const ModelValueType = "model_value"
+
 type ModelValue struct {
 	prefix string
 	id     int
@@ -1243,7 +1245,7 @@ func (m ModelValue) MarshalJSON() ([]byte, error) {
 }
 
 func (m ModelValue) Type() string {
-	return "model_value"
+	return ModelValueType
 }
 
 func (m ModelValue) Freeze() {}
@@ -1263,6 +1265,8 @@ func NewSymmetricValue(prefix string, i int) SymmetricValue {
 	return SymmetricValue{ModelValue{prefix: prefix, id: i}}
 }
 
+const SymmetricValueType = "symmetric_value"
+
 type SymmetricValue struct {
 	ModelValue
 }
@@ -1280,7 +1284,7 @@ func (s SymmetricValue) CompareSameType(op syntax.Token, y_ starlark.Value, dept
 }
 
 func (s SymmetricValue) Type() string {
-	return "symmetric_value"
+	return SymmetricValueType
 }
 
 var _ starlark.Value = SymmetricValue{}

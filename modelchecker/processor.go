@@ -629,6 +629,7 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 	frame.scope.getAllVisibleVariablesResolveRoles(dict, roleRefs)
 	maps.Copy(dict, lib.Builtins)
 	dict["deepcopy"] = starlark.NewBuiltin("deepcopy", DeepCopyBuiltIn)
+	dict["resolve_role"] = lib.CreateResolveRoleBuiltIn(&p.Roles)
 	maps.Copy(dict, p.Modules)
 
 	for _, file := range p.Files {
@@ -657,6 +658,7 @@ func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
 
 	maps.Copy(dict, lib.Builtins)
 	dict["deepcopy"] = starlark.NewBuiltin("deepcopy", DeepCopyBuiltIn)
+	dict["resolve_role"] = lib.CreateResolveRoleBuiltIn(&p.Roles)
 	maps.Copy(dict, p.Modules)
 
 	for _, file := range p.Files {

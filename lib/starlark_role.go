@@ -191,3 +191,24 @@ func fizz_func_always_error(_ *starlark.Thread, b *starlark.Builtin, args starla
 
 	return starlark.None, fmt.Errorf("%s: %v", b.Name(), "Currently, fizz functions can be called only in the following ways. \n See https://fizzbee.io/tutorials/limitations/#fizz-functions-can-be-called-only-in-a-limited-ways for more details and workaround.")
 }
+
+// CreateResolveRoleBuiltIn returns a builtin resolve_role, when called with a role's __id__ (GetId()), returns
+// the Role object in the roles array with the given id.
+func CreateResolveRoleBuiltIn(roles *[]*Role) *starlark.Builtin {
+	return starlark.NewBuiltin("resolve_role", func(t *starlark.Thread, b *starlark.Builtin,
+		args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("resolve_role expects exactly one argument")
+		}
+		idValue := args[0]
+		if idValue.Type() != ModelValueType && idValue.Type() != SymmetricValueType {
+			return nil, fmt.Errorf("resolve_role expects a ModelValue or SymmetricValue, got %s", idValue.Type())
+		}
+		for _, role := range *roles {
+			if role.GetId().String() == idValue.String() {
+				return role, nil
+			}
+		}
+		return nil, fmt.Errorf("role with id %d not found", idValue)
+	})
+}
