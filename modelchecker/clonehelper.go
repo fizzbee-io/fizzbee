@@ -82,7 +82,10 @@ func parseReflectValue(v reflect.Value) interfaceData {
 	return *(*interfaceData)(ptr)
 }
 
-func symmetricValueResolveFn(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
+var alt int
+
+func symmetricValueResolveFn(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt2 int) func(allocator *clone.Allocator, old reflect.Value, new reflect.Value) {
+	alt = alt2
 	return func(allocator *clone.Allocator, old, new reflect.Value) {
 		value := new.Addr().Interface().(*lib.SymmetricValue)
 		oldVal := old.Interface().(lib.SymmetricValue)

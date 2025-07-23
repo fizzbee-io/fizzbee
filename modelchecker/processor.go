@@ -1381,6 +1381,9 @@ func processPreInit(init *Node, stmts []*ast.Statement) {
 }
 
 func (p *Processor) processNode(node *Node) (bool, bool) {
+	if node.Process.currentThread() == nil || node.Process.currentThread().currentFrame() == nil {
+		return false, false
+	}
 	if node.Process.currentThread().currentPc() == "" && node.Name == "init" {
 		if node.Process.Files[0].Actions[0].Name != "Init" {
 			return p.processInit(node), false
@@ -1388,6 +1391,8 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 
 	}
 	node.CachedHashCode = ""
+	node.Heap.CachedHashCode = ""
+	node.CachedThreadHashes = nil
 	forks, yield := node.currentThread().Execute()
 	if len(forks) == 0 && !node.Enabled && !node.ThreadProgress {
 		return false, false
@@ -1486,9 +1491,32 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		}
 	}
 	if !yield {
+		scheduledHashes := map[string]bool{}
 		for _, fork := range forks {
-			newNode := node.ForkForAlternatePaths(fork, fork.Name)
-			p.intermediateStates.Add(newNode)
+			forkHash := fork.HashCode()
+			fork.CachedHashCode = ""
+			fork.Heap.CachedHashCode = ""
+			if _, ok := scheduledHashes[forkHash]; ok {
+				continue
+			}
+
+			hashes := fork.getSymmetryTranslations()
+			duplicate := false
+			for _, hash := range hashes {
+				if _, ok := scheduledHashes[hash]; ok {
+					duplicate = true
+					break
+				}
+			}
+			if duplicate {
+				continue
+			} else {
+				scheduledHashes[forkHash] = true
+				fork.CachedHashCode = ""
+				fork.Heap.CachedHashCode = ""
+				newNode := node.ForkForAlternatePaths(fork, fork.Name)
+				p.intermediateStates.Add(newNode)
+			}
 		}
 		return false, false
 	}
