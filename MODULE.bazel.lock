@@ -346,10 +346,10 @@
     },
     "@@rules_python+//python/extensions:pip.bzl%pip": {
       "general": {
-        "bzlTransitiveDigest": "BLdmuD5z+agaZisvAAuWry3HB/uVt8uHQKyz2bo7U5w=",
+        "bzlTransitiveDigest": "AjXjzEGt60iE5uNLGM4/MYd59GyFpYEzYUHAXYPKv90=",
         "usagesDigest": "73vBEgDS0U+z9tmkUmjL+ocFsXsOMTMPH0AYkWHidvI=",
         "recordedFileInputs": {
-          "@@//third_party/requirements_lock.txt": "52e119eed9e1e3a75e89a2e8c27d441c1ac66b5dab50e8c02c3ba4b7e8472d9f",
+          "@@//third_party/requirements_lock.txt": "d573b33464fa6a96e3651f10eacb9012cadfab839bbff60792a8fd87ba88d077",
           "@@protobuf+//python/requirements.txt": "983be60d3cec4b319dcab6d48aeb3f5b2f7c3350f26b3a9e97486c37967c73c5",
           "@@rules_fuzzing+//fuzzing/requirements.txt": "ab04664be026b632a0d2a2446c4f65982b7654f5b6851d2f9d399a19b7242a5b",
           "@@rules_python+//tools/publish/requirements_darwin.txt": "2994136eab7e57b083c3de76faf46f70fad130bc8e7360a7fed2b288b69e79dc",
@@ -488,6 +488,15 @@
               "requirement": "fonttools==4.55.3"
             }
           },
+          "pypi_312_jinja2": {
+            "repoRuleId": "@@rules_python+//python/private/pypi:whl_library.bzl%whl_library",
+            "attributes": {
+              "dep_template": "@pypi//{name}:{target}",
+              "python_interpreter_target": "@@rules_python++python+python_3_12_host//:python",
+              "repo": "pypi_312",
+              "requirement": "jinja2==3.1.6"
+            }
+          },
           "pypi_312_kiwisolver": {
             "repoRuleId": "@@rules_python+//python/private/pypi:whl_library.bzl%whl_library",
             "attributes": {
@@ -495,6 +504,15 @@
               "python_interpreter_target": "@@rules_python++python+python_3_12_host//:python",
               "repo": "pypi_312",
               "requirement": "kiwisolver==1.4.7"
+            }
+          },
+          "pypi_312_markupsafe": {
+            "repoRuleId": "@@rules_python+//python/private/pypi:whl_library.bzl%whl_library",
+            "attributes": {
+              "dep_template": "@pypi//{name}:{target}",
+              "python_interpreter_target": "@@rules_python++python+python_3_12_host//:python",
+              "repo": "pypi_312",
+              "requirement": "markupsafe==3.0.2"
             }
           },
           "pypi_312_matplotlib": {
@@ -3011,7 +3029,9 @@
                 "contourpy": "{\"pypi_312_contourpy\":[{\"version\":\"3.12\"}]}",
                 "cycler": "{\"pypi_312_cycler\":[{\"version\":\"3.12\"}]}",
                 "fonttools": "{\"pypi_312_fonttools\":[{\"version\":\"3.12\"}]}",
+                "jinja2": "{\"pypi_312_jinja2\":[{\"version\":\"3.12\"}]}",
                 "kiwisolver": "{\"pypi_312_kiwisolver\":[{\"version\":\"3.12\"}]}",
+                "markupsafe": "{\"pypi_312_markupsafe\":[{\"version\":\"3.12\"}]}",
                 "matplotlib": "{\"pypi_312_matplotlib\":[{\"version\":\"3.12\"}]}",
                 "numpy": "{\"pypi_312_numpy\":[{\"version\":\"3.12\"}]}",
                 "packaging": "{\"pypi_312_packaging\":[{\"version\":\"3.12\"}]}",
@@ -3028,7 +3048,9 @@
                 "contourpy",
                 "cycler",
                 "fonttools",
+                "jinja2",
                 "kiwisolver",
+                "markupsafe",
                 "matplotlib",
                 "numpy",
                 "packaging",
