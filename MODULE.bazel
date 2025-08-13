@@ -41,6 +41,6 @@ pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 pip.parse(
     hub_name = "pypi",
     python_version = "3.12",
-    requirements_lock = "//third_party:requirements_lock.txt",
+    requirements_lock = "//third_party:requirements.txt",
 )
 use_repo(pip, "pypi")
