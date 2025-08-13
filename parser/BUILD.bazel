@@ -4,12 +4,14 @@ py_library(
     name = "fizz",
     srcs = [
         "BuildAstVisitor.py",
+        "ErrorListener.py",
         "FizzLexer.py",
         "FizzParser.py",
         "FizzParserListener.py",
         "FizzParserVisitor.py",
         "PythonLexerBase.py",
         "PythonParserBase.py",
+        "parser.py",
     ],
     visibility = ["//visibility:public"],
     deps = [
