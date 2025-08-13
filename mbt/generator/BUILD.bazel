@@ -1,0 +1,25 @@
+load("@pypi//:requirements.bzl", "requirement")
+
+py_library(
+    name = "generator",
+    srcs = [
+        "filenames.py",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//proto:ast_py_proto",
+        "//parser:fizz"
+    ],
+)
+
+py_binary(
+    name = "generator_bin",
+    srcs = ["main.py"],
+    main = "main.py",
+    visibility = ["//visibility:public"],
+    data = glob(["templates/**"]),  # include all files under templates/
+    deps = [
+        ":generator",
+        requirement("Jinja2"),
+    ],
+)

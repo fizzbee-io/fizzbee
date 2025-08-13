@@ -1,0 +1,53 @@
+package {{ package_name }}
+
+import (
+    "github.com/fizzbee-io/fizzbee/mbt/lib/go"
+)
+
+// Role adaptors
+{% for role in file.roles %}
+// {{ role.name }}RoleAdapter is a stub adaptor for {{ role.name }}Role
+type {{ role.name }}RoleAdapter struct {}
+
+// Assert that {{ role.name }}RoleAdapter satisfies {{ role.name }}Role
+var _ {{ role.name }}Role = (*{{ role.name }}RoleAdapter)(nil)
+
+{% for action in role.actions -%}
+{% if action.name != "Init" %}
+func (a *{{ role.name }}RoleAdapter) Action{{ action.name }}(choices []mbt.Choice) (any, error) {
+    // TODO: implement action {{ action.name }}
+    return nil, mbt.ErrNotImplemented
+}
+{% endif %}
+{%- endfor %}
+{% endfor %}
+
+// Model adaptor
+type {{ model_name }}ModelAdapter struct {}
+
+// Assert that {{ model_name }}ModelAdapter satisfies {{ model_name }}Model
+var _ {{ model_name }}Model = (*{{ model_name }}ModelAdapter)(nil)
+
+// Constructor for {{ model_name }}ModelAdapter
+func New{{ model_name }}Model() {{ model_name }}Model {
+    return &{{ model_name }}ModelAdapter{}
+}
+
+func (m *{{ model_name }}ModelAdapter) Init() error {
+    // TODO: implement Init
+    return nil
+}
+
+func (m *{{ model_name }}ModelAdapter) Cleanup() error {
+    // TODO: implement Cleanup
+    return nil
+}
+
+{% for action in file.actions -%}
+{% if action.name != "Init" %}
+func (m *{{ model_name }}ModelAdapter) Action{{ action.name }}(choices []mbt.Choice) (any, error) {
+    // TODO: implement action {{ action.name }}
+    return nil, nil
+}
+{% endif %}
+{% endfor -%}
