@@ -36,6 +36,11 @@ def parse_args():
             action='store_true',
             help="Generate the adapter and the test runner code (default: False, only interfaces are generated)"
         )
+        parser.add_argument(
+            "--project-root",
+            default=os.getcwd(),
+            help="Project root to make source file paths relative (default: current working directory)"
+        )
 
         args = parser.parse_args()
 
@@ -66,6 +71,15 @@ def main(argv):
     with open(filename, 'r') as file:
         content = file.read()
 
+    # Compute relative path to project root
+    abs_spec_path = os.path.abspath(filename)
+    abs_project_root = os.path.abspath(args.project_root)
+    try:
+        rel_spec_path = os.path.relpath(abs_spec_path, abs_project_root)
+    except ValueError:
+        # Fallback if different drives on Windows
+        rel_spec_path = abs_spec_path
+
     answer = parse_file(filename, content)
     print("Parsed AST:", answer)
 
@@ -80,7 +94,8 @@ def main(argv):
     interface_output = template.render(
         package_name=args.go_package,
         file=answer,  # your parsed File proto instance
-        model_name=base_pascal_case(filename)  # Convert filename to PascalCase for Go
+        model_name=base_pascal_case(filename),  # Convert filename to PascalCase for Go
+        source_path=rel_spec_path,
     )
     # Write interfaces.go
     iface_path = os.path.join(args.out_dir, iface_file)
@@ -93,7 +108,8 @@ def main(argv):
         adapter_output = adapter_template.render(
             package_name=args.go_package,
             file=answer,
-            model_name=base_pascal_case(filename)  # Convert filename to PascalCase for Go
+            model_name=base_pascal_case(filename),  # Convert filename to PascalCase for Go
+            source_path=rel_spec_path,
         )
         # Write adapter.go
         adapter_path = os.path.join(args.out_dir, adapter_file)
