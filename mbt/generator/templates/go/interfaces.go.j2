@@ -4,7 +4,7 @@
 package {{ package_name }}
 
 import (
-    "github.com/fizzbee-io/fizzbee/mbt/lib/go"
+    mbt "github.com/fizzbee-io/fizzbee/mbt/lib/go"
 )
 
 // Role interfaces
@@ -13,7 +13,7 @@ type {{ role.name }}Role interface {
     mbt.Role
     {%- for action in role.actions %}
     {%- if action.name != "Init" %}
-    Action{{ action.name }}(choices []mbt.Choice) (any, error)
+    Action{{ action.name }}(args []mbt.Arg) (any, error)
     {%- endif %}
     {%- endfor %}
 }
@@ -21,11 +21,10 @@ type {{ role.name }}Role interface {
 
 // Model interface for the whole specification
 type {{ model_name }}Model interface {
-    Init() error
-    Cleanup() error
+    mbt.Model
     {%- for action in file.actions %}
     {%- if action.name != "Init" %}
-    Action{{ action.name }}(choices []mbt.Choice) (any, error)
+    Action{{ action.name }}(args []mbt.Arg) (any, error)
     {%- endif %}
     {%- endfor %}
 }

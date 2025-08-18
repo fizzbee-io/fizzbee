@@ -85,38 +85,30 @@ def main(argv):
 
     # Ensure output directory exists
     os.makedirs(args.out_dir, exist_ok=True)
-    # Generate Go file names based on the input filename
-    iface_file, adapter_file = go_filenames(filename, ["_interfaces", "_adapters"])
 
     env = Environment(loader=FileSystemLoader(data_path))
-    template = env.get_template("go/interfaces.go.j2")
 
-    interface_output = template.render(
-        package_name=args.go_package,
-        file=answer,  # your parsed File proto instance
-        model_name=base_pascal_case(filename),  # Convert filename to PascalCase for Go
-        source_path=rel_spec_path,
-    )
-    # Write interfaces.go
-    iface_path = os.path.join(args.out_dir, iface_file)
-    with open(iface_path, "w") as f:
-        f.write(interface_output)
-    print(f"Generated Go interface file: {iface_path}")
+    templates = [
+        ("go/interfaces.go.j2", "_interfaces", True),
+        ("go/adapters.go.j2", "_adapters", args.gen_adapter),
+        ("go/test.go.j2", "_test", True),
+    ]
 
-    if args.gen_adapter:
-        adapter_template = env.get_template("go/adapters.go.j2")
-        adapter_output = adapter_template.render(
+    for tpl_name, out_file_suffix, enabled in templates:
+        if not enabled:
+            continue
+        template = env.get_template(tpl_name)
+        output = template.render(
             package_name=args.go_package,
             file=answer,
-            model_name=base_pascal_case(filename),  # Convert filename to PascalCase for Go
+            model_name=base_pascal_case(filename),
             source_path=rel_spec_path,
         )
-        # Write adapter.go
-        adapter_path = os.path.join(args.out_dir, adapter_file)
-        with open(adapter_path, "w") as f:
-            f.write(adapter_output)
-        print(f"Generated Go adapter file: {adapter_path}")
-
+        out_file = go_filenames(filename, [out_file_suffix])[0]
+        out_path = os.path.join(args.out_dir, out_file)
+        with open(out_path, "w") as f:
+            f.write(output)
+        print(f"Generated {out_file} from {tpl_name}")
 
 
 if __name__ == '__main__':
