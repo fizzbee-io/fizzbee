@@ -37,12 +37,14 @@ def parse_args():
             help="Generate the adapter and the test runner code (default: False, only interfaces are generated)"
         )
         parser.add_argument(
-            "--project-root",
-            default=os.getcwd(),
-            help="Project root to make source file paths relative (default: current working directory)"
+            "--rel-root",
+            default=None,
+            help="Base directory to compute relative paths for spec references (default: same as --out-dir)"
         )
 
         args = parser.parse_args()
+        if args.rel_root is None:
+            args.rel_root = args.out_dir
 
         # Validation
         if args.lang == "go":
@@ -73,7 +75,7 @@ def main(argv):
 
     # Compute relative path to project root
     abs_spec_path = os.path.abspath(filename)
-    abs_project_root = os.path.abspath(args.project_root)
+    abs_project_root = os.path.abspath(args.rel_root)
     try:
         rel_spec_path = os.path.relpath(abs_spec_path, abs_project_root)
     except ValueError:
