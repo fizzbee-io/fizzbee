@@ -4,7 +4,7 @@
 package {{ package_name }}
 
 import (
-    "github.com/fizzbee-io/fizzbee/mbt/lib/go"
+    mbt "github.com/fizzbee-io/fizzbee/mbt/lib/go"
 )
 
 // Role adaptors
@@ -17,7 +17,7 @@ var _ {{ role.name }}Role = (*{{ role.name }}RoleAdapter)(nil)
 
 {% for action in role.actions -%}
 {% if action.name != "Init" %}
-func (a *{{ role.name }}RoleAdapter) Action{{ action.name }}(choices []mbt.Choice) (any, error) {
+func (a *{{ role.name }}RoleAdapter) Action{{ action.name }}(args []mbt.Arg) (any, error) {
     // TODO: implement action {{ action.name }}
     return nil, mbt.ErrNotImplemented
 }
@@ -36,6 +36,11 @@ func New{{ model_name }}Model() {{ model_name }}Model {
     return &{{ model_name }}ModelAdapter{}
 }
 
+func (m *{{ model_name }}ModelAdapter) GetState() (map[string]any, error) {
+    // TODO: implement GetState. Required.
+	return nil, mbt.ErrNotImplemented
+}
+
 func (m *{{ model_name }}ModelAdapter) Init() error {
     // TODO: implement Init
     return nil
@@ -48,7 +53,7 @@ func (m *{{ model_name }}ModelAdapter) Cleanup() error {
 
 {% for action in file.actions -%}
 {% if action.name != "Init" %}
-func (m *{{ model_name }}ModelAdapter) Action{{ action.name }}(choices []mbt.Choice) (any, error) {
+func (m *{{ model_name }}ModelAdapter) Action{{ action.name }}(args []mbt.Arg) (any, error) {
     // TODO: implement action {{ action.name }}
     return nil, nil
 }

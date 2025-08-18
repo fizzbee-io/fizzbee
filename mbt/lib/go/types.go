@@ -5,8 +5,8 @@ import "errors"
 // ErrNotImplemented is returned by unimplemented stub methods.
 var ErrNotImplemented = errors.New("not implemented")
 
-// Choice represents a choice variable passed to action methods.
-type Choice struct {
+// Arg represents a choice variable passed to action methods.
+type Arg struct {
 	Name  string
 	Value any
 }
@@ -14,6 +14,12 @@ type Choice struct {
 // Role is the base interface that all role interfaces should embed.
 type Role interface {
 	// At present, no methods are defined here, but this can be extended
+}
+
+type Model interface {
+	StateGetter
+	Init() error
+	Cleanup() error
 }
 
 // StateGetter is an interface for roles that can return their current state.
