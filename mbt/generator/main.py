@@ -85,18 +85,16 @@ def main(argv):
 
     # Ensure output directory exists
     os.makedirs(args.out_dir, exist_ok=True)
-    # Generate Go file names based on the input filename
-    iface_file, adapter_file, test_file = go_filenames(filename, ["_interfaces", "_adapters", "_test"])
 
     env = Environment(loader=FileSystemLoader(data_path))
 
     templates = [
-        ("go/interfaces.go.j2", iface_file, True),
-        ("go/adapters.go.j2", adapter_file, args.gen_adapter),
-        ("go/test.go.j2", test_file, True),
+        ("go/interfaces.go.j2", "_interfaces", True),
+        ("go/adapters.go.j2", "_adapters", args.gen_adapter),
+        ("go/test.go.j2", "_test", True),
     ]
 
-    for tpl_name, out_file, enabled in templates:
+    for tpl_name, out_file_suffix, enabled in templates:
         if not enabled:
             continue
         template = env.get_template(tpl_name)
@@ -106,6 +104,7 @@ def main(argv):
             model_name=base_pascal_case(filename),
             source_path=rel_spec_path,
         )
+        out_file = go_filenames(filename, [out_file_suffix])[0]
         out_path = os.path.join(args.out_dir, out_file)
         with open(out_path, "w") as f:
             f.write(output)
