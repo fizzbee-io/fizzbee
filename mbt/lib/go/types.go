@@ -18,6 +18,7 @@ type Role interface {
 
 type Model interface {
 	StateGetter
+	RoleMapper
 	Init() error
 	Cleanup() error
 }
@@ -37,4 +38,9 @@ type StateGetter interface {
 type SnapshotStateGetter interface {
 	// SnapshotState returns a consistent, concurrency-safe snapshot of the state.
 	SnapshotState() (map[string]any, error)
+}
+
+type RoleMapper interface {
+	// GetRole returns the role by its name.
+	GetRole(roleName string, index int) (Role, error)
 }

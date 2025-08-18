@@ -12,7 +12,6 @@ message Value {
     bool bool_value = 3;
     MapValue map_value = 4;
     ListValue list_value = 5;
-    SetValue set_value = 6;
   }
 }
 

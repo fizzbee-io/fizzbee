@@ -135,7 +135,6 @@ type Value struct {
 	//	*Value_BoolValue
 	//	*Value_MapValue
 	//	*Value_ListValue
-	//	*Value_SetValue
 	Kind          isValue_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -223,15 +222,6 @@ func (x *Value) GetListValue() *ListValue {
 	return nil
 }
 
-func (x *Value) GetSetValue() *SetValue {
-	if x != nil {
-		if x, ok := x.Kind.(*Value_SetValue); ok {
-			return x.SetValue
-		}
-	}
-	return nil
-}
-
 type isValue_Kind interface {
 	isValue_Kind()
 }
@@ -256,10 +246,6 @@ type Value_ListValue struct {
 	ListValue *ListValue `protobuf:"bytes,5,opt,name=list_value,json=listValue,proto3,oneof"`
 }
 
-type Value_SetValue struct {
-	SetValue *SetValue `protobuf:"bytes,6,opt,name=set_value,json=setValue,proto3,oneof"`
-}
-
 func (*Value_StrValue) isValue_Kind() {}
 
 func (*Value_IntValue) isValue_Kind() {}
@@ -269,8 +255,6 @@ func (*Value_BoolValue) isValue_Kind() {}
 func (*Value_MapValue) isValue_Kind() {}
 
 func (*Value_ListValue) isValue_Kind() {}
-
-func (*Value_SetValue) isValue_Kind() {}
 
 type MapValue struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -991,7 +975,7 @@ var File_mbt_plugin_proto protoreflect.FileDescriptor
 
 const file_mbt_plugin_proto_rawDesc = "" +
 	"\n" +
-	"\x10mbt_plugin.proto\x12\vfizzbee.mbt\"\x93\x02\n" +
+	"\x10mbt_plugin.proto\x12\vfizzbee.mbt\"\xdd\x01\n" +
 	"\x05Value\x12\x1d\n" +
 	"\tstr_value\x18\x01 \x01(\tH\x00R\bstrValue\x12\x1d\n" +
 	"\tint_value\x18\x02 \x01(\x03H\x00R\bintValue\x12\x1f\n" +
@@ -999,8 +983,7 @@ const file_mbt_plugin_proto_rawDesc = "" +
 	"bool_value\x18\x03 \x01(\bH\x00R\tboolValue\x124\n" +
 	"\tmap_value\x18\x04 \x01(\v2\x15.fizzbee.mbt.MapValueH\x00R\bmapValue\x127\n" +
 	"\n" +
-	"list_value\x18\x05 \x01(\v2\x16.fizzbee.mbt.ListValueH\x00R\tlistValue\x124\n" +
-	"\tset_value\x18\x06 \x01(\v2\x15.fizzbee.mbt.SetValueH\x00R\bsetValueB\x06\n" +
+	"list_value\x18\x05 \x01(\v2\x16.fizzbee.mbt.ListValueH\x00R\tlistValueB\x06\n" +
 	"\x04kind\";\n" +
 	"\bMapValue\x12/\n" +
 	"\aentries\x18\x01 \x03(\v2\x15.fizzbee.mbt.MapEntryR\aentries\"Z\n" +
@@ -1095,36 +1078,35 @@ var file_mbt_plugin_proto_goTypes = []any{
 var file_mbt_plugin_proto_depIdxs = []int32{
 	3,  // 0: fizzbee.mbt.Value.map_value:type_name -> fizzbee.mbt.MapValue
 	5,  // 1: fizzbee.mbt.Value.list_value:type_name -> fizzbee.mbt.ListValue
-	6,  // 2: fizzbee.mbt.Value.set_value:type_name -> fizzbee.mbt.SetValue
-	4,  // 3: fizzbee.mbt.MapValue.entries:type_name -> fizzbee.mbt.MapEntry
-	2,  // 4: fizzbee.mbt.MapEntry.key:type_name -> fizzbee.mbt.Value
-	2,  // 5: fizzbee.mbt.MapEntry.value:type_name -> fizzbee.mbt.Value
-	2,  // 6: fizzbee.mbt.ListValue.items:type_name -> fizzbee.mbt.Value
-	2,  // 7: fizzbee.mbt.SetValue.items:type_name -> fizzbee.mbt.Value
-	0,  // 8: fizzbee.mbt.Arg.type:type_name -> fizzbee.mbt.ArgType
-	2,  // 9: fizzbee.mbt.Arg.value:type_name -> fizzbee.mbt.Value
-	1,  // 10: fizzbee.mbt.Status.code:type_name -> fizzbee.mbt.StatusCode
-	8,  // 11: fizzbee.mbt.InitRequest.args:type_name -> fizzbee.mbt.Arg
-	10, // 12: fizzbee.mbt.InitResponse.exec_time:type_name -> fizzbee.mbt.Interval
-	9,  // 13: fizzbee.mbt.InitResponse.status:type_name -> fizzbee.mbt.Status
-	10, // 14: fizzbee.mbt.CleanupResponse.exec_time:type_name -> fizzbee.mbt.Interval
-	9,  // 15: fizzbee.mbt.CleanupResponse.status:type_name -> fizzbee.mbt.Status
-	7,  // 16: fizzbee.mbt.ExecuteActionRequest.role:type_name -> fizzbee.mbt.RoleRef
-	8,  // 17: fizzbee.mbt.ExecuteActionRequest.args:type_name -> fizzbee.mbt.Arg
-	2,  // 18: fizzbee.mbt.ExecuteActionResponse.return_values:type_name -> fizzbee.mbt.Value
-	10, // 19: fizzbee.mbt.ExecuteActionResponse.exec_time:type_name -> fizzbee.mbt.Interval
-	9,  // 20: fizzbee.mbt.ExecuteActionResponse.status:type_name -> fizzbee.mbt.Status
-	11, // 21: fizzbee.mbt.FizzBeeMbtPluginService.Init:input_type -> fizzbee.mbt.InitRequest
-	13, // 22: fizzbee.mbt.FizzBeeMbtPluginService.Cleanup:input_type -> fizzbee.mbt.CleanupRequest
-	15, // 23: fizzbee.mbt.FizzBeeMbtPluginService.ExecuteAction:input_type -> fizzbee.mbt.ExecuteActionRequest
-	12, // 24: fizzbee.mbt.FizzBeeMbtPluginService.Init:output_type -> fizzbee.mbt.InitResponse
-	14, // 25: fizzbee.mbt.FizzBeeMbtPluginService.Cleanup:output_type -> fizzbee.mbt.CleanupResponse
-	16, // 26: fizzbee.mbt.FizzBeeMbtPluginService.ExecuteAction:output_type -> fizzbee.mbt.ExecuteActionResponse
-	24, // [24:27] is the sub-list for method output_type
-	21, // [21:24] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	4,  // 2: fizzbee.mbt.MapValue.entries:type_name -> fizzbee.mbt.MapEntry
+	2,  // 3: fizzbee.mbt.MapEntry.key:type_name -> fizzbee.mbt.Value
+	2,  // 4: fizzbee.mbt.MapEntry.value:type_name -> fizzbee.mbt.Value
+	2,  // 5: fizzbee.mbt.ListValue.items:type_name -> fizzbee.mbt.Value
+	2,  // 6: fizzbee.mbt.SetValue.items:type_name -> fizzbee.mbt.Value
+	0,  // 7: fizzbee.mbt.Arg.type:type_name -> fizzbee.mbt.ArgType
+	2,  // 8: fizzbee.mbt.Arg.value:type_name -> fizzbee.mbt.Value
+	1,  // 9: fizzbee.mbt.Status.code:type_name -> fizzbee.mbt.StatusCode
+	8,  // 10: fizzbee.mbt.InitRequest.args:type_name -> fizzbee.mbt.Arg
+	10, // 11: fizzbee.mbt.InitResponse.exec_time:type_name -> fizzbee.mbt.Interval
+	9,  // 12: fizzbee.mbt.InitResponse.status:type_name -> fizzbee.mbt.Status
+	10, // 13: fizzbee.mbt.CleanupResponse.exec_time:type_name -> fizzbee.mbt.Interval
+	9,  // 14: fizzbee.mbt.CleanupResponse.status:type_name -> fizzbee.mbt.Status
+	7,  // 15: fizzbee.mbt.ExecuteActionRequest.role:type_name -> fizzbee.mbt.RoleRef
+	8,  // 16: fizzbee.mbt.ExecuteActionRequest.args:type_name -> fizzbee.mbt.Arg
+	2,  // 17: fizzbee.mbt.ExecuteActionResponse.return_values:type_name -> fizzbee.mbt.Value
+	10, // 18: fizzbee.mbt.ExecuteActionResponse.exec_time:type_name -> fizzbee.mbt.Interval
+	9,  // 19: fizzbee.mbt.ExecuteActionResponse.status:type_name -> fizzbee.mbt.Status
+	11, // 20: fizzbee.mbt.FizzBeeMbtPluginService.Init:input_type -> fizzbee.mbt.InitRequest
+	13, // 21: fizzbee.mbt.FizzBeeMbtPluginService.Cleanup:input_type -> fizzbee.mbt.CleanupRequest
+	15, // 22: fizzbee.mbt.FizzBeeMbtPluginService.ExecuteAction:input_type -> fizzbee.mbt.ExecuteActionRequest
+	12, // 23: fizzbee.mbt.FizzBeeMbtPluginService.Init:output_type -> fizzbee.mbt.InitResponse
+	14, // 24: fizzbee.mbt.FizzBeeMbtPluginService.Cleanup:output_type -> fizzbee.mbt.CleanupResponse
+	16, // 25: fizzbee.mbt.FizzBeeMbtPluginService.ExecuteAction:output_type -> fizzbee.mbt.ExecuteActionResponse
+	23, // [23:26] is the sub-list for method output_type
+	20, // [20:23] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_mbt_plugin_proto_init() }
@@ -1138,7 +1120,6 @@ func file_mbt_plugin_proto_init() {
 		(*Value_BoolValue)(nil),
 		(*Value_MapValue)(nil),
 		(*Value_ListValue)(nil),
-		(*Value_SetValue)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
