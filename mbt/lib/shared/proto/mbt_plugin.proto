@@ -78,6 +78,8 @@ message InitRequest {
 message InitResponse {
   Interval exec_time = 1;
   Status status = 2;
+
+  repeated RoleRef roles = 3; // List of roles initialized by the plugin
 }
 
 message CleanupRequest {
