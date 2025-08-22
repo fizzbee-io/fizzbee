@@ -40,7 +40,11 @@ type SnapshotStateGetter interface {
 	SnapshotState() (map[string]any, error)
 }
 
+type RoleId struct {
+	RoleName string
+	Index    int
+}
 type RoleMapper interface {
-	// GetRole returns the role by its name.
-	GetRole(roleName string, index int) (Role, error)
+	// GetRoles returns the role by its name.
+	GetRoles() (map[RoleId]Role, error)
 }

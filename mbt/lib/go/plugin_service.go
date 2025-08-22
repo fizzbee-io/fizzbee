@@ -38,11 +38,29 @@ func (s *FizzBeeMbtPluginServer) Init(
 		}, nil
 	}
 
+	refs := make([]*pb.RoleRef, 0)
+	//convert s.model.GetRoles() to RoleRefs
+	roles, err := s.model.GetRoles()
+	if err != nil {
+		return &pb.InitResponse{
+			Status: &pb.Status{
+				Code:    pb.StatusCode_STATUS_EXECUTION_FAILED,
+				Message: fmt.Sprintf("Failed to get roles: %v", err),
+			},
+		}, nil
+	}
+	for id, _ := range roles {
+		refs = append(refs, &pb.RoleRef{
+			RoleName: id.RoleName,
+			RoleId:   int32(id.Index),
+		})
+	}
 	return &pb.InitResponse{
 		Status: &pb.Status{
 			Code:    pb.StatusCode_STATUS_OK,
 			Message: "Initialization successful",
 		},
+		Roles: refs,
 	}, nil
 }
 
@@ -84,7 +102,7 @@ func (s *FizzBeeMbtPluginServer) ExecuteAction(
 	if roleName == "" {
 		instance = s.model
 	} else {
-		instance, err = s.model.GetRole(roleName, int(roleId))
+		instance, err = s.getRole(roleName, roleId)
 		if err != nil {
 			return &pb.ExecuteActionResponse{
 				Status: &pb.Status{
@@ -135,6 +153,23 @@ func (s *FizzBeeMbtPluginServer) ExecuteAction(
 	}
 
 }
+
+func (s *FizzBeeMbtPluginServer) getRole(roleName string, roleId int32) (Role, error) {
+	roles, err := s.model.GetRoles()
+	if err != nil {
+		return nil, err
+	}
+	id := RoleId{
+		RoleName: roleName,
+		Index:    int(roleId),
+	}
+	if role, ok := roles[id]; ok {
+		return role, nil
+	} else {
+		return nil, fmt.Errorf("role %s with id %d not found", roleName, roleId)
+	}
+}
+
 func fromProtoArgsToLibArgs(protoArgs []*pb.Arg) []Arg {
 	if protoArgs == nil {
 		return nil

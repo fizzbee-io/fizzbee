@@ -715,6 +715,7 @@ type InitResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ExecTime      *Interval              `protobuf:"bytes,1,opt,name=exec_time,json=execTime,proto3" json:"exec_time,omitempty"`
 	Status        *Status                `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	Roles         []*RoleRef             `protobuf:"bytes,3,rep,name=roles,proto3" json:"roles,omitempty"` // List of roles initialized by the plugin
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -759,6 +760,13 @@ func (x *InitResponse) GetExecTime() *Interval {
 func (x *InitResponse) GetStatus() *Status {
 	if x != nil {
 		return x.Status
+	}
+	return nil
+}
+
+func (x *InitResponse) GetRoles() []*RoleRef {
+	if x != nil {
+		return x.Roles
 	}
 	return nil
 }
@@ -1009,10 +1017,11 @@ const file_mbt_plugin_proto_rawDesc = "" +
 	"\rend_unix_nano\x18\x02 \x01(\x03R\vendUnixNano\"P\n" +
 	"\vInitRequest\x12\x1b\n" +
 	"\ttest_name\x18\x01 \x01(\tR\btestName\x12$\n" +
-	"\x04args\x18\x02 \x03(\v2\x10.fizzbee.mbt.ArgR\x04args\"o\n" +
+	"\x04args\x18\x02 \x03(\v2\x10.fizzbee.mbt.ArgR\x04args\"\x9b\x01\n" +
 	"\fInitResponse\x122\n" +
 	"\texec_time\x18\x01 \x01(\v2\x15.fizzbee.mbt.IntervalR\bexecTime\x12+\n" +
-	"\x06status\x18\x02 \x01(\v2\x13.fizzbee.mbt.StatusR\x06status\"\x10\n" +
+	"\x06status\x18\x02 \x01(\v2\x13.fizzbee.mbt.StatusR\x06status\x12*\n" +
+	"\x05roles\x18\x03 \x03(\v2\x14.fizzbee.mbt.RoleRefR\x05roles\"\x10\n" +
 	"\x0eCleanupRequest\"r\n" +
 	"\x0fCleanupResponse\x122\n" +
 	"\texec_time\x18\x01 \x01(\v2\x15.fizzbee.mbt.IntervalR\bexecTime\x12+\n" +
@@ -1089,24 +1098,25 @@ var file_mbt_plugin_proto_depIdxs = []int32{
 	8,  // 10: fizzbee.mbt.InitRequest.args:type_name -> fizzbee.mbt.Arg
 	10, // 11: fizzbee.mbt.InitResponse.exec_time:type_name -> fizzbee.mbt.Interval
 	9,  // 12: fizzbee.mbt.InitResponse.status:type_name -> fizzbee.mbt.Status
-	10, // 13: fizzbee.mbt.CleanupResponse.exec_time:type_name -> fizzbee.mbt.Interval
-	9,  // 14: fizzbee.mbt.CleanupResponse.status:type_name -> fizzbee.mbt.Status
-	7,  // 15: fizzbee.mbt.ExecuteActionRequest.role:type_name -> fizzbee.mbt.RoleRef
-	8,  // 16: fizzbee.mbt.ExecuteActionRequest.args:type_name -> fizzbee.mbt.Arg
-	2,  // 17: fizzbee.mbt.ExecuteActionResponse.return_values:type_name -> fizzbee.mbt.Value
-	10, // 18: fizzbee.mbt.ExecuteActionResponse.exec_time:type_name -> fizzbee.mbt.Interval
-	9,  // 19: fizzbee.mbt.ExecuteActionResponse.status:type_name -> fizzbee.mbt.Status
-	11, // 20: fizzbee.mbt.FizzBeeMbtPluginService.Init:input_type -> fizzbee.mbt.InitRequest
-	13, // 21: fizzbee.mbt.FizzBeeMbtPluginService.Cleanup:input_type -> fizzbee.mbt.CleanupRequest
-	15, // 22: fizzbee.mbt.FizzBeeMbtPluginService.ExecuteAction:input_type -> fizzbee.mbt.ExecuteActionRequest
-	12, // 23: fizzbee.mbt.FizzBeeMbtPluginService.Init:output_type -> fizzbee.mbt.InitResponse
-	14, // 24: fizzbee.mbt.FizzBeeMbtPluginService.Cleanup:output_type -> fizzbee.mbt.CleanupResponse
-	16, // 25: fizzbee.mbt.FizzBeeMbtPluginService.ExecuteAction:output_type -> fizzbee.mbt.ExecuteActionResponse
-	23, // [23:26] is the sub-list for method output_type
-	20, // [20:23] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	7,  // 13: fizzbee.mbt.InitResponse.roles:type_name -> fizzbee.mbt.RoleRef
+	10, // 14: fizzbee.mbt.CleanupResponse.exec_time:type_name -> fizzbee.mbt.Interval
+	9,  // 15: fizzbee.mbt.CleanupResponse.status:type_name -> fizzbee.mbt.Status
+	7,  // 16: fizzbee.mbt.ExecuteActionRequest.role:type_name -> fizzbee.mbt.RoleRef
+	8,  // 17: fizzbee.mbt.ExecuteActionRequest.args:type_name -> fizzbee.mbt.Arg
+	2,  // 18: fizzbee.mbt.ExecuteActionResponse.return_values:type_name -> fizzbee.mbt.Value
+	10, // 19: fizzbee.mbt.ExecuteActionResponse.exec_time:type_name -> fizzbee.mbt.Interval
+	9,  // 20: fizzbee.mbt.ExecuteActionResponse.status:type_name -> fizzbee.mbt.Status
+	11, // 21: fizzbee.mbt.FizzBeeMbtPluginService.Init:input_type -> fizzbee.mbt.InitRequest
+	13, // 22: fizzbee.mbt.FizzBeeMbtPluginService.Cleanup:input_type -> fizzbee.mbt.CleanupRequest
+	15, // 23: fizzbee.mbt.FizzBeeMbtPluginService.ExecuteAction:input_type -> fizzbee.mbt.ExecuteActionRequest
+	12, // 24: fizzbee.mbt.FizzBeeMbtPluginService.Init:output_type -> fizzbee.mbt.InitResponse
+	14, // 25: fizzbee.mbt.FizzBeeMbtPluginService.Cleanup:output_type -> fizzbee.mbt.CleanupResponse
+	16, // 26: fizzbee.mbt.FizzBeeMbtPluginService.ExecuteAction:output_type -> fizzbee.mbt.ExecuteActionResponse
+	24, // [24:27] is the sub-list for method output_type
+	21, // [21:24] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_mbt_plugin_proto_init() }

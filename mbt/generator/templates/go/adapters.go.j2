@@ -41,9 +41,10 @@ func (m *{{ model_name }}ModelAdapter) GetState() (map[string]any, error) {
 	return nil, mbt.ErrNotImplemented
 }
 
-func (m *{{ model_name }}ModelAdapter) GetRole(roleName string, index int) (mbt.Role, error) {
-    // TODO: implement GetRole. Required.
-	return nil, mbt.ErrNotImplemented}
+func (m *{{ model_name }}ModelAdapter) GetRoles() (map[RoleId]Role, error) {
+    // TODO: implement GetRoles. Required.
+	return nil, mbt.ErrNotImplemented
+}
 
 func (m *{{ model_name }}ModelAdapter) Init() error {
     // TODO: implement Init
