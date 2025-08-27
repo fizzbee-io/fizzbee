@@ -2,9 +2,13 @@ package mbt
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"os"
+	"os/signal"
+	"syscall"
 	"testing"
+	"time"
 
 	pb "github.com/fizzbee-io/fizzbee/mbt/lib/go/internalpb"
 	"google.golang.org/grpc"
@@ -50,5 +54,25 @@ func Start(t *testing.T, m Model, actionsRegistry map[string]map[string]ActionFu
 	pb.RegisterFizzBeeMbtPluginServiceServer(server, NewFizzBeeMbtPluginServer(t, m, actionsRegistry))
 
 	fmt.Printf("Starting FizzBee MBT plugin server on %s: %s\n", opts.Network, opts.Address)
+	// Handle shutdown signals
+	stopCh := make(chan os.Signal, 1)
+	signal.Notify(stopCh, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-stopCh
+		fmt.Println("Shutting down gRPC server...")
+
+		timer := time.AfterFunc(10*time.Second, func() {
+			log.Println("Server couldn't stop gracefully in time. Doing force stop.")
+			server.Stop()
+		})
+		defer timer.Stop()
+		server.GracefulStop() // finish in-flight requests
+		lis.Close()
+
+		if opts.Network == NetworkUDS {
+			os.Remove(opts.Address)
+		}
+	}()
 	return server.Serve(lis)
 }
