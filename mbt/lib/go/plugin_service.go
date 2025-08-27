@@ -116,10 +116,16 @@ func (s *FizzBeeMbtPluginServer) ExecuteAction(
 	returnVal, err := action(instance, fromProtoArgsToLibArgs(req.GetArgs()))
 	if err == nil {
 		endTime := time.Now()
-		return &pb.ExecuteActionResponse{
-			ReturnValues: []*pb.Value{
+
+		returnValuesProto := []*pb.Value{}
+		if returnVal != nil {
+			returnValuesProto = []*pb.Value{
 				fromAnyToProtoValue(returnVal),
-			},
+			}
+		}
+
+		return &pb.ExecuteActionResponse{
+			ReturnValues: returnValuesProto,
 			ExecTime: &pb.Interval{
 				StartUnixNano: startTime.UnixNano(),
 				EndUnixNano:   endTime.UnixNano(),
