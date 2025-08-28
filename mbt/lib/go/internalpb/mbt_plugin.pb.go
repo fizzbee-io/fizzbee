@@ -658,18 +658,115 @@ func (x *Interval) GetEndUnixNano() int64 {
 	return 0
 }
 
+type RoleState struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Role          *RoleRef               `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	State         map[string]*Value      `protobuf:"bytes,2,rep,name=state,proto3" json:"state,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // Key-value pairs representing the role's state
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoleState) Reset() {
+	*x = RoleState{}
+	mi := &file_mbt_plugin_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoleState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoleState) ProtoMessage() {}
+
+func (x *RoleState) ProtoReflect() protoreflect.Message {
+	mi := &file_mbt_plugin_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoleState.ProtoReflect.Descriptor instead.
+func (*RoleState) Descriptor() ([]byte, []int) {
+	return file_mbt_plugin_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *RoleState) GetRole() *RoleRef {
+	if x != nil {
+		return x.Role
+	}
+	return nil
+}
+
+func (x *RoleState) GetState() map[string]*Value {
+	if x != nil {
+		return x.State
+	}
+	return nil
+}
+
+type ExecOptions struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CaptureState  bool                   `protobuf:"varint,1,opt,name=capture_state,json=captureState,proto3" json:"capture_state,omitempty"` // Whether to capture and return the state of all roles after action execution
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExecOptions) Reset() {
+	*x = ExecOptions{}
+	mi := &file_mbt_plugin_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExecOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExecOptions) ProtoMessage() {}
+
+func (x *ExecOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_mbt_plugin_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExecOptions.ProtoReflect.Descriptor instead.
+func (*ExecOptions) Descriptor() ([]byte, []int) {
+	return file_mbt_plugin_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ExecOptions) GetCaptureState() bool {
+	if x != nil {
+		return x.CaptureState
+	}
+	return false
+}
+
 // ------------------ RPC Messages ------------------
 type InitRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TestName      string                 `protobuf:"bytes,1,opt,name=test_name,json=testName,proto3" json:"test_name,omitempty"`
 	Args          []*Arg                 `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
+	Options       *ExecOptions           `protobuf:"bytes,3,opt,name=options,proto3" json:"options,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *InitRequest) Reset() {
 	*x = InitRequest{}
-	mi := &file_mbt_plugin_proto_msgTypes[9]
+	mi := &file_mbt_plugin_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -681,7 +778,7 @@ func (x *InitRequest) String() string {
 func (*InitRequest) ProtoMessage() {}
 
 func (x *InitRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mbt_plugin_proto_msgTypes[9]
+	mi := &file_mbt_plugin_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -694,7 +791,7 @@ func (x *InitRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InitRequest.ProtoReflect.Descriptor instead.
 func (*InitRequest) Descriptor() ([]byte, []int) {
-	return file_mbt_plugin_proto_rawDescGZIP(), []int{9}
+	return file_mbt_plugin_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *InitRequest) GetTestName() string {
@@ -711,18 +808,26 @@ func (x *InitRequest) GetArgs() []*Arg {
 	return nil
 }
 
+func (x *InitRequest) GetOptions() *ExecOptions {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
 type InitResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ExecTime      *Interval              `protobuf:"bytes,1,opt,name=exec_time,json=execTime,proto3" json:"exec_time,omitempty"`
 	Status        *Status                `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	Roles         []*RoleRef             `protobuf:"bytes,3,rep,name=roles,proto3" json:"roles,omitempty"` // List of roles initialized by the plugin
+	Roles         []*RoleRef             `protobuf:"bytes,3,rep,name=roles,proto3" json:"roles,omitempty"`                             // List of roles initialized by the plugin
+	RoleStates    []*RoleState           `protobuf:"bytes,4,rep,name=role_states,json=roleStates,proto3" json:"role_states,omitempty"` // Initial state of each role
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *InitResponse) Reset() {
 	*x = InitResponse{}
-	mi := &file_mbt_plugin_proto_msgTypes[10]
+	mi := &file_mbt_plugin_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -734,7 +839,7 @@ func (x *InitResponse) String() string {
 func (*InitResponse) ProtoMessage() {}
 
 func (x *InitResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mbt_plugin_proto_msgTypes[10]
+	mi := &file_mbt_plugin_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -747,7 +852,7 @@ func (x *InitResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InitResponse.ProtoReflect.Descriptor instead.
 func (*InitResponse) Descriptor() ([]byte, []int) {
-	return file_mbt_plugin_proto_rawDescGZIP(), []int{10}
+	return file_mbt_plugin_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *InitResponse) GetExecTime() *Interval {
@@ -771,6 +876,13 @@ func (x *InitResponse) GetRoles() []*RoleRef {
 	return nil
 }
 
+func (x *InitResponse) GetRoleStates() []*RoleState {
+	if x != nil {
+		return x.RoleStates
+	}
+	return nil
+}
+
 type CleanupRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -779,7 +891,7 @@ type CleanupRequest struct {
 
 func (x *CleanupRequest) Reset() {
 	*x = CleanupRequest{}
-	mi := &file_mbt_plugin_proto_msgTypes[11]
+	mi := &file_mbt_plugin_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -791,7 +903,7 @@ func (x *CleanupRequest) String() string {
 func (*CleanupRequest) ProtoMessage() {}
 
 func (x *CleanupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mbt_plugin_proto_msgTypes[11]
+	mi := &file_mbt_plugin_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -804,7 +916,7 @@ func (x *CleanupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CleanupRequest.ProtoReflect.Descriptor instead.
 func (*CleanupRequest) Descriptor() ([]byte, []int) {
-	return file_mbt_plugin_proto_rawDescGZIP(), []int{11}
+	return file_mbt_plugin_proto_rawDescGZIP(), []int{13}
 }
 
 type CleanupResponse struct {
@@ -817,7 +929,7 @@ type CleanupResponse struct {
 
 func (x *CleanupResponse) Reset() {
 	*x = CleanupResponse{}
-	mi := &file_mbt_plugin_proto_msgTypes[12]
+	mi := &file_mbt_plugin_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -829,7 +941,7 @@ func (x *CleanupResponse) String() string {
 func (*CleanupResponse) ProtoMessage() {}
 
 func (x *CleanupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mbt_plugin_proto_msgTypes[12]
+	mi := &file_mbt_plugin_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -842,7 +954,7 @@ func (x *CleanupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CleanupResponse.ProtoReflect.Descriptor instead.
 func (*CleanupResponse) Descriptor() ([]byte, []int) {
-	return file_mbt_plugin_proto_rawDescGZIP(), []int{12}
+	return file_mbt_plugin_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *CleanupResponse) GetExecTime() *Interval {
@@ -864,13 +976,14 @@ type ExecuteActionRequest struct {
 	Role          *RoleRef               `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
 	ActionName    string                 `protobuf:"bytes,2,opt,name=action_name,json=actionName,proto3" json:"action_name,omitempty"`
 	Args          []*Arg                 `protobuf:"bytes,3,rep,name=args,proto3" json:"args,omitempty"`
+	Options       *ExecOptions           `protobuf:"bytes,4,opt,name=options,proto3" json:"options,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ExecuteActionRequest) Reset() {
 	*x = ExecuteActionRequest{}
-	mi := &file_mbt_plugin_proto_msgTypes[13]
+	mi := &file_mbt_plugin_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -882,7 +995,7 @@ func (x *ExecuteActionRequest) String() string {
 func (*ExecuteActionRequest) ProtoMessage() {}
 
 func (x *ExecuteActionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mbt_plugin_proto_msgTypes[13]
+	mi := &file_mbt_plugin_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -895,7 +1008,7 @@ func (x *ExecuteActionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecuteActionRequest.ProtoReflect.Descriptor instead.
 func (*ExecuteActionRequest) Descriptor() ([]byte, []int) {
-	return file_mbt_plugin_proto_rawDescGZIP(), []int{13}
+	return file_mbt_plugin_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ExecuteActionRequest) GetRole() *RoleRef {
@@ -919,18 +1032,27 @@ func (x *ExecuteActionRequest) GetArgs() []*Arg {
 	return nil
 }
 
+func (x *ExecuteActionRequest) GetOptions() *ExecOptions {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
 type ExecuteActionResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ReturnValues  []*Value               `protobuf:"bytes,1,rep,name=return_values,json=returnValues,proto3" json:"return_values,omitempty"`
 	ExecTime      *Interval              `protobuf:"bytes,2,opt,name=exec_time,json=execTime,proto3" json:"exec_time,omitempty"`
 	Status        *Status                `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	Roles         []*RoleRef             `protobuf:"bytes,4,rep,name=roles,proto3" json:"roles,omitempty"`                             // List of roles initialized by the plugin
+	RoleStates    []*RoleState           `protobuf:"bytes,5,rep,name=role_states,json=roleStates,proto3" json:"role_states,omitempty"` // Initial state of each role
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ExecuteActionResponse) Reset() {
 	*x = ExecuteActionResponse{}
-	mi := &file_mbt_plugin_proto_msgTypes[14]
+	mi := &file_mbt_plugin_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -942,7 +1064,7 @@ func (x *ExecuteActionResponse) String() string {
 func (*ExecuteActionResponse) ProtoMessage() {}
 
 func (x *ExecuteActionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mbt_plugin_proto_msgTypes[14]
+	mi := &file_mbt_plugin_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -955,7 +1077,7 @@ func (x *ExecuteActionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecuteActionResponse.ProtoReflect.Descriptor instead.
 func (*ExecuteActionResponse) Descriptor() ([]byte, []int) {
-	return file_mbt_plugin_proto_rawDescGZIP(), []int{14}
+	return file_mbt_plugin_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ExecuteActionResponse) GetReturnValues() []*Value {
@@ -975,6 +1097,20 @@ func (x *ExecuteActionResponse) GetExecTime() *Interval {
 func (x *ExecuteActionResponse) GetStatus() *Status {
 	if x != nil {
 		return x.Status
+	}
+	return nil
+}
+
+func (x *ExecuteActionResponse) GetRoles() []*RoleRef {
+	if x != nil {
+		return x.Roles
+	}
+	return nil
+}
+
+func (x *ExecuteActionResponse) GetRoleStates() []*RoleState {
+	if x != nil {
+		return x.RoleStates
 	}
 	return nil
 }
@@ -1014,27 +1150,43 @@ const file_mbt_plugin_proto_rawDesc = "" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"V\n" +
 	"\bInterval\x12&\n" +
 	"\x0fstart_unix_nano\x18\x01 \x01(\x03R\rstartUnixNano\x12\"\n" +
-	"\rend_unix_nano\x18\x02 \x01(\x03R\vendUnixNano\"P\n" +
+	"\rend_unix_nano\x18\x02 \x01(\x03R\vendUnixNano\"\xbc\x01\n" +
+	"\tRoleState\x12(\n" +
+	"\x04role\x18\x01 \x01(\v2\x14.fizzbee.mbt.RoleRefR\x04role\x127\n" +
+	"\x05state\x18\x02 \x03(\v2!.fizzbee.mbt.RoleState.StateEntryR\x05state\x1aL\n" +
+	"\n" +
+	"StateEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12(\n" +
+	"\x05value\x18\x02 \x01(\v2\x12.fizzbee.mbt.ValueR\x05value:\x028\x01\"2\n" +
+	"\vExecOptions\x12#\n" +
+	"\rcapture_state\x18\x01 \x01(\bR\fcaptureState\"\x84\x01\n" +
 	"\vInitRequest\x12\x1b\n" +
 	"\ttest_name\x18\x01 \x01(\tR\btestName\x12$\n" +
-	"\x04args\x18\x02 \x03(\v2\x10.fizzbee.mbt.ArgR\x04args\"\x9b\x01\n" +
+	"\x04args\x18\x02 \x03(\v2\x10.fizzbee.mbt.ArgR\x04args\x122\n" +
+	"\aoptions\x18\x03 \x01(\v2\x18.fizzbee.mbt.ExecOptionsR\aoptions\"\xd4\x01\n" +
 	"\fInitResponse\x122\n" +
 	"\texec_time\x18\x01 \x01(\v2\x15.fizzbee.mbt.IntervalR\bexecTime\x12+\n" +
 	"\x06status\x18\x02 \x01(\v2\x13.fizzbee.mbt.StatusR\x06status\x12*\n" +
-	"\x05roles\x18\x03 \x03(\v2\x14.fizzbee.mbt.RoleRefR\x05roles\"\x10\n" +
+	"\x05roles\x18\x03 \x03(\v2\x14.fizzbee.mbt.RoleRefR\x05roles\x127\n" +
+	"\vrole_states\x18\x04 \x03(\v2\x16.fizzbee.mbt.RoleStateR\n" +
+	"roleStates\"\x10\n" +
 	"\x0eCleanupRequest\"r\n" +
 	"\x0fCleanupResponse\x122\n" +
 	"\texec_time\x18\x01 \x01(\v2\x15.fizzbee.mbt.IntervalR\bexecTime\x12+\n" +
-	"\x06status\x18\x02 \x01(\v2\x13.fizzbee.mbt.StatusR\x06status\"\x87\x01\n" +
+	"\x06status\x18\x02 \x01(\v2\x13.fizzbee.mbt.StatusR\x06status\"\xbb\x01\n" +
 	"\x14ExecuteActionRequest\x12(\n" +
 	"\x04role\x18\x01 \x01(\v2\x14.fizzbee.mbt.RoleRefR\x04role\x12\x1f\n" +
 	"\vaction_name\x18\x02 \x01(\tR\n" +
 	"actionName\x12$\n" +
-	"\x04args\x18\x03 \x03(\v2\x10.fizzbee.mbt.ArgR\x04args\"\xb1\x01\n" +
+	"\x04args\x18\x03 \x03(\v2\x10.fizzbee.mbt.ArgR\x04args\x122\n" +
+	"\aoptions\x18\x04 \x01(\v2\x18.fizzbee.mbt.ExecOptionsR\aoptions\"\x96\x02\n" +
 	"\x15ExecuteActionResponse\x127\n" +
 	"\rreturn_values\x18\x01 \x03(\v2\x12.fizzbee.mbt.ValueR\freturnValues\x122\n" +
 	"\texec_time\x18\x02 \x01(\v2\x15.fizzbee.mbt.IntervalR\bexecTime\x12+\n" +
-	"\x06status\x18\x03 \x01(\v2\x13.fizzbee.mbt.StatusR\x06status*1\n" +
+	"\x06status\x18\x03 \x01(\v2\x13.fizzbee.mbt.StatusR\x06status\x12*\n" +
+	"\x05roles\x18\x04 \x03(\v2\x14.fizzbee.mbt.RoleRefR\x05roles\x127\n" +
+	"\vrole_states\x18\x05 \x03(\v2\x16.fizzbee.mbt.RoleStateR\n" +
+	"roleStates*1\n" +
 	"\aArgType\x12\x14\n" +
 	"\x10ARG_TYPE_UNKNOWN\x10\x00\x12\x10\n" +
 	"\fARG_TYPE_ANY\x10\x01*\x9c\x01\n" +
@@ -1064,7 +1216,7 @@ func file_mbt_plugin_proto_rawDescGZIP() []byte {
 }
 
 var file_mbt_plugin_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_mbt_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_mbt_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_mbt_plugin_proto_goTypes = []any{
 	(ArgType)(0),                  // 0: fizzbee.mbt.ArgType
 	(StatusCode)(0),               // 1: fizzbee.mbt.StatusCode
@@ -1077,12 +1229,15 @@ var file_mbt_plugin_proto_goTypes = []any{
 	(*Arg)(nil),                   // 8: fizzbee.mbt.Arg
 	(*Status)(nil),                // 9: fizzbee.mbt.Status
 	(*Interval)(nil),              // 10: fizzbee.mbt.Interval
-	(*InitRequest)(nil),           // 11: fizzbee.mbt.InitRequest
-	(*InitResponse)(nil),          // 12: fizzbee.mbt.InitResponse
-	(*CleanupRequest)(nil),        // 13: fizzbee.mbt.CleanupRequest
-	(*CleanupResponse)(nil),       // 14: fizzbee.mbt.CleanupResponse
-	(*ExecuteActionRequest)(nil),  // 15: fizzbee.mbt.ExecuteActionRequest
-	(*ExecuteActionResponse)(nil), // 16: fizzbee.mbt.ExecuteActionResponse
+	(*RoleState)(nil),             // 11: fizzbee.mbt.RoleState
+	(*ExecOptions)(nil),           // 12: fizzbee.mbt.ExecOptions
+	(*InitRequest)(nil),           // 13: fizzbee.mbt.InitRequest
+	(*InitResponse)(nil),          // 14: fizzbee.mbt.InitResponse
+	(*CleanupRequest)(nil),        // 15: fizzbee.mbt.CleanupRequest
+	(*CleanupResponse)(nil),       // 16: fizzbee.mbt.CleanupResponse
+	(*ExecuteActionRequest)(nil),  // 17: fizzbee.mbt.ExecuteActionRequest
+	(*ExecuteActionResponse)(nil), // 18: fizzbee.mbt.ExecuteActionResponse
+	nil,                           // 19: fizzbee.mbt.RoleState.StateEntry
 }
 var file_mbt_plugin_proto_depIdxs = []int32{
 	3,  // 0: fizzbee.mbt.Value.map_value:type_name -> fizzbee.mbt.MapValue
@@ -1095,28 +1250,36 @@ var file_mbt_plugin_proto_depIdxs = []int32{
 	0,  // 7: fizzbee.mbt.Arg.type:type_name -> fizzbee.mbt.ArgType
 	2,  // 8: fizzbee.mbt.Arg.value:type_name -> fizzbee.mbt.Value
 	1,  // 9: fizzbee.mbt.Status.code:type_name -> fizzbee.mbt.StatusCode
-	8,  // 10: fizzbee.mbt.InitRequest.args:type_name -> fizzbee.mbt.Arg
-	10, // 11: fizzbee.mbt.InitResponse.exec_time:type_name -> fizzbee.mbt.Interval
-	9,  // 12: fizzbee.mbt.InitResponse.status:type_name -> fizzbee.mbt.Status
-	7,  // 13: fizzbee.mbt.InitResponse.roles:type_name -> fizzbee.mbt.RoleRef
-	10, // 14: fizzbee.mbt.CleanupResponse.exec_time:type_name -> fizzbee.mbt.Interval
-	9,  // 15: fizzbee.mbt.CleanupResponse.status:type_name -> fizzbee.mbt.Status
-	7,  // 16: fizzbee.mbt.ExecuteActionRequest.role:type_name -> fizzbee.mbt.RoleRef
-	8,  // 17: fizzbee.mbt.ExecuteActionRequest.args:type_name -> fizzbee.mbt.Arg
-	2,  // 18: fizzbee.mbt.ExecuteActionResponse.return_values:type_name -> fizzbee.mbt.Value
-	10, // 19: fizzbee.mbt.ExecuteActionResponse.exec_time:type_name -> fizzbee.mbt.Interval
-	9,  // 20: fizzbee.mbt.ExecuteActionResponse.status:type_name -> fizzbee.mbt.Status
-	11, // 21: fizzbee.mbt.FizzBeeMbtPluginService.Init:input_type -> fizzbee.mbt.InitRequest
-	13, // 22: fizzbee.mbt.FizzBeeMbtPluginService.Cleanup:input_type -> fizzbee.mbt.CleanupRequest
-	15, // 23: fizzbee.mbt.FizzBeeMbtPluginService.ExecuteAction:input_type -> fizzbee.mbt.ExecuteActionRequest
-	12, // 24: fizzbee.mbt.FizzBeeMbtPluginService.Init:output_type -> fizzbee.mbt.InitResponse
-	14, // 25: fizzbee.mbt.FizzBeeMbtPluginService.Cleanup:output_type -> fizzbee.mbt.CleanupResponse
-	16, // 26: fizzbee.mbt.FizzBeeMbtPluginService.ExecuteAction:output_type -> fizzbee.mbt.ExecuteActionResponse
-	24, // [24:27] is the sub-list for method output_type
-	21, // [21:24] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	7,  // 10: fizzbee.mbt.RoleState.role:type_name -> fizzbee.mbt.RoleRef
+	19, // 11: fizzbee.mbt.RoleState.state:type_name -> fizzbee.mbt.RoleState.StateEntry
+	8,  // 12: fizzbee.mbt.InitRequest.args:type_name -> fizzbee.mbt.Arg
+	12, // 13: fizzbee.mbt.InitRequest.options:type_name -> fizzbee.mbt.ExecOptions
+	10, // 14: fizzbee.mbt.InitResponse.exec_time:type_name -> fizzbee.mbt.Interval
+	9,  // 15: fizzbee.mbt.InitResponse.status:type_name -> fizzbee.mbt.Status
+	7,  // 16: fizzbee.mbt.InitResponse.roles:type_name -> fizzbee.mbt.RoleRef
+	11, // 17: fizzbee.mbt.InitResponse.role_states:type_name -> fizzbee.mbt.RoleState
+	10, // 18: fizzbee.mbt.CleanupResponse.exec_time:type_name -> fizzbee.mbt.Interval
+	9,  // 19: fizzbee.mbt.CleanupResponse.status:type_name -> fizzbee.mbt.Status
+	7,  // 20: fizzbee.mbt.ExecuteActionRequest.role:type_name -> fizzbee.mbt.RoleRef
+	8,  // 21: fizzbee.mbt.ExecuteActionRequest.args:type_name -> fizzbee.mbt.Arg
+	12, // 22: fizzbee.mbt.ExecuteActionRequest.options:type_name -> fizzbee.mbt.ExecOptions
+	2,  // 23: fizzbee.mbt.ExecuteActionResponse.return_values:type_name -> fizzbee.mbt.Value
+	10, // 24: fizzbee.mbt.ExecuteActionResponse.exec_time:type_name -> fizzbee.mbt.Interval
+	9,  // 25: fizzbee.mbt.ExecuteActionResponse.status:type_name -> fizzbee.mbt.Status
+	7,  // 26: fizzbee.mbt.ExecuteActionResponse.roles:type_name -> fizzbee.mbt.RoleRef
+	11, // 27: fizzbee.mbt.ExecuteActionResponse.role_states:type_name -> fizzbee.mbt.RoleState
+	2,  // 28: fizzbee.mbt.RoleState.StateEntry.value:type_name -> fizzbee.mbt.Value
+	13, // 29: fizzbee.mbt.FizzBeeMbtPluginService.Init:input_type -> fizzbee.mbt.InitRequest
+	15, // 30: fizzbee.mbt.FizzBeeMbtPluginService.Cleanup:input_type -> fizzbee.mbt.CleanupRequest
+	17, // 31: fizzbee.mbt.FizzBeeMbtPluginService.ExecuteAction:input_type -> fizzbee.mbt.ExecuteActionRequest
+	14, // 32: fizzbee.mbt.FizzBeeMbtPluginService.Init:output_type -> fizzbee.mbt.InitResponse
+	16, // 33: fizzbee.mbt.FizzBeeMbtPluginService.Cleanup:output_type -> fizzbee.mbt.CleanupResponse
+	18, // 34: fizzbee.mbt.FizzBeeMbtPluginService.ExecuteAction:output_type -> fizzbee.mbt.ExecuteActionResponse
+	32, // [32:35] is the sub-list for method output_type
+	29, // [29:32] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_mbt_plugin_proto_init() }
@@ -1137,7 +1300,7 @@ func file_mbt_plugin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mbt_plugin_proto_rawDesc), len(file_mbt_plugin_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   15,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
