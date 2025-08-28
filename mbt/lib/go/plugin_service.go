@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -37,10 +38,8 @@ func (s *FizzBeeMbtPluginServer) Init(
 			},
 		}, nil
 	}
-
-	refs := make([]*pb.RoleRef, 0)
-	//convert s.model.GetRoles() to RoleRefs
 	roles, err := s.model.GetRoles()
+
 	if err != nil {
 		return &pb.InitResponse{
 			Status: &pb.Status{
@@ -49,19 +48,75 @@ func (s *FizzBeeMbtPluginServer) Init(
 			},
 		}, nil
 	}
-	for id, _ := range roles {
-		refs = append(refs, &pb.RoleRef{
-			RoleName: id.RoleName,
-			RoleId:   int32(id.Index),
-		})
+	roleStates, refs, err := GetRoleRefsAndStates(roles, req.GetOptions().GetCaptureState())
+	if err != nil {
+		return &pb.InitResponse{
+			Status: &pb.Status{
+				Code:    pb.StatusCode_STATUS_EXECUTION_FAILED,
+				Message: fmt.Sprintf("Failed to get state for roles: %v", err),
+			},
+		}, nil
 	}
+
 	return &pb.InitResponse{
 		Status: &pb.Status{
 			Code:    pb.StatusCode_STATUS_OK,
 			Message: "Initialization successful",
 		},
-		Roles: refs,
+		Roles:      refs,
+		RoleStates: roleStates,
 	}, nil
+}
+
+func GetRoleRefsAndStates(roles map[RoleId]Role, captureState bool) ([]*pb.RoleState, []*pb.RoleRef, error) {
+	refs := make([]*pb.RoleRef, 0, len(roles))
+	roleStates := make([]*pb.RoleState, 0, len(roles))
+	for id, role := range roles {
+		refs = append(refs, &pb.RoleRef{
+			RoleName: id.RoleName,
+			RoleId:   int32(id.Index),
+		})
+		if !captureState {
+			continue
+		}
+		roleState, err := snapshotOrGetStateAsProto(role, id)
+		if err != nil {
+			return roleStates, refs, err
+		}
+		if roleState != nil {
+			roleStates = append(roleStates, roleState)
+		}
+	}
+	return roleStates, refs, nil
+}
+
+func snapshotOrGetStateAsProto(role Role, id RoleId) (*pb.RoleState, error) {
+	state, err := snapshotOrGetState(role)
+	if state == nil || err != nil {
+		return nil, err
+	}
+
+	return getRoleStateProto(id, state), nil
+}
+
+func snapshotOrGetState(role Role) (map[string]any, error) {
+	if sg, ok := role.(SnapshotStateGetter); ok {
+		return sg.SnapshotState()
+	} else if sg, ok := role.(StateGetter); ok {
+		return sg.GetState()
+	}
+	return nil, nil
+}
+
+func getRoleStateProto(id RoleId, state map[string]any) *pb.RoleState {
+	roleState := &pb.RoleState{
+		Role:  &pb.RoleRef{RoleName: id.RoleName, RoleId: int32(id.Index)},
+		State: make(map[string]*pb.Value),
+	}
+	for k, v := range state {
+		roleState.State[k] = fromAnyToProtoValue(v)
+	}
+	return roleState
 }
 
 // Cleanup is the RPC handler for cleaning up the model after each test.
@@ -114,49 +169,70 @@ func (s *FizzBeeMbtPluginServer) ExecuteAction(
 	}
 	startTime := time.Now()
 	returnVal, err := action(instance, fromProtoArgsToLibArgs(req.GetArgs()))
-	if err == nil {
-		endTime := time.Now()
-
-		returnValuesProto := []*pb.Value{}
-		if returnVal != nil {
-			returnValuesProto = []*pb.Value{
-				fromAnyToProtoValue(returnVal),
-			}
+	if err != nil {
+		if errors.Is(err, ErrNotImplemented) {
+			// If the action is not implemented, return a specific status code
+			return &pb.ExecuteActionResponse{
+				ReturnValues: nil,
+				ExecTime:     &pb.Interval{}, // Empty interval
+				Status: &pb.Status{
+					Code:    pb.StatusCode_STATUS_NOT_IMPLEMENTED,
+					Message: fmt.Sprintf("Action %s for role %s is not implemented", actionName, roleName),
+				},
+			}, nil
+		} else {
+			// If there is any other error, return it as a failed status
+			return &pb.ExecuteActionResponse{
+				ReturnValues: nil,
+				ExecTime:     &pb.Interval{}, // Empty interval
+				Status: &pb.Status{
+					Code:    pb.StatusCode_STATUS_EXECUTION_FAILED,
+					Message: fmt.Sprintf("Action %s for role %s failed: %v", actionName, roleName, err),
+				},
+			}, nil
 		}
-
-		return &pb.ExecuteActionResponse{
-			ReturnValues: returnValuesProto,
-			ExecTime: &pb.Interval{
-				StartUnixNano: startTime.UnixNano(),
-				EndUnixNano:   endTime.UnixNano(),
-			}, // Empty interval
-			Status: &pb.Status{
-				Code:    pb.StatusCode_STATUS_OK,
-				Message: "OK",
-			},
-		}, nil
 	}
-	if errors.Is(err, ErrNotImplemented) {
-		// If the action is not implemented, return a specific status code
+	endTime := time.Now()
+
+	returnValuesProto := []*pb.Value{}
+	if returnVal != nil {
+		returnValuesProto = []*pb.Value{
+			fromAnyToProtoValue(returnVal),
+		}
+	}
+	roles, err := s.model.GetRoles()
+
+	if err != nil {
 		return &pb.ExecuteActionResponse{
-			ReturnValues: nil,
-			ExecTime:     &pb.Interval{}, // Empty interval
-			Status: &pb.Status{
-				Code:    pb.StatusCode_STATUS_NOT_IMPLEMENTED,
-				Message: fmt.Sprintf("Action %s for role %s is not implemented", actionName, roleName),
-			},
-		}, nil
-	} else {
-		// If there is any other error, return it as a failed status
-		return &pb.ExecuteActionResponse{
-			ReturnValues: nil,
-			ExecTime:     &pb.Interval{}, // Empty interval
 			Status: &pb.Status{
 				Code:    pb.StatusCode_STATUS_EXECUTION_FAILED,
-				Message: fmt.Sprintf("Action %s for role %s failed: %v", actionName, roleName, err),
+				Message: fmt.Sprintf("Failed to get roles: %v", err),
 			},
 		}, nil
 	}
+	roleStates, refs, err := GetRoleRefsAndStates(roles, req.GetOptions().GetCaptureState())
+	if err != nil {
+		return &pb.ExecuteActionResponse{
+			Status: &pb.Status{
+				Code:    pb.StatusCode_STATUS_EXECUTION_FAILED,
+				Message: fmt.Sprintf("Failed to get state for roles: %v", err),
+			},
+		}, nil
+	}
+	res := &pb.ExecuteActionResponse{
+		ReturnValues: returnValuesProto,
+		ExecTime: &pb.Interval{
+			StartUnixNano: startTime.UnixNano(),
+			EndUnixNano:   endTime.UnixNano(),
+		}, // Empty interval
+		Status: &pb.Status{
+			Code:    pb.StatusCode_STATUS_OK,
+			Message: "OK",
+		},
+		Roles:      refs,
+		RoleStates: roleStates,
+	}
+	return res, nil
 
 }
 
@@ -230,29 +306,37 @@ func fromProtoValueToAny(protoValue *pb.Value) any {
 }
 
 func fromAnyToProtoValue(value any) *pb.Value {
-	switch v := value.(type) {
-	case string:
-		return &pb.Value{Kind: &pb.Value_StrValue{StrValue: v}}
-	case int:
-		return &pb.Value{Kind: &pb.Value_IntValue{IntValue: int64(v)}}
-	case bool:
-		return &pb.Value{Kind: &pb.Value_BoolValue{BoolValue: v}}
-	case map[any]any:
-		mapEntries := make([]*pb.MapEntry, 0, len(v))
-		for key, val := range v {
+	rv := reflect.ValueOf(value)
+	switch rv.Kind() {
+	case reflect.String:
+		return &pb.Value{Kind: &pb.Value_StrValue{StrValue: rv.String()}}
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return &pb.Value{Kind: &pb.Value_IntValue{IntValue: rv.Int()}}
+	case reflect.Bool:
+		return &pb.Value{Kind: &pb.Value_BoolValue{BoolValue: rv.Bool()}}
+	case reflect.Map:
+		mapEntries := make([]*pb.MapEntry, 0, rv.Len())
+		for key, val := range rv.MapKeys() {
 			mapEntries = append(mapEntries, &pb.MapEntry{
 				Key:   fromAnyToProtoValue(key),
 				Value: fromAnyToProtoValue(val),
 			})
 		}
 		return &pb.Value{Kind: &pb.Value_MapValue{MapValue: &pb.MapValue{Entries: mapEntries}}}
-	case []any:
-		listItems := make([]*pb.Value, len(v))
-		for i, item := range v {
-			listItems[i] = fromAnyToProtoValue(item)
+	case reflect.Slice, reflect.Array:
+		listItems := make([]*pb.Value, rv.Len())
+		for i := 0; i < rv.Len(); i++ {
+			listItems[i] = fromAnyToProtoValue(rv.Index(i).Interface())
 		}
 		return &pb.Value{Kind: &pb.Value_ListValue{ListValue: &pb.ListValue{Items: listItems}}}
+	case reflect.Interface, reflect.Pointer:
+		if rv.IsNil() {
+			return nil
+		}
+		return fromAnyToProtoValue(rv.Elem().Interface())
 	default:
+
+		fmt.Printf("Unknown type: %T, %+v\n", value, value)
 		return nil
 	}
 }

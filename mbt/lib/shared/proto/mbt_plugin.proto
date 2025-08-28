@@ -69,10 +69,20 @@ message Interval {
   int64 end_unix_nano = 2;
 }
 
+message RoleState {
+  RoleRef role = 1;
+  map<string, Value> state = 2; // Key-value pairs representing the role's state
+}
+
+message ExecOptions {
+  bool capture_state = 1; // Whether to capture and return the state of all roles after action execution
+}
 // ------------------ RPC Messages ------------------
 message InitRequest {
   string test_name = 1;
   repeated Arg args = 2;
+
+  ExecOptions options = 3;
 }
 
 message InitResponse {
@@ -80,6 +90,7 @@ message InitResponse {
   Status status = 2;
 
   repeated RoleRef roles = 3; // List of roles initialized by the plugin
+  repeated RoleState role_states = 4; // Initial state of each role
 }
 
 message CleanupRequest {
@@ -94,12 +105,16 @@ message ExecuteActionRequest {
   RoleRef role = 1;
   string action_name = 2;
   repeated Arg args = 3;
+  ExecOptions options = 4;
 }
 
 message ExecuteActionResponse {
   repeated Value return_values = 1;
   Interval exec_time = 2;
   Status status = 3;
+
+  repeated RoleRef roles = 4; // List of roles initialized by the plugin
+  repeated RoleState role_states = 5; // Initial state of each role
 }
 
 // ------------------ Service Definition ------------------
