@@ -316,10 +316,10 @@ func fromAnyToProtoValue(value any) *pb.Value {
 		return &pb.Value{Kind: &pb.Value_BoolValue{BoolValue: rv.Bool()}}
 	case reflect.Map:
 		mapEntries := make([]*pb.MapEntry, 0, rv.Len())
-		for key, val := range rv.MapKeys() {
+		for _, rKey := range rv.MapKeys() {
 			mapEntries = append(mapEntries, &pb.MapEntry{
-				Key:   fromAnyToProtoValue(key),
-				Value: fromAnyToProtoValue(val),
+				Key:   fromAnyToProtoValue(rKey.Interface()),
+				Value: fromAnyToProtoValue(rv.MapIndex(rKey).Interface()),
 			})
 		}
 		return &pb.Value{Kind: &pb.Value_MapValue{MapValue: &pb.MapValue{Entries: mapEntries}}}
