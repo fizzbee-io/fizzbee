@@ -57,6 +57,11 @@ func main() {
 	if err != nil {
 		return
 	}
+	err = dumpStateSpaceOptions(stateConfig, outDir)
+	if err != nil {
+		fmt.Printf("Error writing state space options: %v\n", err)
+		return
+	}
 
 	if f.Composition != nil {
 		runCompositionalModelChecking(f, dirPath, outDir)
@@ -69,6 +74,17 @@ func main() {
 	} else {
 		modelCheckSingleSpec(f, stateConfig, dirPath, outDir, sourceFileName, nil)
 	}
+}
+
+func dumpStateSpaceOptions(stateConfig *ast.StateSpaceOptions, outDir string) error {
+	stateConfigJson, err := protojson.MarshalOptions{
+		Multiline: true,
+	}.Marshal(stateConfig)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(filepath.Join(outDir, "state_config.json"), stateConfigJson, 0644)
+	return err
 }
 
 func runCompositionalModelChecking(f *ast.File, dirPath string, outDir string) {
@@ -100,6 +116,11 @@ func runCompositionalModelChecking(f *ast.File, dirPath string, outDir string) {
 		composedOutDir := filepath.Join(outDir, spec.Name)
 		if err := os.MkdirAll(composedOutDir, 0755); err != nil {
 			fmt.Println("Error creating directory:", err)
+			return
+		}
+		err = dumpStateSpaceOptions(composedStateConfig, composedOutDir)
+		if err != nil {
+			fmt.Printf("Error writing state space options: %v\n", err)
 			return
 		}
 		fmt.Println("Model checking composed spec:", composedSourceFileName)
@@ -171,6 +192,11 @@ func runRefinementModelChecking(f *ast.File, dirPath string, outDir string) {
 			fmt.Println("Error creating directory:", err)
 			return
 		}
+		err = dumpStateSpaceOptions(stateConfig, abstractOutDir)
+		if err != nil {
+			fmt.Printf("Error writing state space options: %v\n", err)
+			return
+		}
 
 		fmt.Println("Model checking abstract spec:", abstractSourceFile)
 		root := modelCheckSingleSpec(abstractFile, stateConfig, dirPath, abstractOutDir, abstractSourceFile, nil)
@@ -199,6 +225,11 @@ func runRefinementModelChecking(f *ast.File, dirPath string, outDir string) {
 	fmt.Println("Model checking implementation spec (refined):", f.SourceInfo.GetFileName())
 	stateConfig := loadStateOptions(dirPath, f.GetFrontMatter())
 	applyDefaultStateOptions(stateConfig)
+	err := dumpStateSpaceOptions(stateConfig, implOutDir)
+	if err != nil {
+		fmt.Printf("Error writing state space options: %v\n", err)
+		return
+	}
 
 	root := modelCheckSingleSpec(f, stateConfig, dirPath, implOutDir, f.SourceInfo.GetFileName(), joinHashes)
 	if root == nil {
