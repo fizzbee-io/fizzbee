@@ -150,6 +150,23 @@ func (s *FizzBeeMbtPluginServer) ExecuteAction(
 	ctx context.Context,
 	req *pb.ExecuteActionRequest,
 ) (*pb.ExecuteActionResponse, error) {
+	command, err := s.newCommand(req)
+	if err != nil {
+		return &pb.ExecuteActionResponse{
+			Status: &pb.Status{
+				Code:    pb.StatusCode_STATUS_EXECUTION_FAILED,
+				Message: err.Error(),
+			},
+		}, nil
+	}
+
+	s.executeCommand(command)
+	res, err := s.serializeResult(command, req)
+	return res, err
+
+}
+
+func (s *FizzBeeMbtPluginServer) newCommand(req *pb.ExecuteActionRequest) (*ExecuteActionCommand, error) {
 	roleName := req.GetRole().GetRoleName()
 	roleId := req.GetRole().GetRoleId()
 	actionName := req.GetActionName()
@@ -161,16 +178,37 @@ func (s *FizzBeeMbtPluginServer) ExecuteAction(
 	} else {
 		instance, err = s.getRole(roleName, roleId)
 		if err != nil {
-			return &pb.ExecuteActionResponse{
-				Status: &pb.Status{
-					Code:    pb.StatusCode_STATUS_EXECUTION_FAILED,
-					Message: fmt.Sprintf("Failed to get role %s: %v", roleName, err),
-				},
-			}, nil
+			return nil, fmt.Errorf("failed to get role %s: %v", roleName, err)
 		}
 	}
+	args := fromProtoArgsToLibArgs(req.GetArgs())
+	command := &ExecuteActionCommand{
+		Req:        req,
+		Role:       instance,
+		Action:     action,
+		ActionName: actionName,
+		RoleName:   roleName,
+		RoleId:     roleId,
+		Args:       args,
+	}
+	return command, err
+}
+
+func (s *FizzBeeMbtPluginServer) executeCommand(command *ExecuteActionCommand) {
 	startTime := time.Now()
-	returnVal, err := action(instance, fromProtoArgsToLibArgs(req.GetArgs()))
+	returnVal, err := command.Action(command.Role, command.Args)
+	endTime := time.Now()
+	command.StartTime = startTime
+	command.EndTime = endTime
+	command.ReturnVal = returnVal
+	command.Err = err
+}
+
+func (s *FizzBeeMbtPluginServer) serializeResult(command *ExecuteActionCommand, req *pb.ExecuteActionRequest) (*pb.ExecuteActionResponse, error) {
+	err := command.Err
+	startTime := command.StartTime
+	endTime := command.EndTime
+	returnVal := command.ReturnVal
 	if err != nil {
 		if errors.Is(err, ErrNotImplemented) {
 			// If the action is not implemented, return a specific status code
@@ -179,7 +217,7 @@ func (s *FizzBeeMbtPluginServer) ExecuteAction(
 				ExecTime:     &pb.Interval{}, // Empty interval
 				Status: &pb.Status{
 					Code:    pb.StatusCode_STATUS_NOT_IMPLEMENTED,
-					Message: fmt.Sprintf("Action %s for role %s is not implemented", actionName, roleName),
+					Message: fmt.Sprintf("Action %s for role %s is not implemented", command.ActionName, command.RoleName),
 				},
 			}, nil
 		} else {
@@ -189,12 +227,11 @@ func (s *FizzBeeMbtPluginServer) ExecuteAction(
 				ExecTime:     &pb.Interval{}, // Empty interval
 				Status: &pb.Status{
 					Code:    pb.StatusCode_STATUS_EXECUTION_FAILED,
-					Message: fmt.Sprintf("Action %s for role %s failed: %v", actionName, roleName, err),
+					Message: fmt.Sprintf("Action %s for role %s failed: %v", command.ActionName, command.RoleName, err),
 				},
 			}, nil
 		}
 	}
-	endTime := time.Now()
 
 	returnValuesProto := []*pb.Value{}
 	if returnVal != nil {
@@ -235,7 +272,6 @@ func (s *FizzBeeMbtPluginServer) ExecuteAction(
 		RoleStates: roleStates,
 	}
 	return res, nil
-
 }
 
 func (s *FizzBeeMbtPluginServer) getRole(roleName string, roleId int32) (Role, error) {
@@ -344,4 +380,20 @@ func fromAnyToProtoValue(value any) *pb.Value {
 		fmt.Printf("Unknown type: %T, %+v\n", value, value)
 		return nil
 	}
+}
+
+type ExecuteActionCommand struct {
+	Req        *pb.ExecuteActionRequest
+	Role       Role
+	Action     ActionFunc
+	ActionName string
+	RoleName   string
+	RoleId     int32
+	Args       []Arg
+
+	// Outputs after execution
+	ReturnVal any
+	Err       error
+	StartTime time.Time
+	EndTime   time.Time
 }
