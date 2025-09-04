@@ -19,9 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	FizzBeeMbtPluginService_Init_FullMethodName          = "/fizzbee.mbt.FizzBeeMbtPluginService/Init"
-	FizzBeeMbtPluginService_Cleanup_FullMethodName       = "/fizzbee.mbt.FizzBeeMbtPluginService/Cleanup"
-	FizzBeeMbtPluginService_ExecuteAction_FullMethodName = "/fizzbee.mbt.FizzBeeMbtPluginService/ExecuteAction"
+	FizzBeeMbtPluginService_Init_FullMethodName                   = "/fizzbee.mbt.FizzBeeMbtPluginService/Init"
+	FizzBeeMbtPluginService_Cleanup_FullMethodName                = "/fizzbee.mbt.FizzBeeMbtPluginService/Cleanup"
+	FizzBeeMbtPluginService_ExecuteAction_FullMethodName          = "/fizzbee.mbt.FizzBeeMbtPluginService/ExecuteAction"
+	FizzBeeMbtPluginService_ExecuteActionSequences_FullMethodName = "/fizzbee.mbt.FizzBeeMbtPluginService/ExecuteActionSequences"
 )
 
 // FizzBeeMbtPluginServiceClient is the client API for FizzBeeMbtPluginService service.
@@ -33,6 +34,7 @@ type FizzBeeMbtPluginServiceClient interface {
 	Init(ctx context.Context, in *InitRequest, opts ...grpc.CallOption) (*InitResponse, error)
 	Cleanup(ctx context.Context, in *CleanupRequest, opts ...grpc.CallOption) (*CleanupResponse, error)
 	ExecuteAction(ctx context.Context, in *ExecuteActionRequest, opts ...grpc.CallOption) (*ExecuteActionResponse, error)
+	ExecuteActionSequences(ctx context.Context, in *ExecuteActionSequencesRequest, opts ...grpc.CallOption) (*ExecuteActionSequencesResponse, error)
 }
 
 type fizzBeeMbtPluginServiceClient struct {
@@ -73,6 +75,16 @@ func (c *fizzBeeMbtPluginServiceClient) ExecuteAction(ctx context.Context, in *E
 	return out, nil
 }
 
+func (c *fizzBeeMbtPluginServiceClient) ExecuteActionSequences(ctx context.Context, in *ExecuteActionSequencesRequest, opts ...grpc.CallOption) (*ExecuteActionSequencesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExecuteActionSequencesResponse)
+	err := c.cc.Invoke(ctx, FizzBeeMbtPluginService_ExecuteActionSequences_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FizzBeeMbtPluginServiceServer is the server API for FizzBeeMbtPluginService service.
 // All implementations must embed UnimplementedFizzBeeMbtPluginServiceServer
 // for forward compatibility.
@@ -82,6 +94,7 @@ type FizzBeeMbtPluginServiceServer interface {
 	Init(context.Context, *InitRequest) (*InitResponse, error)
 	Cleanup(context.Context, *CleanupRequest) (*CleanupResponse, error)
 	ExecuteAction(context.Context, *ExecuteActionRequest) (*ExecuteActionResponse, error)
+	ExecuteActionSequences(context.Context, *ExecuteActionSequencesRequest) (*ExecuteActionSequencesResponse, error)
 	mustEmbedUnimplementedFizzBeeMbtPluginServiceServer()
 }
 
@@ -100,6 +113,9 @@ func (UnimplementedFizzBeeMbtPluginServiceServer) Cleanup(context.Context, *Clea
 }
 func (UnimplementedFizzBeeMbtPluginServiceServer) ExecuteAction(context.Context, *ExecuteActionRequest) (*ExecuteActionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExecuteAction not implemented")
+}
+func (UnimplementedFizzBeeMbtPluginServiceServer) ExecuteActionSequences(context.Context, *ExecuteActionSequencesRequest) (*ExecuteActionSequencesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ExecuteActionSequences not implemented")
 }
 func (UnimplementedFizzBeeMbtPluginServiceServer) mustEmbedUnimplementedFizzBeeMbtPluginServiceServer() {
 }
@@ -177,6 +193,24 @@ func _FizzBeeMbtPluginService_ExecuteAction_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FizzBeeMbtPluginService_ExecuteActionSequences_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExecuteActionSequencesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FizzBeeMbtPluginServiceServer).ExecuteActionSequences(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FizzBeeMbtPluginService_ExecuteActionSequences_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FizzBeeMbtPluginServiceServer).ExecuteActionSequences(ctx, req.(*ExecuteActionSequencesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // FizzBeeMbtPluginService_ServiceDesc is the grpc.ServiceDesc for FizzBeeMbtPluginService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -195,6 +229,10 @@ var FizzBeeMbtPluginService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ExecuteAction",
 			Handler:    _FizzBeeMbtPluginService_ExecuteAction_Handler,
+		},
+		{
+			MethodName: "ExecuteActionSequences",
+			Handler:    _FizzBeeMbtPluginService_ExecuteActionSequences_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
