@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -322,6 +324,9 @@ func fromAnyToProtoValue(value any) *pb.Value {
 				Value: fromAnyToProtoValue(rv.MapIndex(rKey).Interface()),
 			})
 		}
+		slices.SortFunc(mapEntries, func(a, b *pb.MapEntry) int {
+			return strings.Compare(a.Key.String(), b.Key.String())
+		})
 		return &pb.Value{Kind: &pb.Value_MapValue{MapValue: &pb.MapValue{Entries: mapEntries}}}
 	case reflect.Slice, reflect.Array:
 		listItems := make([]*pb.Value, rv.Len())
