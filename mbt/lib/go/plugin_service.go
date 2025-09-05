@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	pb "github.com/fizzbee-io/fizzbee/mbt/lib/go/internalpb"
+	"golang.org/x/sync/errgroup"
 	"reflect"
 	"slices"
 	"strings"
 	"testing"
 	"time"
-
-	pb "github.com/fizzbee-io/fizzbee/mbt/lib/go/internalpb"
 )
 
 // FizzBeeMbtPluginServer implements the gRPC service.
@@ -144,6 +144,128 @@ func (s *FizzBeeMbtPluginServer) Cleanup(
 	}, nil
 }
 
+func (s *FizzBeeMbtPluginServer) ExecuteActionSequences(
+	ctx context.Context,
+	req *pb.ExecuteActionSequencesRequest,
+) (*pb.ExecuteActionSequencesResponse, error) {
+	// Step 1: Deserialize
+	allBundles, err := s.deserializeSequences(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 2: Execute
+	if err := s.executeSequencesConcurrent(allBundles); err != nil {
+		return nil, err
+	}
+
+	// Step 3: Serialize
+	return s.serializeSequenceResults(req, allBundles)
+}
+
+// ---------------- Helper methods ----------------
+
+// Step 1: Turn proto requests into ExecuteActionCommand objects
+func (s *FizzBeeMbtPluginServer) deserializeSequences(
+	req *pb.ExecuteActionSequencesRequest,
+) ([][]*ExecuteActionCommand, error) {
+
+	var allBundles [][]*ExecuteActionCommand
+
+	for seqIdx, seq := range req.ActionSequence {
+		var cmds []*ExecuteActionCommand
+		for actIdx, actionReq := range seq.Requests {
+			cmd, err := s.newCommand(actionReq)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to deserialize: sequence index %d, action index %d: %w",
+					seqIdx, actIdx, err,
+				)
+			}
+			cmds = append(cmds, cmd)
+		}
+		allBundles = append(allBundles, cmds)
+	}
+	return allBundles, nil
+}
+
+// Step 2: Execute all deserialized commands
+func (s *FizzBeeMbtPluginServer) executeSequencesSequential(
+	allBundles [][]*ExecuteActionCommand,
+) error {
+	for seqIdx, cmds := range allBundles {
+		err := s.executeSequence(cmds, seqIdx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *FizzBeeMbtPluginServer) executeSequence(cmds []*ExecuteActionCommand, seqIdx int) error {
+	for actIdx, cmd := range cmds {
+		fmt.Println("Executing sequence", seqIdx, "action", actIdx, ":", cmd.RoleName, cmd.RoleId, cmd.ActionName)
+		if err := s.executeCommand(cmd); err != nil {
+			return fmt.Errorf(
+				"execution failed: sequence index %d, action index %d: %w",
+				seqIdx, actIdx, err,
+			)
+		}
+		fmt.Println("Completed sequence", seqIdx, "action", actIdx)
+	}
+	return nil
+}
+
+// Concurrent version: sequences in parallel, actions sequentially
+func (s *FizzBeeMbtPluginServer) executeSequencesConcurrent(
+	allBundles [][]*ExecuteActionCommand,
+) error {
+	var g errgroup.Group
+
+	for seqIdx, cmds := range allBundles {
+		// Capture loop variables
+		seqIdxCopy := seqIdx
+		cmdsCopy := cmds
+
+		g.Go(func() error {
+			return s.executeSequence(cmdsCopy, seqIdxCopy)
+		})
+	}
+
+	// Wait for all sequences to complete or first error
+	return g.Wait()
+}
+
+// Step 3: Serialize all results back into proto responses
+func (s *FizzBeeMbtPluginServer) serializeSequenceResults(
+	req *pb.ExecuteActionSequencesRequest,
+	allBundles [][]*ExecuteActionCommand,
+) (*pb.ExecuteActionSequencesResponse, error) {
+
+	var sequences []*pb.ActionSequenceResult
+
+	for seqIdx, _ := range req.ActionSequence {
+		result := &pb.ActionSequenceResult{}
+
+		for actIdx, cmd := range allBundles[seqIdx] {
+			res, err := s.serializeResult(cmd, cmd.Req)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"serialization failed: sequence index %d, action index %d: %w",
+					seqIdx, actIdx, err,
+				)
+			}
+			result.Responses = append(result.Responses, res)
+		}
+
+		sequences = append(sequences, result)
+	}
+
+	return &pb.ExecuteActionSequencesResponse{
+		Results: sequences,
+	}, nil
+}
+
 // ExecuteAction is the main RPC handler for executing a role action.
 // Currently, unimplemented; returns a "not implemented" status.
 func (s *FizzBeeMbtPluginServer) ExecuteAction(
@@ -160,7 +282,7 @@ func (s *FizzBeeMbtPluginServer) ExecuteAction(
 		}, nil
 	}
 
-	s.executeCommand(command)
+	_ = s.executeCommand(command)
 	res, err := s.serializeResult(command, req)
 	return res, err
 
@@ -194,7 +316,7 @@ func (s *FizzBeeMbtPluginServer) newCommand(req *pb.ExecuteActionRequest) (*Exec
 	return command, err
 }
 
-func (s *FizzBeeMbtPluginServer) executeCommand(command *ExecuteActionCommand) {
+func (s *FizzBeeMbtPluginServer) executeCommand(command *ExecuteActionCommand) error {
 	startTime := time.Now()
 	returnVal, err := command.Action(command.Role, command.Args)
 	endTime := time.Now()
@@ -202,6 +324,7 @@ func (s *FizzBeeMbtPluginServer) executeCommand(command *ExecuteActionCommand) {
 	command.EndTime = endTime
 	command.ReturnVal = returnVal
 	command.Err = err
+	return err
 }
 
 func (s *FizzBeeMbtPluginServer) serializeResult(command *ExecuteActionCommand, req *pb.ExecuteActionRequest) (*pb.ExecuteActionResponse, error) {
