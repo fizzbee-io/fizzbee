@@ -34,9 +34,16 @@ var actionRegistry = map[string]map[string]mbt.ActionFunc{
 
 func Test{{ model_name }}(t *testing.T) {
     model := New{{ model_name }}Model()
-    opts := mbt.StartOptions{
-        Network: mbt.NetworkUDS,
-        Address: "/tmp/fizzbee_mbt.sock",
-    }
+    options := GetTestOptions()
     mbt.Start(t, model, actionRegistry, opts)
+    err := mbt.RunTests(t, model, actionRegistry, options)
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
+func TestMain(m *testing.M) {
+	mbt.ParseFlags()
+	exitCode := m.Run()
+	os.Exit(exitCode)
 }

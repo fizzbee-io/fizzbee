@@ -204,14 +204,13 @@ func (s *FizzBeeMbtPluginServer) executeSequencesSequential(
 
 func (s *FizzBeeMbtPluginServer) executeSequence(cmds []*ExecuteActionCommand, seqIdx int) error {
 	for actIdx, cmd := range cmds {
-		fmt.Println("Executing sequence", seqIdx, "action", actIdx, ":", cmd.RoleName, cmd.RoleId, cmd.ActionName)
 		if err := s.executeCommand(cmd); err != nil {
 			return fmt.Errorf(
 				"execution failed: sequence index %d, action index %d: %w",
 				seqIdx, actIdx, err,
 			)
 		}
-		fmt.Println("Completed sequence", seqIdx, "action", actIdx)
+		time.Sleep(1 * time.Microsecond)
 	}
 	return nil
 }

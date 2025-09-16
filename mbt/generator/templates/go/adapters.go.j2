@@ -36,6 +36,14 @@ func New{{ model_name }}Model() {{ model_name }}Model {
     return &{{ model_name }}ModelAdapter{}
 }
 
+func GetTestOptions() map[string]any {
+	return map[string]any{
+		"max-seq-runs":      1000,
+		"max-parallel-runs": 1000,
+		"max-actions":       20,
+	}
+}
+
 func (m *{{ model_name }}ModelAdapter) GetState() (map[string]any, error) {
     // TODO: implement GetState. Required.
 	return nil, mbt.ErrNotImplemented
