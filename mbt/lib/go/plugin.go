@@ -170,5 +170,5 @@ func GetMbtBinPath() string {
 	}
 
 	// 3. Default fallback
-	return "fizzbee-mbt"
+	return "fizzbee-mbt-runner"
 }
