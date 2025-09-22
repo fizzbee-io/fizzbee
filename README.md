@@ -8,11 +8,16 @@ Try out now at [Fizzbee Online Playground](https://fizzbee.io/). No installation
 If you are familiar with [TLA+](https://lamport.azurewebsites.net/tla/tla.html), this would be a quick start:
 [From TLA+ to Fizz](https://github.com/fizzbee-io/fizzbee/blob/main/docs/fizzbee-quick-start-for-tlaplus-users.md)
 
-# Run a model checker
+# Installation
 
-We now provide prebuilt binaries for macOS and Linux. Please click the link below to get the latest release: [Download the latest release](https://github.com/fizzbee-io/fizzbee/releases/latest).
+On Mac, with brew:
+```
+brew tap fizzbee-io/fizzbee
+brew install fizzbee
+```
+Alternately, prebuilt binaries are available for macOS and Linux. Please click the link below to get the latest release: [Download the latest release](https://github.com/fizzbee-io/fizzbee/releases/latest).
 
-But you can try without installation at https://fizzbee.io/play 
+You can try without installation at https://fizzbee.io/play 
 
 
 ## Online Playground
