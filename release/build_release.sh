@@ -27,7 +27,7 @@ for PLATFORM in "${PLATFORMS[@]}"; do
     echo "Building for $PLATFORM..."
 
     # Run Bazel build
-    bazel build --platforms=//:"$PLATFORM" //parser/... //:fizzbee
+    bazel build --platforms=//:"$PLATFORM" //parser/... //:fizzbee //mbt/generator:generator_bin_zip
 
     # Create target directory
     TARGET_DIR="$RELEASE_DIR-$PLATFORM"
@@ -36,6 +36,7 @@ for PLATFORM in "${PLATFORMS[@]}"; do
     # Copy files
     cp -L -R bazel-bin/parser "$TARGET_DIR"
     cp bazel-bin/fizzbee_/fizzbee "$TARGET_DIR"
+    cp bazel-bin/mbt/generator/generator_bin.zip "$TARGET_DIR/mbt_gen.zip"
 
     # Include the shell script only for macOS and Linux
     if [[ "$PLATFORM" != windows* ]]; then

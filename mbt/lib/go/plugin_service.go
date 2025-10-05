@@ -155,7 +155,7 @@ func (s *FizzBeeMbtPluginServer) ExecuteActionSequences(
 	}
 
 	// Step 2: Execute
-	if err := s.executeSequencesConcurrent(allBundles); err != nil {
+	if err = s.executeSequencesConcurrent(allBundles); err != nil && !errors.Is(err, ErrNotImplemented) {
 		return nil, err
 	}
 
