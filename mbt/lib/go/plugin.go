@@ -86,7 +86,7 @@ func RunTests(t *testing.T, m Model, actionsRegistry map[string]map[string]Actio
 	go func() {
 		close(startedCh) // signal readiness
 		if err := server.Serve(lis); err != nil {
-			log.Printf("server stopped: %v", err)
+			log.Printf("test plugin stopped: %v", err)
 		}
 	}()
 
@@ -126,7 +126,7 @@ func RunTests(t *testing.T, m Model, actionsRegistry map[string]map[string]Actio
 	// 4. Watch for signals
 	go func() {
 		<-stopCh
-		log.Println("Interrupt received, stopping runner and server...")
+		log.Println("Interrupt received, stopping runner and test plugin...")
 		cancel() // kill child process
 		server.GracefulStop()
 	}()
@@ -148,9 +148,9 @@ func RunTests(t *testing.T, m Model, actionsRegistry map[string]map[string]Actio
 
 	select {
 	case <-shutdownCh:
-		log.Println("Server shut down gracefully.")
+		log.Println("Test executor shut down gracefully.")
 	case <-time.After(5 * time.Second):
-		log.Println("Forcing server stop.")
+		log.Println("Forcing stop.")
 		server.Stop()
 	}
 

@@ -91,12 +91,12 @@ def main(argv):
     env = Environment(loader=FileSystemLoader(data_path))
 
     templates = [
-        ("go/interfaces.go.j2", "_interfaces", True),
-        ("go/adapters.go.j2", "_adapters", args.gen_adapter),
-        ("go/test.go.j2", "_test", True),
+        ("go/interfaces.go.j2", "_interfaces", True, True),
+        ("go/adapters.go.j2", "_adapters", args.gen_adapter, False),
+        ("go/test.go.j2", "_test", True, True),
     ]
 
-    for tpl_name, out_file_suffix, enabled in templates:
+    for tpl_name, out_file_suffix, enabled, overwrite in templates:
         if not enabled:
             continue
         template = env.get_template(tpl_name)
@@ -108,6 +108,9 @@ def main(argv):
         )
         out_file = go_filenames(filename, [out_file_suffix])[0]
         out_path = os.path.join(args.out_dir, out_file)
+        if os.path.exists(out_path) and not overwrite:
+            print(f"File {out_path} already exists. Delete the file or not use --gen-adapter to skip.", file=sys.stderr)
+            sys.exit(1)
         with open(out_path, "w") as f:
             f.write(output)
         print(f"Generated {out_file} from {tpl_name}")

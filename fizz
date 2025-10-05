@@ -12,6 +12,25 @@ if [[ -f $SCRIPT_ENV_FILE ]]; then
   source $SCRIPT_ENV_FILE
 fi
 
+temp_output=$(mktemp)
+
+MBT_GEN_ZIP="${MBT_GEN_ZIP:-$SCRIPT_DIR/bazel-bin/mbt/generator/generator_bin.zip}"
+
+# --- SUBCOMMAND HANDLING ---
+if [[ $# -gt 0 ]]; then
+  case "$1" in
+    mbt-scaffold)
+      shift  # remove subcommand from $@
+      "python" "$MBT_GEN_ZIP" "$@" > "$temp_output" || {
+        echo "Error: mbt-scaffold command failed"
+        echo "Logs at $temp_output"
+        exit 1
+      }
+      exit 0
+      ;;
+  esac
+fi
+
 usage() {
   echo "Usage: $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--exploration_strategy dfs] filename"
   exit 1
@@ -96,7 +115,6 @@ PARSER_BIN="${PARSER_BIN:-$SCRIPT_DIR/bazel-bin/parser/parser_bin}"
 FIZZBEE_BIN="${FIZZBEE_BIN:-$SCRIPT_DIR/bazel-bin/fizzbee_/fizzbee}"
 
 # Call the first binary and redirect output to a temporary file
-temp_output=$(mktemp)
 if ! "$PARSER_BIN" "$input_filename" > "$temp_output"; then
     echo "Error: Compilation failed"
     echo "Logs at $temp_output"

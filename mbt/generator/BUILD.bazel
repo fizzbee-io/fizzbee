@@ -23,3 +23,9 @@ py_binary(
         requirement("Jinja2"),
     ],
 )
+
+filegroup(
+    name = "generator_bin_zip",
+    srcs = [":generator_bin"],  # the py_binary target to make into a zip, and will be the file name
+    output_group = "python_zip_file",
+)

@@ -49,7 +49,7 @@ func (m *{{ model_name }}ModelAdapter) GetState() (map[string]any, error) {
 	return nil, mbt.ErrNotImplemented
 }
 
-func (m *{{ model_name }}ModelAdapter) GetRoles() (map[RoleId]Role, error) {
+func (m *{{ model_name }}ModelAdapter) GetRoles() (map[mbt.RoleId]mbt.Role, error) {
     // TODO: implement GetRoles. Required.
 	return nil, mbt.ErrNotImplemented
 }

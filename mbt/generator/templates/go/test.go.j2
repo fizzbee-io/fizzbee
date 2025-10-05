@@ -3,6 +3,8 @@
 package {{ package_name }}
 
 import (
+	"log"
+	"os"
     "testing"
 
     mbt "github.com/fizzbee-io/fizzbee/mbt/lib/go"
@@ -35,7 +37,6 @@ var actionRegistry = map[string]map[string]mbt.ActionFunc{
 func Test{{ model_name }}(t *testing.T) {
     model := New{{ model_name }}Model()
     options := GetTestOptions()
-    mbt.Start(t, model, actionRegistry, opts)
     err := mbt.RunTests(t, model, actionRegistry, options)
     if err != nil {
         log.Fatal(err)
