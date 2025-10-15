@@ -3,6 +3,7 @@ syntax = "proto3";
 package fizzbee.mbt;
 
 option go_package = "github.com/fizzbee-io/fizzbee/mbt/lib/go/internalpb";
+option java_package = "io.fizzbee.mbt.pb";
 
 // ------------------ Common Value Representation ------------------
 message Value {

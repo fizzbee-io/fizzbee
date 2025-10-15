@@ -3,6 +3,8 @@ module(name = "fizzbee")
 # Go with gazelle see https://github.com/bazel-contrib/rules_go/blob/master/docs/go/core/bzlmod.md
 bazel_dep(name = "rules_go", version = "0.55.1")
 bazel_dep(name = "gazelle", version = "0.44.0")
+bazel_dep(name = "rules_java", version = "8.16.1")
+bazel_dep(name = "rules_jvm_external", version = "6.8")
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(version = "1.22.4")
@@ -44,3 +46,22 @@ pip.parse(
     requirements_lock = "//third_party:requirements.txt",
 )
 use_repo(pip, "pypi")
+
+# Bring in protobuf + gRPC Java dependencies
+maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
+maven.install(
+    artifacts = [
+        "com.google.protobuf:protobuf-java:4.32.1",
+        "io.grpc:grpc-api:1.76.0",
+        "io.grpc:grpc-protobuf:1.76.0",
+        "io.grpc:grpc-netty:1.76.0",
+        "io.grpc:grpc-services:1.76.0",
+        "io.grpc:grpc-stub:1.76.0",
+
+        "io.netty:netty-all:4.2.6.Final",
+    ],
+    repositories = [
+        "https://repo1.maven.org/maven2",
+    ],
+)
+use_repo(maven, "maven")
