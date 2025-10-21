@@ -9,13 +9,11 @@ import io.fizzbee.mbt.types.Arg;
 import io.grpc.stub.StreamObserver;
 
 import java.lang.reflect.Method;
-import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 
 public class PluginService extends FizzBeeMbtPluginServiceGrpc.FizzBeeMbtPluginServiceImplBase {
@@ -24,7 +22,7 @@ public class PluginService extends FizzBeeMbtPluginServiceGrpc.FizzBeeMbtPluginS
 
     private static record Command(ExecuteActionRequest req, Object role, Method action, String actionName, String roleName, int roleId,
                                   Arg[] args) {}
-    private static record Result(Object returnVal, Exception exception, Instant startTime, Instant endTime) {}
+    private static record Result(Object returnVal, Exception exception, long startTime, long endTime) {}
 
     public PluginService(Model m, Map<String, Map<String, Method>> actions) {
         this.model = m;
@@ -34,7 +32,7 @@ public class PluginService extends FizzBeeMbtPluginServiceGrpc.FizzBeeMbtPluginS
     @Override
     public void init(InitRequest request, StreamObserver<InitResponse> responseObserver) {
         try {
-            this.model.Init();
+            this.model.init();
             if (!(this.model instanceof RoleMapper)) {
                 throw new NotImplementedException("Model does not implement RoleMapper");
             }
@@ -87,7 +85,7 @@ public class PluginService extends FizzBeeMbtPluginServiceGrpc.FizzBeeMbtPluginS
     public void cleanup(CleanupRequest request, io.grpc.stub.StreamObserver<CleanupResponse> responseObserver) {
 
         try {
-            this.model.Cleanup();
+            this.model.cleanup();
             CleanupResponse response = CleanupResponse.newBuilder()
                     .setStatus(Status.newBuilder()
                             .setCode(StatusCode.STATUS_OK)
@@ -126,8 +124,8 @@ public class PluginService extends FizzBeeMbtPluginServiceGrpc.FizzBeeMbtPluginS
             responseBuilder.setStatus(Status.newBuilder()
                     .setCode(StatusCode.STATUS_OK))
                     .setExecTime(Interval.newBuilder()
-                            .setStartUnixNano(result.startTime().getEpochSecond() * 1_000_000_000L + result.startTime().getNano())
-                            .setEndUnixNano(result.endTime().toEpochMilli() * 1_000_000L + result.endTime().getNano())
+                            .setStartUnixNano(result.startTime())
+                            .setEndUnixNano(result.endTime())
                             .build());
             if (result.returnVal() != null) {
                 responseBuilder.addReturnValues(fromObjectToProtoValue(result.returnVal()));
@@ -370,8 +368,8 @@ public class PluginService extends FizzBeeMbtPluginServiceGrpc.FizzBeeMbtPluginS
                     .setStatus(Status.newBuilder()
                             .setCode(StatusCode.STATUS_OK))
                     .setExecTime(Interval.newBuilder()
-                            .setStartUnixNano(result.startTime().getEpochSecond() * 1_000_000_000L + result.startTime().getNano())
-                            .setEndUnixNano(result.endTime().getEpochSecond() * 1_000_000_000L + result.endTime().getNano())
+                            .setStartUnixNano(result.startTime())
+                            .setEndUnixNano(result.endTime())
                             .build());
             if (result.returnVal() != null) {
                 responseBuilder.addReturnValues(fromObjectToProtoValue(result.returnVal()));
@@ -421,7 +419,7 @@ public class PluginService extends FizzBeeMbtPluginServiceGrpc.FizzBeeMbtPluginS
     }
 
     private Result executeCommand(Command command) {
-        Instant startTime = Instant.now();
+        long startTime = System.nanoTime();
         Object returnVal = null;
         Exception exception = null;
 
@@ -432,7 +430,7 @@ public class PluginService extends FizzBeeMbtPluginServiceGrpc.FizzBeeMbtPluginS
             exception = e;
         }
 
-        Instant endTime = Instant.now();
+        long endTime = System.nanoTime();
 
         return new Result(returnVal, exception, startTime, endTime);
     }

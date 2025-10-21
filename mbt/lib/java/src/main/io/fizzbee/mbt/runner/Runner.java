@@ -27,6 +27,13 @@ public class Runner {
     private final int port = 50051; // default TCP port fallback
     private EventLoopGroup group;
 
+    private static final Map<String, String> configEnvMap = Map.of(
+        "max-seq-runs", "MAX_SEQ_RUNS",
+        "max-parallel-runs", "MAX_PARALLEL_RUNS",
+        "max-actions", "MAX_ACTIONS",
+        "seq-seed", "SEQ_SEED",
+        "parallel-seed", "PARALLEL_SEED"
+    );
     public static int run(Model m, Map<String, Map<String, Method>> actions, Map<String, Object> options) throws IOException, InterruptedException {
         Runner r = new Runner();
         return r.start(m, actions, options);
@@ -120,11 +127,22 @@ public class Runner {
         command.add(fizzbeeMbtBin);
         command.add("--plugin-addr=" + socketPath);
 
-        // Add options like --max-actions=100 etc.
-        if (options != null) {
-            for (Map.Entry<String, Object> entry : options.entrySet()) {
-                String key = entry.getKey();
-                Object value = entry.getValue();
+        // Iterate over all the configenvmap to add options from environment variables
+        // If the environment variable is set, it takes precedence over the options map
+        for (Map.Entry<String, String> entry : configEnvMap.entrySet()) {
+            String key = entry.getKey();
+            String envName = entry.getValue();
+            Object value = null;
+            // Check if the option is provided in the options map
+            if (options != null && options.containsKey(key)) {
+                value = options.get(key);
+            }
+            // Override from environment variable if set
+            String envValue = System.getenv(envName);
+            if (envValue != null && !envValue.isEmpty()) {
+                value = envValue;
+            }
+            if (value != null) {
                 command.add("--" + key + "=" + value);
             }
         }
