@@ -1,0 +1,41 @@
+plugins {
+    id 'java'
+}
+
+group = 'io.fizzbee'
+version = '0.2.1'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Match your Bazel deps
+    implementation 'com.google.guava:guava:32.1.2-jre'
+    implementation 'com.google.protobuf:protobuf-java:4.32.1'
+    implementation 'io.grpc:grpc-api:1.76.0'
+    implementation 'io.grpc:grpc-netty:1.76.0'
+    implementation 'io.grpc:grpc-protobuf:1.76.0'
+    implementation 'io.grpc:grpc-services:1.76.0'
+    implementation 'io.grpc:grpc-stub:1.76.0'
+    implementation 'io.netty:netty-all:4.2.6.Final'
+    implementation 'io.netty:netty-transport:4.2.6.Final'
+    implementation 'io.netty:netty-transport-native-epoll:4.2.6.Final:linux-x86_64'
+    implementation 'io.netty:netty-transport-native-kqueue:4.2.6.Final:osx-x86_64'
+    implementation 'io.netty:netty-transport-native-unix-common:4.2.6.Final'
+
+    // FizzBeeTestBase class is a base class for tests, so we include it in actual dependencies
+    implementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.0'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
