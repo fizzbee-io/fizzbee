@@ -1,3 +1,10 @@
+jdk:
+  - openjdk17
+
+before_install:
+  - echo "Using Java version:"
+  - java -version
+
 install:
   - echo "Publishing FizzBee java lib"
   - cd mbt/lib/java/
