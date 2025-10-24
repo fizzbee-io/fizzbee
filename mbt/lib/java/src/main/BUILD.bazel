@@ -19,5 +19,8 @@ java_library(
         "@maven//:io_netty_netty_transport_classes_epoll",
         "@maven//:io_netty_netty_transport_classes_kqueue",
         "@maven//:io_netty_netty_transport_native_unix_common",
+
+        # org.junit.jupiter:junit-jupiter:5.10.0
+        "@maven//:org_junit_jupiter_junit_jupiter_api",
     ],
 )

@@ -1,0 +1,19 @@
+package {{ package_name }};
+
+import io.fizzbee.mbt.types.Arg;
+import io.fizzbee.mbt.types.NotImplementedException;
+
+public class {{ role.name }}RoleAdapter implements {{ role.name }}Role {
+
+    public {{ role.name }}RoleAdapter() {
+    }
+
+    {%- for action in role.actions %}
+    {%- if action.name != "Init" %}
+    @Override
+    public Object action{{ action.name }}(Arg[] args) throws NotImplementedException {
+        throw new NotImplementedException();
+    }
+    {%- endif %}
+    {%- endfor %}
+}

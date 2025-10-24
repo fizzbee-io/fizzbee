@@ -1,0 +1,21 @@
+package {{ package_name }};
+
+import io.fizzbee.mbt.types.Model;
+import java.util.Map;
+
+public class {{ model_name }}Test extends {{ model_name }}TestBase {
+
+    @Override
+    protected Model newModel() {
+        return new {{ model_name }}ModelAdapter();
+    }
+
+    @Override
+    protected Map<String, Object> getConfig() {
+        return Map.of(
+                "max-seq-runs", 1000,
+                "max-parallel-runs", 1000,
+                "max-actions", 10
+        );
+    }
+}
