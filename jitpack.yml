@@ -1,0 +1,4 @@
+install:
+  - echo "Publishing FizzBee java lib"
+  - cd mbt/lib/java/
+  - ./gradlew clean build publishToMavenLocal
