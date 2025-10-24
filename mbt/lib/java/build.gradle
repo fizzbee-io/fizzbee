@@ -3,7 +3,7 @@ plugins {
     id 'maven-publish'
 }
 
-group = 'io.fizzbee'
+group = 'com.github.fizzbee-io'
 version = '0.2.1'
 
 java {
@@ -38,5 +38,16 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId = 'com.github.fizzbee-io'   // Matches your GitHub username/org
+            artifactId = 'fizzbee'              // Name of the library
+            version = '0.2.1'                   // Matches version in build.gradle
+        }
+    }
 }
 
