@@ -7,10 +7,10 @@ import io.fizzbee.mbt.types.Arg;
 import io.fizzbee.mbt.types.NotImplementedException;
 import io.fizzbee.mbt.types.Role;
 
-public interface {{ role.name | capitalize }}Role extends Role {
+public interface {{ role.name }}Role extends Role {
 {% for action in role.actions %}
     {% if action.name != "Init" %}
-    Object action{{ action.name | capitalize }}(Arg[] args) throws NotImplementedException;
+    Object action{{ action.name }}(Arg[] args) throws NotImplementedException;
     {% endif %}
 {% endfor %}
 }
