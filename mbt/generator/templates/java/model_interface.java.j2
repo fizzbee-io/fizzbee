@@ -8,10 +8,10 @@ import io.fizzbee.mbt.types.Model;
 import io.fizzbee.mbt.types.NotImplementedException;
 
 // Model interface for the whole specification
-public interface {{ model_name | capitalize }}Model extends Model {
+public interface {{ model_name }}Model extends Model {
 {% for action in file.actions %}
     {% if action.name != "Init" %}
-    Object action{{ action.name | capitalize }}(Arg[] args) throws NotImplementedException;
+    Object action{{ action.name }}(Arg[] args) throws NotImplementedException;
     {% endif %}
 {% endfor %}
 }

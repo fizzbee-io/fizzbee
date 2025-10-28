@@ -11,7 +11,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
-public abstract class {{ model_name | capitalize }}TestBase extends FizzBeeTestBase {
+public abstract class {{ model_name }}TestBase extends FizzBeeTestBase {
 
     @BeforeAll
     public static void setup() {
@@ -20,20 +20,20 @@ public abstract class {{ model_name | capitalize }}TestBase extends FizzBeeTestB
             Map<String, Method> modelActions = new HashMap<>();
             {% for action in file.actions %}
                 {% if action.name != "Init" %}
-            modelActions.put("{{ action.name }}", {{ model_name | capitalize }}Model.class.getMethod("action{{ action.name | capitalize }}", Arg[].class));
+            modelActions.put("{{ action.name }}", {{ model_name }}Model.class.getMethod("action{{ action.name }}", Arg[].class));
                 {% endif %}
             {% endfor %}
             actions.put("", modelActions);
 
             // Role-specific actions
             {% for role in file.roles %}
-            Map<String, Method> {{ role.name | lower }}Actions = new HashMap<>();
+            Map<String, Method> actions{{ role.name }} = new HashMap<>();
                 {% for action in role.actions %}
                     {% if action.name != "Init" %}
-            {{ role.name | lower }}Actions.put("{{ action.name }}", {{ role.name | capitalize }}Role.class.getMethod("action{{ action.name | capitalize }}", Arg[].class));
+            actions{{ role.name }}.put("{{ action.name }}", {{ role.name }}Role.class.getMethod("action{{ action.name }}", Arg[].class));
                     {% endif %}
                 {% endfor %}
-            actions.put("{{ role.name }}", {{ role.name | lower }}Actions);
+            actions.put("{{ role.name }}", actions{{ role.name }});
             {% endfor %}
 
         } catch (NoSuchMethodException e) {

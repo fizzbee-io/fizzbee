@@ -49,7 +49,7 @@ public class PluginService extends FizzBeeMbtPluginServiceGrpc.FizzBeeMbtPluginS
             InitResponse response = InitResponse.newBuilder()
                     .setStatus(Status.newBuilder()
                             .setCode(StatusCode.STATUS_NOT_IMPLEMENTED)
-                            .setMessage(String.valueOf(e.getMessage()))
+                            .setMessage(Objects.toString(e.getMessage(), ""))
                             .build())
                     .build();
             responseObserver.onNext(response);
@@ -97,7 +97,7 @@ public class PluginService extends FizzBeeMbtPluginServiceGrpc.FizzBeeMbtPluginS
             CleanupResponse response = CleanupResponse.newBuilder()
                     .setStatus(Status.newBuilder()
                             .setCode(StatusCode.STATUS_NOT_IMPLEMENTED)
-                            .setMessage(String.valueOf(e.getMessage()))
+                            .setMessage(Objects.toString(e.getMessage(), ""))
                             .build())
                     .build();
             responseObserver.onNext(response);
@@ -114,11 +114,11 @@ public class PluginService extends FizzBeeMbtPluginServiceGrpc.FizzBeeMbtPluginS
             if (result.exception() instanceof NotImplementedException) {
                 responseBuilder.setStatus(Status.newBuilder()
                         .setCode(StatusCode.STATUS_NOT_IMPLEMENTED)
-                        .setMessage(result.exception().getMessage()));
+                        .setMessage(Objects.toString(result.exception().getMessage(), "")));
             } else {
                 responseBuilder.setStatus(Status.newBuilder()
                         .setCode(StatusCode.STATUS_EXECUTION_FAILED)
-                        .setMessage(result.exception().getMessage()));
+                        .setMessage(Objects.toString(result.exception().getMessage(), "")));
             }
         } else {
             responseBuilder.setStatus(Status.newBuilder()
@@ -353,14 +353,14 @@ public class PluginService extends FizzBeeMbtPluginServiceGrpc.FizzBeeMbtPluginS
             return ExecuteActionResponse.newBuilder()
                     .setStatus(Status.newBuilder()
                             .setCode(StatusCode.STATUS_NOT_IMPLEMENTED)
-                            .setMessage(result.exception().getMessage())
+                            .setMessage(Objects.toString(result.exception().getMessage(), ""))
                             .build())
                     .build();
         } else if (result.exception() != null) {
             return ExecuteActionResponse.newBuilder()
                     .setStatus(Status.newBuilder()
                             .setCode(StatusCode.STATUS_EXECUTION_FAILED)
-                            .setMessage(result.exception().getMessage())
+                            .setMessage(Objects.toString(result.exception().getMessage(), ""))
                             .build())
                     .build();
         } else {
