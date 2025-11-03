@@ -17,7 +17,7 @@ public abstract class FizzBeeTestBase {
     protected abstract Map<String, Object> getConfig();
 
     @Test
-    public void testCounter() throws Exception {
+    public void testConformanceToModel() throws Exception {
         Model model = newModel();
         int exitCode = Runner.run(model, actions, getConfig());
         assertEquals(0, exitCode);
