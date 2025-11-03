@@ -13,6 +13,12 @@ import (
 	"time"
 )
 
+var baseTime time.Time
+
+func init() {
+	baseTime = time.Now()
+}
+
 // FizzBeeMbtPluginServer implements the gRPC service.
 type FizzBeeMbtPluginServer struct {
 	pb.UnimplementedFizzBeeMbtPluginServiceServer
@@ -316,11 +322,11 @@ func (s *FizzBeeMbtPluginServer) newCommand(req *pb.ExecuteActionRequest) (*Exec
 }
 
 func (s *FizzBeeMbtPluginServer) executeCommand(command *ExecuteActionCommand) error {
-	startTime := time.Now()
+	startTime := time.Since(baseTime)
 	returnVal, err := command.Action(command.Role, command.Args)
-	endTime := time.Now()
-	command.StartTime = startTime
-	command.EndTime = endTime
+	endTime := time.Since(baseTime)
+	command.StartTime = startTime.Nanoseconds()
+	command.EndTime = endTime.Nanoseconds()
 	command.ReturnVal = returnVal
 	command.Err = err
 	return err
@@ -383,8 +389,8 @@ func (s *FizzBeeMbtPluginServer) serializeResult(command *ExecuteActionCommand, 
 	res := &pb.ExecuteActionResponse{
 		ReturnValues: returnValuesProto,
 		ExecTime: &pb.Interval{
-			StartUnixNano: startTime.UnixNano(),
-			EndUnixNano:   endTime.UnixNano(),
+			StartUnixNano: startTime,
+			EndUnixNano:   endTime,
 		}, // Empty interval
 		Status: &pb.Status{
 			Code:    pb.StatusCode_STATUS_OK,
@@ -516,6 +522,6 @@ type ExecuteActionCommand struct {
 	// Outputs after execution
 	ReturnVal any
 	Err       error
-	StartTime time.Time
-	EndTime   time.Time
+	StartTime int64
+	EndTime   int64
 }

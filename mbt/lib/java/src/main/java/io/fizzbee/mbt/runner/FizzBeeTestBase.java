@@ -9,6 +9,10 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+/**
+ * Base test class for model-based testing.
+ * Subclasses must implement methods to provide a new model instance and configuration options.
+ */
 public abstract class FizzBeeTestBase {
     protected static final Map<String, Map<String, Method>> actions = new HashMap<>();
 
