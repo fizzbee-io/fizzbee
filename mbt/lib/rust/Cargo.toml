@@ -1,0 +1,22 @@
+[package]
+name = "fizzbee-mbt"
+version = "0.1.0"
+edition = "2024"
+description = "FizzBee Model Based Testing (MBT) Rust binding"
+
+# Include proto files in package in case someone builds from crates.io
+include = ["src/**", "Cargo.toml", "build.rs"]
+
+[dependencies]
+tonic = { version = "0.12", features = ["transport", "prost"] }
+prost = "0.13"
+prost-types = "0.13"
+tonic-build = "0.12"
+tokio = { version = "1.48", features = ["rt-multi-thread", "signal", "process"] }
+tokio-stream = "0.1"
+futures = "0.3.31"
+async-trait = "0.1"
+
+[[bin]]
+name = "gen_protos"
+path = "scripts/gen_protos.rs"
