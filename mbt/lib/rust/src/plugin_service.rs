@@ -8,7 +8,10 @@ use crate::value::Value as RustValue;
 use crate::value::sorted_map_entries;
 use crate::pb::value::Kind;
 use crate::pb::fizz_bee_mbt_plugin_service_server::FizzBeeMbtPluginService;
-use crate::pb::{Value as ProtoValue, MapValue, MapEntry, ListValue, SetValue};
+use crate::pb::{Value as ProtoValue, MapValue, MapEntry, ListValue, SetValue, Arg as ProtoArg};
+use crate::error::MbtError;
+use crate::types::Arg as RustArg; // Alias for clarity
+use std::collections::{HashMap, HashSet};
 
 use crate::pb::{
     InitRequest, InitResponse,
@@ -19,7 +22,6 @@ use crate::pb::{
     ActionSequence, ActionSequenceResult, ExecOptions,
 };
 use crate::traits::{Model, DispatchModel};
-use crate::error::MbtError;
 
 fn mbt_error_to_status(err: MbtError) -> Status {
     Status::internal(format!("MBT Execution Error: {}", err))
@@ -104,6 +106,66 @@ fn rust_value_to_proto_value(rust_value: RustValue) -> ProtoValue {
         }
     }
 }
+/// Converts a Protobuf Value message into an internal Rust Value enum.
+fn proto_value_to_rust_value(proto_value: ProtoValue) -> Result<RustValue, MbtError> {
+    // If kind is None, it corresponds to RustValue::None
+    let kind = match proto_value.kind {
+        Some(k) => k,
+        None => return Ok(RustValue::None),
+    };
+
+    match kind {
+        Kind::StrValue(s) => Ok(RustValue::Str(s)),
+        Kind::IntValue(v) => Ok(RustValue::Int(v)),
+        Kind::BoolValue(b) => Ok(RustValue::Bool(b)),
+        Kind::MapValue(MapValue { entries }) => {
+            let mut map = HashMap::new();
+            for MapEntry { key, value } in entries {
+                let key = key.ok_or_else(|| MbtError::Other("MapEntry key is missing.".into()))?;
+                let value = value.ok_or_else(|| MbtError::Other("MapEntry value is missing.".into()))?;
+
+                // Recursive call to convert key and value
+                let rust_key = proto_value_to_rust_value(key)?;
+                let rust_value = proto_value_to_rust_value(value)?;
+                map.insert(rust_key, rust_value);
+            }
+            Ok(RustValue::Map(map))
+        }
+        Kind::ListValue(ListValue { items }) => {
+            let list: Result<Vec<RustValue>, MbtError> = items
+                .into_iter()
+                .map(proto_value_to_rust_value) // Recursive call
+                .collect();
+
+            Ok(RustValue::List(list?))
+        }
+        _ => {
+            Err(MbtError::NotImplemented("Unsupported Protobuf Value kind for conversion.".into()))
+        }
+    }
+}
+
+/// Converts a vector of Protobuf Arg messages into a vector of internal Rust Arg structs.
+pub fn proto_args_to_rust_args(proto_args: Vec<ProtoArg>) -> Result<Vec<RustArg>, MbtError> {
+    let mut rust_args = Vec::with_capacity(proto_args.len());
+
+    for proto_arg in proto_args {
+        // The value field is mandatory based on the Rust struct `Arg`
+        let proto_value = proto_arg.value.ok_or_else(|| {
+            MbtError::Other(format!("Value is missing for argument '{}'.", proto_arg.name))
+        })?;
+
+        let rust_value = proto_value_to_rust_value(proto_value)?;
+
+        let rust_arg = RustArg {
+            name: proto_arg.name,
+            value: rust_value,
+        };
+        rust_args.push(rust_arg);
+    }
+
+    Ok(rust_args)
+}
 
 fn proto_status_ok() -> ProtoStatus {
     ProtoStatus {
@@ -130,6 +192,7 @@ fn mbt_error_to_proto_status(err: MbtError) -> ProtoStatus {
 struct ExecuteActionCommand {
     pub request: ExecuteActionRequest,
     pub _exec_options: ExecOptions,
+    pub args : Vec<RustArg>,
     // Results
     pub start_time: Option<Instant>,
     pub end_time: Option<Instant>,
@@ -189,10 +252,13 @@ where
         for ActionSequence { requests, options } in proto_sequences {
             let options = options.unwrap_or_default();
             let mut bundle = Vec::with_capacity(requests.len());
-            for request in requests {
+            for mut request in requests {
+                let proto_args = std::mem::take(&mut request.args);
+                let rust_args = proto_args_to_rust_args(proto_args)?;
                 bundle.push(ExecuteActionCommand {
                     request,
                     _exec_options: options.clone(),
+                    args: rust_args.clone(),
                     start_time: None,
                     end_time: None,
                     return_value: None,
@@ -240,7 +306,7 @@ where
                     let (result, err) = match dispatcher_read_lock.execute(
                         &role_id, // &RoleId struct
                         &action_name,
-                        &[], // Placeholder for arguments
+                        &cmd.args // &Vec<RustArg>
                     ).await {
                         Ok(val) => (Some(val), None),
                         Err(e) => (None, Some(e)),
@@ -425,12 +491,14 @@ where
         // 2. Convert RoleRef
         let role_id = proto_ref_to_role_id(req.role.ok_or_else(|| Status::invalid_argument("RoleRef is missing in request."))?)
                      .map_err(mbt_error_to_status)?;
+        let rust_args = proto_args_to_rust_args(req.args)
+                .map_err(mbt_error_to_status)?;
 
         // 3. Delegate execution using the READ lock (relies on D's internal sync)
         let result = dispatcher_read_lock.execute(
             &role_id,
             &req.action_name,
-            &[], /* args */
+            &rust_args
         ).await;
 
         // Drop the read lock so we can acquire a write lock for get_roles
