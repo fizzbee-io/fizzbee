@@ -1,8 +1,12 @@
 [package]
 name = "fizzbee-mbt"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "FizzBee Model Based Testing (MBT) Rust binding"
+keywords = ["mbt", "model-based-testing", "fizzbee", "autonomous-testing", "testing"]
+categories = ["development-tools", "development-tools::testing", "simulation"]
+repository = "https://github.com/fizzbee-io/fizzbee"
+license = "Apache-2.0"
 
 # Include proto files in package in case someone builds from crates.io
 include = ["src/**", "Cargo.toml", "build.rs"]
@@ -17,6 +21,6 @@ tokio-stream = "0.1"
 futures = "0.3.31"
 async-trait = "0.1"
 
-[[bin]]
-name = "gen_protos"
-path = "scripts/gen_protos.rs"
+#[[bin]]
+#name = "gen_protos"
+#path = "scripts/gen_protos.rs"
