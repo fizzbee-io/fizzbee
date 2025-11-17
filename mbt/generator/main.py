@@ -2,7 +2,8 @@ import argparse
 import sys
 import os
 
-from mbt.generator.filenames import go_filenames, base_pascal_case, path_for_java_package
+from mbt.generator.filenames import go_filenames, base_pascal_case, path_for_java_package, normalize_basename
+from mbt.generator.filenames import rust_filenames
 from parser.parser import parse_file
 from jinja2 import Environment, FileSystemLoader
 
@@ -16,7 +17,7 @@ def parse_args():
         )
         parser.add_argument(
             "-l", "--lang",
-            choices=["go", "java"],  # Extend later with "rust", "python"
+            choices=["go", "java", "rust"],  # Extend later with "typescript", python"
             required=True,
             help="Target language for code generation"
         )
@@ -58,6 +59,8 @@ def parse_args():
                 args.out_dir = "fizztests"
             elif args.lang == "java":
                 args.out_dir = os.path.join("src", "fizztest", "java")
+            elif args.lang == "rust":
+                args.out_dir = "fizztests"
 
         # Validation
         if args.lang == "go":
@@ -77,7 +80,7 @@ def main(argv):
     args = parse_args()
     print("args: ", args)
 
-    if args.lang not in ["go", "java"]:
+    if args.lang not in ["go", "java", "rust"]:
         print(f"Unsupported language: {args.lang}", file=sys.stderr)
         sys.exit(1)
 
@@ -97,6 +100,8 @@ def main(argv):
         generate_go(args, filename, parsedAst, data_path)
     elif args.lang == "java":
         generate_java(args, filename, parsedAst, data_path)
+    elif args.lang == "rust":
+        generate_rust(args, filename, parsedAst, data_path)
 
 def generate_go(args, filename, parsedAst, data_path):
     # Compute relative path to project root
@@ -138,6 +143,54 @@ def generate_go(args, filename, parsedAst, data_path):
         with open(out_path, "w") as f:
             f.write(output)
         print(f"Generated {out_file} from {tpl_name}")
+
+def generate_rust(args, filename, parsedAst, data_path):
+    # Compute relative path to project root
+    abs_spec_path = os.path.abspath(filename)
+    abs_project_root = os.path.abspath(args.rel_root)
+    try:
+        rel_spec_path = os.path.relpath(abs_spec_path, abs_project_root)
+    except ValueError:
+        # Fallback if different drives on Windows
+        rel_spec_path = abs_spec_path
+
+    # Compute base name for module folder (e.g., 'counter' for Counter.fizz)
+    model_base_name = normalize_basename(filename)
+    out_dir_model = os.path.join(args.out_dir, "")
+
+    # Ensure output directory exists
+    os.makedirs(out_dir_model, exist_ok=True)
+
+    env = Environment(loader=FileSystemLoader(os.path.join(data_path, "rust"))) # Use 'rust' subdirectory in templates
+
+    templates = [
+        ("mod.rs.j2", "mod.rs", True, True),
+        ("traits.rs.j2", "traits.rs", True, True),
+        ("adapters.rs.j2", "adapters.rs", args.gen_adapter, False), # adapters are scaffolded only if requested
+        ("test.rs.j2", "test.rs", True, True),
+    ]
+
+    for tpl_name, out_file, enabled, overwrite in templates:
+        if not enabled:
+            continue
+
+        template = env.get_template(tpl_name)
+        output = template.render(
+            file=parsedAst,
+            model_name=base_pascal_case(filename),
+            model_base_name=model_base_name, # snake_case name for module paths
+            source_path=rel_spec_path,
+        )
+
+        out_path = os.path.join(out_dir_model, out_file)
+
+        if os.path.exists(out_path) and not overwrite:
+            print(f"File {out_path} already exists. Delete the file or not use --gen-adapter to skip.", file=sys.stderr)
+            sys.exit(1)
+
+        with open(out_path, "w") as f:
+            f.write(output)
+        print(f"Generated {out_file} in {out_dir_model} from {tpl_name}")
 
 def generate_java(args, filename, parsedAst, data_path):
     # Compute relative path to project root

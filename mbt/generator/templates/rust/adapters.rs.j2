@@ -1,0 +1,111 @@
+// Generated scaffold by fizzbee-mbt generator
+// Source: {{ source_path }}
+// Update the methods with your implementation.
+
+use fizzbee_mbt::config::TestOptions;
+use fizzbee_mbt::error::MbtError;
+use fizzbee_mbt::traits::*;
+use fizzbee_mbt::types::Arg;
+use fizzbee_mbt::value::Value;
+use std::sync::Arc;
+use async_trait::async_trait;
+
+use super::traits::*;
+
+// Role adapters
+{% for role in file.roles %}
+// {{ role.name }}RoleAdapter is a stub adaptor for {{ role.name }}Role
+pub struct {{ role.name }}RoleAdapter {}
+
+#[async_trait]
+impl {{ role.name }}Role for {{ role.name }}RoleAdapter {
+    {%- for action in role.actions -%}
+    {%- if action.name != "Init" %}
+    async fn action_{{ action.name|lower }}(&self, _args: &[Arg]) -> Result<Value, MbtError> {
+        // TODO: implement action {{ action.name }}
+        Err(MbtError::NotImplemented("Role {{ role.name }} Action {{ action.name }} is not implemented yet.".to_string()))
+    }
+    {%- endif %}
+    {%- endfor %}
+}
+
+impl Role for {{ role.name }}RoleAdapter {}
+
+// Constructor for role adapter
+impl {{ role.name }}RoleAdapter {
+    pub fn new() -> Self {
+        {{ role.name }}RoleAdapter {}
+    }
+}
+{% endfor %}
+
+// Model adapter
+pub struct {{ model_name }}ModelAdapter {
+    // TODO: Add fields for your model state and roles
+    {% for role in file.roles -%}
+    {{ role.name|lower }}_roles: Vec<Arc<{{ role.name }}RoleAdapter>>,
+    {% endfor %}
+}
+
+// Assert that {{ model_name }}ModelAdapter satisfies {{ model_name }}Model
+impl {{ model_name }}Model for {{ model_name }}ModelAdapter {
+    {% for role in file.roles -%}
+    type R{{ loop.index0 }} = {{ role.name }}RoleAdapter;
+    fn get_{{ role.name|lower }}_roles(&self) -> Result<Vec<Arc<Self::R{{ loop.index0 }}>>, MbtError> {
+        // TODO: implement get_{{ role.name|lower }}_roles
+        Ok(self.{{ role.name|lower }}_roles.clone().into_iter().map(|r| r as Arc<Self::R{{ loop.index0 }}>).collect())
+    }
+    {% endfor %}
+
+    {% for action in file.actions -%}
+    {% if action.name != "Init" %}
+    async fn action_{{ action.name|lower }}(&self, _args: &[Arg]) -> Result<Value, MbtError> {
+        // TODO: implement action {{ action.name }}
+        Err(MbtError::NotImplemented("Action {{ action.name }} is not implemented yet.".to_string()))
+    }
+    {% endif %}
+    {% endfor %}
+}
+
+#[async_trait]
+impl Model for {{ model_name }}ModelAdapter {
+    // TODO: Implement async GetState, Init, and Cleanup methods
+    async fn init(&mut self) -> Result<(), MbtError> {
+        // TODO: implement Init
+        {% for role in file.roles -%}
+        self.{{ role.name|lower }}_roles.push(Arc::new({{ role.name }}RoleAdapter::new()));
+        {% endfor %}
+        Ok(())
+    }
+
+    async fn cleanup(&mut self) -> Result<(), MbtError> {
+        // TODO: implement Cleanup
+        {% for role in file.roles -%}
+        self.{{ role.name|lower }}_roles = Vec::new();
+        {% endfor %}
+        Ok(())
+    }
+}
+
+// Constructor for {{ model_name }}ModelAdapter
+pub fn new_{{ model_base_name }}_model() -> {{ model_name }}ModelAdapter {
+    {{ model_name }}ModelAdapter {
+        {% for role in file.roles -%}
+        {{ role.name|lower }}_roles: Vec::new(),
+        {% endfor %}
+    }
+}
+
+/// Defines the parameters for the model-based testing harness.
+pub fn get_test_options() -> TestOptions {
+    TestOptions {
+        // The number of sequential traces to test
+        max_seq_runs: Some(1000),
+
+        // The number of parallel traces to test
+        max_parallel_runs: Some(1000),
+
+        // The maximum number of actions/steps in any single trace
+        max_actions: Some(10),
+    }
+}
