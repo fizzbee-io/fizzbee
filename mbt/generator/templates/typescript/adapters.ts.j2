@@ -1,0 +1,68 @@
+// Generated scaffold by fizzbee-mbt generator
+// Source: {{ source_path }}
+// Update the methods with your implementation.
+
+import { Arg, NotImplementedError } from '@fizzbee/mbt';
+import { {% for role in file.roles %}{{ role.name }}Role, {% endfor %}{{ model_name }}Model } from './{{ model_base_name }}_interfaces.js';
+
+// Role adaptors
+{% for role in file.roles %}
+export class {{ role.name }}RoleAdapter implements {{ role.name }}Role {
+  // TODO: Add constructor parameters for your role dependencies
+
+  {%- for action in role.actions %}
+  {%- if action.name != "Init" %}
+  async action{{ action.name }}(args: Arg[]): Promise<any> {
+    // TODO: implement action {{ action.name }}
+    throw new NotImplementedError('{{ role.name }}.action{{ action.name }} not implemented');
+  }
+  {%- endif %}
+  {%- endfor %}
+}
+{% endfor %}
+// Model adaptor
+export class {{ model_name }}ModelAdapter implements {{ model_name }}Model {
+  // TODO: Add fields for your model state and roles
+  {% for role in file.roles -%}
+  private {{ role.name|lower }}Role?: {{ role.name }}RoleAdapter;
+  {% endfor %}
+  async getRoles(): Promise<Map<string, any>> {
+    const roles = new Map<string, any>();
+    {% for role in file.roles -%}
+    roles.set('{{ role.name }}#0', this.{{ role.name|lower }}Role);
+    {% endfor -%}
+    return roles;
+  }
+
+  async init(): Promise<void> {
+    // TODO: implement init
+    {% for role in file.roles -%}
+    this.{{ role.name|lower }}Role = new {{ role.name }}RoleAdapter();
+    {% endfor -%}
+  }
+
+  async cleanup(): Promise<void> {
+    // TODO: implement cleanup
+  }
+  {%- for action in file.actions %}
+  {%- if action.name != "Init" %}
+
+  async action{{ action.name }}(args: Arg[]): Promise<any> {
+    // TODO: implement action {{ action.name }}
+    throw new NotImplementedError('action{{ action.name }} not implemented');
+  }
+  {%- endif %}
+  {%- endfor %}
+}
+
+export function new{{ model_name }}Model(): {{ model_name }}Model {
+  return new {{ model_name }}ModelAdapter();
+}
+
+export function getTestOptions(): Record<string, any> {
+  return {
+    'max-seq-runs': 1000,
+    'max-parallel-runs': 1000,
+    'max-actions': 10,
+  };
+}
