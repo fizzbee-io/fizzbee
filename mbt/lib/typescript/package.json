@@ -1,0 +1,47 @@
+{
+  "name": "@fizzbee/mbt",
+  "version": "0.1.0",
+  "description": "FizzBee Model Based Testing (MBT) TypeScript/JavaScript binding",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "keywords": [
+    "mbt",
+    "model-based-testing",
+    "fizzbee",
+    "autonomous-testing",
+    "testing"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fizzbee-io/fizzbee.git",
+    "directory": "mbt/lib/typescript"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "npm run generate-proto && tsc",
+    "build:examples": "tsc -p tsconfig.example.json",
+    "generate-proto": "node scripts/generate-proto.js",
+    "clean": "rm -rf dist proto-gen examples/*.js examples/*.js.map",
+    "prepublishOnly": "npm run clean && npm run build",
+    "test": "echo \"Run tests using your test framework\" && exit 0"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.14.2",
+    "google-protobuf": "^3.21.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "grpc-tools": "^1.12.4",
+    "grpc_tools_node_protoc_ts": "^5.3.3",
+    "typescript": "^5.7.2"
+  },
+  "files": [
+    "dist",
+    "proto-gen",
+    "src",
+    "README.md"
+  ]
+}
