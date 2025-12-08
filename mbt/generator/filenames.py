@@ -36,5 +36,9 @@ def rust_filenames(path, suffixes):
     base = normalize_basename(path)
     return [f"{base}{suffix}.rs" for suffix in suffixes]
 
+def typescript_filenames(path, suffixes):
+    base = normalize_basename(path)
+    return [f"{base}{suffix}.ts" for suffix in suffixes]
+
 def path_for_java_package(java_package):
     return java_package.replace('.', os.sep)
