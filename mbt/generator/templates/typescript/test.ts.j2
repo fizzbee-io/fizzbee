@@ -34,6 +34,7 @@ async function test{{ model_name }}(): Promise<void> {
 
   try {
     await runTests(model, actionRegistry, options);
+    model.cleanupAll();
   } catch (error) {
     console.error('Test failed:', error);
     process.exit(1);
