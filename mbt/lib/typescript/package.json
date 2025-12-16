@@ -4,6 +4,7 @@
   "description": "FizzBee Model Based Testing (MBT) TypeScript/JavaScript binding",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "author": "FizzBee Team",
   "keywords": [
     "mbt",
     "model-based-testing",
@@ -16,6 +17,10 @@
     "url": "https://github.com/fizzbee-io/fizzbee.git",
     "directory": "mbt/lib/typescript"
   },
+  "bugs": {
+    "url": "https://github.com/fizzbee-io/fizzbee/issues"
+  },
+  "homepage": "https://fizzbee.io",
   "license": "Apache-2.0",
   "engines": {
     "node": ">=18.0.0"
