@@ -44,6 +44,11 @@ export class {{ model_name }}ModelAdapter implements {{ model_name }}Model {
   async cleanup(): Promise<void> {
     // TODO: implement cleanup
   }
+
+  async cleanupAll(): Promise<void> {
+    // TODO: implement cleanup
+  }
+
   {%- for action in file.actions %}
   {%- if action.name != "Init" %}
 

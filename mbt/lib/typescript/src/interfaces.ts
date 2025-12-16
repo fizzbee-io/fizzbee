@@ -60,6 +60,8 @@ export interface Model extends RoleMapper {
    * @returns A promise that resolves when cleanup is complete
    */
   cleanup(): Promise<void>;
+
+  cleanupAll(): Promise<void>;
 }
 
 /**
