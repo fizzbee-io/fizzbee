@@ -4,14 +4,14 @@ use std::time::Instant;
 use futures::future::join_all;
 use std::sync::Arc;
 use crate::types::RoleId;
-use crate::value::Value as RustValue;
+use crate::value::{Value as RustValue, Sentinel};
 use crate::value::sorted_map_entries;
 use crate::pb::value::Kind;
 use crate::pb::fizz_bee_mbt_plugin_service_server::FizzBeeMbtPluginService;
-use crate::pb::{Value as ProtoValue, MapValue, MapEntry, ListValue, SetValue, Arg as ProtoArg};
+use crate::pb::{Value as ProtoValue, MapValue, MapEntry, ListValue, SetValue, Arg as ProtoArg, SentinelType};
 use crate::error::MbtError;
 use crate::types::Arg as RustArg; // Alias for clarity
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::pb::{
     InitRequest, InitResponse,
@@ -44,6 +44,14 @@ fn role_id_to_proto_ref(role_id: crate::types::RoleId) -> RoleRef {
 /// Converts an internal Rust Value enum into a Protobuf Value message.
 fn rust_value_to_proto_value(rust_value: RustValue) -> ProtoValue {
     match rust_value {
+        RustValue::Sentinel(sentinel) => {
+            let sentinel_type = match sentinel {
+                Sentinel::Ignore => SentinelType::SentinelIgnore,
+            };
+            ProtoValue {
+                kind: Some(Kind::SentinelValue(sentinel_type as i32)),
+            }
+        },
         RustValue::Int(v) => ProtoValue {
             kind: Some(Kind::IntValue(v)),
         },
@@ -115,6 +123,14 @@ fn proto_value_to_rust_value(proto_value: ProtoValue) -> Result<RustValue, MbtEr
     };
 
     match kind {
+        Kind::SentinelValue(sentinel_int) => {
+            match SentinelType::try_from(sentinel_int) {
+                Ok(SentinelType::SentinelIgnore) => Ok(RustValue::Sentinel(Sentinel::Ignore)),
+                Ok(SentinelType::SentinelUnspecified) | Err(_) => {
+                    Err(MbtError::Other(format!("Unknown or unspecified sentinel type: {}", sentinel_int).into()))
+                }
+            }
+        },
         Kind::StrValue(s) => Ok(RustValue::Str(s)),
         Kind::IntValue(v) => Ok(RustValue::Int(v)),
         Kind::BoolValue(b) => Ok(RustValue::Bool(b)),
@@ -138,9 +154,6 @@ fn proto_value_to_rust_value(proto_value: ProtoValue) -> Result<RustValue, MbtEr
                 .collect();
 
             Ok(RustValue::List(list?))
-        }
-        _ => {
-            Err(MbtError::NotImplemented("Unsupported Protobuf Value kind for conversion.".into()))
         }
     }
 }

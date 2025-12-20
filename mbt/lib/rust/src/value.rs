@@ -1,6 +1,13 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 
+/// Sentinel values for partial state matching in model-based testing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Sentinel {
+    /// Field should be ignored during comparison
+    Ignore,
+}
+
 /// Represents a generic value type used in MBT models.
 /// Designed to be easy for users — they can directly use standard Rust collections
 /// like `HashMap`, `Vec`, and `HashSet`.
@@ -12,8 +19,12 @@ pub enum Value {
     Map(HashMap<Value, Value>),
     List(Vec<Value>),
     Set(HashSet<Value>),
+    Sentinel(Sentinel),
     None,
 }
+
+/// Convenience constant for the IGNORE sentinel
+pub const IGNORE: Value = Value::Sentinel(Sentinel::Ignore);
 
 impl Eq for Value {}
 
@@ -26,6 +37,7 @@ impl Hash for Value {
             Int(v) => v.hash(state),
             Str(s) => s.hash(state),
             Bool(b) => b.hash(state),
+            Sentinel(s) => s.hash(state),
             // Map, List, Set, and None are intentionally not hashed deeply
             // to avoid recursive and unstable hashing. They should not typically
             // be used as HashMap keys.

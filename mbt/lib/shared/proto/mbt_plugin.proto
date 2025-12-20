@@ -6,6 +6,15 @@ option go_package = "github.com/fizzbee-io/fizzbee/mbt/lib/go/internalpb";
 option java_package = "io.fizzbee.mbt.pb";
 
 // ------------------ Common Value Representation ------------------
+
+// Sentinel values for partial state matching in model-based testing.
+// These allow flexible state comparison when exact matching is not possible
+// or desirable (e.g., non-deterministic IDs, timestamps, or unobservable fields).
+enum SentinelType {
+  SENTINEL_UNSPECIFIED = 0;
+  SENTINEL_IGNORE = 1;  // Field should be ignored during comparison
+}
+
 message Value {
   oneof kind {
     string str_value = 1;
@@ -13,6 +22,7 @@ message Value {
     bool bool_value = 3;
     MapValue map_value = 4;
     ListValue list_value = 5;
+    SentinelType sentinel_value = 6;  // Sentinel for flexible state matching
   }
 }
 

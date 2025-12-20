@@ -9,6 +9,7 @@ pub(crate) mod pb {
     include!("pb/fizzbee.mbt.rs");
 }
 pub use crate::config::TestOptions;
+pub use crate::value::{Value, Sentinel, IGNORE};
 
 // Internal modules (private)
 mod runner;

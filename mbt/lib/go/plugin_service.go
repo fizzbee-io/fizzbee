@@ -446,6 +446,13 @@ func fromProtoValueToAny(protoValue *pb.Value) any {
 	}
 
 	switch v := protoValue.Kind.(type) {
+	case *pb.Value_SentinelValue:
+		switch v.SentinelValue {
+		case pb.SentinelType_SENTINEL_IGNORE:
+			return IGNORE
+		default:
+			return nil // Unknown sentinel type
+		}
 	case *pb.Value_StrValue:
 		return v.StrValue
 	case *pb.Value_IntValue:
@@ -472,6 +479,18 @@ func fromProtoValueToAny(protoValue *pb.Value) any {
 }
 
 func fromAnyToProtoValue(value any) *pb.Value {
+	// Handle Sentinel type FIRST (before reflection)
+	if sentinel, ok := value.(Sentinel); ok {
+		var sentinelType pb.SentinelType
+		switch sentinel {
+		case IGNORE:
+			sentinelType = pb.SentinelType_SENTINEL_IGNORE
+		default:
+			sentinelType = pb.SentinelType_SENTINEL_UNSPECIFIED
+		}
+		return &pb.Value{Kind: &pb.Value_SentinelValue{SentinelValue: sentinelType}}
+	}
+
 	rv := reflect.ValueOf(value)
 	switch rv.Kind() {
 	case reflect.String:

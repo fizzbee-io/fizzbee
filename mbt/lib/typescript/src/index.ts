@@ -36,3 +36,9 @@ export {
   fromProtoArg,
   fromProtoArgs
 } from './value';
+
+// Sentinel values
+export {
+  IGNORE,
+  Sentinel
+} from './sentinels';
