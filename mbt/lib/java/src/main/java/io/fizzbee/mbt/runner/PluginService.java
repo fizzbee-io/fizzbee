@@ -447,6 +447,11 @@ public class PluginService extends FizzBeeMbtPluginServiceGrpc.FizzBeeMbtPluginS
         }
 
         switch (protoValue.getKindCase()) {
+            case SENTINEL_VALUE:
+                return switch (protoValue.getSentinelValue()) {
+                    case SENTINEL_IGNORE -> Sentinel.IGNORE;
+                    default -> null;  // Unknown sentinel type
+                };
             case STR_VALUE:
                 return protoValue.getStrValue();
             case INT_VALUE:
@@ -473,6 +478,16 @@ public class PluginService extends FizzBeeMbtPluginServiceGrpc.FizzBeeMbtPluginS
     }
 
     public static Value fromObjectToProtoValue(Object value) {
+        // Handle sentinel values FIRST
+        if (value instanceof Sentinel sentinel) {
+            SentinelType sentinelType = switch (sentinel) {
+                case IGNORE -> SentinelType.SENTINEL_IGNORE;
+            };
+            return Value.newBuilder()
+                    .setSentinelValue(sentinelType)
+                    .build();
+        }
+
         if (value == null) {
             return Value.getDefaultInstance();
         }

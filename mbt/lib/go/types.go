@@ -5,6 +5,15 @@ import "errors"
 // ErrNotImplemented is returned by unimplemented stub methods.
 var ErrNotImplemented = errors.New("not implemented")
 
+// Sentinel represents special marker values for partial state matching in MBT.
+type Sentinel int
+
+const (
+	// IGNORE sentinel: Field should be ignored during state comparison.
+	// Use for non-deterministic values (UUIDs, timestamps) or fields not visible in the SUT.
+	IGNORE Sentinel = iota + 1
+)
+
 // Arg represents a choice variable passed to action methods.
 type Arg struct {
 	Name  string

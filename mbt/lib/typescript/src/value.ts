@@ -57,6 +57,15 @@ export function fromProtoValue(protoValue: pb.Value | undefined): any {
 export function toProtoValue(value: any): pb.Value {
   const result = new pb.Value();
 
+  // Check for sentinel symbols FIRST (before null/undefined check)
+  if (typeof value === 'symbol') {
+    const sentinelType = symbolToSentinelType(value);
+    if (sentinelType !== null) {
+      result.setSentinelValue(sentinelType);
+      return result;
+    }
+  }
+
   if (value === null || value === undefined) {
     return result;
   }
@@ -127,4 +136,18 @@ export function fromProtoArgs(protoArgs: pb.Arg[]): any[] {
     return [];
   }
   return protoArgs.map(arg => fromProtoArg(arg).value);
+}
+
+/**
+ * Converts a TypeScript symbol to protobuf SentinelType enum value.
+ * Returns null if the symbol is not a recognized sentinel.
+ */
+function symbolToSentinelType(sym: symbol): number | null {
+  const key = Symbol.keyFor(sym);
+  switch (key) {
+    case 'fizzbee.mbt.IGNORE':
+      return pb.SentinelType.SENTINEL_IGNORE;
+    default:
+      return null;
+  }
 }

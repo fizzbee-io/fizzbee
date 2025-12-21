@@ -47,6 +47,10 @@ class CounterModel implements Model {
     this.counters.clear();
   }
 
+  async cleanupAll(): Promise<void> {
+    // console.log('Cleaning up CounterModel...');
+  }
+
   async getRoles(): Promise<Map<string, Role>> {
     return this.counters as Map<string, Role>;
   }
