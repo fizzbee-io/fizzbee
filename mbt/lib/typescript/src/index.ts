@@ -11,6 +11,7 @@ export {
   StateGetter,
   SnapshotStateGetter,
   RoleMapper,
+  AfterActionHook,
   Model,
   ActionFunc
 } from './interfaces';

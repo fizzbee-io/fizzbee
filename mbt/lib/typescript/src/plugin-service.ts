@@ -1,5 +1,5 @@
 import * as grpc from '@grpc/grpc-js';
-import type { Model, Role, StateGetter, SnapshotStateGetter, ActionFunc } from './interfaces';
+import type { Model, Role, StateGetter, SnapshotStateGetter, AfterActionHook, ActionFunc } from './interfaces';
 import type { RoleId } from './types';
 import { NotImplementedError } from './types';
 import { toProtoValue, fromProtoArgs } from './value';
@@ -164,6 +164,12 @@ export class FizzBeeMbtPluginService implements IFizzBeeMbtPluginServiceServer {
 
       // Execute the action
       const returnValue = await action(instance, args);
+
+      // Call afterAction hook if implemented (sequential mode only)
+      if (this.isAfterActionHook(this.model)) {
+        await this.model.afterAction();
+      }
+
       const endTime = process.hrtime.bigint();
 
       // Get updated role states if requested
@@ -348,6 +354,13 @@ export class FizzBeeMbtPluginService implements IFizzBeeMbtPluginServiceServer {
    */
   private isStateGetter(obj: any): obj is StateGetter {
     return typeof obj?.getState === 'function';
+  }
+
+  /**
+   * Type guard for AfterActionHook.
+   */
+  private isAfterActionHook(obj: any): obj is AfterActionHook {
+    return typeof obj?.afterAction === 'function';
   }
 
   /**
