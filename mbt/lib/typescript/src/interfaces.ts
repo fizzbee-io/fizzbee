@@ -45,6 +45,34 @@ export interface RoleMapper {
 }
 
 /**
+ * Optional interface for models that need post-action stabilization.
+ * Implement this when your system has asynchronous effects that need to
+ * complete before the next action or state verification.
+ *
+ * This hook is ONLY called in sequential testing mode, not in concurrent mode.
+ *
+ * Examples of when to implement:
+ * - UI frameworks with async rendering (React, Vue, etc.)
+ * - Systems with event loops or message queues
+ * - Eventually consistent systems that stabilize quickly
+ *
+ * When NOT to implement:
+ * - Pure synchronous systems
+ * - Systems with long-running async operations
+ * - Highly concurrent systems (Deal with them in the actions themselves)
+ */
+export interface AfterActionHook {
+  /**
+   * Called after each action in sequential testing mode.
+   * Use this to wait for async operations, UI updates, or eventual
+   * consistency before the next action or state verification.
+   *
+   * @returns A promise that resolves when the system has stabilized
+   */
+  afterAction(): Promise<void>;
+}
+
+/**
  * Main interface for the system model.
  * Your model should implement this interface to integrate with the MBT framework.
  */
