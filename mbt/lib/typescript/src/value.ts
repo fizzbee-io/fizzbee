@@ -3,6 +3,7 @@
  */
 
 import * as pb from '../proto-gen/mbt_plugin_pb';
+import { Ignored } from './sentinels';
 
 /**
  * Converts a protobuf Value to a native TypeScript value.
@@ -57,7 +58,13 @@ export function fromProtoValue(protoValue: pb.Value | undefined): any {
 export function toProtoValue(value: any): pb.Value {
   const result = new pb.Value();
 
-  // Check for sentinel symbols FIRST (before null/undefined check)
+  // Check for Ignored instances FIRST
+  if (value instanceof Ignored) {
+    result.setSentinelValue(pb.SentinelType.SENTINEL_IGNORE);
+    return result;
+  }
+
+  // Check for sentinel symbols (before null/undefined check)
   if (typeof value === 'symbol') {
     const sentinelType = symbolToSentinelType(value);
     if (sentinelType !== null) {
@@ -92,6 +99,27 @@ export function toProtoValue(value: any): pb.Value {
     const items = value.map(item => toProtoValue(item));
     listValue.setItemsList(items);
     result.setListValue(listValue);
+    return result;
+  }
+
+  // Handle Map instances (can have symbol keys like IGNORE)
+  if (value instanceof Map) {
+    const mapValue = new pb.MapValue();
+    const entries = Array.from(value.entries())
+      .map(([k, v]) => {
+        const entry = new pb.MapEntry();
+        entry.setKey(toProtoValue(k));
+        entry.setValue(toProtoValue(v));
+        return entry;
+      })
+      .sort((a, b) => {
+        const aStr = JSON.stringify(a.toObject());
+        const bStr = JSON.stringify(b.toObject());
+        return aStr.localeCompare(bStr);
+      });
+
+    mapValue.setEntriesList(entries);
+    result.setMapValue(mapValue);
     return result;
   }
 

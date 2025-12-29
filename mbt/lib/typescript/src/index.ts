@@ -41,5 +41,7 @@ export {
 // Sentinel values
 export {
   IGNORE,
+  Ignored,
+  ignored,
   Sentinel
 } from './sentinels';
