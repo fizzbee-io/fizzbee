@@ -168,6 +168,7 @@ type Process struct {
 	EnableCheckpoint bool                      `json:"-"`
 	ChoiceFairness   ast.FairnessLevel         `json:"-"`
 	durabilitySpec   *DurabilitySpec
+	guidedTrace      GuidedTrace
 
 	topLevelVars []string
 }
@@ -313,6 +314,7 @@ func (p *Process) Fork() *Process {
 		Evaluator: p.Evaluator,
 
 		durabilitySpec: p.durabilitySpec,
+		guidedTrace:    p.guidedTrace,
 
 		Children:    []*Process{},
 		Files:       p.Files,
@@ -378,6 +380,7 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 		Evaluator: p.Evaluator,
 
 		durabilitySpec: p.durabilitySpec,
+		guidedTrace:    p.guidedTrace,
 
 		Children:    []*Process{},
 		Files:       p.Files,
@@ -986,9 +989,10 @@ type Processor struct {
 	durabilitySpec     *DurabilitySpec
 	isTest             bool
 	hashes             JoinHashes
+	guidedTrace        *GuidedTrace
 }
 
-func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string, strategy string, test bool, hashes JoinHashes) *Processor {
+func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string, strategy string, test bool, hashes JoinHashes, trace *GuidedTrace) *Processor {
 
 	var collection lib.LinearCollection[*Node]
 	var intermediateStates lib.LinearCollection[*Node]
@@ -1034,6 +1038,8 @@ func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation 
 
 		isTest: test,
 		hashes: hashes,
+
+		guidedTrace: trace,
 	}
 }
 
@@ -1044,6 +1050,11 @@ func (p *Processor) GetVisitedNodesCount() int {
 func (p *Processor) InitializeNode() (*Node, *Node, error) {
 	process := NewProcess("init", p.Files, nil)
 	process.durabilitySpec = p.durabilitySpec
+	if p.guidedTrace == nil {
+		process.guidedTrace = GuidedTrace{}
+	} else {
+		process.guidedTrace = *p.guidedTrace
+	}
 
 	modules := make(map[string]starlark.Value)
 	if p.dirPath != "" {
@@ -1123,6 +1134,9 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 				prevCount = len(p.visited)
 			}
 			invariantFailure, symmetryFound = p.processNode(node)
+			if p.guidedTrace != nil {
+				p.visited = make(map[string]*Node)
+			}
 
 			if node.Process != nil && *p.config.Options.CrashOnYield && node.Enabled && (node.Name == "yield" || node.Name == "crash") {
 				failedCrashNode := p.crashProcess(node)
@@ -1488,7 +1502,9 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	if !yield {
 		for _, fork := range forks {
 			newNode := node.ForkForAlternatePaths(fork, fork.Name)
-			p.intermediateStates.Add(newNode)
+			if p.ShouldScheduleNode(newNode) {
+				p.intermediateStates.Add(newNode)
+			}
 		}
 		return false, false
 	}
@@ -1579,7 +1595,9 @@ func (p *Processor) crashRole(node *Node, role *lib.Role) (*Node, *Node) {
 	crashFork.Name = "crash"
 	crashFork.Labels = append(crashFork.Labels, fmt.Sprintf("crash-%s", role.RefString()))
 	crashNode := node.ForkForAlternatePaths(crashFork, fmt.Sprintf("crash-%s", role.RefString()))
-
+	if !p.ShouldScheduleNode(crashNode) {
+		return nil, nil
+	}
 	for i, thread := range crashNode.Threads {
 		if thread == nil || thread.currentFrame().obj == nil || thread.currentFrame().obj.Name != role.Name {
 			continue
@@ -1616,6 +1634,9 @@ func (p *Processor) crashThread(node *Node) {
 	crashFork.Name = "crash"
 	crashFork.removeCurrentThread()
 	crashNode := node.ForkForAlternatePaths(crashFork, "crash")
+	if !p.ShouldScheduleNode(crashNode) {
+		return
+	}
 	// TODO: We could just copy the failed invariants from the parent
 	// instead of checking again
 	CheckInvariants(crashFork)
@@ -1720,7 +1741,9 @@ func (p *Processor) processInit(node *Node) bool {
 		//thread := newNode.currentThread()
 		thread.currentFrame().pc = fmt.Sprintf("Actions[%d]", i)
 		thread.currentFrame().Name = action.Name
-		p.queue.Add(newNode)
+		if p.ShouldScheduleNode(newNode) {
+			p.queue.Add(newNode)
+		}
 	}
 	return false
 }
@@ -1736,7 +1759,9 @@ func (p *Processor) YieldNode(node *Node) {
 		newNode.Current = i
 		newNode.Inbound[len(newNode.Inbound)-1].ReqId = i
 		newNode.ThreadProgress = true
-		p.queue.Add(newNode)
+		if p.ShouldScheduleNode(newNode) {
+			p.queue.Add(newNode)
+		}
 	}
 	p.scheduleChannelMessages(node)
 	if node.actionDepth >= int(p.config.Options.MaxActions) ||
@@ -1783,7 +1808,9 @@ func (p *Processor) YieldFork(node *Node, process *Process) {
 		newNode.Current = i
 		newNode.Inbound[len(newNode.Inbound)-1].ReqId = i
 		newNode.ThreadProgress = true
-		p.queue.Add(newNode)
+		if p.ShouldScheduleNode(newNode) {
+			p.queue.Add(newNode)
+		}
 	}
 	p.scheduleChannelMessages(node)
 	if node.actionDepth >= int(p.config.Options.MaxActions) ||
@@ -1813,7 +1840,9 @@ func (p *Processor) scheduleChannelMessages(node *Node) {
 			frame := newMsg.Frame()
 
 			thread.Stack.Push(frame)
-			p.queue.Add(newNode)
+			if p.ShouldScheduleNode(newNode) {
+				p.queue.Add(newNode)
+			}
 
 			// TODO(jp): Handle the case where the messages get dropped
 			// It could be done here at the time of processing the message
@@ -1863,7 +1892,9 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 		frame.Name = action.Name
 	}
 
-	p.queue.Add(newNode)
+	if p.ShouldScheduleNode(newNode) {
+		p.queue.Add(newNode)
+	}
 }
 
 func (p *Processor) ExceedsActionCountLimits(action *ast.Action, statProcess *Process, role *lib.Role) bool {
