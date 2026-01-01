@@ -32,7 +32,7 @@ if [[ $# -gt 0 ]]; then
 fi
 
 usage() {
-  echo "Usage: $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--exploration_strategy dfs] filename"
+  echo "Usage: $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--exploration_strategy dfs] [--trace tracefile] filename"
   exit 1
 }
 
@@ -42,6 +42,7 @@ seed=0
 max_runs=0
 exploration_strategy=bfs
 test=false
+trace_file=""
 
 # Parse options
 while [[ "$1" =~ ^- ]]; do
@@ -78,6 +79,15 @@ while [[ "$1" =~ ^- ]]; do
         shift 2
       else
         echo "Error: --exploration_strategy requires a string value one of [bfs, dfs, random]." 1>&2
+        usage
+      fi
+      ;;
+    --trace )
+      if [[ -n "$2" ]]; then
+        trace_file="$2"
+        shift 2
+      else
+        echo "Error: --trace requires a file path." 1>&2
         usage
       fi
       ;;
@@ -145,6 +155,9 @@ if [ "$max_runs" -ne 0 ]; then
 fi
 if [ "$exploration_strategy" != "bfs" ]; then
   args+=("--exploration_strategy" "$exploration_strategy")
+fi
+if [ -n "$trace_file" ]; then
+  args+=("--trace" "$trace_file")
 fi
 
 args+=("$json_filename")

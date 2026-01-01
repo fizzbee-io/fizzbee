@@ -28,6 +28,7 @@ var saveStates bool
 var seed int64
 var maxRuns int
 var explorationStrategy string
+var traceFile string
 
 var isTest bool
 
@@ -48,10 +49,14 @@ func main() {
 	sourceFileName := filepath.Join(dirPath, f.SourceInfo.GetFileName())
 	//fmt.Println("dirPath:", dirPath)
 	// Calculate the relative path
-	stateConfig := loadStateOptions(dirPath, f.GetFrontMatter())
-
-	fmt.Printf("StateSpaceOptions: %+v\n", stateConfig)
-	applyDefaultStateOptions(stateConfig)
+	var stateConfig *ast.StateSpaceOptions
+	if traceFile != "" {
+		stateConfig = getStateConfigForTraceChecking(stateConfig)
+	} else {
+		stateConfig = loadStateOptions(dirPath, f.GetFrontMatter())
+		fmt.Printf("StateSpaceOptions: %+v\n", stateConfig)
+		applyDefaultStateOptions(stateConfig)
+	}
 
 	outDir, err := createOutputDir(dirPath, isTest)
 	if err != nil {
@@ -452,6 +457,24 @@ func addToJoinHashes(joinHashes modelchecker.JoinHashes, i int, from, to *modelc
 }
 
 func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPath string, outDir string, sourceFileName string, hashes modelchecker.JoinHashes) *modelchecker.Node {
+	// Parse trace file if provided
+	var trace *modelchecker.GuidedTrace
+	if traceFile != "" {
+		var err error
+		trace, err = modelchecker.ParseTraceFile(traceFile)
+		if err != nil {
+			fmt.Printf("Error parsing trace file: %v\n", err)
+			return nil
+		}
+		fmt.Printf("Loaded trace with %d links\n", len(trace.LinkNames))
+
+		// Trace mode is incompatible with simulation
+		if simulation {
+			fmt.Println("Error: --trace and --simulation cannot be used together")
+			return nil
+		}
+	}
+
 	//maxRuns := 10000
 	if !simulation || seed != 0 {
 		maxRuns = 1
@@ -473,7 +496,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 	for !stopped && (maxRuns <= 0 || i < maxRuns) {
 		i++
 
-		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy, isTest, hashes)
+		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy, isTest, hashes, trace)
 		holder.Store(p1)
 
 		rootNode, failedNode, endTime, err := startModelChecker(p1)
@@ -485,6 +508,14 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 
 		if err != nil {
 			printTraceAndExit(err)
+		}
+
+		// Check if trace was fully executed
+		if trace != nil && !trace.IsExhausted() {
+			fmt.Printf("WARNING: Trace execution incomplete. Expected %d links, executed %d links.\n",
+				len(trace.LinkNames), trace.GetCurrentIndex())
+			fmt.Println("The trace may contain links that don't match the model or are unreachable.")
+			return nil
 		}
 
 		//fmt.Println("root", root)
@@ -520,7 +551,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 					return nil
 				}
 			}
-			if !simulation && !p1.Stopped() {
+			if !simulation && !p1.Stopped() && trace == nil {
 				if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "enabled" || stateConfig.GetLiveness() == "true" || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
 					failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode, nodes)
 				} else if stateConfig.GetLiveness() == "eventual" || stateConfig.GetLiveness() == "nondeterministic" {
@@ -695,6 +726,18 @@ func loadStateOptions(dirPath string, f *ast.FrontMatter) *ast.StateSpaceOptions
 	return stateConfig
 }
 
+func getStateConfigForTraceChecking(stateConfig *ast.StateSpaceOptions) *ast.StateSpaceOptions {
+	// Trace-specific config: ignore frontmatter and yaml, use defaults for trace mode
+	deadlockDetection := false
+	crashOnYield := false
+	stateConfig = &ast.StateSpaceOptions{
+		Options:           &ast.Options{MaxActions: 100, MaxConcurrentActions: 1, CrashOnYield: &crashOnYield},
+		Liveness:          "false",
+		DeadlockDetection: &deadlockDetection,
+	}
+	return stateConfig
+}
+
 func loadInputJSON(jsonFilename string) *ast.File {
 	// Read the content of the JSON file
 	jsonContent, err := os.ReadFile(jsonFilename)
@@ -719,6 +762,7 @@ func parseFlags() []string {
 	flag.Int64Var(&seed, "seed", 0, "Seed for random number generator used in simulation mode")
 	flag.IntVar(&maxRuns, "max_runs", 0, "Maximum number of simulation runs/paths to explore. Default=0 for unlimited")
 	flag.StringVar(&explorationStrategy, "exploration_strategy", "bfs", "Exploration strategy for exhaustive model checking. Options: bfs (default), dfs, random.")
+	flag.StringVar(&traceFile, "trace", "", "Path to trace file for guided execution")
 	flag.BoolVar(&isTest, "test", false, "Testing mode (prevents printing timestamps and other non-deterministic behavior. Default=false")
 	flag.Parse()
 
