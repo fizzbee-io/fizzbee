@@ -990,9 +990,10 @@ type Processor struct {
 	isTest             bool
 	hashes             JoinHashes
 	guidedTrace        *GuidedTrace
+	preinitHookFile    string
 }
 
-func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string, strategy string, test bool, hashes JoinHashes, trace *GuidedTrace) *Processor {
+func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string, strategy string, test bool, hashes JoinHashes, trace *GuidedTrace, preinitHookFile string) *Processor {
 
 	var collection lib.LinearCollection[*Node]
 	var intermediateStates lib.LinearCollection[*Node]
@@ -1039,7 +1040,8 @@ func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation 
 		isTest: test,
 		hashes: hashes,
 
-		guidedTrace: trace,
+		guidedTrace:     trace,
+		preinitHookFile: preinitHookFile,
 	}
 }
 
@@ -1064,7 +1066,7 @@ func (p *Processor) InitializeNode() (*Node, *Node, error) {
 	p.Init = NewNode(process)
 
 	if len(p.Files[0].Stmts) > 0 {
-		processPreInit(p.Init, p.Files[0].Stmts)
+		processPreInit(p.Init, p.Files[0].Stmts, p.preinitHookFile)
 	}
 
 	if p.Files[0].Actions[0].Name != "Init" {
@@ -1368,7 +1370,7 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 	return p.Init, failedNode, err
 }
 
-func processPreInit(init *Node, stmts []*ast.Statement) {
+func processPreInit(init *Node, stmts []*ast.Statement, preinitHookFile string) {
 	thread := init.NewThread()
 	thread.currentFrame().pc = fmt.Sprintf("Stmts[%d]", 0)
 	thread.currentFrame().Name = "toplevel"
@@ -1386,6 +1388,28 @@ func processPreInit(init *Node, stmts []*ast.Statement) {
 	for name, _ := range vars {
 		if slices.Contains(init.Process.topLevelVars, name) {
 			globals[name] = vars[name]
+		}
+	}
+
+	// Execute preinit hook if provided
+	if preinitHookFile != "" {
+		hookCode, err := os.ReadFile(preinitHookFile)
+		if err != nil {
+			panic(fmt.Sprintf("Error reading preinit hook file %s: %v", preinitHookFile, err))
+		}
+
+		// Create a PyStmt from the hook code
+		pyStmt := &ast.PyStmt{
+			Code: string(hookCode),
+			SourceInfo: &ast.SourceInfo{
+				FileName: preinitHookFile,
+			},
+		}
+
+		// Execute the hook with the current globals
+		_, err = init.Process.Evaluator.ExecPyStmt(preinitHookFile, pyStmt, globals)
+		if err != nil {
+			panic(fmt.Sprintf("Error executing preinit hook: %v", err))
 		}
 	}
 

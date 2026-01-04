@@ -29,6 +29,7 @@ var seed int64
 var maxRuns int
 var explorationStrategy string
 var traceFile string
+var preinitHookFile string
 
 var isTest bool
 
@@ -496,7 +497,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 	for !stopped && (maxRuns <= 0 || i < maxRuns) {
 		i++
 
-		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy, isTest, hashes, trace)
+		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy, isTest, hashes, trace, preinitHookFile)
 		holder.Store(p1)
 
 		rootNode, failedNode, endTime, err := startModelChecker(p1)
@@ -763,6 +764,7 @@ func parseFlags() []string {
 	flag.IntVar(&maxRuns, "max_runs", 0, "Maximum number of simulation runs/paths to explore. Default=0 for unlimited")
 	flag.StringVar(&explorationStrategy, "exploration_strategy", "bfs", "Exploration strategy for exhaustive model checking. Options: bfs (default), dfs, random.")
 	flag.StringVar(&traceFile, "trace", "", "Path to trace file for guided execution")
+	flag.StringVar(&preinitHookFile, "preinit-hook", "", "Path to Starlark file to execute after preinit but before freezing globals")
 	flag.BoolVar(&isTest, "test", false, "Testing mode (prevents printing timestamps and other non-deterministic behavior. Default=false")
 	flag.Parse()
 
