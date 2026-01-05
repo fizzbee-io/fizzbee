@@ -32,7 +32,7 @@ if [[ $# -gt 0 ]]; then
 fi
 
 usage() {
-  echo "Usage: $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--exploration_strategy dfs] [--trace-file tracefile | --trace tracestring] [--preinit-hook-file hookfile | --preinit-hook hookstring] [--copy-ast] [--no-copy-ast] filename"
+  echo "Usage: $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--exploration_strategy dfs] [--trace-file tracefile | --trace tracestring] [--preinit-hook-file hookfile | --preinit-hook hookstring] [--copy-ast] [--no-copy-ast] [--output-dir directory] filename"
   exit 1
 }
 
@@ -43,6 +43,7 @@ max_runs=0
 exploration_strategy=bfs
 test=false
 copy_ast=true
+output_dir=""
 trace_file=""
 trace_string=""
 preinit_hook_file=""
@@ -130,6 +131,15 @@ while [[ "$1" =~ ^- ]]; do
       copy_ast=false
       shift
       ;;
+    --output-dir )
+      if [[ -n "$2" ]]; then
+        output_dir="$2"
+        shift 2
+      else
+        echo "Error: --output-dir requires a directory path." 1>&2
+        usage
+      fi
+      ;;
     --internal_profile )
       internal_profile=true
       shift
@@ -209,6 +219,9 @@ if [ -n "$preinit_hook_string" ]; then
 fi
 if [ "$copy_ast" = true ]; then
   args+=("--copy-ast")
+fi
+if [ -n "$output_dir" ]; then
+  args+=("--output-dir" "$output_dir")
 fi
 
 args+=("$json_filename")
