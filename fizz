@@ -32,7 +32,7 @@ if [[ $# -gt 0 ]]; then
 fi
 
 usage() {
-  echo "Usage: $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--exploration_strategy dfs] [--trace tracefile] [--preinit-hook hookfile] filename"
+  echo "Usage: $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--exploration_strategy dfs] [--trace-file tracefile | --trace tracestring] [--preinit-hook-file hookfile | --preinit-hook hookstring] filename"
   exit 1
 }
 
@@ -43,7 +43,9 @@ max_runs=0
 exploration_strategy=bfs
 test=false
 trace_file=""
+trace_string=""
 preinit_hook_file=""
+preinit_hook_string=""
 
 # Parse options
 while [[ "$1" =~ ^- ]]; do
@@ -83,21 +85,39 @@ while [[ "$1" =~ ^- ]]; do
         usage
       fi
       ;;
-    --trace )
+    --trace-file )
       if [[ -n "$2" ]]; then
         trace_file="$2"
         shift 2
       else
-        echo "Error: --trace requires a file path." 1>&2
+        echo "Error: --trace-file requires a file path." 1>&2
+        usage
+      fi
+      ;;
+    --trace )
+      if [[ -n "$2" ]]; then
+        trace_string="$2"
+        shift 2
+      else
+        echo "Error: --trace requires a string." 1>&2
+        usage
+      fi
+      ;;
+    --preinit-hook-file )
+      if [[ -n "$2" ]]; then
+        preinit_hook_file="$2"
+        shift 2
+      else
+        echo "Error: --preinit-hook-file requires a file path." 1>&2
         usage
       fi
       ;;
     --preinit-hook )
       if [[ -n "$2" ]]; then
-        preinit_hook_file="$2"
+        preinit_hook_string="$2"
         shift 2
       else
-        echo "Error: --preinit-hook requires a file path." 1>&2
+        echo "Error: --preinit-hook requires a string." 1>&2
         usage
       fi
       ;;
@@ -167,10 +187,16 @@ if [ "$exploration_strategy" != "bfs" ]; then
   args+=("--exploration_strategy" "$exploration_strategy")
 fi
 if [ -n "$trace_file" ]; then
-  args+=("--trace" "$trace_file")
+  args+=("--trace-file" "$trace_file")
+fi
+if [ -n "$trace_string" ]; then
+  args+=("--trace" "$trace_string")
 fi
 if [ -n "$preinit_hook_file" ]; then
-  args+=("--preinit-hook" "$preinit_hook_file")
+  args+=("--preinit-hook-file" "$preinit_hook_file")
+fi
+if [ -n "$preinit_hook_string" ]; then
+  args+=("--preinit-hook" "$preinit_hook_string")
 fi
 
 args+=("$json_filename")

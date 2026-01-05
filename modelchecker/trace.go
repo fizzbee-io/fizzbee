@@ -13,21 +13,12 @@ type GuidedTrace struct {
 	currentIndex int
 }
 
-// ParseTraceFile reads and parses a trace file
+// parseTrace parses trace content from a scanner
 // Format: Each non-empty, non-comment line is a link name
-func ParseTraceFile(filename string) (*GuidedTrace, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open trace file: %w", err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
+func parseTrace(scanner *bufio.Scanner) ([]string, error) {
 	var linkNames []string
-	lineNum := 0
 
 	for scanner.Scan() {
-		lineNum++
 		line := strings.TrimSpace(scanner.Text())
 
 		// Skip empty lines and comments
@@ -39,11 +30,39 @@ func ParseTraceFile(filename string) (*GuidedTrace, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading trace file: %w", err)
+		return nil, err
 	}
 
 	if len(linkNames) == 0 {
-		return nil, fmt.Errorf("trace file is empty")
+		return nil, fmt.Errorf("trace is empty")
+	}
+
+	return linkNames, nil
+}
+
+// ParseTraceFile reads and parses a trace file
+// Format: Each non-empty, non-comment line is a link name
+func ParseTraceFile(filename string) (*GuidedTrace, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open trace file: %w", err)
+	}
+	defer file.Close()
+
+	linkNames, err := parseTrace(bufio.NewScanner(file))
+	if err != nil {
+		return nil, fmt.Errorf("error reading trace file: %w", err)
+	}
+
+	return &GuidedTrace{LinkNames: linkNames}, nil
+}
+
+// ParseTraceString parses a trace from a string
+// Format: Each non-empty, non-comment line is a link name
+func ParseTraceString(content string) (*GuidedTrace, error) {
+	linkNames, err := parseTrace(bufio.NewScanner(strings.NewReader(content)))
+	if err != nil {
+		return nil, fmt.Errorf("error parsing trace string: %w", err)
 	}
 
 	return &GuidedTrace{LinkNames: linkNames}, nil
