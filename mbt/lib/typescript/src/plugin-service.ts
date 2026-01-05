@@ -1,8 +1,9 @@
 import * as grpc from '@grpc/grpc-js';
-import type { Model, Role, StateGetter, SnapshotStateGetter, AfterActionHook, ActionFunc } from './interfaces';
+import type { Model, Role, StateGetter, SnapshotStateGetter, AfterActionHook, OverridesProvider, ActionFunc } from './interfaces';
 import type { RoleId } from './types';
 import { NotImplementedError } from './types';
 import { toProtoValue, fromProtoArgs } from './value';
+import { OverridesBuilder } from './overrides';
 import * as pb from '../proto-gen/mbt_plugin_pb';
 import type { IFizzBeeMbtPluginServiceServer } from '../proto-gen/mbt_plugin_grpc_pb';
 
@@ -27,6 +28,12 @@ export class FizzBeeMbtPluginService implements IFizzBeeMbtPluginServiceServer {
    */
   init: grpc.handleUnaryCall<pb.InitRequest, pb.InitResponse> = async (call, callback) => {
     try {
+      // Check if model provides variable overrides
+      const overridesBuilder = new OverridesBuilder();
+      if (this.isOverridesProvider(this.model)) {
+        await this.model.provideOverrides(overridesBuilder);
+      }
+
       // Initialize the model
       await this.model.init();
 
@@ -72,6 +79,13 @@ export class FizzBeeMbtPluginService implements IFizzBeeMbtPluginServiceServer {
 
       response.setRolesList(roleRefs);
       response.setRoleStatesList(roleStates);
+
+      // Add variable overrides to response
+      const overrides = overridesBuilder.getOverrides();
+      const overridesMap = response.getOverridesMap();
+      for (const [key, value] of overrides) {
+        overridesMap.set(key, toProtoValue(value));
+      }
 
       callback(null, response);
     } catch (error) {
@@ -361,6 +375,13 @@ export class FizzBeeMbtPluginService implements IFizzBeeMbtPluginServiceServer {
    */
   private isAfterActionHook(obj: any): obj is AfterActionHook {
     return typeof obj?.afterAction === 'function';
+  }
+
+  /**
+   * Type guard for OverridesProvider.
+   */
+  private isOverridesProvider(obj: any): obj is OverridesProvider {
+    return typeof obj?.provideOverrides === 'function';
   }
 
   /**

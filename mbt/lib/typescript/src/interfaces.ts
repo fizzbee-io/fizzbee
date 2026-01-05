@@ -1,3 +1,5 @@
+import type { OverridesBuilder } from './overrides';
+
 /**
  * Base interface that all role interfaces should implement.
  * Roles represent the components/actors in your system under test.
@@ -70,6 +72,44 @@ export interface AfterActionHook {
    * @returns A promise that resolves when the system has stabilized
    */
   afterAction(): Promise<void>;
+}
+
+/**
+ * Optional interface for models that need to provide variable overrides.
+ * Implement this when you want to override global variables/constants before
+ * model initialization. This is similar to the pre-init-hook in the FizzBee
+ * model checker.
+ *
+ * Common use cases:
+ * - Overriding constants for different test scenarios
+ * - Setting environment-specific values
+ * - Parameterizing model behavior for different test runs
+ *
+ * The override values support standard Starlark types:
+ * - Primitives: string, int, bool
+ * - Collections: list (array), dict (object/Map)
+ *
+ * Example:
+ * ```typescript
+ * class MyModel implements Model, OverridesProvider {
+ *   provideOverrides(builder: OverridesBuilder): void {
+ *     builder.setInt('MAX_RETRIES', 5)
+ *            .setString('API_ENDPOINT', 'http://localhost:8080')
+ *            .setList('ALLOWED_METHODS', ['GET', 'POST', 'PUT']);
+ *   }
+ *   // ... rest of implementation
+ * }
+ * ```
+ */
+export interface OverridesProvider {
+  /**
+   * Provides variable overrides before model initialization.
+   * This method is called before init() to set up global variables/constants.
+   *
+   * @param builder - Builder for setting variable overrides with type safety
+   * @returns A promise or void
+   */
+  provideOverrides(builder: OverridesBuilder): void | Promise<void>;
 }
 
 /**
