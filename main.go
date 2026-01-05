@@ -30,6 +30,8 @@ var maxRuns int
 var explorationStrategy string
 var traceFile string
 var preinitHookFile string
+var trace string
+var preinitHook string
 
 var isTest bool
 
@@ -51,7 +53,7 @@ func main() {
 	//fmt.Println("dirPath:", dirPath)
 	// Calculate the relative path
 	var stateConfig *ast.StateSpaceOptions
-	if traceFile != "" {
+	if traceFile != "" || trace != "" {
 		stateConfig = getStateConfigForTraceChecking(stateConfig)
 	} else {
 		stateConfig = loadStateOptions(dirPath, f.GetFrontMatter())
@@ -458,22 +460,49 @@ func addToJoinHashes(joinHashes modelchecker.JoinHashes, i int, from, to *modelc
 }
 
 func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPath string, outDir string, sourceFileName string, hashes modelchecker.JoinHashes) *modelchecker.Node {
-	// Parse trace file if provided
-	var trace *modelchecker.GuidedTrace
+	// Parse trace if provided (either from file or string)
+	var guidedTrace *modelchecker.GuidedTrace
 	if traceFile != "" {
 		var err error
-		trace, err = modelchecker.ParseTraceFile(traceFile)
+		guidedTrace, err = modelchecker.ParseTraceFile(traceFile)
 		if err != nil {
 			fmt.Printf("Error parsing trace file: %v\n", err)
 			return nil
 		}
-		fmt.Printf("Loaded trace with %d links\n", len(trace.LinkNames))
+		fmt.Printf("Loaded trace with %d links\n", len(guidedTrace.LinkNames))
+
+		// Trace mode is incompatible with simulation
+		if simulation {
+			fmt.Println("Error: --trace-file and --simulation cannot be used together")
+			return nil
+		}
+	} else if trace != "" {
+		var err error
+		guidedTrace, err = modelchecker.ParseTraceString(trace)
+		if err != nil {
+			fmt.Printf("Error parsing trace string: %v\n", err)
+			return nil
+		}
+		fmt.Printf("Loaded trace with %d links\n", len(guidedTrace.LinkNames))
 
 		// Trace mode is incompatible with simulation
 		if simulation {
 			fmt.Println("Error: --trace and --simulation cannot be used together")
 			return nil
 		}
+	}
+
+	// Resolve preinit hook content (either from file or string)
+	var preinitHookContentResolved string
+	if preinitHookFile != "" {
+		content, err := os.ReadFile(preinitHookFile)
+		if err != nil {
+			fmt.Printf("Error reading preinit hook file: %v\n", err)
+			return nil
+		}
+		preinitHookContentResolved = string(content)
+	} else if preinitHook != "" {
+		preinitHookContentResolved = preinitHook
 	}
 
 	//maxRuns := 10000
@@ -497,7 +526,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 	for !stopped && (maxRuns <= 0 || i < maxRuns) {
 		i++
 
-		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy, isTest, hashes, trace, preinitHookFile)
+		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy, isTest, hashes, guidedTrace, preinitHookContentResolved)
 		holder.Store(p1)
 
 		rootNode, failedNode, endTime, err := startModelChecker(p1)
@@ -512,9 +541,9 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		}
 
 		// Check if trace was fully executed
-		if trace != nil && !trace.IsExhausted() {
+		if guidedTrace != nil && !guidedTrace.IsExhausted() {
 			fmt.Printf("WARNING: Trace execution incomplete. Expected %d links, executed %d links.\n",
-				len(trace.LinkNames), trace.GetCurrentIndex())
+				len(guidedTrace.LinkNames), guidedTrace.GetCurrentIndex())
 			fmt.Println("The trace may contain links that don't match the model or are unreachable.")
 			return nil
 		}
@@ -552,7 +581,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 					return nil
 				}
 			}
-			if !simulation && !p1.Stopped() && trace == nil {
+			if !simulation && !p1.Stopped() && guidedTrace == nil {
 				if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "enabled" || stateConfig.GetLiveness() == "true" || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
 					failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode, nodes)
 				} else if stateConfig.GetLiveness() == "eventual" || stateConfig.GetLiveness() == "nondeterministic" {
@@ -763,10 +792,22 @@ func parseFlags() []string {
 	flag.Int64Var(&seed, "seed", 0, "Seed for random number generator used in simulation mode")
 	flag.IntVar(&maxRuns, "max_runs", 0, "Maximum number of simulation runs/paths to explore. Default=0 for unlimited")
 	flag.StringVar(&explorationStrategy, "exploration_strategy", "bfs", "Exploration strategy for exhaustive model checking. Options: bfs (default), dfs, random.")
-	flag.StringVar(&traceFile, "trace", "", "Path to trace file for guided execution")
-	flag.StringVar(&preinitHookFile, "preinit-hook", "", "Path to Starlark file to execute after preinit but before freezing globals")
+	flag.StringVar(&traceFile, "trace-file", "", "Path to trace file for guided execution")
+	flag.StringVar(&preinitHookFile, "preinit-hook-file", "", "Path to Starlark file to execute after preinit but before freezing globals")
+	flag.StringVar(&trace, "trace", "", "Trace content as a string for guided execution (multiline supported)")
+	flag.StringVar(&preinitHook, "preinit-hook", "", "Starlark code as a string to execute after preinit but before freezing globals (multiline supported)")
 	flag.BoolVar(&isTest, "test", false, "Testing mode (prevents printing timestamps and other non-deterministic behavior. Default=false")
 	flag.Parse()
+
+	// Validate that both file and string versions are not provided
+	if traceFile != "" && trace != "" {
+		fmt.Println("Error: cannot specify both --trace-file and --trace")
+		os.Exit(1)
+	}
+	if preinitHookFile != "" && preinitHook != "" {
+		fmt.Println("Error: cannot specify both --preinit-hook-file and --preinit-hook")
+		os.Exit(1)
+	}
 
 	args := flag.Args()
 	return args
