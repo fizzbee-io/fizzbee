@@ -112,8 +112,8 @@ func copyAstToOutputDir(jsonFilename string, outDir string) error {
 		return fmt.Errorf("failed to read AST file: %w", err)
 	}
 
-	// Create the destination path
-	destPath := filepath.Join(outDir, filepath.Base(jsonFilename))
+	// Create the destination path with fixed name spec_ast.json
+	destPath := filepath.Join(outDir, "spec_ast.json")
 
 	// Write the AST to the output directory
 	err = os.WriteFile(destPath, astContent, 0644)
