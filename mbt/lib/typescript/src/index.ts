@@ -12,9 +12,15 @@ export {
   SnapshotStateGetter,
   RoleMapper,
   AfterActionHook,
+  OverridesProvider,
   Model,
   ActionFunc
 } from './interfaces';
+
+// Overrides
+export {
+  OverridesBuilder
+} from './overrides';
 
 // Types
 export {

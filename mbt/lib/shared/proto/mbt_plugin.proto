@@ -112,6 +112,7 @@ message InitResponse {
 
   repeated RoleRef roles = 3; // List of roles initialized by the plugin
   repeated RoleState role_states = 4; // Initial state of each role
+  map<string, Value> overrides = 5; // Variable overrides provided by the model
 }
 
 message CleanupRequest {
