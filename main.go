@@ -26,6 +26,7 @@ var simulation bool
 var internalProfile bool
 var saveStates bool
 var copyAst bool
+var outputDir string
 var seed int64
 var maxRuns int
 var explorationStrategy string
@@ -840,6 +841,7 @@ func parseFlags() []string {
 	flag.BoolVar(&internalProfile, "internal_profile", false, "Enables CPU and memory profiling of the model checker")
 	flag.BoolVar(&saveStates, "save_states", false, "Save states to disk")
 	flag.BoolVar(&copyAst, "copy-ast", false, "Copy the AST JSON file to the output directory")
+	flag.StringVar(&outputDir, "output-dir", "", "Custom output directory path (if not specified, uses default SPEC_DIR/out/run_timestamp)")
 	flag.Int64Var(&seed, "seed", 0, "Seed for random number generator used in simulation mode")
 	flag.IntVar(&maxRuns, "max_runs", 0, "Maximum number of simulation runs/paths to explore. Default=0 for unlimited")
 	flag.StringVar(&explorationStrategy, "exploration_strategy", "bfs", "Exploration strategy for exhaustive model checking. Options: bfs (default), dfs, random.")
@@ -1136,6 +1138,25 @@ func writeErrorDotFile(outDir string, dotStr string) error {
 }
 
 func createOutputDir(dirPath string, testing bool) (string, error) {
+	// If custom output directory is specified, use it directly
+	if outputDir != "" {
+		// Convert to absolute path if it's relative
+		absOutputDir, err := filepath.Abs(outputDir)
+		if err != nil {
+			fmt.Println("Error resolving output directory path:", err)
+			return "", err
+		}
+
+		// Create the directory
+		if err := os.MkdirAll(absOutputDir, 0755); err != nil {
+			fmt.Println("Error creating output directory:", err)
+			return absOutputDir, err
+		}
+
+		return absOutputDir, nil
+	}
+
+	// Default behavior: create timestamped directory
 	var newDirName string
 	if testing {
 		newDirName = "run_test"
