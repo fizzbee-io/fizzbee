@@ -25,6 +25,7 @@ var isPlayground bool
 var simulation bool
 var internalProfile bool
 var saveStates bool
+var copyAst bool
 var seed int64
 var maxRuns int
 var explorationStrategy string
@@ -78,8 +79,16 @@ func main() {
 			fmt.Println("Multiple refinements found. Only single refinement is supported currently. Contact us if you need support for multiple refinements.")
 			return
 		}
-		runRefinementModelChecking(f, dirPath, outDir)
+		runRefinementModelChecking(f, dirPath, outDir, jsonFilename)
 	} else {
+		// For single spec model checking, copy AST to the output directory
+		if copyAst {
+			err = copyAstToOutputDir(jsonFilename, outDir)
+			if err != nil {
+				fmt.Printf("Error copying AST file: %v\n", err)
+				return
+			}
+		}
 		modelCheckSingleSpec(f, stateConfig, dirPath, outDir, sourceFileName, nil)
 	}
 }
@@ -93,6 +102,25 @@ func dumpStateSpaceOptions(stateConfig *ast.StateSpaceOptions, outDir string) er
 	}
 	err = os.WriteFile(filepath.Join(outDir, "state_config.json"), stateConfigJson, 0644)
 	return err
+}
+
+func copyAstToOutputDir(jsonFilename string, outDir string) error {
+	// Read the AST JSON file
+	astContent, err := os.ReadFile(jsonFilename)
+	if err != nil {
+		return fmt.Errorf("failed to read AST file: %w", err)
+	}
+
+	// Create the destination path
+	destPath := filepath.Join(outDir, filepath.Base(jsonFilename))
+
+	// Write the AST to the output directory
+	err = os.WriteFile(destPath, astContent, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write AST file: %w", err)
+	}
+
+	return nil
 }
 
 func runCompositionalModelChecking(f *ast.File, dirPath string, outDir string) {
@@ -126,6 +154,13 @@ func runCompositionalModelChecking(f *ast.File, dirPath string, outDir string) {
 			fmt.Println("Error creating directory:", err)
 			return
 		}
+		if copyAst {
+			err = copyAstToOutputDir(composedJsonFileName, composedOutDir)
+			if err != nil {
+				fmt.Printf("Error copying AST file: %v\n", err)
+				return
+			}
+		}
 		err = dumpStateSpaceOptions(composedStateConfig, composedOutDir)
 		if err != nil {
 			fmt.Printf("Error writing state space options: %v\n", err)
@@ -150,7 +185,7 @@ func runCompositionalModelChecking(f *ast.File, dirPath string, outDir string) {
 	return
 }
 
-func runRefinementModelChecking(f *ast.File, dirPath string, outDir string) {
+func runRefinementModelChecking(f *ast.File, dirPath string, outDir string, jsonFilename string) {
 	if simulation {
 		fmt.Println("Simulation mode not supported for refinement")
 		return
@@ -200,6 +235,13 @@ func runRefinementModelChecking(f *ast.File, dirPath string, outDir string) {
 			fmt.Println("Error creating directory:", err)
 			return
 		}
+		if copyAst {
+			err = copyAstToOutputDir(abstractJsonFile, abstractOutDir)
+			if err != nil {
+				fmt.Printf("Error copying AST file: %v\n", err)
+				return
+			}
+		}
 		err = dumpStateSpaceOptions(stateConfig, abstractOutDir)
 		if err != nil {
 			fmt.Printf("Error writing state space options: %v\n", err)
@@ -228,6 +270,14 @@ func runRefinementModelChecking(f *ast.File, dirPath string, outDir string) {
 	if err := os.MkdirAll(implOutDir, 0755); err != nil {
 		fmt.Println("Error creating directory:", err)
 		return
+	}
+
+	if copyAst {
+		err := copyAstToOutputDir(jsonFilename, implOutDir)
+		if err != nil {
+			fmt.Printf("Error copying AST file: %v\n", err)
+			return
+		}
 	}
 
 	fmt.Println("Model checking implementation spec (refined):", f.SourceInfo.GetFileName())
@@ -789,6 +839,7 @@ func parseFlags() []string {
 	flag.BoolVar(&simulation, "simulation", false, "Runs in simulation mode (DFS). Default=false for no simulation (BFS)")
 	flag.BoolVar(&internalProfile, "internal_profile", false, "Enables CPU and memory profiling of the model checker")
 	flag.BoolVar(&saveStates, "save_states", false, "Save states to disk")
+	flag.BoolVar(&copyAst, "copy-ast", false, "Copy the AST JSON file to the output directory")
 	flag.Int64Var(&seed, "seed", 0, "Seed for random number generator used in simulation mode")
 	flag.IntVar(&maxRuns, "max_runs", 0, "Maximum number of simulation runs/paths to explore. Default=0 for unlimited")
 	flag.StringVar(&explorationStrategy, "exploration_strategy", "bfs", "Exploration strategy for exhaustive model checking. Options: bfs (default), dfs, random.")

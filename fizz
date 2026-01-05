@@ -32,7 +32,7 @@ if [[ $# -gt 0 ]]; then
 fi
 
 usage() {
-  echo "Usage: $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--exploration_strategy dfs] [--trace-file tracefile | --trace tracestring] [--preinit-hook-file hookfile | --preinit-hook hookstring] filename"
+  echo "Usage: $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--exploration_strategy dfs] [--trace-file tracefile | --trace tracestring] [--preinit-hook-file hookfile | --preinit-hook hookstring] [--copy-ast] [--no-copy-ast] filename"
   exit 1
 }
 
@@ -42,6 +42,7 @@ seed=0
 max_runs=0
 exploration_strategy=bfs
 test=false
+copy_ast=true
 trace_file=""
 trace_string=""
 preinit_hook_file=""
@@ -121,6 +122,14 @@ while [[ "$1" =~ ^- ]]; do
         usage
       fi
       ;;
+    --copy-ast )
+      copy_ast=true
+      shift
+      ;;
+    --no-copy-ast )
+      copy_ast=false
+      shift
+      ;;
     --internal_profile )
       internal_profile=true
       shift
@@ -197,6 +206,9 @@ if [ -n "$preinit_hook_file" ]; then
 fi
 if [ -n "$preinit_hook_string" ]; then
   args+=("--preinit-hook" "$preinit_hook_string")
+fi
+if [ "$copy_ast" = true ]; then
+  args+=("--copy-ast")
 fi
 
 args+=("$json_filename")
