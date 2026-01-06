@@ -8,6 +8,18 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+// VisitedMapTracking controls whether the visited map should track visited states
+type VisitedMapTracking int
+
+const (
+	// VisitedMapTrackingDefault uses the current logic based on liveness settings
+	VisitedMapTrackingDefault VisitedMapTracking = 0
+	// VisitedMapTrackingEnabled always tracks visited states (don't clear the map)
+	VisitedMapTrackingEnabled VisitedMapTracking = 1
+	// VisitedMapTrackingDisabled always clears the map (no loop detection)
+	VisitedMapTrackingDisabled VisitedMapTracking = 2
+)
+
 // SimulationConfig contains configuration for a single simulation run
 type SimulationConfig struct {
 	// Seed for random number generation (0 = use timestamp)
@@ -21,6 +33,12 @@ type SimulationConfig struct {
 
 	// DirPath is the directory for loading modules (empty = no modules)
 	DirPath string
+
+	// VisitedMapTracking controls loop detection behavior
+	// Default: uses liveness-based logic
+	// Enabled: always track visited states
+	// Disabled: always clear visited map (no loop detection)
+	VisitedMapTracking VisitedMapTracking
 }
 
 // SimulationResult contains the results of a simulation run
@@ -67,7 +85,7 @@ func RunSimulation(specData []byte, config *SimulationConfig) *SimulationResult 
 	}
 
 	// Create processor for simulation mode
-	processor := modelchecker.NewProcessor(
+	processor := modelchecker.NewProcessorWithVisitedTracking(
 		[]*ast.File{file},  // files
 		options,            // options
 		true,               // simulation = true
@@ -78,6 +96,8 @@ func RunSimulation(specData []byte, config *SimulationConfig) *SimulationResult 
 		nil,                // hashes (for composition, not needed)
 		nil,                // trace (not needed for basic simulation)
 		config.PreinitHook, // preinitHookContent
+
+		int(config.VisitedMapTracking), // visitedMapTracking
 	)
 
 	// Run the simulation
