@@ -991,9 +991,14 @@ type Processor struct {
 	hashes             JoinHashes
 	guidedTrace        *GuidedTrace
 	preinitHookContent string
+	visitedMapTracking int // 0=default, 1=enabled, 2=disabled
 }
 
 func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string, strategy string, test bool, hashes JoinHashes, trace *GuidedTrace, preinitHookContent string) *Processor {
+	return NewProcessorWithVisitedTracking(files, options, simulation, seed, dirPath, strategy, test, hashes, trace, preinitHookContent, 0)
+}
+
+func NewProcessorWithVisitedTracking(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string, strategy string, test bool, hashes JoinHashes, trace *GuidedTrace, preinitHookContent string, visitedMapTracking int) *Processor {
 
 	var collection lib.LinearCollection[*Node]
 	var intermediateStates lib.LinearCollection[*Node]
@@ -1042,6 +1047,8 @@ func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation 
 
 		guidedTrace:        trace,
 		preinitHookContent: preinitHookContent,
+
+		visitedMapTracking: visitedMapTracking,
 	}
 }
 
@@ -1247,7 +1254,20 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 		invariantFailure := false
 		symmetryFound := false
 		prevLen := p.queue.Len()
-		if livenessEnabled && (!liveness || node.actionDepth <= int(maxActions)) {
+
+		// Handle visited map tracking based on configuration
+		shouldClearVisited := false
+		if p.visitedMapTracking == 2 { // Disabled - always clear
+			shouldClearVisited = true
+		} else if p.visitedMapTracking == 1 { // Enabled - never clear
+			shouldClearVisited = false
+		} else { // Default - use liveness logic
+			if livenessEnabled && (!liveness || node.actionDepth <= int(maxActions)) {
+				shouldClearVisited = true
+			}
+		}
+
+		if shouldClearVisited {
 			p.visited = make(map[string]*Node)
 		}
 		for {
