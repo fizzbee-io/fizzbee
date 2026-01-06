@@ -1,13 +1,13 @@
 module(name = "fizzbee")
 
 # Go with gazelle see https://github.com/bazel-contrib/rules_go/blob/master/docs/go/core/bzlmod.md
-bazel_dep(name = "rules_go", version = "0.55.1")
+bazel_dep(name = "rules_go", version = "0.59.0")
 bazel_dep(name = "gazelle", version = "0.44.0")
 bazel_dep(name = "rules_java", version = "8.16.1")
 bazel_dep(name = "rules_jvm_external", version = "6.8")
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
-go_sdk.download(version = "1.22.4")
+go_sdk.download(version = "1.23.2")
 
 # External go deps
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
