@@ -13,9 +13,11 @@ import { FizzBeeMbtPluginServiceService } from '../proto-gen/mbt_plugin_grpc_pb'
 export interface RunTestsOptions {
   'max-seq-runs'?: number;
   'max-parallel-runs'?: number;
+  'max-fuzz-seq-runs'?: number;
   'max-actions'?: number;
   'seq-seed'?: number;
   'parallel-seed'?: number;
+  'fuzz-seq-seed'?: number;
   [key: string]: any;
 }
 
@@ -92,6 +94,8 @@ export async function runTests(
         value = getEnvNumber('FIZZBEE_MBT_MAX_SEQ_RUNS') ?? value;
       } else if (optionName === 'max-parallel-runs') {
         value = getEnvNumber('FIZZBEE_MBT_MAX_PARALLEL_RUNS') ?? value;
+      } else if (optionName === 'max-fuzz-seq-runs') {
+        value = getEnvNumber('FIZZBEE_MBT_MAX_FUZZ_SEQ_RUNS') ?? value;
       }
 
       args.push(`--${optionName}=${value}`);
@@ -105,6 +109,10 @@ export async function runTests(
     const parallelSeed = getEnvNumber('FIZZBEE_MBT_PARALLEL_SEED');
     if (parallelSeed !== undefined) {
       args.push(`--parallel-seed=${parallelSeed}`);
+    }
+    const fuzzSeqSeed = getEnvNumber('FIZZBEE_MBT_FUZZ_SEQ_SEED');
+    if (fuzzSeqSeed !== undefined) {
+      args.push(`--fuzz-seq-seed=${fuzzSeqSeed}`);
     }
 
     // Start child process
