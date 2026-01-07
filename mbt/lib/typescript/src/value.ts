@@ -4,6 +4,7 @@
 
 import * as pb from '../proto-gen/mbt_plugin_pb';
 import { Ignored } from './sentinels';
+import { Tuple } from './types';
 
 /**
  * Converts a protobuf Value to a native TypeScript value.
@@ -91,6 +92,24 @@ export function toProtoValue(value: any): pb.Value {
 
   if (valueType === 'boolean') {
     result.setBoolValue(value);
+    return result;
+  }
+
+  // Handle Tuple instances (must come before Array check)
+  if (value instanceof Tuple) {
+    const tupleValue = new pb.TupleValue();
+    const items = value.items.map(item => toProtoValue(item));
+    tupleValue.setItemsList(items);
+    result.setTupleValue(tupleValue);
+    return result;
+  }
+
+  // Handle Set instances
+  if (value instanceof Set) {
+    const setValue = new pb.SetValue();
+    const items = Array.from(value).map(item => toProtoValue(item));
+    setValue.setItemsList(items);
+    result.setSetValue(setValue);
     return result;
   }
 

@@ -1,3 +1,5 @@
+import { Tuple } from './types';
+
 /**
  * Builder class for providing variable overrides.
  * Supports type-safe methods for setting various Starlark-compatible types.
@@ -8,10 +10,10 @@ export class OverridesBuilder {
   /**
    * Sets a variable override with automatic type inference.
    * @param key - The variable name
-   * @param value - The value (string, number, boolean, array, or object)
+   * @param value - The value (string, number, boolean, array, Set, Tuple, or object)
    * @returns this for method chaining
    */
-  set(key: string, value: string | number | boolean | any[] | Record<string, any> | Map<any, any>): this {
+  set(key: string, value: string | number | boolean | any[] | Set<any> | Tuple | Record<string, any> | Map<any, any>): this {
     this.overrides.set(key, value);
     return this;
   }
@@ -63,6 +65,28 @@ export class OverridesBuilder {
    * @returns this for method chaining
    */
   setDict(key: string, value: Record<string, any> | Map<any, any>): this {
+    return this.set(key, value);
+  }
+
+  /**
+   * Sets a tuple variable override.
+   * In Starlark, tuples are immutable sequences written as (item1, item2, ...).
+   * @param key - The variable name
+   * @param value - Tuple value
+   * @returns this for method chaining
+   */
+  setTuple(key: string, value: Tuple): this {
+    return this.set(key, value);
+  }
+
+  /**
+   * Sets a set variable override.
+   * In Starlark, sets use the set() builtin function: set([item1, item2, ...]).
+   * @param key - The variable name
+   * @param value - Set value
+   * @returns this for method chaining
+   */
+  setSet(key: string, value: Set<any>): this {
     return this.set(key, value);
   }
 
