@@ -27,7 +27,8 @@ export {
   Arg,
   RoleId,
   NotImplementedError,
-  MbtError
+  MbtError,
+  Tuple
 } from './types';
 
 // Runner

@@ -33,3 +33,19 @@ export class MbtError extends Error {
     this.name = 'MbtError';
   }
 }
+
+/**
+ * Represents a tuple (immutable sequence) for use in overrides.
+ * In Starlark, tuples are written as (item1, item2, ...).
+ */
+export class Tuple {
+  readonly items: any[];
+
+  constructor(...items: any[]) {
+    this.items = items;
+  }
+
+  static from(items: any[]): Tuple {
+    return new Tuple(...items);
+  }
+}

@@ -23,6 +23,8 @@ message Value {
     MapValue map_value = 4;
     ListValue list_value = 5;
     SentinelType sentinel_value = 6;  // Sentinel for flexible state matching
+    TupleValue tuple_value = 7;  // Tuple (immutable sequence)
+    SetValue set_value = 8;  // Set (unique elements)
   }
 }
 
@@ -36,6 +38,10 @@ message MapEntry {
 }
 
 message ListValue {
+  repeated Value items = 1;
+}
+
+message TupleValue {
   repeated Value items = 1;
 }
 
