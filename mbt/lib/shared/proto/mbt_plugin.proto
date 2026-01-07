@@ -104,6 +104,9 @@ message InitRequest {
   repeated Arg args = 2;
 
   ExecOptions options = 3;
+
+  // Indicates if this is a fuzzing/simulation-guided test run
+  bool is_fuzzing = 4;
 }
 
 message InitResponse {

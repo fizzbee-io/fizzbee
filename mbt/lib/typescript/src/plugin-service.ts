@@ -29,8 +29,10 @@ export class FizzBeeMbtPluginService implements IFizzBeeMbtPluginServiceServer {
   init: grpc.handleUnaryCall<pb.InitRequest, pb.InitResponse> = async (call, callback) => {
     try {
       // Check if model provides variable overrides
+      // Only call provideOverrides if it's a fuzzing test AND the model implements the interface
+      const isFuzzing = call.request.getIsFuzzing() ?? false;
       const overridesBuilder = new OverridesBuilder();
-      if (this.isOverridesProvider(this.model)) {
+      if (isFuzzing && this.isOverridesProvider(this.model)) {
         await this.model.provideOverrides(overridesBuilder);
       }
 
