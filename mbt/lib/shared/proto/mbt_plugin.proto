@@ -113,6 +113,9 @@ message InitRequest {
 
   // Indicates if this is a fuzzing/simulation-guided test run
   bool is_fuzzing = 4;
+
+  // Random seed for reproducible fuzzing (only used when is_fuzzing is true)
+  int64 fuzz_seed = 5;
 }
 
 message InitResponse {

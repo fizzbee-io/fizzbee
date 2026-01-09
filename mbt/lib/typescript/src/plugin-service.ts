@@ -33,7 +33,9 @@ export class FizzBeeMbtPluginService implements IFizzBeeMbtPluginServiceServer {
       const isFuzzing = call.request.getIsFuzzing() ?? false;
       const overridesBuilder = new OverridesBuilder();
       if (isFuzzing && this.isOverridesProvider(this.model)) {
-        await this.model.provideOverrides(overridesBuilder);
+        const fuzzSeed = call.request.getFuzzSeed() ?? Date.now();
+        const fuzzOptions = { seed: fuzzSeed };
+        await this.model.provideOverrides(overridesBuilder, fuzzOptions);
       }
 
       // Initialize the model

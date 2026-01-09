@@ -75,6 +75,19 @@ export interface AfterActionHook {
 }
 
 /**
+ * Options passed to override providers during fuzzing/property-based testing.
+ * Contains runtime information like seeds for reproducibility.
+ */
+export interface FuzzOptions {
+  /**
+   * Random seed for reproducible fuzzing.
+   * Use this seed with property-based testing libraries like fast-check
+   * to generate deterministic random values.
+   */
+  seed: number;
+}
+
+/**
  * Optional interface for models that need to provide variable overrides.
  * Implement this when you want to override global variables/constants before
  * model initialization. This is similar to the pre-init-hook in the FizzBee
@@ -87,12 +100,14 @@ export interface AfterActionHook {
  *
  * The override values support standard Starlark types:
  * - Primitives: string, int, bool
- * - Collections: list (array), dict (object/Map)
+ * - Collections: list (array), dict (object/Map), tuple, set
  *
  * Example:
  * ```typescript
  * class MyModel implements Model, OverridesProvider {
- *   provideOverrides(builder: OverridesBuilder): void {
+ *   provideOverrides(builder: OverridesBuilder, options: FuzzOptions): void {
+ *     // Use the seed for reproducible random generation
+ *     const randomValue = generateWithSeed(options.seed);
  *     builder.setInt('MAX_RETRIES', 5)
  *            .setString('API_ENDPOINT', 'http://localhost:8080')
  *            .setList('ALLOWED_METHODS', ['GET', 'POST', 'PUT']);
@@ -107,9 +122,10 @@ export interface OverridesProvider {
    * This method is called before init() to set up global variables/constants.
    *
    * @param builder - Builder for setting variable overrides with type safety
+   * @param options - Fuzzing options including seed for reproducibility
    * @returns A promise or void
    */
-  provideOverrides(builder: OverridesBuilder): void | Promise<void>;
+  provideOverrides(builder: OverridesBuilder, options: FuzzOptions): void | Promise<void>;
 }
 
 /**

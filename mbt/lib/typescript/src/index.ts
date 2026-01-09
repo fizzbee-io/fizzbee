@@ -13,6 +13,7 @@ export {
   RoleMapper,
   AfterActionHook,
   OverridesProvider,
+  FuzzOptions,
   Model,
   ActionFunc
 } from './interfaces';
