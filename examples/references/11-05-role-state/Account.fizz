@@ -1,0 +1,33 @@
+# Example 0050: Role State
+# Only self.* variables are part of role state
+# Demonstrates: role state variables vs local variables
+
+role Account:
+    action Init:
+        # State variables (persisted)
+        self.balance = 0
+        self.transactions = 0
+
+        # Local variable (not persisted)
+        temp = 100  # This is NOT part of state
+
+    action Deposit:
+        if self.balance >= 50:
+            return
+
+        # Local variables don't affect state
+        amount = 10
+
+        # Only self.* updates are persisted
+        self.balance = self.balance + amount
+        self.transactions = self.transactions + 1
+
+action Init:
+    account = Account()
+
+# Only self.balance and self.transactions are part of state
+# Local variables like temp, amount are not tracked
+
+atomic action NoOp:
+    if account.balance >= 50:
+        pass

@@ -1,0 +1,78 @@
+# Example 0061: Two-Phase Commit Protocol
+# Distributed transaction coordination with roles
+# Demonstrates: roles, RPC calls, nondeterministic voting, timeout handling
+
+---
+deadlock_detection: false
+---
+
+role Participant:
+    action Init:
+        self.status = "init"
+
+    func placehold():
+        # Participant votes on transaction
+        vote = any ["accepted", "aborted"]
+        self.status = vote
+        return self.status
+
+    func finalize(decision):
+        self.status = decision
+
+role Coordinator:
+    action Init:
+        self.status = "init"
+
+    action Checkout:
+        require(self.status == "init")
+        self.status = "working"
+
+        # Phase 1: Collect votes
+        for p in participants:
+            vote = p.placehold()
+            if vote == "aborted":
+                self.finalize("aborted")
+                return
+
+        # Phase 2: All voted to accept, commit
+        self.finalize("committed")
+
+    func finalize(decision):
+        require(self.status in ["working", decision])
+        self.status = decision
+        for p in participants:
+            p.finalize(decision)
+
+    fair action Timeout:
+        # Handle coordinator crash/timeout
+        if self.status == "committed":
+            self.finalize("committed")
+        else:
+            self.finalize("aborted")
+
+NUM_PARTICIPANTS = 2
+
+action Init:
+    coordinator = Coordinator()
+    participants = []
+    for i in range(NUM_PARTICIPANTS):
+        participants.append(Participant())
+
+# Safety: participants must agree
+always assertion ParticipantsConsistent:
+    for p1 in participants:
+        for p2 in participants:
+            if p1.status == 'committed' and p2.status == 'aborted':
+                return False
+    return True
+
+# Liveness: coordinator eventually decides
+eventually always assertion CoordinatorDecides:
+    return (coordinator.status != 'working')
+
+# Liveness: participants eventually reach terminal state
+eventually always assertion ParticipantsDecide:
+    for p in participants:
+        if p.status == 'accepted':
+            return False
+    return True

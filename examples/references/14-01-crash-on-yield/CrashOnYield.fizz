@@ -1,0 +1,50 @@
+---
+# Example 0078: Crash on Yield (Implicit Fault Injection)
+# FizzBee's key differentiator - automatic crash fault injection
+# Demonstrates: crash_on_yield, implicit fault injection at yield points
+
+# Default is true - crashes can happen at yield points
+options:
+  max_actions: 3
+  crash_on_yield: true
+---
+
+# This example shows FizzBee's automatic fault injection
+# At each yield point (between statements in serial blocks),
+# the model checker explores the possibility of a crash
+
+action Init:
+    step1_done = False
+    step2_done = False
+    step3_done = False
+
+# Serial action has yield points between statements
+action MultiStepOperation:
+    if step3_done:
+        return
+
+    # Yield point 1 (after this statement)
+    step1_done = True
+
+    # Yield point 2 (after this statement)
+    step2_done = True
+
+    # Yield point 3 (after this statement)
+    step3_done = True
+
+# Model checker automatically explores:
+# - Normal execution (all steps complete)
+# - Crash after step1 (step1_done=True, others False)
+# - Crash after step2 (step1&2 done, step3 False)
+# - etc.
+
+# Safety: if step3 done, earlier steps must be done
+always assertion StepsOrdered:
+    if step3_done:
+        return step1_done and step2_done
+    if step2_done:
+        return step1_done
+    return True
+
+atomic action NoOp:
+    pass

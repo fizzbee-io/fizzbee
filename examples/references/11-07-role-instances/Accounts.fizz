@@ -1,0 +1,38 @@
+# Example 0052: Role Instances
+# Creating and managing multiple role instances
+# Demonstrates: multiple instances with independent state
+
+role Account:
+    action Init:
+        self.balance = self.INITIAL_BALANCE
+        self.id = self.ACCOUNT_ID
+
+    action Deposit:
+        if self.balance >= 100:
+            return
+
+        self.balance = self.balance + 10
+
+action Init:
+    # Create multiple independent instances
+    accounts = []
+
+    for i in range(2):
+        account = Account(INITIAL_BALANCE=i*10, ACCOUNT_ID=i)
+        accounts.append(account)
+
+    total_processed = 0
+
+atomic action CheckTotal:
+    if total_processed >= 2:
+        return
+
+    total_processed = total_processed + 1
+
+# Each account has independent state
+# accounts[0].balance starts at 0
+# accounts[1].balance starts at 10
+
+atomic action NoOp:
+    if total_processed >= 2:
+        pass

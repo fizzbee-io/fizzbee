@@ -1,0 +1,32 @@
+# Example 0051: Role Decorators
+# @state decorator marks durable vs ephemeral fields
+# Demonstrates: @state(durable=[...]) and @state(ephemeral=[...])
+
+# Mark cache as ephemeral (lost on crash)
+@state(ephemeral=['cache'])
+role Storage:
+    action Init:
+        # Durable state (persists across crashes)
+        self.data = {}
+
+        # Ephemeral state (lost on crash)
+        self.cache = {}
+
+    atomic action Write:
+        if len(self.data) >= 2:
+            return
+
+        key = "key_" + str(len(self.data))
+        self.data[key] = "value"
+        self.cache[key] = "cached_value"
+
+# Can also mark durable explicitly:
+# @state(durable=['data'])
+# This makes everything else ephemeral
+
+action Init:
+    storage = Storage()
+
+atomic action NoOp:
+    if len(storage.data) >= 2:
+        pass

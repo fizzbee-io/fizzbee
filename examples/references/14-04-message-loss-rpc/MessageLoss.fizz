@@ -1,0 +1,52 @@
+---
+# Example 0081: Message Loss in Role Communication
+# Automatic message loss simulation in RPC calls
+# Demonstrates: message loss, RPC failures, network unreliability
+
+options:
+  max_actions: 2
+---
+
+# When one role calls another role's function,
+# FizzBee automatically explores message loss scenarios
+
+role Client:
+    action Init:
+        self.state = 'init'
+        self.result = None
+
+    action SendRequest:
+        if self.state != 'init':
+            return
+
+        self.state = 'calling'
+        # RPC call - can fail in multiple ways
+        response = server.Process()
+        self.result = response
+        self.state = 'done'
+
+role Server:
+    action Init:
+        self.processed = 0
+
+    func Process():
+        self.processed = self.processed + 1
+        return 'OK'
+
+action Init:
+    client = Client()
+    server = Server()
+
+# Model checker explores:
+# 1. Request message lost (server never receives)
+# 2. Request received, response message lost (client hangs)
+# 3. Successful round-trip
+
+# Safety: if client got result, server must have processed
+always assertion ResponseImpliesProcessing:
+    if client.result == 'OK':
+        return server.processed > 0
+    return True
+
+atomic action NoOp:
+    pass

@@ -1,0 +1,44 @@
+---
+# Example 0079: Disable Crash on Yield
+# Turning off implicit fault injection
+# Demonstrates: crash_on_yield: false, comparing with/without crashes
+
+# Disable crash fault injection
+options:
+  max_actions: 3
+  crash_on_yield: false
+---
+
+# With crash_on_yield: false, the model checker does NOT
+# explore crash scenarios at yield points.
+# Useful for: testing happy path, performance modeling,
+# or when crashes are explicitly modeled
+
+action Init:
+    step1_done = False
+    step2_done = False
+    step3_done = False
+    completed = False
+
+fair action MultiStepOperation:
+    if completed:
+        return
+
+    # No crash injected after this
+    step1_done = True
+
+    # No crash injected after this
+    step2_done = True
+
+    # No crash injected after this
+    step3_done = True
+
+    completed = True
+
+# With crash_on_yield: false and fair action,
+# the operation will eventually complete
+eventually always assertion EventuallyCompletes:
+    return completed
+
+atomic action NoOp:
+    pass

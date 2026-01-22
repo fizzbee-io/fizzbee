@@ -1,0 +1,54 @@
+# Example 0083: Action Coordination
+# Using require mid-action with yield points for synchronization
+# Demonstrates: require as wait mechanism, action coordination
+
+---
+deadlock_detection: false
+options:
+    crash_on_yield: false
+---
+
+action Init:
+    stage = 0
+
+# First action: does work in stages, waits for second action
+action Step1:
+    require stage == 0     # Only start when stage is 0
+    stage = 1              # Set to stage 1, then yield
+
+    # After yield, this require acts as a "wait"
+    # Step1 continuation disabled until stage becomes 2
+    require stage == 2     # Wait for Step2 to advance stage
+    stage = 3              # Continue when condition met
+
+# Second action: advances stage when ready
+action Step2:
+    require stage == 1     # Only enabled when Step1 sets stage to 1
+    stage = 2              # Advance to stage 2, unblocking Step1
+
+# Execution flow:
+# 1. Step1 starts (stage == 0), sets stage = 1
+# 2. Yield point after stage = 1
+# 3. Step1 tries to continue, hits require stage == 2, fails
+# 4. Step1 continuation disabled
+# 5. Step2 becomes enabled (stage == 1), runs, sets stage = 2
+# 6. Step1 can be rescheduled, require passes
+# 7. Step1 continues, sets stage = 3
+
+# This pattern is equivalent to:
+# - Step1 "waits" for Step2
+# - Handshake/synchronization between actions
+# - Multi-phase coordination without busy-waiting
+
+always assertion StageMonotonic:
+    return stage >= 0 and stage <= 3
+
+transition assertion StageIncrementsOneAtATime(before, after):
+    # Stutter step allowed (no change)
+    if after.stage == before.stage:
+        return True
+    # When stage changes, must increment by exactly 1
+    return after.stage == before.stage + 1
+
+exists assertion ReachesStage3:
+    return stage == 3

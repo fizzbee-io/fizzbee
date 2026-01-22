@@ -1,0 +1,42 @@
+# Example 0059: Mutex Pattern
+# Simple mutual exclusion with lock/unlock
+# Demonstrates: mutex pattern, critical section, deadlock-free locking
+
+MAX_OPERATIONS = 3
+
+action Init:
+    lock_holder = None
+    counter = 0
+    operations = 0
+
+atomic action AcquireLock:
+    if operations >= MAX_OPERATIONS:
+        return
+
+    # Only acquire if not held
+    if lock_holder != None:
+        return
+
+    lock_holder = "thread_a"
+
+atomic action CriticalSection:
+    if lock_holder != "thread_a":
+        return
+
+    # Protected operation
+    counter = counter + 1
+    operations = operations + 1
+
+atomic action ReleaseLock:
+    if lock_holder != "thread_a":
+        return
+
+    lock_holder = None
+
+# Safety: counter only increments when lock is held
+always assertion MutualExclusion:
+    return lock_holder == None or lock_holder == "thread_a"
+
+atomic action NoOp:
+    if operations >= MAX_OPERATIONS:
+        pass

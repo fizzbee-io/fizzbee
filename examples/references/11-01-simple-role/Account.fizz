@@ -1,0 +1,26 @@
+# Example 0046: Simple Role
+# Basic role definition (like a class)
+# Demonstrates: role keyword, role structure
+
+role Account:
+    action Init:
+        # self prefix makes it part of role state
+        self.balance = 0
+        self.owner = "alice"
+
+    action Deposit:
+        if self.balance >= 100:
+            return
+
+        self.balance = self.balance + 10
+
+# Create role instance
+action Init:
+    account = Account()
+
+# Role instances can have their own state
+# Multiple instances would have independent state
+
+atomic action NoOp:
+    if account.balance >= 100:
+        pass

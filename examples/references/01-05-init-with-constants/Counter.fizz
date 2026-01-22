@@ -1,0 +1,26 @@
+# Example 0005: Constants and Init
+# Global constants defined at top level, used in Init
+# Demonstrates: global statements and constant access
+#
+# NOTE: This spec causes a DEADLOCK when counter reaches limit (3)
+# The action is disabled because the if condition is false and no statement executes
+# To fix: make the action idempotent by removing the guard, or add a reset action
+
+# Global constants (defined at top level)
+MAX_VALUE = 3
+MIN_VALUE = 0
+
+action Init:
+    # Initialize state using constants
+    counter = MIN_VALUE
+    limit = MAX_VALUE
+
+atomic action Increment:
+    # Guard clause: only increment if below limit
+    require counter < limit
+    counter = counter + 1
+
+# Uncomment to fix deadlock - allows counter to wrap around
+# atomic action Reset:
+#     require counter >= limit
+#     counter = MIN_VALUE

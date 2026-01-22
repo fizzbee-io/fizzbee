@@ -1,0 +1,29 @@
+# Example 0036: Records
+# Mutable named structures
+# Demonstrates: record creation and field access
+
+action Init:
+    # Create record with named fields
+    user = record(name="alice", age=25, active=True)
+    counter = 0
+
+atomic action UpdateRecord:
+    if counter >= 2:
+        return
+
+    counter = counter + 1
+
+    # Access and modify fields
+    user.age = user.age + 1
+
+    if counter == 2:
+        user.active = False
+
+# Records are mutable structures
+# user: {name:"alice", age:25, active:True}
+#    -> {name:"alice", age:26, active:True}
+#    -> {name:"alice", age:27, active:False}
+
+atomic action NoOp:
+    if counter >= 2:
+        pass

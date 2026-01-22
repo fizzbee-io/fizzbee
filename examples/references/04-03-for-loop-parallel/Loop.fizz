@@ -1,0 +1,23 @@
+# Example 0015: For Loop (Parallel)
+# Parallel for loop executes iterations concurrently
+# Demonstrates: parallel for loop, all interleavings explored
+
+action Init:
+    results = {}
+    counter = 0
+
+action ProcessParallel:
+    if counter >= 2:
+        return
+
+    counter = counter + 1
+
+    # Parallel for loop - iterations can interleave
+    parallel for i in range(2):
+        results[i] = i * 2
+
+# Results can be populated in any order: {0:0, 1:2} or {1:2, 0:0} etc.
+
+atomic action NoOp:
+    if counter >= 2:
+        pass

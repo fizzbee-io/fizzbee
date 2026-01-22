@@ -1,0 +1,38 @@
+# Example 0058: Global Variables
+# State variables and top-level constants
+# Demonstrates: automatic global state, top-level constants
+
+# Top-level constants (read-only, available everywhere)
+MAX_ITEMS = 5
+MIN_VALUE = 0
+
+action Init:
+    # State variables (automatically global, accessible everywhere)
+    counter = MIN_VALUE
+    items = []
+    config_value = MAX_ITEMS
+
+atomic func CheckLimit():
+    # State variables accessible in functions automatically
+    return len(items) < MAX_ITEMS
+
+atomic action AddItem:
+    # Check condition inline (functions called from atomic context)
+    if len(items) >= MAX_ITEMS:
+        return
+
+    # State variables accessible in actions automatically
+    items.append(counter)
+    counter = counter + 1
+
+# Top-level constants accessible everywhere
+atomic func GetMaxItems():
+    return MAX_ITEMS
+
+# State variables accessible in all functions/actions
+atomic func GetItemCount():
+    return len(items)
+
+atomic action NoOp:
+    if counter >= MAX_ITEMS:
+        pass

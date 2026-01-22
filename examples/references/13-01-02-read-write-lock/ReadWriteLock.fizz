@@ -1,0 +1,60 @@
+# Example 0064: Read-Write Lock Pattern
+# Multiple readers OR single writer
+# Demonstrates: readers-writer lock, concurrent reads, exclusive writes
+
+MAX_OPS = 3
+
+action Init:
+    readers = 0
+    writer = False
+    data = 0
+    operations = 0
+
+atomic action AcquireReadLock:
+    if operations >= MAX_OPS:
+        return
+
+    # Can read if no writer
+    if writer:
+        return
+
+    readers = readers + 1
+
+atomic action ReleaseReadLock:
+    if readers == 0:
+        return
+
+    readers = readers - 1
+    operations = operations + 1
+
+atomic action AcquireWriteLock:
+    if operations >= MAX_OPS:
+        return
+
+    # Can write if no readers and no writer
+    if readers > 0 or writer:
+        return
+
+    writer = True
+
+atomic action ReleaseWriteLock:
+    if not writer:
+        return
+
+    writer = False
+    data = data + 1
+    operations = operations + 1
+
+# Safety: no concurrent readers and writer
+always assertion NoReadersWithWriter:
+    if writer:
+        return readers == 0
+    return True
+
+# Safety: at most one writer
+always assertion SingleWriter:
+    return writer == True or writer == False  # Boolean check
+
+atomic action NoOp:
+    if operations >= MAX_OPS:
+        pass

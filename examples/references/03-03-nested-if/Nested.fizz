@@ -1,0 +1,38 @@
+# Example 0012: Nested If Statements
+# Nested conditional logic
+# Demonstrates: nested if/else structures
+
+MAX = 3
+
+action Init:
+    x = 0
+    y = 0
+    category = "none"
+
+atomic action Categorize:
+    if x >= MAX and y >= MAX:
+        return
+
+    if x < MAX:
+        x = x + 1
+
+    if y < MAX:
+        y = y + 1
+
+    # Nested conditionals for categorization
+    if x > y:
+        if x > 2:
+            category = "high-x"
+        else:
+            category = "mid-x"
+    else:
+        if y > 2:
+            category = "high-y"
+        else:
+            category = "mid-y"
+
+# Categories change based on x and y values
+
+atomic action NoOp:
+    if x >= MAX and y >= MAX:
+        pass

@@ -1,0 +1,71 @@
+# Example 0076: Event Sourcing Pattern
+# State derived from event stream
+# Demonstrates: event sourcing, event replay, state reconstruction
+
+EventType = enum('CREATED', 'INCREMENTED', 'DECREMENTED')
+
+action Init:
+    events = []
+    current_state = 0
+    replayed_state = None
+
+atomic action AppendCreateEvent:
+    if len(events) > 0:
+        return
+
+    event = record(type=EventType.CREATED, value=0)
+    events.append(event)
+    current_state = 0
+
+atomic action AppendIncrementEvent:
+    if len(events) == 0:
+        return
+
+    if len(events) >= 3:
+        return
+
+    event = record(type=EventType.INCREMENTED, value=1)
+    events.append(event)
+    current_state = current_state + 1
+    # Invalidate replay - needs to be redone
+    replayed_state = None
+
+atomic action AppendDecrementEvent:
+    if len(events) == 0:
+        return
+
+    if len(events) >= 3:
+        return
+
+    event = record(type=EventType.DECREMENTED, value=1)
+    events.append(event)
+    current_state = current_state - 1
+    # Invalidate replay - needs to be redone
+    replayed_state = None
+
+atomic action ReplayEvents:
+    if replayed_state != None:
+        return
+
+    if len(events) == 0:
+        return
+
+    # Rebuild state from events
+    state = 0
+    for event in events:
+        if event.type == EventType.INCREMENTED:
+            state = state + event.value
+        elif event.type == EventType.DECREMENTED:
+            state = state - event.value
+
+    replayed_state = state
+
+# Safety: replayed state matches current state
+always assertion ReplayConsistency:
+    if replayed_state != None:
+        return replayed_state == current_state
+    return True
+
+atomic action NoOp:
+    if len(events) >= 3:
+        pass

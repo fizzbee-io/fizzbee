@@ -1,0 +1,56 @@
+---
+# Example 0082: Action-Level Configuration
+# Per-action limits and crash settings
+# Demonstrates: action_options, per-action max_actions, crash_on_yield
+
+# Global options
+options:
+  max_actions: 100
+  crash_on_yield: true
+
+# Per-action overrides
+action_options:
+  HighFrequency:
+    max_actions: 5  # Limit this action to 5 executions
+
+  CriticalPath:
+    crash_on_yield: false  # Disable crashes for this action
+
+  BackgroundTask:
+    max_concurrent_actions: 1  # Only one instance at a time
+---
+
+action Init:
+    high_freq_count = 0
+    critical_count = 0
+    background_count = 0
+
+# Limited to 5 executions by action_options
+action HighFrequency:
+    if high_freq_count >= 10:
+        return
+
+    high_freq_count = high_freq_count + 1
+
+# No crash injection (crash_on_yield: false)
+action CriticalPath:
+    if critical_count >= 3:
+        return
+
+    # These steps run without crash injection
+    critical_count = critical_count + 1
+    # More work here...
+
+# Only runs once at a time (max_concurrent_actions: 1)
+action BackgroundTask:
+    if background_count >= 2:
+        return
+
+    background_count = background_count + 1
+
+# Safety: high frequency action respects limit
+always assertion HighFreqWithinLimit:
+    return high_freq_count <= 5
+
+atomic action NoOp:
+    pass

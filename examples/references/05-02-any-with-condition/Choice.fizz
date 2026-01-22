@@ -1,0 +1,24 @@
+# Example 0019: Any with Condition
+# Nondeterministic choice with filtering
+# Demonstrates: any with if condition syntax
+
+action Init:
+    options = [1, 2, 3]
+    first = 0
+    second = 0
+
+atomic action ChoosePair:
+    if first > 0 and second > 0:
+        return
+
+    # Choose two different values from options
+    first = any options
+    second = any options if second != first
+
+# Safety: first and second must be different (unless both 0)
+always assertion DifferentValues:
+    return (first == 0 and second == 0) or (first != second)
+
+atomic action NoOp:
+    if first > 0 and second > 0:
+        pass

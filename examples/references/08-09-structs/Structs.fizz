@@ -1,0 +1,29 @@
+# Example 0037: Structs
+# Immutable named structures (from Starlark)
+# Demonstrates: struct creation and immutability
+
+# Define struct at top level
+Config = struct(max_retries=3, timeout=30, debug=False)
+
+action Init:
+    # Structs are immutable
+    config = Config
+    attempts = 0
+
+atomic action UseConfig:
+    if attempts >= config.max_retries:
+        return
+
+    # Can read fields
+    max_val = config.max_retries
+    attempts = attempts + 1
+
+# Attempting to modify would error:
+# config.max_retries = 5  # ERROR: cannot assign to struct field
+
+# Structs are useful for constants that shouldn't change
+# Unlike records, they are immutable
+
+atomic action NoOp:
+    if attempts >= config.max_retries:
+        pass

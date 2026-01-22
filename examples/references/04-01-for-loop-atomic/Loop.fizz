@@ -1,0 +1,26 @@
+# Example 0013: For Loop (Atomic)
+# Atomic for loop executes all iterations as one step
+# Demonstrates: atomic for loop, no yielding between iterations
+
+action Init:
+    items = []
+    total = 0
+
+atomic action ProcessItems:
+    if len(items) > 0:
+        return
+
+    # Atomic for loop - all iterations execute together
+    atomic for i in range(3):
+        items.append(i)
+        total = total + i
+
+    # After this action: items = [0, 1, 2], total = 3
+
+always assertion ValidState:
+    # In atomic for, we never see partial lists
+    return len(items) == 0 or len(items) == 3
+
+atomic action NoOp:
+    if len(items) > 0:
+        pass

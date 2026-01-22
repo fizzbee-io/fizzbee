@@ -1,0 +1,28 @@
+# Example 0043: Unfair Action (Default)
+# Unfair actions may never execute even if enabled
+# Demonstrates: default unfair behavior, liveness can fail
+
+action Init:
+    counter = 0
+    progress = False
+
+# Unfair action (default) - no fairness guarantee
+action MaybeProgress:
+    if counter >= 3:
+        progress = True
+        return
+
+    counter = counter + 1
+
+# Without fairness, this action might never run
+# even though it's always enabled
+# Liveness properties may fail
+
+# NOTE: This would fail a liveness check like:
+# eventually always assertion EventuallyDone:
+#     return progress == True
+# Because unfair actions can be ignored forever
+
+atomic action NoOp:
+    if counter >= 3:
+        pass

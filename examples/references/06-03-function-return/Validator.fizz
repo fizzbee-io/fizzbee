@@ -1,0 +1,28 @@
+# Example 0023: Function Return Values
+# Functions with conditional returns
+# Demonstrates: early return, conditional logic in functions
+
+action Init:
+    value = 0
+    is_valid = False
+
+func validate(x):
+    if x < 0:
+        return False
+    if x > 10:
+        return False
+    return True
+
+atomic action CheckValue:
+    if value >= 12:
+        return
+
+    value = value + 3
+    is_valid = validate(value)
+
+# value: 0->3->6->9->12
+# is_valid: True, True, True, False
+
+atomic action NoOp:
+    if value >= 12:
+        pass

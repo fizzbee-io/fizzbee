@@ -1,0 +1,31 @@
+# Example 0048: Role Actions
+# Actions within roles
+# Demonstrates: role actions, implicit self
+
+role Account:
+    action Init:
+        self.balance = 0
+
+    # Role actions don't take parameters (like top-level actions)
+    # self is implicit (no need to declare)
+    action Deposit:
+        if self.balance >= 50:
+            return
+
+        self.balance = self.balance + 10
+
+    action Withdraw:
+        if self.balance < 10:
+            return
+
+        self.balance = self.balance - 10
+
+action Init:
+    account = Account()
+
+# Role actions are called by the model checker
+# Just like top-level actions
+# The model checker explores all enabled role actions
+
+atomic action NoOp:
+    pass

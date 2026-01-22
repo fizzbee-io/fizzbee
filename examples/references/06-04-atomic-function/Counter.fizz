@@ -1,0 +1,31 @@
+# Example 0024: Atomic Function
+# Atomic functions execute without yielding
+# Demonstrates: atomic func modifier
+
+action Init:
+    items = []
+    total = 0
+
+atomic func process_batch():
+    # Atomic function - all statements execute together
+    for i in range(3):
+        items.append(i)
+        total = total + i
+    return total
+
+atomic action ProcessData:
+    if len(items) > 0:
+        return
+
+    # Call atomic function
+    result = process_batch()
+
+# After ProcessData: items=[0,1,2], total=3, result=3
+
+always assertion ValidState:
+    # Atomic function ensures we never see partial state
+    return len(items) == 0 or len(items) == 3
+
+atomic action NoOp:
+    if len(items) > 0:
+        pass

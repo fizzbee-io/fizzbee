@@ -1,0 +1,45 @@
+# Example 0070: Rate Limiting Pattern
+# Token bucket rate limiter
+# Demonstrates: rate limiting, token bucket, capacity management
+
+BUCKET_CAPACITY = 3
+REFILL_AMOUNT = 1
+
+action Init:
+    tokens = BUCKET_CAPACITY
+    requests_processed = 0
+    requests_rejected = 0
+    refills = 0
+
+atomic action ProcessRequest:
+    if tokens > 0:
+        # Consume token and process
+        tokens = tokens - 1
+        requests_processed = requests_processed + 1
+    else:
+        # Reject when no tokens
+        requests_rejected = requests_rejected + 1
+
+atomic action RefillTokens:
+    if refills >= 2:
+        return
+
+    # Add tokens up to capacity
+    if tokens < BUCKET_CAPACITY:
+        tokens = tokens + REFILL_AMOUNT
+        if tokens > BUCKET_CAPACITY:
+            tokens = BUCKET_CAPACITY
+        refills = refills + 1
+
+# Safety: tokens never exceed capacity
+always assertion TokensInBounds:
+    return tokens >= 0 and tokens <= BUCKET_CAPACITY
+
+# Safety: processed requests consumed tokens
+always assertion ValidProcessing:
+    consumed = BUCKET_CAPACITY - tokens + (refills * REFILL_AMOUNT)
+    return requests_processed <= consumed
+
+atomic action NoOp:
+    if refills >= 2 and requests_processed >= 3:
+        pass

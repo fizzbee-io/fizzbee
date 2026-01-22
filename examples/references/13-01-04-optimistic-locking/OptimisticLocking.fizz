@@ -1,0 +1,77 @@
+# Example 0069: Optimistic Locking Pattern
+# Version-based concurrency control
+# Demonstrates: optimistic locking, version numbers, CAS
+
+action Init:
+    value = 0
+    version = 0
+    txn1_read_version = None
+    txn1_new_value = None
+    txn2_read_version = None
+    txn2_new_value = None
+    commits = 0
+
+atomic action Txn1Read:
+    if txn1_read_version != None:
+        return
+
+    txn1_read_version = version
+    txn1_new_value = value + 1
+
+atomic action Txn1Commit:
+    if txn1_read_version == None:
+        return
+
+    if commits >= 2:
+        return
+
+    # CAS: commit only if version unchanged
+    if version == txn1_read_version:
+        value = txn1_new_value
+        version = version + 1
+        commits = commits + 1
+
+atomic action Txn2Read:
+    if txn2_read_version != None:
+        return
+
+    txn2_read_version = version
+    txn2_new_value = value + 10
+
+atomic action Txn2Commit:
+    if txn2_read_version == None:
+        return
+
+    if commits >= 2:
+        return
+
+    # CAS: commit only if version unchanged
+    if version == txn2_read_version:
+        value = txn2_new_value
+        version = version + 1
+        commits = commits + 1
+
+# Retry failed transaction
+atomic action Txn2Retry:
+    if txn2_read_version == None:
+        return
+
+    # Retry if version changed (CAS would fail)
+    if version != txn2_read_version:
+        txn2_read_version = version
+        txn2_new_value = value + 10
+
+# Safety: version increments with each commit
+always assertion VersionMatches:
+    return version == commits
+
+# Safety: no lost updates (both can't commit if concurrent)
+always assertion NoLostUpdates:
+    if commits == 2:
+        # Version should be 2, meaning sequential commits
+        return version == 2
+    return True
+
+atomic action NoOp:
+    if commits >= 2:
+        pass

@@ -1,0 +1,18 @@
+# Example 0026: Require Statement
+# Using require for guard clauses
+# Demonstrates: require statement, explicit enabling conditions
+
+action Init:
+    state = "OFF"
+
+atomic action TurnOn:
+    # Require acts as guard - action disabled if false
+    require state == "OFF"
+    state = "ON"
+
+atomic action TurnOff:
+    require state == "ON"
+    state = "OFF"
+
+# Require immediately disables action if condition is false
+# More explicit than using if with return

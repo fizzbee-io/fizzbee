@@ -1,0 +1,32 @@
+# Example 0028: Guard Clauses - if-return vs require
+# Comparing implicit and explicit guard patterns
+# Demonstrates: if-return vs require for enabling conditions
+
+action Init:
+    value = 0
+    mode = "increment"
+
+# Pattern 1: Implicit guard with if-return
+atomic action IncrementWithIf:
+    if value >= 3:
+        return
+
+    # Action enabled only if value < 3
+    value = value + 1
+
+# Pattern 2: Explicit guard with require
+atomic action IncrementWithRequire:
+    # Require makes the guard explicit at the start
+    require value < 3
+    value = value + 1
+
+# Both patterns achieve the same result:
+# - if-return: guard is implicit in control flow
+# - require: guard is explicit and declarative
+#
+# Use require for: simple enabling conditions
+# Use if-return for: complex conditional logic with multiple paths
+
+atomic action NoOp:
+    if value >= 3:
+        pass

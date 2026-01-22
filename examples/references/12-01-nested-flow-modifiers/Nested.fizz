@@ -1,0 +1,35 @@
+# Example 0053: Nested Flow Modifiers
+# Flow modifiers can be nested with different behaviors
+# Demonstrates: nested atomic within serial, serial within atomic
+
+action Init:
+    counter = 0
+    value = 0
+
+action SerialWithAtomic:
+    if counter >= 2:
+        return
+
+    # Serial action (default) with atomic block
+    counter = counter + 1  # Can yield here
+
+    # Atomic inner block (no yielding within)
+    atomic:
+        value = value + 1
+        value = value + 10
+
+atomic action AtomicWithSerial:
+    if counter >= 2:
+        return
+
+    # Whole action is atomic despite inner serial
+    x = counter
+
+    # Serial inner still allows yields
+    serial:
+        value = value + x
+        value = value + 1
+
+atomic action NoOp:
+    if counter >= 2:
+        pass

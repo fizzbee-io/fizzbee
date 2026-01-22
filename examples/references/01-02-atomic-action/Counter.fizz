@@ -1,0 +1,17 @@
+# Example 0002: Atomic Action
+# A single atomic action that modifies state
+# Demonstrates: atomic modifier and simple state transitions
+#
+# WARNING: This creates an INFINITE state space (counter can grow unbounded)
+# FizzBee caps exploration at max_actions=100 by default (see output: 101 states)
+# In real models, unbounded counters cause state explosion - always use:
+# - Bounded ranges (e.g., counter < MAX)
+# - Modulo arithmetic (e.g., counter = (counter + 1) % 10)
+# - Guard clauses to limit growth
+
+action Init:
+    counter = 0
+
+atomic action Increment:
+    # This entire block executes as one indivisible step
+    counter = counter + 1

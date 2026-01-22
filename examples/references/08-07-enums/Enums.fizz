@@ -1,0 +1,36 @@
+# Example 0035: Enums
+# Named constants for better readability
+# Demonstrates: enum definition and usage
+
+# Define enum at top level
+State = enum('INIT', 'RUNNING', 'DONE')
+
+action Init:
+    current_state = State.INIT
+
+atomic action Transition:
+    if current_state == State.DONE:
+        return
+
+    # State machine using enum
+    if current_state == State.INIT:
+        current_state = State.RUNNING
+    elif current_state == State.RUNNING:
+        current_state = State.DONE
+
+# Enums are syntactic sugar over strings
+# State.INIT == 'INIT' is true
+
+# Can iterate over enum values
+atomic action CheckAllStates:
+    if current_state != State.DONE:
+        return
+
+    # dir() returns all enum values
+    for state in dir(State):
+        # Process each state value
+        pass
+
+atomic action NoOp:
+    if current_state == State.DONE:
+        pass

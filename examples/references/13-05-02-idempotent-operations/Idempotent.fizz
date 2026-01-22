@@ -1,0 +1,44 @@
+# Example 0067: Idempotent Operations Pattern
+# Operations that can be safely retried
+# Demonstrates: idempotency, deduplication, request IDs
+
+action Init:
+    processed_ids = set()
+    counter = 0
+    requests = 0
+
+atomic action SendRequest:
+    if requests >= 3:
+        return
+
+    request_id = requests
+    requests = requests + 1
+
+    # Process if not already processed (idempotent)
+    if request_id not in processed_ids:
+        processed_ids.add(request_id)
+        counter = counter + 1
+
+atomic action RetryRequest:
+    if requests == 0:
+        return
+
+    # Retry with existing request ID
+    request_id = any range(requests)
+
+    # Idempotent: no effect if already processed
+    if request_id not in processed_ids:
+        processed_ids.add(request_id)
+        counter = counter + 1
+
+# Safety: counter never exceeds unique requests
+always assertion IdempotencyInvariant:
+    return counter <= requests
+
+# Safety: processed IDs match counter
+always assertion ProcessedCorrectly:
+    return counter == len(processed_ids)
+
+atomic action NoOp:
+    if requests >= 3:
+        pass

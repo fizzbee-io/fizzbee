@@ -1,0 +1,48 @@
+# Example 0075: Write-Ahead Log Pattern
+# Durability through logging before applying changes
+# Demonstrates: WAL, durability, crash recovery
+
+MAX_WRITES = 2
+
+action Init:
+    log = []
+    applied_index = 0
+    data_value = 0
+
+atomic action WriteToLog:
+    if len(log) >= MAX_WRITES:
+        return
+
+    # Log entry before applying
+    entry = record(index=len(log), value=len(log) + 1)
+    log.append(entry)
+
+atomic action ApplyLogEntry:
+    if applied_index >= len(log):
+        return
+
+    # Apply logged entry to data
+    entry = log[applied_index]
+    data_value = entry.value
+    applied_index = applied_index + 1
+
+atomic action Recover:
+    # Recovery: replay unapplied log entries
+    if applied_index < len(log):
+        entry = log[applied_index]
+        data_value = entry.value
+        applied_index = applied_index + 1
+
+# Safety: applied index never exceeds log
+always assertion AppliedWithinLog:
+    return applied_index <= len(log)
+
+# Safety: data reflects applied entries
+always assertion DataMatchesLog:
+    if applied_index > 0:
+        return data_value == log[applied_index - 1].value
+    return data_value == 0
+
+atomic action NoOp:
+    if len(log) >= MAX_WRITES and applied_index >= len(log):
+        pass

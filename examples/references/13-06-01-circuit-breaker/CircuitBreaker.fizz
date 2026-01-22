@@ -1,0 +1,58 @@
+# Example 0074: Circuit Breaker Pattern
+# Prevents cascading failures with circuit states
+# Demonstrates: circuit breaker, failure threshold, state transitions
+
+State = enum('CLOSED', 'OPEN', 'HALF_OPEN')
+FAILURE_THRESHOLD = 2
+
+action Init:
+    circuit_state = State.CLOSED
+    failure_count = 0
+    success_count = 0
+    requests = 0
+
+atomic action RequestSuccess:
+    if requests >= 5:
+        return
+
+    if circuit_state == State.OPEN:
+        return  # Reject when open
+
+    requests = requests + 1
+    success_count = success_count + 1
+
+    # Reset failures on success in half-open
+    if circuit_state == State.HALF_OPEN:
+        failure_count = 0
+        circuit_state = State.CLOSED
+
+atomic action RequestFailure:
+    if requests >= 5:
+        return
+
+    if circuit_state == State.OPEN:
+        return  # Reject when open
+
+    requests = requests + 1
+    failure_count = failure_count + 1
+
+    # Open circuit on threshold
+    if failure_count >= FAILURE_THRESHOLD:
+        circuit_state = State.OPEN
+
+atomic action TryReset:
+    if circuit_state != State.OPEN:
+        return
+
+    # Try half-open after timeout
+    circuit_state = State.HALF_OPEN
+
+# Safety: circuit opens after threshold
+always assertion CircuitOpensOnFailures:
+    if failure_count >= FAILURE_THRESHOLD:
+        return circuit_state == State.OPEN or circuit_state == State.HALF_OPEN
+    return True
+
+atomic action NoOp:
+    if requests >= 5:
+        pass

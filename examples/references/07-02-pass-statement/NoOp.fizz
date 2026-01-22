@@ -1,0 +1,21 @@
+# Example 0027: Pass for Deadlock Prevention
+# Using pass to prevent deadlocks at terminal states
+# Demonstrates: pass statement prevents stuttering deadlock
+
+action Init:
+    counter = 0
+
+atomic action Increment:
+    if counter >= 5:
+        return
+    counter = counter + 1
+
+# Without this action, model checker would report deadlock at counter=5
+# because no action can execute (Increment is disabled)
+atomic action Stabilize:
+    if counter >= 5:
+        pass  # Enables action without changing state
+
+# Pass allows the action to be enabled even though no state changes
+# This prevents "stuttering deadlock" where all actions are disabled
+# Common pattern: add pass action for terminal/stable states

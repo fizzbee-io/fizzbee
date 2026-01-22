@@ -1,0 +1,35 @@
+# Example 0047: Role Init
+# Role Init action is like a constructor
+# Demonstrates: role initialization with parameters
+
+role Account:
+    # Init is called when role is instantiated
+    action Init:
+        # self.OWNER comes from constructor parameter
+        self.balance = 0
+        self.name = self.OWNER  # Use parameter
+
+    action Deposit:
+        if self.balance >= 50:
+            return
+
+        self.balance = self.balance + 10
+
+# Create role instances with parameters
+action Init:
+    alice_account = Account(OWNER="alice")
+    bob_account = Account(OWNER="bob")
+    counter = 0
+
+atomic action IncrementCounter:
+    if counter >= 2:
+        return
+    counter = counter + 1
+
+# Each instance has its own state
+# alice_account.name = "alice"
+# bob_account.name = "bob"
+
+atomic action NoOp:
+    if counter >= 2:
+        pass

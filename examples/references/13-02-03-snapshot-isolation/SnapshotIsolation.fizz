@@ -1,0 +1,76 @@
+# Example 0066: Snapshot Isolation Pattern
+# Transactions read from snapshot, commit if no conflicts
+# Demonstrates: snapshot isolation, read/write sets, conflict detection
+
+action Init:
+    committed_value = 0
+    txn1_snapshot = None
+    txn1_write = None
+    txn1_committed = False
+    txn2_snapshot = None
+    txn2_write = None
+    txn2_committed = False
+
+atomic action Txn1Begin:
+    if txn1_snapshot != None:
+        return
+
+    txn1_snapshot = committed_value
+
+atomic action Txn1Write:
+    if txn1_snapshot == None:
+        return
+
+    if txn1_write != None:
+        return
+
+    txn1_write = txn1_snapshot + 1
+
+atomic action Txn1Commit:
+    if txn1_write == None:
+        return
+
+    if txn1_committed:
+        return
+
+    # Commit if no conflict (value unchanged since snapshot)
+    if committed_value == txn1_snapshot:
+        committed_value = txn1_write
+        txn1_committed = True
+
+atomic action Txn2Begin:
+    if txn2_snapshot != None:
+        return
+
+    txn2_snapshot = committed_value
+
+atomic action Txn2Write:
+    if txn2_snapshot == None:
+        return
+
+    if txn2_write != None:
+        return
+
+    txn2_write = txn2_snapshot + 10
+
+atomic action Txn2Commit:
+    if txn2_write == None:
+        return
+
+    if txn2_committed:
+        return
+
+    # Commit if no conflict
+    if committed_value == txn2_snapshot:
+        committed_value = txn2_write
+        txn2_committed = True
+
+# Safety: if both committed, one saw the other's write
+always assertion NoLostUpdates:
+    if txn1_committed and txn2_committed:
+        # Both committed - one must have read the other's result
+        return txn2_snapshot == txn1_write or txn1_snapshot == txn2_write
+    return True
+
+atomic action NoOp:
+    pass

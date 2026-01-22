@@ -1,0 +1,60 @@
+# Example 0077: Compare-And-Swap Pattern
+# Atomic compare-and-swap for lock-free algorithms
+# Demonstrates: CAS operation, lock-free updates, ABA problem awareness
+
+action Init:
+    shared_value = 0
+    operations = 0
+
+atomic action CASIncrement:
+    if operations >= 3:
+        return
+
+    # Read current value
+    expected = shared_value
+    new_value = expected + 1
+
+    # CAS: update only if value unchanged
+    if shared_value == expected:
+        shared_value = new_value
+        operations = operations + 1
+
+atomic action CASDecrement:
+    if operations >= 3:
+        return
+
+    if shared_value == 0:
+        return
+
+    # Read current value
+    expected = shared_value
+    new_value = expected - 1
+
+    # CAS: update only if value unchanged
+    if shared_value == expected:
+        shared_value = new_value
+        operations = operations + 1
+
+atomic action CASSet:
+    if operations >= 3:
+        return
+
+    # Direct set to specific value
+    expected = shared_value
+    target = 10
+
+    if shared_value == expected:
+        shared_value = target
+        operations = operations + 1
+
+# Safety: value changes atomically
+always assertion ValidValue:
+    return shared_value >= 0
+
+# Safety: operations bounded
+always assertion OperationsBounded:
+    return operations <= 3
+
+atomic action NoOp:
+    if operations >= 3:
+        pass

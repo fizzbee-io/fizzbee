@@ -1,0 +1,26 @@
+# Example 0042: Always Eventually (Progress)
+# System always makes progress eventually
+# Demonstrates: always eventually assertion (strong fairness)
+
+action Init:
+    counter = 0
+
+fair action Process:
+    if counter >= 3:
+        return
+
+    counter = counter + 1
+
+# Progress property: eventually the counter reaches target
+always eventually assertion AlwaysMakesProgress:
+    # Eventually counter reaches 3
+    return counter >= 3
+
+# "Always eventually" means:
+# - Always: in every state
+# - Eventually: progress happens within finite steps
+# With fairness, Process will eventually run enough times
+
+atomic action NoOp:
+    if counter >= 3:
+        pass

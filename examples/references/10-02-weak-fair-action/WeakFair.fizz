@@ -1,0 +1,29 @@
+# Example 0044: Weak Fair Action
+# Weakly fair actions eventually execute if continuously enabled
+# Demonstrates: fair<weak> or fair (default fairness level)
+
+action Init:
+    counter = 0
+    done = False
+
+# Weakly fair action
+fair action Progress:
+    if counter >= 3:
+        done = True
+        return
+
+    counter = counter + 1
+
+# Weak fairness: if action is CONTINUOUSLY enabled,
+# it will eventually execute
+# Guarantees progress for always-enabled actions
+
+eventually always assertion EventuallyDone:
+    return done == True
+
+# With weak fairness, this passes
+# Action is continuously enabled until counter>=3
+
+atomic action NoOp:
+    if done:
+        pass

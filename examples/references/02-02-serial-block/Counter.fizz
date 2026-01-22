@@ -1,0 +1,29 @@
+# Example 0007: Serial Block
+# Serial blocks yield after each statement (default behavior)
+# Allows interleaving with other actions between statements
+# Demonstrates: serial flow modifier (explicit form of default)
+
+action Init:
+    a = 0
+    b = 0
+
+action IncrementSerial:
+    require a < 2
+
+    serial:
+        # After each statement, the model checker explores:
+        # - Continue to next statement
+        # - Yield and schedule another action
+        # Since a is incremented first, a >= b always holds
+        a = a + 1
+        b = b + 1
+
+# This assertion holds because serial execution is sequential
+# a is always incremented before b in the same action
+always assertion OrderPreserved:
+    return a >= b
+
+# Add a no-op action to prevent deadlock at terminal state
+atomic action NoOp:
+    require a >= 2
+    pass

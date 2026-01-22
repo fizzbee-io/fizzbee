@@ -1,0 +1,32 @@
+# Example 0034: Bags (Multisets)
+# Collection where duplicates are allowed and counted
+# Demonstrates: bag operations (add, remove, count)
+
+action Init:
+    items = bag()
+    total = 0
+
+atomic action AddItems:
+    if total >= 4:
+        return
+
+    # Bags allow duplicates
+    items.add(1)
+    items.add(2)
+    items.add(1)  # Duplicate allowed
+    total = total + 1
+
+atomic action RemoveItem:
+    if len(items) == 0:
+        return
+
+    # Remove one instance
+    items.discard(1)
+
+# Bags are like multisets - order doesn't matter but count does
+# bag([1, 2, 1]) == bag([1, 1, 2]) == bag([2, 1, 1])
+# but bag([1, 1, 2]) != bag([1, 2])
+
+atomic action NoOp:
+    if total >= 4:
+        pass

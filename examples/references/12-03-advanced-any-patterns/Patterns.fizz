@@ -1,0 +1,46 @@
+# Example 0055: Combining Any with Fairness and Conditions
+# Demonstrates: combining any features together
+
+action Init:
+    options = [1, 2, 3]
+    first = 0
+    second = 0
+    fair_choice = 0
+
+# Combine any with condition
+atomic action ChooseDifferentPair:
+    if first > 0 and second > 0:
+        return
+
+    first = any options
+    # Choose different value using condition
+    second = any options if second != first
+
+# Combine fair any with range
+atomic fair<strong> action FairChoice:
+    if fair_choice > 0:
+        return
+
+    # Ensures all values eventually chosen
+    fair_choice = fair any options
+
+# Can also combine fair any with filtering by using separate variables
+atomic fair<strong> action FairFilteredChoice:
+    if len(options) == 0:
+        return
+
+    # Fair choice from available options
+    idx = fair any range(len(options))
+    chosen = options[idx]
+
+# Safety: first and second are different
+always assertion DifferentValues:
+    return (first == 0 and second == 0) or (first != second)
+
+# Liveness: fair choices eventually selected
+always eventually assertion FairChoiceMade:
+    return fair_choice > 0
+
+atomic action NoOp:
+    if first > 0 and second > 0 and fair_choice > 0:
+        pass

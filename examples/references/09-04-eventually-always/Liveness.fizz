@@ -1,0 +1,27 @@
+# Example 0041: Eventually Always (Liveness)
+# Eventually the system reaches a stable state
+# Demonstrates: eventually always assertion (liveness property)
+
+action Init:
+    counter = 0
+    stable = False
+
+fair action Increment:
+    if counter >= 5:
+        stable = True
+        return
+
+    counter = counter + 1
+
+# Liveness property: eventually reaches a state where it stays true
+eventually always assertion BecomesStable:
+    return stable == True
+
+# "Eventually always" means:
+# - Eventually: at some point in the future
+# - Always: from that point onward, stays true
+# This requires fairness to prevent infinite incrementing
+
+atomic action NoOp:
+    if stable:
+        pass

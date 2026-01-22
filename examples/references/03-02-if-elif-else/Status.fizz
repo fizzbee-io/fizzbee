@@ -1,0 +1,28 @@
+# Example 0011: If-Elif-Else Statement
+# Multiple conditional branches
+# Demonstrates: if/elif/else control flow
+
+action Init:
+    value = 0
+    status = "init"
+
+atomic action UpdateStatus:
+    if status == "done":
+        return
+
+    value = value + 1
+
+    if value < 3:
+        status = "low"
+    elif value < 6:
+        status = "medium"
+    elif value < 10:
+        status = "high"
+    else:
+        status = "done"
+
+# Status progresses: init -> low -> medium -> high -> done
+
+atomic action NoOp:
+    if status == "done":
+        pass
