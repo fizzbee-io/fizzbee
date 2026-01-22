@@ -1,0 +1,26 @@
+# Example 0006: Atomic Block
+# Atomic blocks execute all statements as one indivisible step
+# No yields or context switches occur within the block
+# Demonstrates: atomic flow modifier on blocks
+
+action Init:
+    a = 0
+    b = 0
+
+# Without atomic block, each statement could yield
+action IncrementSerial:
+    # These two statements execute with potential yields between them
+    a = a + 1
+    b = b + 1
+
+# With atomic block, both statements execute together
+action IncrementAtomic:
+    atomic:
+        # These execute as one indivisible step
+        # No other action can observe a != b
+        a = a + 1
+        b = b + 1
+
+always assertion Consistent:
+    # This may fail with IncrementSerial but not with IncrementAtomic
+    return a == b

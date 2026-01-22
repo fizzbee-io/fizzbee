@@ -1,0 +1,32 @@
+# Example 0025: Function with Serial For Loop
+# Functions can contain serial blocks/loops that yield
+# Demonstrates: atomic function with serial for loop inside
+# NOTE: Functions must be called from atomic context or within roles
+
+MAX = 2
+
+action Init:
+    items = []
+    total = 0
+
+# Atomic function with serial for loop inside
+# Function itself is atomic, but for loop yields between iterations
+atomic func process_items():
+    serial for i in range(MAX):
+        items.append(i)
+        total = total + i
+    return total
+
+atomic action ProcessData:
+    if len(items) >= MAX:
+        return
+
+    # Call function from atomic action
+    result = process_items()
+
+# Function is atomic overall, but serial for yields internally
+# Creates intermediate states during loop execution
+
+atomic action NoOp:
+    if len(items) >= MAX:
+        pass

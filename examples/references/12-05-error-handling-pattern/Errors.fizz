@@ -1,0 +1,49 @@
+# Example 0057: Error Handling Pattern
+# Model errors and recovery explicitly
+# Demonstrates: oneof for success/failure, error states
+
+ErrorCode = enum('OK', 'TIMEOUT', 'INVALID')
+
+action Init:
+    state = "idle"
+    error = None
+    retry_count = 0
+
+action ProcessRequest:
+    if state != "idle":
+        return
+
+    state = "processing"
+
+    # Nondeterministically succeed or fail
+    oneof:
+        # Success path
+        state = "completed"
+        error = ErrorCode.OK
+
+        # Timeout path
+        state = "error"
+        error = ErrorCode.TIMEOUT
+
+        # Invalid input path
+        state = "error"
+        error = ErrorCode.INVALID
+
+action Retry:
+    if state != "error":
+        return
+
+    if retry_count >= 2:
+        state = "failed"
+        return
+
+    retry_count = retry_count + 1
+    state = "idle"
+    error = None
+
+# Verify error handling invariant
+always assertion NoInfiniteRetries:
+    return retry_count <= 2
+
+atomic action NoOp:
+    pass

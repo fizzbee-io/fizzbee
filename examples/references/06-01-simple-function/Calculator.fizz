@@ -1,0 +1,24 @@
+# Example 0021: Simple Function
+# Basic function definition and calls
+# Demonstrates: func keyword, function calls
+
+action Init:
+    result = 0
+    counter = 0
+
+func add_one(x):
+    return x + 1
+
+atomic action Calculate:
+    if counter >= 3:
+        return
+
+    counter = counter + 1
+    # Call function and use return value
+    result = add_one(result)
+
+# Result progresses: 0 -> 1 -> 2 -> 3
+
+atomic action NoOp:
+    if counter >= 3:
+        pass

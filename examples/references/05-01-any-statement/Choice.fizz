@@ -1,0 +1,24 @@
+# Example 0018: Any Statement
+# Any statement for nondeterministic choice from a collection
+# Demonstrates: any statement, exploring all possibilities
+
+action Init:
+    options = [1, 2, 3]
+    chosen = 0
+    count = 0
+
+atomic action ChooseOne:
+    if count >= 2:
+        return
+
+    count = count + 1
+
+    # Any picks one element nondeterministically
+    # Model checker explores all possibilities
+    chosen = any options
+
+# Creates branches for each option: chosen=1, chosen=2, chosen=3
+
+atomic action NoOp:
+    if count >= 2:
+        pass

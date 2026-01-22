@@ -1,0 +1,63 @@
+# Example 0068: Eventual Consistency Pattern
+# Primary-replica replication with eventual convergence
+# Demonstrates: async replication, replica roles, eventual consistency
+
+---
+deadlock_detection: false
+---
+
+role Primary:
+    action Init:
+        self.value = 0
+        self.update_count = 0
+
+    atomic action Write:
+        require self.update_count < MAX_UPDATES
+
+        # Write to primary
+        self.value = self.value + 1
+        self.update_count = self.update_count + 1
+
+    fair action Replicate:
+        # Push updates to replicas asynchronously
+        for replica in replicas:
+            replica.ApplyUpdate(self.value)
+
+role Replica:
+    action Init:
+        self.value = 0
+
+    atomic func ApplyUpdate(new_value):
+        # Apply update from primary (only if newer)
+        if new_value > self.value:
+            self.value = new_value
+
+NUM_REPLICAS = 2
+MAX_UPDATES = 2
+
+action Init:
+    primary = Primary()
+    replicas = []
+    for i in range(NUM_REPLICAS):
+        replicas.append(Replica())
+
+# Safety: replicas never ahead of primary
+always assertion ReplicasNeverAhead:
+    for replica in replicas:
+        if replica.value > primary.value:
+            return False
+    return True
+
+# Safety: replica values are monotonic (only increase)
+always assertion MonotonicReplicas:
+    for replica in replicas:
+        if replica.value < 0:
+            return False
+    return True
+
+# Liveness: eventually all replicas converge to primary value
+eventually always assertion EventuallyConsistent:
+    for replica in replicas:
+        if replica.value != primary.value:
+            return False
+    return True

@@ -1,0 +1,61 @@
+# Example 0073: Saga Pattern
+# Long-running transaction with compensation
+# Demonstrates: saga pattern, compensating transactions, rollback
+
+State = enum('INIT', 'STEP1_DONE', 'STEP2_DONE', 'COMPLETED', 'COMPENSATING', 'ROLLED_BACK')
+
+action Init:
+    saga_state = State.INIT
+    step1_committed = False
+    step2_committed = False
+
+atomic action ExecuteStep1:
+    if saga_state != State.INIT:
+        return
+
+    step1_committed = True
+    saga_state = State.STEP1_DONE
+
+atomic action ExecuteStep2:
+    if saga_state != State.STEP1_DONE:
+        return
+
+    # Step 2 can fail
+    oneof:
+        # Success path (atomic together)
+        atomic:
+            step2_committed = True
+            saga_state = State.STEP2_DONE
+
+        # Failure path - trigger compensation
+        saga_state = State.COMPENSATING
+
+atomic action Complete:
+    if saga_state != State.STEP2_DONE:
+        return
+
+    saga_state = State.COMPLETED
+
+atomic action CompensateStep1:
+    if saga_state != State.COMPENSATING:
+        return
+
+    # Rollback step 1
+    step1_committed = False
+    saga_state = State.ROLLED_BACK
+
+# Safety: if completed, both steps committed
+always assertion CompletionInvariant:
+    if saga_state == State.COMPLETED:
+        return step1_committed and step2_committed
+    return True
+
+# Safety: if rolled back, step1 compensated
+always assertion CompensationInvariant:
+    if saga_state == State.ROLLED_BACK:
+        return not step1_committed
+    return True
+
+atomic action NoOp:
+    if saga_state == State.COMPLETED or saga_state == State.ROLLED_BACK:
+        pass

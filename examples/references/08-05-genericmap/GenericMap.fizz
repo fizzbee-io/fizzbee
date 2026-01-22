@@ -1,0 +1,40 @@
+# Example 0033: Generic Map
+# Map that supports non-hashable keys
+# Demonstrates: genericmap for complex key types
+# NOTE: genericmap currently has limitations with state persistence
+#       This example shows the API but uses regular dict for state
+
+action Init:
+    result = ""
+    count = 0
+
+atomic func UseGenericMap():
+    # genericmap can be used in local scope
+    lookup = genericmap()
+
+    # Use list as key (not possible with regular dict)
+    key1 = [1, "a"]
+    key2 = [2, "b"]
+
+    lookup[key1] = "value1"
+    lookup[key2] = "value2"
+
+    # Retrieve values
+    if key1 in lookup:
+        return lookup[key1]
+    return "none"
+
+atomic action TestGenericMap:
+    if count >= 2:
+        return
+
+    count = count + 1
+    result = UseGenericMap()
+
+# genericmap allows non-hashable keys like lists/dicts
+# But may have limitations when part of persistent state
+# Use for local computations within atomic blocks
+
+atomic action NoOp:
+    if count >= 2:
+        pass

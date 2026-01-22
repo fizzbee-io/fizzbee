@@ -1,0 +1,33 @@
+# Example 0017: Break and Continue
+# Loop control statements
+# Demonstrates: break and continue in loops
+
+MAX = 3
+
+action Init:
+    evens = []
+    stopped_at = -1
+
+atomic action ProcessWithBreak:
+    if len(evens) > 0:
+        return
+
+    for i in range(10):
+        if i >= MAX:
+            stopped_at = i
+            break  # Exit loop early
+
+        if i % 2 == 1:
+            continue  # Skip odd numbers
+
+        evens.append(i)
+
+    # Result: evens = [0, 2], stopped_at = 3
+
+always assertion ValidState:
+    # Break ensures we stop at MAX
+    return stopped_at == -1 or stopped_at == MAX
+
+atomic action NoOp:
+    if len(evens) > 0:
+        pass

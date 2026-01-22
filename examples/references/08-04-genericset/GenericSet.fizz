@@ -1,0 +1,32 @@
+# Example 0032: Generic Set
+# Set that supports non-hashable elements (e.g., dicts, lists)
+# Demonstrates: genericset for complex types
+
+action Init:
+    items = genericset()
+    count = 0
+
+atomic action AddComplexItem:
+    if count >= 2:
+        return
+
+    # Can add non-hashable types like dicts
+    item = {"id": count, "status": "pending"}
+    items.add(item)
+    count = count + 1
+
+atomic action UpdateItem:
+    if len(items) == 0:
+        return
+
+    # Add duplicate - will not increase size
+    duplicate = {"id": 0, "status": "pending"}
+    items.add(duplicate)
+
+# genericset handles non-hashable elements
+# Regular set would fail with dict keys
+# items: {} -> {{"id":0, "status":"pending"}} -> adds {"id":1,...}
+
+atomic action NoOp:
+    if count >= 2:
+        pass

@@ -1,0 +1,55 @@
+# Example 0071: Consensus Pattern
+# Simple consensus with proposals and acceptance
+# Demonstrates: consensus, proposals, acceptance quorum
+
+NUM_NODES = 3
+QUORUM = 2
+
+action Init:
+    proposal_value = None
+    acceptances = set()
+    decided_value = None
+
+atomic action Propose:
+    if proposal_value != None:
+        return
+
+    # Nondeterministically choose value to propose
+    proposal_value = any [1, 2]
+
+atomic action Accept:
+    if proposal_value == None:
+        return
+
+    if decided_value != None:
+        return
+
+    # Node accepts proposal
+    node = any ["node_0", "node_1", "node_2"]
+    if node in acceptances:
+        return
+
+    acceptances.add(node)
+
+atomic action Decide:
+    if decided_value != None:
+        return
+
+    # Decide when quorum reached
+    if len(acceptances) >= QUORUM:
+        decided_value = proposal_value
+
+# Safety: decided value matches proposal
+always assertion DecisionMatchesProposal:
+    if decided_value != None:
+        return decided_value == proposal_value
+    return True
+
+# Safety: decision requires quorum
+always assertion QuorumRequired:
+    if decided_value != None:
+        return len(acceptances) >= QUORUM
+    return True
+
+atomic action NoOp:
+    pass

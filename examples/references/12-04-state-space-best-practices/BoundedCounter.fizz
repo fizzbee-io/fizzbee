@@ -1,0 +1,39 @@
+# Example 0056: State Space Best Practices
+# Always bound your state variables to prevent explosion
+# Demonstrates: modulo arithmetic, guard clauses, bounded ranges
+
+MAX_VALUE = 10
+
+action Init:
+    counter = 0
+    cyclic_counter = 0
+    items = []
+
+# ✅ GOOD: Guard clause bounds the state
+atomic action IncrementWithGuard:
+    if counter >= MAX_VALUE:
+        return
+
+    counter = counter + 1
+
+# ✅ GOOD: Modulo arithmetic for cyclic behavior
+atomic action IncrementCyclic:
+    cyclic_counter = (cyclic_counter + 1) % MAX_VALUE
+
+# ✅ GOOD: Bounded collection growth
+atomic action AddItem:
+    if len(items) >= 5:
+        return
+
+    items.append(len(items))
+
+# ❌ BAD: Would be unbounded without guard
+# atomic action UnboundedIncrement:
+#     counter = counter + 1  # Grows forever!
+
+# Always use assertions to verify bounds
+always assertion CounterInBounds:
+    return counter <= MAX_VALUE and cyclic_counter < MAX_VALUE
+
+atomic action NoOp:
+    pass

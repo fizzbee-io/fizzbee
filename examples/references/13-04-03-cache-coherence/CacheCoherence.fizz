@@ -1,0 +1,44 @@
+# Example 0063: Cache Coherence Pattern
+# Simple write-through cache with invalidation
+# Demonstrates: cache consistency, invalidation, write-through
+
+action Init:
+    memory_value = 0
+    cache_value = None
+    cache_valid = False
+    writes = 0
+
+atomic action ReadFromMemory:
+    if cache_valid:
+        return
+
+    cache_value = memory_value
+    cache_valid = True
+
+atomic action WriteToMemory:
+    if writes >= 2:
+        return
+
+    # Write-through: update both
+    memory_value = memory_value + 1
+    writes = writes + 1
+
+    # Invalidate cache
+    cache_valid = False
+
+atomic action ReadFromCache:
+    if not cache_valid:
+        return
+
+    # Just read (no state change needed for modeling)
+    pass
+
+# Safety: cache is valid only if matches memory
+always assertion CacheCoherence:
+    if cache_valid:
+        return cache_value == memory_value
+    return True
+
+atomic action NoOp:
+    if writes >= 2:
+        pass

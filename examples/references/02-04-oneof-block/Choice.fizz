@@ -1,0 +1,25 @@
+# Example 0009: Oneof Block
+# Oneof blocks create nondeterministic choice
+# Exactly ONE of the statements is executed per transition
+# Demonstrates: oneof flow modifier for branching state space
+
+action Init:
+    choice = "none"
+
+atomic action MakeChoice:
+    require choice == "none"
+
+    oneof:
+        # The model checker explores paths where exactly ONE of these executes
+        # This creates 3 different branches from the initial state
+        choice = "A"
+        choice = "B"
+        choice = "C"
+
+# After MakeChoice runs once, choice will be either "A", "B", or "C"
+# Creates 3 branches in the state space from Init
+
+# Add NoOp to prevent deadlock after choice is made
+atomic action NoOp:
+    require choice != "none"
+    pass

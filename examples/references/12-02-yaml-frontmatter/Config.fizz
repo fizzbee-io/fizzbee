@@ -1,0 +1,21 @@
+---
+# Example 0054: YAML Frontmatter Configuration
+# Configure model checker behavior
+# Demonstrates: options with max_actions, deadlock_detection
+
+options:
+  max_actions: 20
+
+deadlock_detection: false
+---
+
+# This spec intentionally hits max_actions limit
+action Init:
+    counter = 0
+
+atomic action Increment:
+    # No guard - runs forever (until max_actions)
+    counter = counter + 1
+
+# Demonstrates hitting the configured limit
+# With max_actions: 20, this will stop at 20 instead of default 100

@@ -1,0 +1,27 @@
+# Example 0016: While Loop
+# While loop continues until condition is false
+# Demonstrates: while loop with guard condition
+
+MAX = 3
+
+action Init:
+    counter = 0
+    accumulator = 0
+
+atomic action Accumulate:
+    if counter >= MAX:
+        return
+
+    counter = counter + 1
+
+    # While loop with bounded condition
+    temp = 0
+    atomic while temp < counter:
+        accumulator = accumulator + 1
+        temp = temp + 1
+
+# After 3 calls: accumulator = 1 + 2 + 3 = 6
+
+atomic action NoOp:
+    if counter >= MAX:
+        pass

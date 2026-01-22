@@ -1,0 +1,41 @@
+# Example 0080: Role Crash with Ephemeral State
+# Simulating process crashes with state loss
+# Demonstrates: role crashes, ephemeral vs durable state, recovery
+
+# Cache is ephemeral (lost on crash), disk_data is durable
+@state(ephemeral=['cache'])
+role Server:
+    action Init:
+        self.disk_data = 0  # Durable (persists across crashes)
+        self.cache = 0      # Ephemeral (lost on crash)
+        self.requests = 0
+
+    action ProcessRequest:
+        if self.requests >= 2:
+            return
+
+        # Update disk first, then cache
+        self.disk_data = self.disk_data + 1
+        self.requests = self.requests + 1
+
+        # Update cache after disk
+        self.cache = self.cache + 1
+
+        # If crash happens between disk and cache updates,
+        # cache is reset to 0 (ephemeral)
+        # but disk_data is preserved (durable)
+
+action Init:
+    server = Server()
+
+# Safety: disk_data reflects durable state
+always assertion DiskDataPersists:
+    return server.disk_data >= 0
+
+# Safety: cache can be behind disk_data after crash
+always assertion CacheMayBeBehind:
+    return server.cache <= server.disk_data
+
+atomic action NoOp:
+    if server.requests >= 2:
+        pass

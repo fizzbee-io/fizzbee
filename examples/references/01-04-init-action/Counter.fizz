@@ -1,0 +1,14 @@
+# Example 0004: Init Action Details
+# Demonstrates how Init action initializes state variables
+# All variables defined in Init become part of the state space
+# NOTE: Unbounded state space - see 0002 for details on state explosion
+
+action Init:
+    # These variables become state variables
+    counter = 0
+    status = "ready"
+    items = []
+
+atomic action AddItem:
+    items.append(counter)
+    counter = counter + 1

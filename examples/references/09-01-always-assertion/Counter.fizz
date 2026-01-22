@@ -1,0 +1,31 @@
+# Example 0038: Always Assertion (Safety Property)
+# Safety invariants that must hold in every state
+# Demonstrates: always assertion, safety properties
+
+MAX = 5
+
+action Init:
+    counter = 0
+    total = 0
+
+atomic action Increment:
+    if counter >= MAX:
+        return
+
+    counter = counter + 1
+    total = total + counter
+
+# Safety property: must be true in ALL states
+always assertion CounterBounded:
+    return counter <= MAX
+
+always assertion TotalCorrect:
+    # Total should be sum of 1..counter
+    expected = (counter * (counter + 1)) / 2
+    return total == expected
+
+# If either assertion fails, model checker reports violation
+
+atomic action NoOp:
+    if counter >= MAX:
+        pass

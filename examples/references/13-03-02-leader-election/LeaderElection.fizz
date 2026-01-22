@@ -1,0 +1,72 @@
+# Example 0062: Leader Election (Simplified Raft)
+# Distributed leader election with term-based voting
+# Demonstrates: roles, RPC calls, quorum, election safety
+
+---
+deadlock_detection: false
+action_options:
+    "Node.ElectionTimeout":
+        max_actions: 2
+---
+
+NUM_NODES = 3
+
+Mode = enum("Leader", "Follower", "Candidate")
+
+@state(durable=["currentTerm", "votedFor"])
+role Node:
+    action Init:
+        self.currentTerm = 0
+        self.mode = Mode.Follower
+        self.votedFor = None
+
+    action ElectionTimeout:
+        require self.mode != Mode.Leader
+
+        # Become candidate and increment term (atomic update)
+        self.mode, self.currentTerm, self.votedFor = \
+            Mode.Candidate, self.currentTerm + 1, self.__id__
+
+        candidate_term = self.currentTerm
+        votes = 1  # Vote for self
+
+        # Request votes from other nodes
+        for node in nodes:
+            if node.__id__ != self.__id__:
+                vote_granted = node.RequestVote(self.currentTerm, self.__id__)
+                if vote_granted:
+                    votes = votes + 1
+
+        # Become leader if received majority
+        if self.mode == Mode.Candidate and self.currentTerm == candidate_term and votes > NUM_NODES / 2:
+            self.mode = Mode.Leader
+
+    func RequestVote(term, candidateId):
+        # Reply false if term < currentTerm
+        if term < self.currentTerm:
+            return False
+
+        # Update term if candidate has higher term (atomic update)
+        if term > self.currentTerm:
+            self.currentTerm, self.mode, self.votedFor = term, Mode.Follower, candidateId
+            return True
+
+        # Grant vote if haven't voted or already voted for this candidate (atomic update)
+        if self.votedFor == None or self.votedFor == candidateId:
+            self.mode, self.votedFor = Mode.Follower, candidateId
+            return True
+
+        return False
+
+action Init:
+    nodes = []
+    for i in range(NUM_NODES):
+        nodes.append(Node())
+
+# Safety: at most one leader per term
+always assertion AtMostOneLeaderPerTerm:
+    for term_val in set([node.currentTerm for node in nodes]):
+        leaders_in_term = [node for node in nodes if node.mode == Mode.Leader and node.currentTerm == term_val]
+        if len(leaders_in_term) > 1:
+            return False
+    return True

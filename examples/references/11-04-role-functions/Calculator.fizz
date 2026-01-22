@@ -1,0 +1,31 @@
+# Example 0049: Role Functions
+# Functions within roles
+# Demonstrates: role functions, implicit self
+
+role Calculator:
+    action Init:
+        self.total = 0
+
+    # Functions in roles - self is implicit
+    # No self parameter needed (like Java/C++)
+    func add(x, y):
+        return x + y
+
+    func accumulate(value):
+        self.total = self.total + value
+        return self.total
+
+    atomic action Compute:
+        if self.total >= 10:
+            return
+
+        # Call role functions
+        sum = self.add(2, 3)
+        self.accumulate(sum)
+
+action Init:
+    calc = Calculator()
+
+atomic action NoOp:
+    if calc.total >= 10:
+        pass

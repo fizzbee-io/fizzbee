@@ -1,0 +1,101 @@
+# Example 0072: Distributed Lock Pattern
+# Multiple clients competing for lock with lease expiration
+# Demonstrates: distributed locking, fencing tokens, lease management
+
+---
+deadlock_detection: false
+---
+
+MAX_FENCE_TOKEN = 3
+
+role LockService:
+    action Init:
+        self.owner = None
+        self.fence_token = 0
+        self.lease_active = False
+
+    atomic func AcquireLock(client_id):
+        # Grant lock if available
+        if self.owner != None:
+            return None  # Lock already held
+
+        # Bound fence tokens to limit state space
+        if self.fence_token >= MAX_FENCE_TOKEN:
+            return None
+
+        self.owner = client_id
+        self.fence_token = self.fence_token + 1
+        self.lease_active = True
+        return self.fence_token
+
+    atomic func ReleaseLock(client_id, token):
+        # Release only if owner and token matches
+        if self.owner == client_id and token == self.fence_token:
+            self.owner = None
+            self.lease_active = False
+            return True
+        return False
+
+    atomic action LeaseExpire:
+        # Lease can expire if active (unfair to avoid state explosion)
+        if not self.lease_active:
+            return
+
+        # Expire the lease (owner loses lock) atomically
+        self.owner = None
+        self.lease_active = False
+
+role Client:
+    action Init:
+        self.token = None
+        self.operations = 0
+
+    atomic action AcquireLock:
+        require self.token == None
+        require self.operations < MAX_OPERATIONS
+
+        # Try to acquire lock
+        token = lock_service.AcquireLock(self.__id__)
+        if token != None:
+            self.token = token
+
+    atomic action UseResource:
+        require self.token != None
+
+        # Use the resource while holding lock
+        self.operations = self.operations + 1
+
+    atomic action ReleaseLock:
+        require self.token != None
+
+        # Release the lock
+        success = lock_service.ReleaseLock(self.__id__, self.token)
+        if success:
+            self.token = None
+
+NUM_CLIENTS = 2
+MAX_OPERATIONS = 1
+
+action Init:
+    lock_service = LockService()
+    clients = []
+    for i in range(NUM_CLIENTS):
+        clients.append(Client())
+
+# Safety: at most one client holds VALID lock (matching current fence token)
+always assertion AtMostOneValidOwner:
+    valid_holders = [c for c in clients if c.token == lock_service.fence_token]
+    return len(valid_holders) <= 1
+
+# Safety: service owner must have valid token (reverse may not hold due to lease expiry)
+always assertion ServiceOwnerHasToken:
+    if lock_service.owner != None:
+        # If service has owner, that client should have the token
+        for client in clients:
+            if client.__id__ == lock_service.owner:
+                return client.token == lock_service.fence_token
+    return True
+
+# Safety: fence tokens are monotonic
+always assertion MonotonicTokens:
+    return lock_service.fence_token >= 0

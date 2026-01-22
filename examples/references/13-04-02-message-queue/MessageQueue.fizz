@@ -1,0 +1,101 @@
+# Example 0065: Message Queue Pattern
+# Distributed message queue with multiple producers and consumers
+# Demonstrates: roles, message passing, FIFO ordering, producer-consumer coordination
+
+---
+deadlock_detection: false
+---
+
+role Producer:
+    action Init:
+        self.sent_count = 0
+
+    atomic fair action Produce:
+        require self.sent_count < MAX_MESSAGES_PER_PRODUCER
+
+        msg_id = self.sent_count
+        msg = record(producer_id=self.__id__, msg_id=msg_id, payload="msg_" + str(msg_id))
+
+        # Send message to queue (atomic to prevent duplicates from crashes)
+        queue.Enqueue(msg)
+        self.sent_count = self.sent_count + 1
+
+role Consumer:
+    action Init:
+        self.received_count = 0
+        self.received_messages = []
+
+    atomic fair action Consume:
+        require self.received_count < MAX_MESSAGES_TOTAL
+
+        # Receive message from queue
+        msg = queue.Dequeue(self.__id__)
+
+        if msg != None:
+            self.received_messages.append(msg)
+            self.received_count = self.received_count + 1
+
+role Queue:
+    action Init:
+        self.queue = []
+        self.total_enqueued = 0
+
+    atomic func Enqueue(msg):
+        # Accept message into queue (atomic to prevent inconsistency)
+        self.queue.append(msg)
+        self.total_enqueued = self.total_enqueued + 1
+
+    atomic func Dequeue(consumer_id):
+        # FIFO: dequeue from front if available
+        if len(self.queue) == 0:
+            return None
+
+        msg = self.queue[0]
+        self.queue = self.queue[1:]  # Remove first element
+        return msg
+
+NUM_PRODUCERS = 2
+NUM_CONSUMERS = 2
+MAX_MESSAGES_PER_PRODUCER = 2
+MAX_MESSAGES_TOTAL = NUM_PRODUCERS * MAX_MESSAGES_PER_PRODUCER
+
+action Init:
+    queue = Queue()
+
+    producers = []
+    for i in range(NUM_PRODUCERS):
+        producers.append(Producer())
+
+    consumers = []
+    for i in range(NUM_CONSUMERS):
+        consumers.append(Consumer())
+
+# Safety: total messages consumed <= total enqueued
+always assertion ValidDelivery:
+    total_consumed = 0
+    for c in consumers:
+        total_consumed = total_consumed + c.received_count
+    return total_consumed <= queue.total_enqueued
+
+# Safety: queue maintains FIFO order
+always assertion QueueFIFO:
+    if len(queue.queue) >= 2:
+        # Messages should be ordered by when they were enqueued
+        return queue.queue[0].msg_id <= queue.queue[1].msg_id or \
+               queue.queue[0].producer_id != queue.queue[1].producer_id
+    return True
+
+# Safety: no message duplicates in any consumer
+always assertion NoDuplicates:
+    for consumer in consumers:
+        msg_ids = [(msg.producer_id, msg.msg_id) for msg in consumer.received_messages]
+        if len(msg_ids) != len(set(msg_ids)):
+            return False
+    return True
+
+# Liveness: all produced messages eventually consumed
+eventually always assertion AllMessagesConsumed:
+    total_consumed = 0
+    for c in consumers:
+        total_consumed = total_consumed + c.received_count
+    return total_consumed == MAX_MESSAGES_TOTAL and len(queue.queue) == 0

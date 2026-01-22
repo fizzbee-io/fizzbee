@@ -1,0 +1,26 @@
+# Example 0039: Exists Assertion
+# Existential properties - at least one state must satisfy
+# Demonstrates: exists assertion
+
+action Init:
+    value = 0
+    reached_five = False
+
+atomic action Increment:
+    if value >= 10:
+        return
+
+    value = value + 1
+
+    if value == 5:
+        reached_five = True
+
+# Existential property: must be true in AT LEAST ONE state
+exists assertion ReachesFive:
+    return reached_five == True
+
+# Model checker verifies that some execution path reaches this state
+
+atomic action NoOp:
+    if value >= 10:
+        pass

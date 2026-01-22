@@ -1,0 +1,23 @@
+# Example 0010: If-Else Statement
+# Basic conditional branching
+# Demonstrates: if/else control flow
+
+MAX = 5
+
+action Init:
+    counter = 0
+
+atomic action Toggle:
+    if counter >= MAX:
+        return
+
+    if counter % 2 == 0:
+        counter = counter + 1
+    else:
+        counter = counter + 2
+
+# Counter follows pattern: 0 -> 1 -> 3 -> 4 -> 6 (stops at 6 > MAX)
+
+atomic action NoOp:
+    if counter >= MAX:
+        pass

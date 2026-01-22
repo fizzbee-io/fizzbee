@@ -1,0 +1,37 @@
+# Example 0031: Dictionaries
+# Key-value pairs (keys must be hashable)
+# Demonstrates: dict operations (get, set, pop, keys, values)
+
+action Init:
+    counts = {}
+    total = 0
+
+atomic action UpdateCounts:
+    if total >= 3:
+        return
+
+    key = "count_" + str(total)
+
+    # Dictionary operations
+    counts[key] = total        # Set value
+
+    # Safe access
+    value = counts.get(key, 0) # Get with default
+    total = total + value + 1
+
+atomic action CheckKeys:
+    if len(counts) == 0:
+        return
+
+    # Iterate over keys
+    for k in counts.keys():
+        # Access values
+        v = counts[k]
+        break
+
+# Dictionaries maintain key uniqueness
+# counts: {} -> {"count_0": 0} -> {"count_0": 0, "count_1": 1} -> ...
+
+atomic action NoOp:
+    if total >= 3:
+        pass

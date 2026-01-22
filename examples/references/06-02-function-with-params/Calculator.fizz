@@ -1,0 +1,29 @@
+# Example 0022: Function with Parameters
+# Functions with multiple parameters
+# Demonstrates: multiple parameters, parameter order
+
+action Init:
+    x = 0
+    y = 0
+
+func add(a, b):
+    return a + b
+
+func multiply(a, b):
+    return a * b
+
+atomic action Compute:
+    if x >= 2:
+        return
+
+    x = x + 1
+    # Functions with multiple parameters
+    y = add(x, 2)
+    y = multiply(y, 2)
+
+# After first call: x=1, y=add(1,2)*2=6
+# After second call: x=2, y=add(2,2)*2=8
+
+atomic action NoOp:
+    if x >= 2:
+        pass

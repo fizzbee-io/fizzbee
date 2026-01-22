@@ -1,0 +1,44 @@
+# Example 0060: Producer-Consumer Pattern
+# Classic bounded buffer problem
+# Demonstrates: queue operations, capacity limits, coordination
+
+BUFFER_SIZE = 3
+MAX_ITEMS = 5
+
+action Init:
+    buffer = []
+    produced = 0
+    consumed = 0
+
+atomic action Produce:
+    if produced >= MAX_ITEMS:
+        return
+
+    # Check buffer capacity
+    if len(buffer) >= BUFFER_SIZE:
+        return
+
+    item = produced
+    buffer.append(item)
+    produced = produced + 1
+
+atomic action Consume:
+    # Check buffer has items
+    if len(buffer) == 0:
+        return
+
+    item = buffer[0]
+    buffer.remove(item)
+    consumed = consumed + 1
+
+# Safety: buffer never exceeds capacity
+always assertion BufferBounded:
+    return len(buffer) <= BUFFER_SIZE
+
+# Safety: consumed items were produced
+always assertion ValidConsumption:
+    return consumed <= produced
+
+atomic action NoOp:
+    if produced >= MAX_ITEMS and len(buffer) == 0:
+        pass

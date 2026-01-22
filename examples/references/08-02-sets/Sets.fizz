@@ -1,0 +1,30 @@
+# Example 0030: Sets
+# Unordered collection of unique elements
+# Demonstrates: set operations (add, remove, discard, union, intersection)
+
+action Init:
+    set_a = set([1, 2])
+    set_b = set([2, 3])
+    result = set()
+
+atomic action SetOperations:
+    if len(result) > 0:
+        return
+
+    # Set operations
+    set_a.add(4)         # Add element
+    set_b.discard(2)     # Remove if exists (no error if missing)
+
+    # Set algebra
+    result = set_a.union(set_b)        # {1, 2, 3, 4}
+    # result = set_a.intersection(set_b)  # Common elements
+    # result = set_a.difference(set_b)     # In A but not B
+
+# Sets automatically handle uniqueness
+# set_a: {1, 2} -> {1, 2, 4}
+# set_b: {2, 3} -> {3}
+# result: {1, 2, 3, 4}
+
+atomic action NoOp:
+    if len(result) > 0:
+        pass

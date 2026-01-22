@@ -1,0 +1,33 @@
+# Example 0029: Lists
+# Ordered collection of elements
+# Demonstrates: list operations (append, insert, pop, remove)
+
+MAX = 3
+
+action Init:
+    items = []
+
+atomic action AddItem:
+    if len(items) >= MAX:
+        return
+
+    # Common list operations
+    items.append(len(items))  # Add to end
+
+    if len(items) == 2:
+        items.insert(0, -1)  # Insert at position
+
+atomic action RemoveItem:
+    if len(items) == 0:
+        return
+
+    # Remove operations
+    if len(items) > 0:
+        items.pop()  # Remove from end
+
+# Lists maintain insertion order
+# items progression: [] -> [0] -> [0,1] -> [-1,0,1] -> [-1,0] -> [-1] -> []
+
+atomic action NoOp:
+    if len(items) == 0 or len(items) >= MAX:
+        pass

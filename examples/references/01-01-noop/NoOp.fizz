@@ -1,0 +1,11 @@
+# Example 0001: No-op Action
+# The simplest FizzBee spec with a single action that does nothing meaningful
+# Demonstrates: basic action syntax and minimal state initialization
+
+action Init:
+    counter = 0
+
+atomic action NoOp:
+    # pass statement unconditionally enables the action
+    # without it, the action would be disabled (no state change)
+    pass

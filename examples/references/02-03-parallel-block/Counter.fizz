@@ -1,0 +1,32 @@
+# Example 0008: Parallel Block
+# Parallel blocks execute statements concurrently
+# Explores all possible interleavings of the statements
+# Demonstrates: parallel flow modifier for concurrent execution
+
+action Init:
+    a = 0
+    b = 0
+
+action ParallelIncrement:
+    require a < 2 and b < 2
+
+    parallel:
+        # These two statements execute concurrently
+        # All interleavings are explored
+        # Unlike serial, a can be incremented before or after b
+        a = a + 1
+        b = b + 1
+
+# This assertion would FAIL with parallel execution!
+# Uncommenting it will show that b can be incremented before a
+# always assertion OrderPreserved:
+#     return a >= b
+
+# With parallel, both a and b can increment in any order
+# State space includes paths like: (0,0) -> (1,0) -> (1,1) or (0,0) -> (0,1) -> (1,1)
+# In the second path, b > a temporarily!
+
+# Add NoOp to prevent deadlock at terminal states
+atomic action NoOp:
+    require a >= 2 or b >= 2
+    pass

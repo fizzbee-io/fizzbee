@@ -1,0 +1,31 @@
+# Example 0045: Strong Fair Action
+# Strongly fair actions execute if infinitely often enabled
+# Demonstrates: fair<strong> for intermittent enabling
+
+action Init:
+    toggle = True
+    processed = False
+
+# Toggle the enabling condition indefinitely
+action Toggle:
+    toggle = not toggle
+
+# Strongly fair action
+fair<strong> action ProcessWhenEnabled:
+    if processed:
+        return
+
+    # Only enabled when toggle is True
+    if toggle:
+        processed = True
+
+# Strong fairness: if action is INFINITELY OFTEN enabled,
+# it will eventually execute
+# Even if intermittently disabled, it will run
+
+# Weak fairness would NOT guarantee this
+# because action is not continuously enabled
+
+atomic action NoOp:
+    if processed:
+        pass

@@ -1,0 +1,24 @@
+# Example 0014: For Loop (Serial)
+# Serial for loop yields after each iteration
+# Demonstrates: serial for loop, interleaving between iterations
+
+MAX = 2
+
+action Init:
+    items = []
+    total = 0
+
+action ProcessItems:
+    if len(items) >= MAX:
+        return
+
+    # Serial for loop - yields after each iteration
+    serial for i in range(MAX):
+        items.append(i)
+        total = total + i
+
+# NOTE: Unbounded state space - see 0002 for details
+
+atomic action NoOp:
+    if len(items) >= MAX:
+        pass
