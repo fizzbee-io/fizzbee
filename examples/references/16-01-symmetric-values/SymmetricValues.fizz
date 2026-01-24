@@ -1,0 +1,52 @@
+# Example 0084: Symmetric Values for IDs
+# Using symmetric_values() to reduce state space by treating permutations as equivalent
+# Demonstrates: symmetric_values(), state space optimization, interchangeable IDs
+
+# Define symmetric values instead of regular numbers or strings
+# symmetric_values('prefix', count) creates prefix0, prefix1, prefix2, ...
+KEYS = symmetric_values('k', 3)  # Creates k0, k1, k2
+
+action Init:
+    # Use symmetric keys in a dictionary
+    switches = {}
+    for k in KEYS:
+        switches[k] = 'OFF'
+
+atomic action TurnOn:
+    # Model checker explores all possible choices
+    # With symmetric values: states where k0=ON,k1=OFF,k2=OFF
+    # are equivalent to k1=ON,k0=OFF,k2=OFF
+    key = any KEYS
+    if switches[key] == 'OFF':
+        switches[key] = 'ON'
+
+atomic action TurnOff:
+    key = any KEYS
+    if switches[key] == 'ON':
+        switches[key] = 'OFF'
+
+# Verify at least one switch can be on
+exists assertion SomeOn:
+    return any([switches[k] == 'ON' for k in KEYS])
+
+# Why use symmetric_values?
+# ============================
+# Without symmetry: KEYS = range(3) or KEYS = ['k0', 'k1', 'k2']
+#   - State (k0=ON, k1=OFF, k2=OFF) is different from (k1=ON, k0=OFF, k2=OFF)
+#   - Model checker explores all permutations
+#   - State space: MUCH LARGER
+#
+# With symmetry: KEYS = symmetric_values('k', 3)
+#   - These states are recognized as equivalent (just permutations)
+#   - Model checker only explores one representative state
+#   - State space: SIGNIFICANTLY REDUCED
+#
+# When to use:
+# - Process IDs, Node IDs, Client IDs that are truly interchangeable
+# - Keys/IDs where order and identity don't matter
+# - All instances start in identical states
+#
+# When NOT to use:
+# - IDs have different initial states
+# - Identity matters (e.g., "master" vs "replica")
+# - Order is semantically meaningful

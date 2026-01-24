@@ -1,0 +1,55 @@
+# Example 0087b: State Space WITH Symmetry Reduction
+# Run this to see reduced state space
+# Compare state count with WithoutSymmetry.fizz
+
+---
+options:
+    max_actions: 6
+---
+
+Status = enum('IDLE', 'BUSY')
+
+NUM_PROCESSES = 2
+
+# Symmetric role - instances are interchangeable
+symmetric role Process:
+    action Init:
+        self.status = Status.IDLE
+        self.counter = 0
+
+    atomic action Work:
+        require self.status == Status.IDLE
+        self.status = Status.BUSY
+        self.counter = self.counter + 1
+
+    atomic action Rest:
+        require self.status == Status.BUSY
+        self.status = Status.IDLE
+
+action Init:
+    # CRITICAL: Use bag() not list() for symmetry to work
+    processes = bag()
+    for i in range(NUM_PROCESSES):
+        processes.add(Process())
+
+# Example state space exploration (approximate):
+# With 2 processes marked symmetric in a bag:
+#
+# States like:
+#   Bag{p0:(IDLE,0), p1:(BUSY,1)} and Bag{p0:(BUSY,1), p1:(IDLE,0)}
+# are SAME state (explores only one)
+#
+# Expected: ~20-30 unique states (50% reduction from WithoutSymmetry.fizz)
+#
+# State space reduction:
+# - 2 processes: ~50% reduction
+# - 3 processes: ~6x reduction (3! = 6)
+# - 4 processes: ~24x reduction (4! = 24)
+# - N processes: N! reduction factor
+#
+# How to verify:
+# 1. Run: fizz WithoutSymmetry.fizz
+#    Note: X states, Y nodes
+# 2. Run: fizz WithSymmetry.fizz
+#    Note: Much smaller state count
+# 3. Compare the state graphs in explorer

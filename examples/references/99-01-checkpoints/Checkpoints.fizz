@@ -1,0 +1,97 @@
+# Example 0088: Checkpoints (Visualization Labels)
+# Using backtick labels to create visualization breakpoints
+# Demonstrates: checkpoint syntax, visualization aids, debugging workflow
+
+---
+options:
+    max_actions: 3
+---
+
+Status = enum('IDLE', 'PREPARING', 'READY', 'PROCESSING', 'DONE')
+
+role Worker:
+    action Init:
+        self.status = Status.IDLE
+        self.data = None
+
+    action ProcessTask:
+        require self.status == Status.IDLE
+
+        # Checkpoint: Mark the start of preparation phase
+        `start_preparation`
+        self.status = Status.PREPARING
+        self.data = "loading..."
+
+        # Checkpoint: Preparation complete
+        `preparation_complete`
+        self.status = Status.READY
+        self.data = "ready"
+
+        # Checkpoint: Start processing
+        `start_processing`
+        self.status = Status.PROCESSING
+
+        # Checkpoint: Processing complete
+        `processing_complete`
+        self.status = Status.DONE
+        self.data = "result"
+
+        # Checkpoint: Final cleanup
+        `cleanup`
+        self.status = Status.IDLE
+
+role Coordinator:
+    action Init:
+        self.decision = None
+
+    atomic action Decide:
+        # Checkpoints work in atomic actions too
+        # They don't create yield points, just visualization markers
+        `evaluating`
+        choice = any ["approve", "reject"]
+
+        `decision_made`
+        self.decision = choice
+
+action Init:
+    worker = Worker()
+    coordinator = Coordinator()
+
+# What are checkpoints?
+# ======================
+# Checkpoints are visualization labels marked with backticks: `label_name`
+#
+# Purpose:
+# - Create meaningful breakpoints in the explorer/visualizer
+# - Help understand multi-step processes
+# - Debug complex actions by seeing intermediate states
+# - Document important transitions in sequence diagrams
+#
+# Key properties:
+# 1. Don't affect execution semantics
+# 2. Don't create yield points (even in atomic blocks)
+# 3. Only affect visualization/debugging
+# 4. Can have any descriptive name
+#
+# Default checkpoints (created automatically):
+# - Start of each action
+# - At nondeterministic choices (any, oneof)
+# - At yield points
+#
+# When to use explicit checkpoints:
+# - Multi-step workflows (like ProcessTask above)
+# - To highlight important state transitions
+# - For sequence diagram clarity
+# - When debugging complex actions
+#
+# Syntax:
+# `checkpoint_name` - just a name in backticks
+#
+# Examples:
+# `prepared`
+# `sent_request`
+# `waiting_for_response`
+# `committed`
+# `aborted`
+#
+# Note: Checkpoints are optional - use them when they add clarity!
