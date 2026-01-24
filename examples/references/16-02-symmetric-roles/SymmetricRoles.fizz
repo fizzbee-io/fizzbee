@@ -1,0 +1,74 @@
+# Example 0085: Symmetric Roles
+# Using 'symmetric role' keyword for indistinguishable role instances
+# Demonstrates: symmetric role, automatic symmetry reduction, __id__ field
+
+---
+deadlock_detection: false
+liveness: "false"
+---
+
+Status = enum('INIT', 'WORKING', 'DONE')
+
+NUM_WORKERS = 3
+
+# Mark role as symmetric - tells model checker instances are interchangeable
+symmetric role Worker:
+    action Init:
+        self.status = Status.INIT
+        self.result = None
+
+    atomic action StartWork:
+        require self.status == Status.INIT
+        self.status = Status.WORKING
+
+    atomic action FinishWork:
+        require self.status == Status.WORKING
+        self.status = Status.DONE
+        self.result = 'OK'
+        # Add this worker's ID to the done set
+        completed.add(self.__id__)
+
+action Init:
+    # CRITICAL: Use bag() or set(), NOT list()
+    # Lists are order-dependent and break symmetry reduction
+    workers = bag()
+    for i in range(NUM_WORKERS):
+        workers.add(Worker())
+
+    completed = set()
+
+# Safety: all workers eventually complete
+eventually always assertion AllWorkersComplete:
+    for w in workers:
+        if w.status != Status.DONE:
+            return False
+    return True
+
+# Why use symmetric role?
+# ============================
+# Without 'symmetric' keyword:
+#   - State (w0=DONE, w1=INIT, w2=INIT) is different from (w1=DONE, w0=INIT, w2=INIT)
+#   - Model checker explores all permutations
+#   - For N workers, explores N! times more states
+#
+# With 'symmetric' keyword:
+#   - Model checker recognizes these as equivalent
+#   - Only explores one representative permutation
+#   - State space: N! times smaller
+#
+# Example with 3 workers:
+#   - Without symmetry: explores 3! = 6x more states
+#   - With symmetry: only explores canonical representative
+#
+# When to use symmetric role:
+# - All instances start in identical states
+# - Instances are truly indistinguishable
+# - Identity doesn't matter for correctness
+#
+# When NOT to use:
+# - Instances have different initial states
+# - Some instances have special roles (leader, coordinator)
+# - Instance identity is semantically meaningful
+#
+# IMPORTANT: Must use bag() or set() for workers collection
+# Using list() defeats symmetry because lists are order-dependent!

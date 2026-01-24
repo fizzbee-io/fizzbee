@@ -1,0 +1,73 @@
+# Example 0086: Common Pitfall - Using List with Symmetric Roles
+# Demonstrates why you MUST use bag() or set() with symmetric roles, not list()
+# Shows: symmetry broken by order-dependent collections
+
+---
+# Limit to show the pitfall quickly
+options:
+    max_actions: 10
+---
+
+Status = enum('READY', 'DONE')
+
+NUM_NODES = 2
+
+# This role is marked as symmetric
+symmetric role Node:
+    action Init:
+        self.status = Status.READY
+
+    atomic action Process:
+        require self.status == Status.READY
+        self.status = Status.DONE
+
+# WRONG APPROACH: Using list() defeats symmetry reduction
+action Init:
+    # Lists are ORDER-DEPENDENT
+    # State [Node(id=0), Node(id=1)] is different from [Node(id=1), Node(id=0)]
+    # Even though the role is symmetric, the list ordering creates distinct states
+    # Result: NO state space reduction, symmetry is broken
+    nodes = []
+    for i in range(NUM_NODES):
+        nodes.append(Node())
+
+# CORRECT APPROACH: Using bag() preserves symmetry
+# To see the correct version, comment out the Init above and uncomment below:
+# action Init:
+#     # Bags are ORDER-INDEPENDENT (multiset)
+#     # Bag{Node(id=0), Node(id=1)} is same as Bag{Node(id=1), Node(id=0)}
+#     # Model checker can exploit symmetry
+#     # Result: State space reduction works correctly
+#     nodes = bag()
+#     for i in range(NUM_NODES):
+#         nodes.add(Node())
+
+# The Pitfall Explained:
+# ======================
+# Common mistake when migrating to symmetric roles:
+#
+# 1. Start with: participants = []  (list of participants)
+# 2. Add: symmetric role Participant
+# 3. Expect: automatic state space reduction
+# 4. Reality: NO reduction because list preserves order!
+#
+# Fix: Change to participants = bag() or participants = set()
+#
+# Why this matters:
+# - With 2 symmetric nodes and list: explores both orderings
+# - With 2 symmetric nodes and bag: explores only one canonical state
+# - With N nodes: difference is N! (factorial) states
+#
+# When to use each collection with symmetric roles:
+# - bag(): When duplicates are possible/meaningful
+# - set(): When duplicates are impossible/don't matter
+# - list(): NEVER with symmetric roles (breaks symmetry)
+# - dict: OK if keys are symmetric_values() or other symmetric types
+
+always assertion BothNodesReady:
+    # This will fail once a node processes
+    # Demonstrates that the model is running
+    for n in nodes:
+        if n.status != Status.READY:
+            return False
+    return True

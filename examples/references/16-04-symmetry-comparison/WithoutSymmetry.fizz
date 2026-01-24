@@ -1,0 +1,41 @@
+# Example 0087a: State Space WITHOUT Symmetry Reduction
+# Run this to see baseline state space
+# Then compare with WithSymmetry.fizz to see the reduction
+
+---
+options:
+    max_actions: 6
+---
+
+Status = enum('IDLE', 'BUSY')
+
+NUM_PROCESSES = 2
+
+# Regular role (NOT symmetric)
+role Process:
+    action Init:
+        self.status = Status.IDLE
+        self.counter = 0
+
+    atomic action Work:
+        require self.status == Status.IDLE
+        self.status = Status.BUSY
+        self.counter = self.counter + 1
+
+    atomic action Rest:
+        require self.status == Status.BUSY
+        self.status = Status.IDLE
+
+action Init:
+    processes = []
+    for i in range(NUM_PROCESSES):
+        processes.append(Process())
+
+# Example state space exploration (approximate):
+# With 2 processes, each can be (IDLE,c=0), (BUSY,c=1), (IDLE,c=1), etc.
+#
+# States like:
+#   [p0:(IDLE,0), p1:(BUSY,1)] and [p0:(BUSY,1), p1:(IDLE,0)]
+# are DIFFERENT states (explores both)
+#
+# Expected: ~40-60 unique states (varies by max_actions)

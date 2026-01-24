@@ -6,10 +6,11 @@ Comprehensive reference examples for the FizzBee specification language, organiz
 
 ## Organization
 
-Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`):
-- **Section** (01-15): Major topic area
+Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
+- **Section** (01-99): Major topic area
 - **Item** (01-99): Example within section
-- **Subsection** (01-07): Subcategory for large sections (only Section 13: Patterns)
+- **Subsection** (01-07): Subcategory for large sections (Section 13: Patterns)
+- **Section 99**: Miscellaneous (catch-all for features not fitting other categories)
 
 ### Sections
 
@@ -35,8 +36,10 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`):
   - **13-07**: Data/Events (2) - WAL, event sourcing
 - **14**: Fault Injection (4) - Crash and message loss
 - **15**: Configuration (2) - Action-level config, coordination
+- **16**: Symmetry Reduction (4) - State space optimization
+- **99**: Miscellaneous (1) - Checkpoints and other utilities
 
-**Total: 83 examples across 15 sections**
+**Total: 88 examples across 17 sections**
 
 ## Examples Created
 
@@ -538,6 +541,48 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`):
 - **Purpose**: Per-action limits and crash settings
 - **Key concepts**: `action_options`, per-action `max_actions`, per-action `crash_on_yield`
 - **Status**: ✅ PASSED
+
+### 15-02-action-coordination: Action Coordination with Require
+- **State space**: Varies
+- **Purpose**: Using `require` mid-action for coordination between actions
+- **Key concepts**: Yield points, action coordination, require in middle of action
+- **Status**: ✅ PASSED
+
+### 16-01-symmetric-values: Symmetric Values for IDs
+- **State space**: Significantly reduced compared to regular values
+- **Purpose**: Using `symmetric_values()` to reduce state space by treating permutations as equivalent
+- **Key concepts**: `symmetric_values()`, state space optimization, interchangeable IDs
+- **Status**: ✅ PASSED
+- **Note**: Compare state space with/without symmetry to see the reduction
+
+### 16-02-symmetric-roles: Symmetric Roles
+- **State space**: N! reduction factor for N role instances
+- **Purpose**: Using `symmetric role` keyword for indistinguishable role instances
+- **Key concepts**: `symmetric role`, automatic symmetry reduction, `__id__` field
+- **Status**: ✅ PASSED
+- **Critical**: Must use `bag()` or `set()`, NOT `list()` with symmetric roles
+
+### 16-03-list-vs-bag-pitfall: Common Pitfall - List vs Bag
+- **State space**: Shows broken symmetry when using list
+- **Purpose**: Demonstrates why you MUST use bag() or set() with symmetric roles
+- **Key concepts**: Order-dependent collections breaking symmetry, common mistakes
+- **Status**: ⚠️ INTENTIONAL ISSUE - Shows incorrect usage
+- **Lesson**: Lists defeat symmetry reduction; always use bags or sets
+
+### 16-04-symmetry-comparison: State Space Comparison
+- **Files**: WithoutSymmetry.fizz, WithSymmetry.fizz, README.md
+- **State space**: ~50% reduction with 2 processes, N! reduction with N processes
+- **Purpose**: Side-by-side comparison showing impact of symmetry reduction
+- **Key concepts**: Measuring state space reduction, scaling analysis
+- **Status**: ✅ BOTH PASSED
+- **How to use**: Run both files and compare state/node counts
+
+### 99-01-checkpoints: Visualization Checkpoints
+- **State space**: 12 nodes, 10 unique states
+- **Purpose**: Using backtick labels to create visualization breakpoints
+- **Key concepts**: `` `checkpoint` `` syntax, visualization aids, debugging workflow
+- **Status**: ✅ PASSED
+- **Note**: Checkpoints don't affect semantics, only visualization in explorer
 
 ## State Space Analysis
 

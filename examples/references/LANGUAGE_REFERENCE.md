@@ -24,7 +24,8 @@ Complete reference guide for the FizzBee specification language for modeling dis
 13. [State Management](#state-management)
 14. [Fault Injection](#fault-injection)
 15. [Configuration](#configuration)
-16. [Best Practices](#best-practices)
+16. [Symmetry Reduction](#symmetry-reduction)
+17. [Best Practices](#best-practices)
 
 ---
 
@@ -94,6 +95,7 @@ After the frontmatter (or at the start if no frontmatter), the FizzBee specifica
 - `action` - Defines an action (model checker entry point)
 - `func` - Defines a function
 - `role` - Defines a role (class-like structure)
+- `symmetric` - Modifier for roles or values (enables symmetry reduction)
 - `assertion` - Defines a property to check
 
 ### Flow Modifiers
@@ -144,6 +146,7 @@ After the frontmatter (or at the start if no frontmatter), the FizzBee specifica
 - `set`, `dict`, `list` - Standard collections
 - `genericset`, `genericmap` - Collections for non-hashable types
 - `bag` - Multiset (collection with duplicates)
+- `symmetric_values` - Creates interchangeable values for symmetry reduction
 
 ---
 
@@ -1037,6 +1040,8 @@ action Process:
 
 **Note**: Checkpoints don't affect execution semantics, only visualization
 
+**Reference**: [99-01-checkpoints](99-01-checkpoints/) for a complete example
+
 ---
 
 ## Nondeterminism
@@ -1384,6 +1389,158 @@ action Init:
 1. Action-specific options (highest priority)
 2. Global options
 3. Default values (lowest priority)
+
+---
+
+## Symmetry Reduction
+
+**Symmetry reduction** is a powerful technique to reduce state space by exploiting symmetries in the model. When values or role instances are truly interchangeable, the model checker can treat permutations as equivalent, dramatically reducing the number of states to explore.
+
+### Symmetric Values
+
+Use `symmetric_values()` to create interchangeable IDs:
+
+```python
+# Create symmetric values
+KEYS = symmetric_values('k', 3)  # Creates k0, k1, k2
+PROCESS_IDS = symmetric_values(5)  # Creates 0, 1, 2, 3, 4
+
+action Init:
+    switches = {}
+    for k in KEYS:
+        switches[k] = 'OFF'
+
+atomic action TurnOn:
+    key = any KEYS
+    switches[key] = 'ON'
+```
+
+**Benefits**: States where `k0=ON,k1=OFF` and `k1=ON,k0=OFF` are recognized as equivalent.
+
+**Example reduction**: With 3 processes, instead of exploring all permutations, only canonical states are explored.
+
+**Reference**: [16-01-symmetric-values](16-01-symmetric-values/)
+
+### Symmetric Roles
+
+Mark roles as symmetric when instances are indistinguishable:
+
+```python
+NUM_WORKERS = 3
+
+symmetric role Worker:
+    action Init:
+        self.status = Status.IDLE
+
+    atomic action DoWork:
+        self.status = Status.BUSY
+
+action Init:
+    # CRITICAL: Use bag() or set(), NOT list()
+    workers = bag()
+    for i in range(NUM_WORKERS):
+        workers.add(Worker())
+```
+
+**Benefits**: Model checker recognizes role instance permutations as equivalent.
+
+**Reduction factor**: For N symmetric role instances, state space reduces by factor of N! (factorial).
+
+**Examples**:
+- 2 workers: 2! = 2x reduction (~50%)
+- 3 workers: 3! = 6x reduction (~83%)
+- 4 workers: 4! = 24x reduction (~96%)
+
+**Reference**: [16-02-symmetric-roles](16-02-symmetric-roles/)
+
+### Critical Pitfall: Lists Break Symmetry
+
+**WRONG - defeats symmetry**:
+```python
+symmetric role Node:
+    # ...
+
+action Init:
+    nodes = []  # ❌ Lists are order-dependent!
+    for i in range(NUM_NODES):
+        nodes.append(Node())
+```
+
+**CORRECT - preserves symmetry**:
+```python
+symmetric role Node:
+    # ...
+
+action Init:
+    nodes = bag()  # ✅ Bags are order-independent
+    for i in range(NUM_NODES):
+        nodes.add(Node())
+```
+
+**Why**: Lists preserve element order, so `[n0, n1]` ≠ `[n1, n0]`. This breaks symmetry reduction even with `symmetric role`.
+
+**Fix**: Always use `bag()` or `set()` with symmetric roles, never `list()`.
+
+**Reference**: [16-03-list-vs-bag-pitfall](16-03-list-vs-bag-pitfall/)
+
+### When to Use Symmetry
+
+**Use symmetric values/roles when**:
+- All instances start in identical states
+- Instances are truly indistinguishable
+- Identity doesn't matter for correctness
+- Order is not semantically meaningful
+
+**Don't use when**:
+- Instances have different initial states
+- Some instances have special roles (leader, coordinator)
+- Instance identity is semantically meaningful
+- Order matters for the algorithm
+
+### Order-Independent Collections
+
+For maximum symmetry reduction:
+
+```python
+# Prefer bags over lists when order doesn't matter
+nodes = bag()  # vs nodes = []
+
+# Use sets for unique elements
+completed = set()  # vs completed = []
+
+# Dictionaries with symmetric keys work well
+data = {}
+for k in symmetric_values('k', 3):
+    data[k] = initial_value
+```
+
+**Reference**: Compare state spaces in [16-04-symmetry-comparison](16-04-symmetry-comparison/)
+
+### Measuring Impact
+
+To see symmetry reduction in action:
+
+1. Run without symmetry:
+   ```python
+   role Process:  # Regular role
+       # ...
+
+   action Init:
+       processes = []  # List
+   ```
+
+2. Run with symmetry:
+   ```python
+   symmetric role Process:  # Symmetric role
+       # ...
+
+   action Init:
+       processes = bag()  # Bag
+   ```
+
+3. Compare state/node counts in output
+
+**Reference**: [16-04-symmetry-comparison](16-04-symmetry-comparison/) provides side-by-side comparison
 
 ---
 
