@@ -678,6 +678,17 @@ func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
 	return dict
 }
 
+// createSymmetryContext creates a new SymmetryContext for use during statement execution.
+// The context provides a scanner function that collects all currently used symmetric values
+// from the process state, enabling the symmetry module to track what values are in use.
+func (p *Process) createSymmetryContext() *lib.SymmetryContext {
+	return lib.NewSymmetryContext(func() map[string][]int {
+		collector := NewUsedSymmetricValuesCollector()
+		p.AcceptVisitor(collector)
+		return collector.GetAllUsedIDs()
+	})
+}
+
 func (p *Process) updateAllVariablesInScope(dict starlark.StringDict) {
 	frame := p.currentThread().currentFrame()
 	for k, v := range dict {

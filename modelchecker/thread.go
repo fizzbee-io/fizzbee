@@ -46,10 +46,20 @@ func NewComposedHeap(composed map[string]*Heap) *Heap {
 
 func (h *Heap) GetSymmetryDefs() []*lib.SymmetricValues {
 	symmetryDefs := make([]*lib.SymmetricValues, 0)
-	// If the value is of type *lib.SymmetricValues, then add it to the symmetryDefs, list
+	// If the value is of type *lib.SymmetricValues, then add it to the symmetryDefs list
 	for _, value := range h.globals {
 		if sym, ok := value.(lib.SymmetricValues); ok {
 			symmetryDefs = append(symmetryDefs, &sym)
+		}
+		// Also handle SymmetryDomain from the new symmetry.nominal() API
+		if domain, ok := value.(*lib.SymmetryDomain); ok {
+			// Create a SymmetricValues containing all possible values for this domain
+			values := make([]lib.SymmetricValue, domain.Limit)
+			for i := 0; i < domain.Limit; i++ {
+				values[i] = lib.NewSymmetricValueWithKind(domain.Name, i, domain.Kind)
+			}
+			sv := lib.NewSymmetricValues(values)
+			symmetryDefs = append(symmetryDefs, sv)
 		}
 	}
 	return symmetryDefs
@@ -645,8 +655,18 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			return nil, false
 		}
 		vars := t.Process.GetAllVariablesNocopy()
-		_, err := t.Process.Evaluator.ExecPyStmt(t.getFileName(), stmt.PyStmt, vars)
-		t.Process.PanicOnError(stmt.PyStmt.GetSourceInfo(), fmt.Sprintf("Error executing statement: %s", stmt.PyStmt.GetCode()), err)
+		symCtx := t.Process.createSymmetryContext()
+		_, err := t.Process.Evaluator.ExecPyStmtWithContext(t.getFileName(), stmt.PyStmt, vars, symCtx)
+		if err != nil {
+			if lib.IsDisableTransitionError(err) {
+				// Disable the transition similar to RequireStmt
+				t.Process.Enabled = false
+				t.Process.ThreadProgress = false
+				t.Aborted = true
+				return nil, false
+			}
+			t.Process.PanicOnError(stmt.PyStmt.GetSourceInfo(), fmt.Sprintf("Error executing statement: %s", stmt.PyStmt.GetCode()), err)
+		}
 		t.Process.updateAllVariablesInScope(vars)
 		t.Process.Enable()
 	} else if stmt.Block != nil {
@@ -683,7 +703,8 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			t.Process.PanicIfFalse(false, stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Exactly one loop variable expected. Got %d in %s", len(stmt.AnyStmt.LoopVars), stmt.AnyStmt.LoopVars))
 		}
 		vars := t.Process.GetAllVariablesNocopy()
-		val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.AnyStmt.IterExpr, vars)
+		symCtx := t.Process.createSymmetryContext()
+		val, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), stmt.AnyStmt.IterExpr, vars, symCtx)
 		// TODO: This source info should be for the pyExpr not the anyStmt
 		t.Process.PanicOnError(stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.AnyStmt.PyExpr), err)
 		t.Process.updateAllVariablesInScope(vars)
@@ -770,7 +791,8 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			t.Process.PanicIfFalse(false, stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Loop variables must be exactly one. TODO: Support multiple loop variables. Got %d in %s", len(stmt.ForStmt.LoopVars), stmt.ForStmt.LoopVars))
 		}
 		vars := t.Process.GetAllVariablesNocopy()
-		val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.ForStmt.IterExpr, vars)
+		symCtx := t.Process.createSymmetryContext()
+		val, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), stmt.ForStmt.IterExpr, vars, symCtx)
 		// TODO: This source info should be for the pyExpr not the forStmt
 		t.Process.PanicOnError(stmt.ForStmt.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.ForStmt.PyExpr), err)
 
@@ -924,8 +946,17 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			code.WriteString(")")
 			pyEquivStmt := &ast.PyStmt{Code: code.String(), SourceInfo: stmt.CallStmt.GetSourceInfo()}
 			vars := t.Process.GetAllVariablesNocopy()
-			_, err := t.Process.Evaluator.ExecPyStmt(t.getFileName(), pyEquivStmt, vars)
-			t.Process.PanicOnError(stmt.CallStmt.GetSourceInfo(), fmt.Sprintf("Error executing statement: %s", pyEquivStmt.GetCode()), err)
+			symCtx := t.Process.createSymmetryContext()
+			_, err := t.Process.Evaluator.ExecPyStmtWithContext(t.getFileName(), pyEquivStmt, vars, symCtx)
+			if err != nil {
+				if lib.IsDisableTransitionError(err) {
+					t.Process.Enabled = false
+					t.Process.ThreadProgress = false
+					t.Aborted = true
+					return nil, false
+				}
+				t.Process.PanicOnError(stmt.CallStmt.GetSourceInfo(), fmt.Sprintf("Error executing statement: %s", pyEquivStmt.GetCode()), err)
+			}
 			t.Process.updateAllVariablesInScope(vars)
 			t.Process.Enable()
 		} else {

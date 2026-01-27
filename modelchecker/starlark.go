@@ -3,19 +3,30 @@ package modelchecker
 import (
 	ast "fizz/proto"
 	"fmt"
+
+	"github.com/fizzbee-io/fizzbee/lib"
 	"github.com/golang/glog"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 )
 
 func (e *Evaluator) EvalPyExpr(filename string, src interface{}, prevState starlark.StringDict) (starlark.Value, error) {
+	return e.EvalPyExprWithContext(filename, src, prevState, nil)
+}
 
+func (e *Evaluator) EvalPyExprWithContext(filename string, src interface{}, prevState starlark.StringDict, symCtx *lib.SymmetryContext) (starlark.Value, error) {
 	thread := &starlark.Thread{
 		Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
 	}
+	// Inject symmetry context if provided
+	if symCtx != nil {
+		thread.SetLocal(lib.SymmetryContextKey, symCtx)
+	}
 	value, err := starlark.EvalOptions(e.options, thread, filename, src, prevState)
 	if err != nil {
-		glog.Errorf("Error evaluating expr: %+v", err)
+		if !lib.IsDisableTransitionError(err) {
+			glog.Errorf("Error evaluating expr: %+v", err)
+		}
 		return nil, err
 	}
 
@@ -23,17 +34,24 @@ func (e *Evaluator) EvalPyExpr(filename string, src interface{}, prevState starl
 }
 
 func (e *Evaluator) EvalExpr(filename string, expr *ast.Expr, prevState starlark.StringDict) (starlark.Value, error) {
+	return e.EvalExprWithContext(filename, expr, prevState, nil)
+}
+
+func (e *Evaluator) EvalExprWithContext(filename string, expr *ast.Expr, prevState starlark.StringDict, symCtx *lib.SymmetryContext) (starlark.Value, error) {
 	start := expr.GetSourceInfo().GetStart()
 	filePortion := syntax.FilePortion{
 		Content:   []byte(expr.GetPyExpr()),
 		FirstLine: start.GetLine(),
 		FirstCol:  start.GetColumn(),
 	}
-	return e.EvalPyExpr(filename, filePortion, prevState)
+	return e.EvalPyExprWithContext(filename, filePortion, prevState, symCtx)
 }
 
 func (e *Evaluator) ExecPyStmt(filename string, stmt *ast.PyStmt, prevState starlark.StringDict) (bool, error) {
+	return e.ExecPyStmtWithContext(filename, stmt, prevState, nil)
+}
 
+func (e *Evaluator) ExecPyStmtWithContext(filename string, stmt *ast.PyStmt, prevState starlark.StringDict, symCtx *lib.SymmetryContext) (bool, error) {
 	start := stmt.GetSourceInfo().GetStart()
 	filePortion := syntax.FilePortion{
 		Content:   []byte(stmt.Code),
@@ -48,11 +66,17 @@ func (e *Evaluator) ExecPyStmt(filename string, stmt *ast.PyStmt, prevState star
 	thread := &starlark.Thread{
 		Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
 	}
+	// Inject symmetry context if provided
+	if symCtx != nil {
+		thread.SetLocal(lib.SymmetryContextKey, symCtx)
+	}
 	err = starlark.ExecREPLChunk(f, thread, prevState)
 	globals := prevState
 	//state, err := starlark.ExecFileOptions(e.options, e.thread, filename, starCode, prevState)
 	if err != nil {
-		glog.Errorf("Error executing stmt: %+v", err)
+		if !lib.IsDisableTransitionError(err) {
+			glog.Errorf("Error executing stmt: %+v", err)
+		}
 		return false, err
 	}
 

@@ -16,6 +16,7 @@ go_library(
         "starlark_role.go",
         "starlark_types.go",
         "starlarkstruct.go",
+        "symmetry.go",
         "tri_state.go",
         "yaml.go",
     ],
