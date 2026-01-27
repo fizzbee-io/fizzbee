@@ -46,6 +46,10 @@ const (
 	Function DefType = "function"
 )
 
+// When true: canonicalize symmetric values by only permuting values actually used in the state
+// When false: permute all symmetric values from the definition
+const canonicalizeSymmetricValues = true
+
 var forkLock sync.Mutex
 
 const enableCaptureStackTrace = false
@@ -1693,10 +1697,9 @@ func (p *Processor) crashThread(node *Node) {
 
 func (p *Process) getSymmetryTranslations() []string {
 	permMap, count := getSymmetryPermutations(p)
-	//src := permutations[0]
-	hashes := make([]string, count-1)
-	for i := 1; i < count; i++ {
-		hashes[i-1] = p.symmetricHash(permMap, i)
+	hashes := make([]string, count)
+	for i := 0; i < count; i++ {
+		hashes[i] = p.symmetricHash(permMap, i)
 	}
 	return hashes
 }
@@ -1736,16 +1739,45 @@ func (p *Process) addChannelMessage(channel *lib.Channel, roleShortRef string, f
 }
 
 func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.SymmetricValue, int) {
-	defs := process.Heap.GetSymmetryDefs()
-	values := make([][]lib.SymmetricValue, len(defs))
-	for i, def := range defs {
-		values[i] = make([]lib.SymmetricValue, def.Len())
-		for j := 0; j < def.Len(); j++ {
-			values[i][j] = def.Index(j)
+	var values [][]lib.SymmetricValue
+	var usedValues [][]lib.SymmetricValue
+	hasIdentityMapping := true
+
+	if canonicalizeSymmetricValues {
+		// Collect only the symmetric values that are actually used in the state
+		usedValues = process.getUsedSymmetricValues()
+
+		// Canonicalize to [k0, k1, k2, ...] and check if this changes any values
+		values = make([][]lib.SymmetricValue, len(usedValues))
+		for i, used := range usedValues {
+			if len(used) == 0 {
+				continue
+			}
+			prefix := used[0].GetPrefix()
+			canonical := make([]lib.SymmetricValue, len(used))
+			for j := 0; j < len(used); j++ {
+				canonical[j] = lib.NewSymmetricValue(prefix, j)
+				if canonical[j].String() != used[j].String() {
+					hasIdentityMapping = false
+				}
+			}
+			values[i] = canonical
 		}
-		slices.SortFunc(values[i], lib.CompareStringer[lib.SymmetricValue])
+	} else {
+		// Use all symmetric values from the definition
+		defs := process.Heap.GetSymmetryDefs()
+		values = make([][]lib.SymmetricValue, len(defs))
+		for i, def := range defs {
+			values[i] = make([]lib.SymmetricValue, def.Len())
+			for j := 0; j < def.Len(); j++ {
+				values[i][j] = def.Index(j)
+			}
+			slices.SortFunc(values[i], lib.CompareStringer[lib.SymmetricValue])
+		}
+		usedValues = values
 	}
 
+	// Add symmetric roles (these already only include instantiated roles)
 	roles := process.GetSymmetryRoles()
 	for _, role := range roles {
 		v := make([]lib.SymmetricValue, role.Len())
@@ -1755,19 +1787,37 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 		slices.SortFunc(v, lib.CompareStringer[lib.SymmetricValue])
 		values = append(values, v)
 	}
+
+	// Generate all permutations
 	permutations := lib.GenerateAllPermutations(values)
 	v := make([][]lib.SymmetricValue, len(permutations))
 	for i, permutation := range permutations {
 		v[i] = slices.Concat(permutation...)
 	}
+
+	// Build permutation map with actual used values as keys
 	permMap := make(map[lib.SymmetricValue][]lib.SymmetricValue)
-	for _, symVals := range v {
+	actualKeys := make([]lib.SymmetricValue, 0)
+	for _, used := range usedValues {
+		actualKeys = append(actualKeys, used...)
+	}
+
+	// Skip identity permutation only if canonical == used
+	startIdx := 0
+	if hasIdentityMapping {
+		startIdx = 1
+	}
+
+	for idx := startIdx; idx < len(v); idx++ {
+		symVals := v[idx]
 		for j, symVal := range symVals {
-			permMap[v[0][j]] = append(permMap[v[0][j]], symVal)
+			if j < len(actualKeys) {
+				permMap[actualKeys[j]] = append(permMap[actualKeys[j]], symVal)
+			}
 		}
 	}
 
-	return permMap, len(v)
+	return permMap, len(v) - startIdx
 }
 
 func (p *Processor) processInit(node *Node) bool {
