@@ -31,7 +31,7 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 		return value, nil
 
 	case "symmetric_value":
-		if permutations != nil && alt > 0 {
+		if permutations != nil {
 			v := value.(lib.SymmetricValue)
 			if other, ok := permutations[v]; ok {
 				return other[alt], nil
