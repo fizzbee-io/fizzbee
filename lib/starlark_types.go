@@ -38,6 +38,7 @@ var (
 		"bag":              starlark.NewBuiltin("bag", MakeBag),
 		"math":             math.Module,
 		"itertools":        ItertoolsModule,
+		"symmetry":         SymmetryModule,
 	}
 
 	StarlarkPtrTypes = []starlark.Value{
@@ -1229,11 +1230,11 @@ func modelValueEqual(s ModelValue, y ModelValue) bool {
 }
 
 func (m ModelValue) String() string {
-	return fmt.Sprintf("%s%s%d", SymmetryPrefix, m.prefix, m.id)
+	return fmt.Sprintf("%s%d", m.prefix, m.id)
 }
 
 func (m ModelValue) FullString() string {
-	return fmt.Sprintf("%s%s%d", SymmetryPrefix, m.prefix, m.id)
+	return fmt.Sprintf("%s%d", m.prefix, m.id)
 }
 
 func (m ModelValue) ShortString() string {
@@ -1261,26 +1262,58 @@ func (m ModelValue) Hash() (uint32, error) {
 var _ starlark.Value = ModelValue{}
 var _ starlark.Comparable = ModelValue{}
 
+// NewSymmetricValue creates a new symmetric value with the default Nominal kind.
+// This maintains backward compatibility with existing code.
 func NewSymmetricValue(prefix string, i int) SymmetricValue {
-	return SymmetricValue{ModelValue{prefix: prefix, id: i}}
+	return SymmetricValue{ModelValue: ModelValue{prefix: prefix, id: i}, Kind: SymmetryKindNominal}
+}
+
+// NewSymmetricValueWithKind creates a new symmetric value with the specified kind.
+func NewSymmetricValueWithKind(prefix string, i int, kind SymmetryKind) SymmetricValue {
+	return SymmetricValue{ModelValue: ModelValue{prefix: prefix, id: i}, Kind: kind}
 }
 
 const SymmetricValueType = "symmetric_value"
 
 type SymmetricValue struct {
 	ModelValue
+	Kind SymmetryKind
+}
+
+func (s SymmetricValue) GetKind() SymmetryKind {
+	return s.Kind
 }
 
 func (s SymmetricValue) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
 	y := y_.(SymmetricValue)
+
+	// Values from different domains cannot be compared
+	if s.prefix != y.prefix {
+		return false, fmt.Errorf("cannot compare values from different domains: %s vs %s", s.prefix, y.prefix)
+	}
+
 	switch op {
 	case syntax.EQL:
 		return modelValueEqual(s.ModelValue, y.ModelValue), nil
 	case syntax.NEQ:
 		return !modelValueEqual(s.ModelValue, y.ModelValue), nil
-	default:
-		return false, fmt.Errorf("%s %s %s not implemented", s.Type(), op, y.Type())
+	case syntax.LT, syntax.LE, syntax.GT, syntax.GE:
+		// Ordering only allowed for Ordinal and Interval kinds
+		if s.Kind == SymmetryKindNominal {
+			return false, fmt.Errorf("nominal values do not support ordering comparisons")
+		}
+		switch op {
+		case syntax.LT:
+			return s.id < y.id, nil
+		case syntax.LE:
+			return s.id <= y.id, nil
+		case syntax.GT:
+			return s.id > y.id, nil
+		case syntax.GE:
+			return s.id >= y.id, nil
+		}
 	}
+	return false, fmt.Errorf("%s %s %s not implemented", s.Type(), op, y.Type())
 }
 
 func (s SymmetricValue) Type() string {

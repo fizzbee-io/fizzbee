@@ -63,6 +63,21 @@ func (c *UsedSymmetricValuesCollector) HasUsedValues(prefix string) bool {
 	return len(c.usedValues[prefix]) > 0
 }
 
+// GetAllUsedIDs returns all used IDs organized by prefix/domain name.
+// This is used by the symmetry module to initialize its cache.
+func (c *UsedSymmetricValuesCollector) GetAllUsedIDs() map[string][]int {
+	result := make(map[string][]int)
+	for prefix, idSet := range c.usedValues {
+		ids := make([]int, 0, len(idSet))
+		for id := range idSet {
+			ids = append(ids, id)
+		}
+		sort.Ints(ids)
+		result[prefix] = ids
+	}
+	return result
+}
+
 // visitStarlarkValue recursively traverses a starlark value and calls visitor for each SymmetricValue found
 func visitStarlarkValue(value starlark.Value, visitor StateVisitor, visited map[starlark.Value]bool) {
 	if value == nil {
