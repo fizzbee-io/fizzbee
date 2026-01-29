@@ -1480,7 +1480,6 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	// So, we might miss some invariants. However, since the yield points are
 	// determined by the statement, and we include program counter in the hash code,
 	// this may not be an issue.
-	hashCode := node.HashCode()
 	if node.actionDepth > 0 {
 		failedInvariants := CheckTransitionInvariants(node.Process)
 		if len(failedInvariants[0]) > 0 {
@@ -1502,8 +1501,8 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		}
 	}
 
-	if other, ok := p.visited[hashCode]; ok {
-		// This is a bit inefficient.
+	other, found, canonicalHash := p.findVisitedSymmetric(node)
+	if found {
 		// TODO: Enabled should be a property of the link/transition, not the node.
 		// We will keep the enabled state in the node, during execution but have to be
 		// copied to the link/transition when attaching/merging similar to Fairness.
@@ -1517,29 +1516,12 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 			return false, false
 		} else {
 			node.Attach()
-			p.visited[hashCode] = node
+			p.visited[canonicalHash] = node
 		}
-
 	} else {
-		hashes := node.getSymmetryTranslations()
-		for _, hash := range hashes {
-			if other, ok := p.visited[hash]; ok {
-				if other.Enabled || !node.Enabled {
-					if yield && other.Name == "crash" {
-						if p.shouldThreadCrash(other) {
-							p.crashThread(other)
-						}
-					}
-					node.Duplicate(other, yield)
-					return false, true
-				}
-			}
-		}
 		node.Attach()
-		p.visited[hashCode] = node
+		p.visited[canonicalHash] = node
 	}
-
-	p.visited[hashCode] = node
 	var failedInvariants map[int][]int
 	if yield {
 		failedInvariants = CheckInvariants(node.Process)
@@ -1672,12 +1654,13 @@ func (p *Processor) crashRole(node *Node, role *lib.Role) (*Node, *Node) {
 	if node.Process.Enabled {
 		crashNode.Enable()
 	}
-	if other, ok := p.visited[crashNode.HashCode()]; ok {
+	other, ok, canonicalHash := p.findVisitedSymmetric(crashNode)
+	if ok {
 		crashNode.Duplicate(other, true)
 		return nil, nil
 	}
 	crashNode.Attach()
-	p.visited[crashNode.HashCode()] = crashNode
+	p.visited[canonicalHash] = crashNode
 
 	p.YieldNode(crashNode)
 	return crashNode, nil
@@ -1697,12 +1680,13 @@ func (p *Processor) crashThread(node *Node) {
 	if node.Process.Enabled {
 		crashNode.Enable()
 	}
-	if other, ok := p.visited[crashNode.HashCode()]; ok {
+	other, ok, canonicalHash := p.findVisitedSymmetric(crashNode)
+	if ok {
 		crashNode.Duplicate(other, true)
 		return
 	}
 	crashNode.Attach()
-	p.visited[crashNode.HashCode()] = crashNode
+	p.visited[canonicalHash] = crashNode
 	p.YieldNode(crashNode)
 }
 
@@ -1713,6 +1697,28 @@ func (p *Process) getSymmetryTranslations() []string {
 		hashes[i] = p.symmetricHash(permMap, i)
 	}
 	return hashes
+}
+
+func (p *Process) minHashCode(hashes []string) string {
+	if len(hashes) == 0 {
+		return p.HashCode()
+	}
+	canonical := hashes[0]
+	for _, h := range hashes[1:] {
+		if h < canonical {
+			canonical = h
+		}
+	}
+	return canonical
+}
+
+// findVisitedSymmetric looks up a node in the visited map by trying all symmetry
+// permutation hashes. Returns the matching node and true if found, nil and false otherwise.
+func (p *Processor) findVisitedSymmetric(node *Node) (*Node, bool, string) {
+	hashes := node.getSymmetryTranslations()
+	minHash := node.minHashCode(hashes)
+	other, ok := p.visited[minHash]
+	return other, ok, minHash
 }
 
 func (p *Process) symmetricHash(permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) string {
@@ -1752,13 +1758,12 @@ func (p *Process) addChannelMessage(channel *lib.Channel, roleShortRef string, f
 func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.SymmetricValue, int) {
 	var values [][]lib.SymmetricValue
 	var usedValues [][]lib.SymmetricValue
-	hasIdentityMapping := true
 
 	if canonicalizeSymmetricValues {
 		// Collect only the symmetric values that are actually used in the state
 		usedValues = process.getUsedSymmetricValues()
 
-		// Canonicalize to [k0, k1, k2, ...] and check if this changes any values
+		// Canonicalize to [k0, k1, k2, ...]
 		values = make([][]lib.SymmetricValue, len(usedValues))
 		for i, used := range usedValues {
 			if len(used) == 0 {
@@ -1768,9 +1773,6 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 			canonical := make([]lib.SymmetricValue, len(used))
 			for j := 0; j < len(used); j++ {
 				canonical[j] = lib.NewSymmetricValue(prefix, j)
-				if canonical[j].String() != used[j].String() {
-					hasIdentityMapping = false
-				}
 			}
 			values[i] = canonical
 		}
@@ -1813,13 +1815,7 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 		actualKeys = append(actualKeys, used...)
 	}
 
-	// Skip identity permutation only if canonical == used
-	startIdx := 0
-	if hasIdentityMapping {
-		startIdx = 1
-	}
-
-	for idx := startIdx; idx < len(v); idx++ {
+	for idx := 0; idx < len(v); idx++ {
 		symVals := v[idx]
 		for j, symVal := range symVals {
 			if j < len(actualKeys) {
@@ -1828,7 +1824,7 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 		}
 	}
 
-	return permMap, len(v) - startIdx
+	return permMap, len(v)
 }
 
 func (p *Processor) processInit(node *Node) bool {
