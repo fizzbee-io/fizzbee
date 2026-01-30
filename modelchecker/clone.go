@@ -37,7 +37,7 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 			if other, ok := permutations[v]; ok {
 				return other[alt], nil
 			}
-			panic(fmt.Sprintf("symmetric_value %v should have src %v and alt %v", v, permutations, alt))
+			panic(fmt.Sprintf("symmetric_value %v should be in %v and alt %v", v, permutations, alt))
 		}
 		return value, nil
 	case "list":
@@ -72,7 +72,7 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 		return newSet, nil
 	case "tuple":
 		newTuple := starlark.Tuple{}
-		// Tuple is a value type, so not adding to refs
+		// Tuple is a value type (not a pointer), so refs caching won't work
 		// For tuples, recursively clone each element
 		iterable := value.(starlark.Iterable)
 		newList, err := deepCloneIterableToList(iterable, refs, permutations, alt)

@@ -4,7 +4,6 @@ go 1.22.4
 
 require (
 	github.com/golang/glog v1.2.0
-	github.com/huandu/go-clone v0.0.0
 	github.com/stretchr/testify v1.8.4
 	go.starlark.net v0.0.0-20231121155337-90ade8b19d09
 	golang.org/x/sys v0.30.0
@@ -16,5 +15,3 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 )
-
-replace github.com/huandu/go-clone => github.com/jayaprabhakar/go-clone v0.0.0-20240501195431-177708839df4

@@ -44,7 +44,7 @@ func (e *ModelError) SprintStackTrace() string {
         return builder.String()
     }
     thread := e.Process.currentThread()
-    frames := thread.Stack.RawArrayCopy()
+    frames := thread.Stack.RawArray()
     for i := len(frames) - 1; i >= 0; i-- {
         builder.WriteString(fmt.Sprintf("     %s\n", frames[i].pc))
     }
