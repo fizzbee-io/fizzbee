@@ -3,8 +3,6 @@ package lib
 import (
 	"encoding/json"
 	"sync"
-
-	"github.com/huandu/go-clone"
 )
 
 type Stack[T any] struct {
@@ -103,20 +101,6 @@ func (s *Stack[T]) Head() (T, bool) {
 	}
 }
 
-func (s *Stack[T]) Clone() *Stack[T] {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	other := NewStack[T]()
-	clonedArr := s.RawArrayCopy()
-	for _, v := range clonedArr {
-		other.Push(v)
-	}
-	return other
-}
-
-func (s *Stack[T]) RawArrayCopy() []T {
-	return clone.Slowly(s.s).([]T)
-}
 func (s *Stack[T]) RawArray() []T {
 	return s.s
 }

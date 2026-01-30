@@ -118,7 +118,7 @@ func TestThread_ExecuteBlock(t *testing.T) {
 	baseThread := NewThread(process, files, 0, "Actions[0]")
 	assert.Equal(t, baseThread.Stack.Len(), 1)
 	t.Run("atomic", func(t *testing.T) {
-		thread := baseThread.Clone(nil, 0)
+		thread := baseThread.Clone(nil, nil, 0)
 		thread.currentFrame().pc = "Actions[0].Block"
 		forks := thread.executeBlock()
 		assert.Equal(t, thread.Stack.Len(), 1)
@@ -127,7 +127,7 @@ func TestThread_ExecuteBlock(t *testing.T) {
 		assert.Equal(t, ast.Flow_FLOW_ATOMIC, thread.currentFrame().scope.flow)
 	})
 	t.Run("serial", func(t *testing.T) {
-		thread := baseThread.Clone(nil, 0)
+		thread := baseThread.Clone(nil, nil, 0)
 		thread.currentFrame().pc = "Actions[2].Block"
 		forks := thread.executeBlock()
 		assert.Equal(t, thread.Stack.Len(), 1)

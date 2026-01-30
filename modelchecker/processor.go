@@ -23,16 +23,13 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"slices"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/fizzbee-io/fizzbee/lib"
-	"github.com/huandu/go-clone"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/syntax"
@@ -49,8 +46,6 @@ const (
 // When true: canonicalize symmetric values by only permuting values actually used in the state
 // When false: permute all symmetric values from the definition
 const canonicalizeSymmetricValues = true
-
-var forkLock sync.Mutex
 
 const enableCaptureStackTrace = false
 
@@ -297,18 +292,7 @@ func (p *Process) IsYieldNode() bool {
 }
 
 func (p *Process) Fork() *Process {
-	// SetCustomPtrFunc and SetCustomFunc changes the global state,
-	// so while the clone is in progress this should not be changed :(
-	// There is github issue to fix this in the clone library
-	// The only place the clone library is used is to clone the Threads (for the CallStack),
-	// this could probably be pushed down to minimize contention
-	forkLock.Lock()
-	defer forkLock.Unlock()
-
 	refs := make(map[starlark.Value]starlark.Value)
-	for _, ptrType := range lib.StarlarkPtrTypes {
-		clone.SetCustomPtrFunc(reflect.TypeOf(ptrType), starlarkValuePtrResolveFn(refs, nil, 0))
-	}
 
 	p2 := &Process{
 		Name:      p.Name,
@@ -345,7 +329,7 @@ func (p *Process) Fork() *Process {
 		if thread == nil {
 			continue
 		}
-		clonedThreads[i] = thread.Clone(nil, 0)
+		clonedThreads[i] = thread.Clone(refs, nil, 0)
 		clonedThreads[i].Process = p2
 	}
 	p2.Threads = clonedThreads
@@ -363,19 +347,7 @@ func (p *Process) Fork() *Process {
 }
 
 func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Process {
-	// SetCustomPtrFunc and SetCustomFunc changes the global state,
-	// so while the clone is in progress this should not be changed :(
-	// There is github issue to fix this in the clone library
-	// The only place the clone library is used is to clone the Threads (for the CallStack),
-	// this could probably be pushed down to minimize contention
-	forkLock.Lock()
-	defer forkLock.Unlock()
-
 	refs := make(map[starlark.Value]starlark.Value)
-	for _, ptrType := range lib.StarlarkPtrTypes {
-		clone.SetCustomPtrFunc(reflect.TypeOf(ptrType), starlarkValuePtrResolveFn(refs, permutations, alt))
-	}
-	clone.SetCustomFunc(reflect.TypeOf(lib.SymmetricValue{}), symmetricValueResolveFn(refs, permutations, alt))
 	p2 := &Process{
 		Name:      p.Name,
 		Heap:      p.Heap.Clone(refs, permutations, alt),
@@ -405,7 +377,7 @@ func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.Symme
 		if thread == nil {
 			continue
 		}
-		clonedThreads[i] = thread.Clone(permutations, alt)
+		clonedThreads[i] = thread.Clone(refs, permutations, alt)
 		clonedThreads[i].Process = p2
 	}
 	p2.Threads = clonedThreads
@@ -908,6 +880,9 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 func (n *Node) CreateNewToOldThreadIndexMap(other *Node) map[int]int {
 	// Create a threads map to map the thread index of the original node to the thread index of the new node
 	// based on the node.Process.CachedThreadHashCode order
+	// Ensure CachedThreadHashes are populated before building the index map
+	n.HashCode()
+	other.HashCode()
 	threadsMap := make(map[int]int)
 	oldThreadHashToIndex := make(map[string][]int)
 	for i, hash := range n.Process.CachedThreadHashes {

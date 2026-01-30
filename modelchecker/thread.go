@@ -6,7 +6,7 @@ import (
 	ast "fizz/proto"
 	"fmt"
 	"github.com/fizzbee-io/fizzbee/lib"
-	"github.com/huandu/go-clone"
+
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"google.golang.org/protobuf/proto"
@@ -263,6 +263,34 @@ func (s *Scope) MarshalJSON() ([]byte, error) {
 	})
 }
 
+func (s *Scope) Clone(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Scope {
+	if s == nil {
+		return nil
+	}
+	newScope := &Scope{
+		parent:    s.parent.Clone(refs, permutations, alt),
+		flow:      s.flow,
+		skipstmts: slices.Clone(s.skipstmts),
+		loopVars:  slices.Clone(s.loopVars),
+	}
+	if s.parent == nil {
+		newScope.vars = CloneDict(s.vars, refs, permutations, alt)
+	} else {
+		// Child scopes share the same vars map as their parent (not a copy).
+		// So we reuse the already-cloned parent's vars here.
+		newScope.vars = newScope.parent.vars
+	}
+	if s.loopRange != nil {
+		newScope.loopRange = make([]starlark.Value, len(s.loopRange))
+		for i, v := range s.loopRange {
+			cloned, err := deepCloneStarlarkValueWithPermutations(v, refs, permutations, alt)
+			PanicOnError(err)
+			newScope.loopRange[i] = cloned
+		}
+	}
+	return newScope
+}
+
 func (s *Scope) SetFlow(flow ast.Flow) {
 	if flow != ast.Flow_FLOW_UNKNOWN {
 		s.flow = flow
@@ -401,7 +429,7 @@ func (c *CallFrame) Clone(refs map[starlark.Value]starlark.Value, permutations m
 		obj = cloned.(*lib.Role)
 	}
 	newVars := CloneDict(c.vars, refs, permutations, alt)
-	newScope := clone.Slowly(c.scope).(*Scope)
+	newScope := c.scope.Clone(refs, permutations, alt)
 	newFrame := &CallFrame{
 		FileIndex:            c.FileIndex,
 		pc:                   c.pc,
@@ -422,9 +450,23 @@ func NewCallStack() *CallStack {
 	return &CallStack{lib.NewStack[*CallFrame]()}
 }
 
-func (s *CallStack) Clone(map[lib.SymmetricValue][]lib.SymmetricValue, int) *CallStack {
-	// TODO: handle symmetry in stack.Clone()
-	return &CallStack{s.Stack.Clone()}
+func (s *CallStack) CloneFrames(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) []*CallFrame {
+	frames := s.RawArray()
+	cloned := make([]*CallFrame, len(frames))
+	for i, frame := range frames {
+		clonedFrame, err := frame.Clone(refs, permutations, alt)
+		PanicOnError(err)
+		cloned[i] = clonedFrame
+	}
+	return cloned
+}
+
+func (s *CallStack) Clone(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *CallStack {
+	newStack := NewCallStack()
+	for _, frame := range s.CloneFrames(refs, permutations, alt) {
+		newStack.Push(frame)
+	}
+	return newStack
 }
 
 func (s *CallStack) HashCode() string {
@@ -522,9 +564,9 @@ func (t *Thread) popFrame() *CallFrame {
 	return frame
 }
 
-func (t *Thread) Clone(permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Thread {
+func (t *Thread) Clone(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Thread {
 	// TODO: handle symmetry in stack.Clone()
-	return &Thread{Id: t.Id, Process: t.Process, Files: t.Files, Stack: t.Stack.Clone(permutations, alt), Fairness: t.Fairness}
+	return &Thread{Id: t.Id, Process: t.Process, Files: t.Files, Stack: t.Stack.Clone(refs, permutations, alt), Fairness: t.Fairness}
 }
 
 func (t *Thread) Execute() ([]*Process, bool) {
