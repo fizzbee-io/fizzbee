@@ -1799,6 +1799,7 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 		}
 		slices.SortFunc(v, lib.CompareStringer[lib.SymmetricValue])
 		values = append(values, v)
+		usedValues = append(usedValues, v)
 	}
 
 	// Generate all permutations
