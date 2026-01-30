@@ -56,7 +56,7 @@ func (h *Heap) GetSymmetryDefs() []*lib.SymmetricValues {
 			// Create a SymmetricValues containing all possible values for this domain
 			values := make([]lib.SymmetricValue, domain.Limit)
 			for i := 0; i < domain.Limit; i++ {
-				values[i] = lib.NewSymmetricValueWithKind(domain.Name, i, domain.Kind)
+				values[i] = lib.NewSymmetricValueWithKind(domain.Name, uint64(i), domain.Kind)
 			}
 			sv := lib.NewSymmetricValues(values)
 			symmetryDefs = append(symmetryDefs, sv)

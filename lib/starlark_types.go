@@ -117,7 +117,7 @@ func MakeSymmetricValues(thread *starlark.Thread, fn *starlark.Builtin, args sta
 	}
 	values := SymmetricValues{}
 	for i := 0; i < count; i++ {
-		values.Tuple = append(values.Tuple, NewSymmetricValue(prefix, i))
+		values.Tuple = append(values.Tuple, NewSymmetricValue(prefix, uint64(i)))
 	}
 	return values, nil
 }
@@ -1191,7 +1191,7 @@ var _ starlark.Value = (*Bag)(nil)
 // There is a limit in the API, this is required to get 'in' keyword to work
 var _ starlark.Mapping = (*Bag)(nil)
 
-func NewModelValue(prefix string, i int) ModelValue {
+func NewModelValue(prefix string, i uint64) ModelValue {
 	return ModelValue{
 		prefix: prefix,
 		id:     i,
@@ -1202,14 +1202,14 @@ const ModelValueType = "model_value"
 
 type ModelValue struct {
 	prefix string
-	id     int
+	id     uint64
 }
 
 func (m ModelValue) GetPrefix() string {
 	return m.prefix
 }
 
-func (m ModelValue) GetId() int {
+func (m ModelValue) GetId() uint64 {
 	return m.id
 }
 
@@ -1264,12 +1264,12 @@ var _ starlark.Comparable = ModelValue{}
 
 // NewSymmetricValue creates a new symmetric value with the default Nominal kind.
 // This maintains backward compatibility with existing code.
-func NewSymmetricValue(prefix string, i int) SymmetricValue {
+func NewSymmetricValue(prefix string, i uint64) SymmetricValue {
 	return SymmetricValue{ModelValue: ModelValue{prefix: prefix, id: i}, Kind: SymmetryKindNominal}
 }
 
 // NewSymmetricValueWithKind creates a new symmetric value with the specified kind.
-func NewSymmetricValueWithKind(prefix string, i int, kind SymmetryKind) SymmetricValue {
+func NewSymmetricValueWithKind(prefix string, i uint64, kind SymmetryKind) SymmetricValue {
 	return SymmetricValue{ModelValue: ModelValue{prefix: prefix, id: i}, Kind: kind}
 }
 

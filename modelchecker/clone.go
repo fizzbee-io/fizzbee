@@ -2,9 +2,10 @@ package modelchecker
 
 import (
 	"fmt"
+	"reflect"
+
 	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
-	"reflect"
 )
 
 func deepCloneStarlarkValue(value starlark.Value, refs map[starlark.Value]starlark.Value) (starlark.Value, error) {
@@ -37,7 +38,13 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 			if other, ok := permutations[v]; ok {
 				return other[alt], nil
 			}
-			panic(fmt.Sprintf("symmetric_value %v should be in %v and alt %v", v, permutations, alt))
+			panic(fmt.Sprintf("symmetric_value %#v (Kind: %d) should be in %v and alt %v. Keys: %+v", v, v.Kind, permutations, alt, func() []string {
+				keys := make([]string, 0, len(permutations))
+				for k := range permutations {
+					keys = append(keys, fmt.Sprintf("%#v (Kind: %d)", k, k.Kind))
+				}
+				return keys
+			}()))
 		}
 		return value, nil
 	case "list":
@@ -108,6 +115,33 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 			return nil, err
 		}
 		return lib.NewRoleStub(role.(*lib.Role), r.Channel), nil
+	case "symmetry_segment":
+		s := value.(*lib.Segment)
+		newLeft := s.Left
+		newRight := s.Right
+
+		if permutations != nil {
+			// Map Left ID
+			leftSV := lib.NewSymmetricValueWithKind(s.Domain.Name, s.Left, s.Domain.Kind)
+			if other, ok := permutations[leftSV]; ok {
+				newLeft = other[alt].GetId()
+			}
+
+			// Map Right ID
+			rightSV := lib.NewSymmetricValueWithKind(s.Domain.Name, s.Right, s.Domain.Kind)
+			if other, ok := permutations[rightSV]; ok {
+				newRight = other[alt].GetId()
+			}
+		}
+
+		newSegment := &lib.Segment{
+			Domain: s.Domain,
+			Left:   newLeft,
+			Right:  newRight,
+			IsHead: s.IsHead,
+			IsTail: s.IsTail,
+		}
+		return newSegment, nil
 	case "genericset":
 		s := value.(*lib.GenericSet)
 		newSet := lib.NewGenericSet()

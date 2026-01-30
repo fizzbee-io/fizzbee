@@ -3,11 +3,25 @@ package lib
 import (
 	"errors"
 	"fmt"
-	"sort"
+	"math"
+	"slices"
 
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
+
+const (
+	ordinalMax uint64 = math.MaxUint64
+	ordinalMid uint64 = ordinalMax / 2
+)
+
+// midpoint returns lo + (hi - lo) / 2. Returns error if hi - lo < 2.
+func midpoint(lo, hi uint64) (uint64, error) {
+	if hi <= lo || hi-lo < 2 {
+		return 0, fmt.Errorf("no space between %d and %d", lo, hi)
+	}
+	return lo + (hi-lo)/2, nil
+}
 
 // SymmetryKind represents the type of symmetry for a domain.
 // Different kinds have different operations and canonicalization strategies.
@@ -61,22 +75,22 @@ func IsDisableTransitionError(err error) bool {
 type SymmetryContext struct {
 	// Scanner is a callback that returns ALL currently used values from the process state.
 	// It returns a map of DomainName -> List of IDs.
-	Scanner func() map[string][]int
+	Scanner func() map[string][]uint64
 
 	// Cache stores the set of active IDs for the current execution.
 	// It is populated initially by Scanner, and updated by Fresh().
 	// Map: DomainName -> ID -> Exists
-	Cache map[string]map[int]bool
+	Cache map[string]map[uint64]bool
 
 	// initialized tracks if we have loaded the state from Scanner yet.
 	initialized bool
 }
 
 // NewSymmetryContext creates a new symmetry context with the given scanner function
-func NewSymmetryContext(scanner func() map[string][]int) *SymmetryContext {
+func NewSymmetryContext(scanner func() map[string][]uint64) *SymmetryContext {
 	return &SymmetryContext{
 		Scanner: scanner,
-		Cache:   make(map[string]map[int]bool),
+		Cache:   make(map[string]map[uint64]bool),
 	}
 }
 
@@ -89,7 +103,7 @@ func (ctx *SymmetryContext) ensureLoaded() {
 	allUsed := ctx.Scanner()
 	for name, ids := range allUsed {
 		if ctx.Cache[name] == nil {
-			ctx.Cache[name] = make(map[int]bool)
+			ctx.Cache[name] = make(map[uint64]bool)
 		}
 		for _, id := range ids {
 			ctx.Cache[name][id] = true
@@ -102,7 +116,7 @@ func (ctx *SymmetryContext) ensureLoaded() {
 func (ctx *SymmetryContext) EnsureDomainInit(name string) {
 	ctx.ensureLoaded()
 	if ctx.Cache[name] == nil {
-		ctx.Cache[name] = make(map[int]bool)
+		ctx.Cache[name] = make(map[uint64]bool)
 	}
 }
 
@@ -138,6 +152,11 @@ func (d *SymmetryDomain) Attr(name string) (starlark.Value, error) {
 		return starlark.NewBuiltin("fresh", d.fresh), nil
 	case "values":
 		return starlark.NewBuiltin("values", d.values), nil
+	case "segments":
+		if d.Kind == SymmetryKindOrdinal {
+			return starlark.NewBuiltin("segments", d.segments), nil
+		}
+		return nil, nil // segments only available for ordinal
 	case "name":
 		return starlark.String(d.Name), nil
 	case "limit":
@@ -147,7 +166,198 @@ func (d *SymmetryDomain) Attr(name string) (starlark.Value, error) {
 }
 
 func (d *SymmetryDomain) AttrNames() []string {
+	if d.Kind == SymmetryKindOrdinal {
+		return []string{"fresh", "values", "segments", "name", "limit"}
+	}
 	return []string{"fresh", "values", "name", "limit"}
+}
+
+// segments returns a list of Segment objects representing gaps between active values.
+// Usage: domain.segments(after=None, before=None)
+func (d *SymmetryDomain) segments(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var after, before starlark.Value
+	if err := starlark.UnpackArgs("segments", args, kwargs, "after?", &after, "before?", &before); err != nil {
+		return nil, err
+	}
+
+	// Retrieve Context
+	ctxVal := thread.Local(SymmetryContextKey)
+	if ctxVal == nil {
+		return nil, fmt.Errorf("internal error: symmetry context not found in thread")
+	}
+	ctx := ctxVal.(*SymmetryContext)
+	ctx.EnsureDomainInit(d.Name)
+
+	// Collect and Sort IDs
+	var used []uint64
+	for id := range ctx.Cache[d.Name] {
+		used = append(used, id)
+	}
+	slices.Sort(used)
+
+	var segments []starlark.Value
+
+	// Helper to extract uint64 ID from value
+	getID := func(v starlark.Value) (uint64, bool) {
+		if sv, ok := v.(SymmetricValue); ok {
+			if sv.prefix == d.Name {
+				return sv.id, true
+			}
+		}
+		return 0, false
+	}
+
+	var afterID uint64
+	hasAfter := after != nil && after != starlark.None
+	if hasAfter {
+		if id, ok := getID(after); ok {
+			afterID = id
+		} else {
+			return nil, fmt.Errorf("segments: 'after' must be a value from domain %s", d.Name)
+		}
+	}
+
+	var beforeID uint64 = ordinalMax
+	hasBefore := before != nil && before != starlark.None
+	if hasBefore {
+		if id, ok := getID(before); ok {
+			beforeID = id
+		} else {
+			return nil, fmt.Errorf("segments: 'before' must be a value from domain %s", d.Name)
+		}
+	}
+
+	if len(used) == 0 {
+		segments = append(segments, &Segment{Domain: d, IsHead: true, IsTail: true})
+	} else {
+		// Head Segment: (0, used[0])
+		if !hasAfter {
+			if !hasBefore || used[0] <= beforeID {
+				segments = append(segments, &Segment{Domain: d, Right: used[0], IsHead: true})
+			}
+		}
+
+		// Body Segments: (used[i], used[i+1])
+		for i := 0; i < len(used)-1; i++ {
+			left, right := used[i], used[i+1]
+			isAfter := !hasAfter || left >= afterID
+			isBefore := !hasBefore || right <= beforeID
+
+			if isAfter && isBefore {
+				segments = append(segments, &Segment{Domain: d, Left: left, Right: right})
+			}
+		}
+
+		// Tail Segment: (used[last], ordinalMax)
+		last := used[len(used)-1]
+		if !hasBefore {
+			if !hasAfter || last >= afterID {
+				segments = append(segments, &Segment{Domain: d, Left: last, IsTail: true})
+			}
+		}
+	}
+
+	return starlark.NewList(segments), nil
+}
+
+// Segment represents an interval in an Ordinal Symmetry domain
+type Segment struct {
+	Domain *SymmetryDomain
+	Left   uint64
+	Right  uint64
+	IsHead bool
+	IsTail bool
+}
+
+var _ starlark.Value = (*Segment)(nil)
+var _ starlark.HasAttrs = (*Segment)(nil)
+
+func (s *Segment) String() string {
+	leftStr := fmt.Sprintf("%d", s.Left)
+	if s.IsHead {
+		leftStr = "-inf"
+	}
+	rightStr := fmt.Sprintf("%d", s.Right)
+	if s.IsTail {
+		rightStr = "+inf"
+	}
+	return fmt.Sprintf("<segment %s (%s, %s)>", s.Domain.Name, leftStr, rightStr)
+}
+
+func (s *Segment) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf(`{"domain":"%s","left":%d,"right":%d,"is_head":%t,"is_tail":%t}`,
+		s.Domain.Name, s.Left, s.Right, s.IsHead, s.IsTail)), nil
+}
+func (s *Segment) Type() string         { return "symmetry_segment" }
+func (s *Segment) Freeze()              {}
+func (s *Segment) Truth() starlark.Bool { return starlark.True }
+func (s *Segment) Hash() (uint32, error) {
+	return 0, fmt.Errorf("unhashable type: symmetry_segment")
+}
+
+func (s *Segment) Attr(name string) (starlark.Value, error) {
+	if name == "fresh" {
+		return starlark.NewBuiltin("fresh", s.fresh), nil
+	}
+	return nil, nil
+}
+
+func (s *Segment) AttrNames() []string {
+	return []string{"fresh"}
+}
+
+func (s *Segment) fresh(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if err := starlark.UnpackArgs("fresh", args, kwargs); err != nil {
+		return nil, err
+	}
+
+	// Check Limit
+	// We need to check the domain limit via context
+	ctxVal := thread.Local(SymmetryContextKey)
+	if ctxVal == nil {
+		return nil, fmt.Errorf("internal error: symmetry context not found in thread")
+	}
+	ctx := ctxVal.(*SymmetryContext)
+	ctx.EnsureDomainInit(s.Domain.Name)
+
+	if len(ctx.Cache[s.Domain.Name]) >= s.Domain.Limit {
+		return nil, &DisableTransitionError{
+			Message: fmt.Sprintf("symmetry limit reached for domain %q (limit %d)", s.Domain.Name, s.Domain.Limit),
+		}
+	}
+
+	// Calculate new ID using midpoint
+	var newID uint64
+	var err error
+
+	if s.IsHead && s.IsTail {
+		// Empty domain: midpoint(0, ordinalMax)
+		newID, err = midpoint(0, ordinalMax)
+	} else if s.IsHead {
+		// (0, Right)
+		newID, err = midpoint(0, s.Right)
+	} else if s.IsTail {
+		// (Left, ordinalMax)
+		newID, err = midpoint(s.Left, ordinalMax)
+	} else {
+		// (Left, Right)
+		newID, err = midpoint(s.Left, s.Right)
+	}
+
+	if err != nil {
+		return nil, &DisableTransitionError{
+			Message: fmt.Sprintf("ordinal symmetry collision: %v", err),
+		}
+	}
+
+	// Check if ID already exists (should not happen in valid segments)
+	if ctx.Cache[s.Domain.Name][newID] {
+		return nil, fmt.Errorf("internal error: generated ordinal ID %d already exists", newID)
+	}
+
+	ctx.Cache[s.Domain.Name][newID] = true
+
+	return NewSymmetricValueWithKind(s.Domain.Name, newID, s.Domain.Kind), nil
 }
 
 // fresh allocates a new deterministic value from this domain.
@@ -175,16 +385,40 @@ func (d *SymmetryDomain) fresh(thread *starlark.Thread, _ *starlark.Builtin, arg
 		}
 	}
 
-	// 4. Allocate the smallest unused ID
-	// For nominal symmetry, we must use the smallest unused ID to ensure canonical forms.
-	// This is critical for symmetry reduction: states {id0, id1} and {id1, id2} should
-	// be recognized as equivalent, which only happens if we always allocate canonically.
-	nextID := 0
-	for ctx.Cache[d.Name][nextID] {
-		nextID++
+	// 4. Allocate the next ID
+	var nextID uint64
+
+	if d.Kind == SymmetryKindNominal {
+		// For nominal symmetry, use the smallest unused ID for canonical forms.
+		for ctx.Cache[d.Name][nextID] {
+			nextID++
+		}
+	} else if d.Kind == SymmetryKindOrdinal {
+		// For ordinal symmetry, use midpoint-based allocation (tail segment logic).
+		// Find current max
+		hasValues := false
+		var maxID uint64
+		for id := range ctx.Cache[d.Name] {
+			if !hasValues || id > maxID {
+				maxID = id
+				hasValues = true
+			}
+		}
+
+		var err error
+		if !hasValues {
+			// Empty domain: midpoint(0, ordinalMax)
+			nextID, err = midpoint(0, ordinalMax)
+		} else {
+			// Append after max: midpoint(maxID, ordinalMax)
+			nextID, err = midpoint(maxID, ordinalMax)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("ordinal symmetry overflow: %v", err)
+		}
 	}
 
-	// 5. Update Transient Cache (so subsequent fresh() calls in same expression see this)
+	// 5. Update Transient Cache
 	ctx.Cache[d.Name][nextID] = true
 
 	return NewSymmetricValueWithKind(d.Name, nextID, d.Kind), nil
@@ -208,11 +442,11 @@ func (d *SymmetryDomain) values(thread *starlark.Thread, _ *starlark.Builtin, ar
 	ctx.EnsureDomainInit(d.Name)
 
 	// Collect and Sort IDs for deterministic ordering
-	var ids []int
+	var ids []uint64
 	for id := range ctx.Cache[d.Name] {
 		ids = append(ids, id)
 	}
-	sort.Ints(ids)
+	slices.Sort(ids)
 
 	// Convert to SymmetricValue list
 	elems := make([]starlark.Value, len(ids))
@@ -230,6 +464,7 @@ var SymmetryModule = &starlarkstruct.Module{
 	Name: "symmetry",
 	Members: starlark.StringDict{
 		"nominal": starlark.NewBuiltin("nominal", makeNominal),
+		"ordinal": starlark.NewBuiltin("ordinal", makeOrdinal),
 	},
 }
 
@@ -248,4 +483,21 @@ func makeNominal(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 		return nil, fmt.Errorf("nominal: name cannot be empty")
 	}
 	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindNominal}, nil
+}
+
+// makeOrdinal creates a new ordinal symmetry domain
+// Usage: symmetry.ordinal(name="ts", limit=5)
+func makeOrdinal(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var name string
+	var limit int
+	if err := starlark.UnpackArgs("ordinal", args, kwargs, "name", &name, "limit", &limit); err != nil {
+		return nil, err
+	}
+	if limit <= 0 {
+		return nil, fmt.Errorf("ordinal: limit must be positive, got %d", limit)
+	}
+	if name == "" {
+		return nil, fmt.Errorf("ordinal: name cannot be empty")
+	}
+	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindOrdinal}, nil
 }
