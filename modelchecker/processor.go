@@ -654,7 +654,7 @@ func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
 // The context provides a scanner function that collects all currently used symmetric values
 // from the process state, enabling the symmetry module to track what values are in use.
 func (p *Process) createSymmetryContext() *lib.SymmetryContext {
-	return lib.NewSymmetryContext(func() map[string][]int {
+	return lib.NewSymmetryContext(func() map[string][]uint64 {
 		collector := NewUsedSymmetricValuesCollector()
 		p.AcceptVisitor(collector)
 		return collector.GetAllUsedIDs()
@@ -1734,38 +1734,58 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 	var values [][]lib.SymmetricValue
 	var usedValues [][]lib.SymmetricValue
 
+	// Store ordinal mappings separately: used -> canonical (identity 0..N-1)
+	type ordinalMapping struct {
+		used      []lib.SymmetricValue
+		canonical []lib.SymmetricValue
+	}
+	var postProcessingMappings []ordinalMapping
+
 	if canonicalizeSymmetricValues {
 		// Collect only the symmetric values that are actually used in the state
-		usedValues = process.getUsedSymmetricValues()
+		allUsedValues := process.getUsedSymmetricValues()
 
 		// Canonicalize to [k0, k1, k2, ...]
-		values = make([][]lib.SymmetricValue, len(usedValues))
-		for i, used := range usedValues {
+		// Segregate into Nominal (for permutation) and Ordinal (for static mapping)
+		for _, used := range allUsedValues {
 			if len(used) == 0 {
 				continue
 			}
+			kind := used[0].GetKind()
 			prefix := used[0].GetPrefix()
 			canonical := make([]lib.SymmetricValue, len(used))
 			for j := 0; j < len(used); j++ {
-				canonical[j] = lib.NewSymmetricValue(prefix, j)
+				canonical[j] = lib.NewSymmetricValueWithKind(prefix, uint64(j), kind)
 			}
-			values[i] = canonical
+
+			if kind == lib.SymmetryKindOrdinal {
+				postProcessingMappings = append(postProcessingMappings, ordinalMapping{used: used, canonical: canonical})
+			} else {
+				values = append(values, canonical)
+				usedValues = append(usedValues, used)
+			}
 		}
 	} else {
 		// Use all symmetric values from the definition
 		defs := process.Heap.GetSymmetryDefs()
-		values = make([][]lib.SymmetricValue, len(defs))
-		for i, def := range defs {
-			values[i] = make([]lib.SymmetricValue, def.Len())
+
+		for _, def := range defs {
+			v := make([]lib.SymmetricValue, def.Len())
 			for j := 0; j < def.Len(); j++ {
-				values[i][j] = def.Index(j)
+				v[j] = def.Index(j)
 			}
-			slices.SortFunc(values[i], lib.CompareStringer[lib.SymmetricValue])
+			slices.SortFunc(v, lib.CompareStringer[lib.SymmetricValue])
+
+			// If canonicalization is disabled, we treat everything as nominal (full permutation)
+			// to be safe, or we could potentially return identity for ordinal.
+			// Current behavior matches existing logic: everything effectively permutes.
+			values = append(values, v)
+			usedValues = append(usedValues, v)
 		}
-		usedValues = values
 	}
 
 	// Add symmetric roles (these already only include instantiated roles)
+	// Roles are assumed Nominal
 	roles := process.GetSymmetryRoles()
 	for _, role := range roles {
 		v := make([]lib.SymmetricValue, role.Len())
@@ -1796,6 +1816,15 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 		for j, symVal := range symVals {
 			if j < len(actualKeys) {
 				permMap[actualKeys[j]] = append(permMap[actualKeys[j]], symVal)
+			}
+		}
+
+		// Append Ordinal mappings for this permutation (static mapping)
+		for _, mapping := range postProcessingMappings {
+			for k, usedVal := range mapping.used {
+				if k < len(mapping.canonical) {
+					permMap[usedVal] = append(permMap[usedVal], mapping.canonical[k])
+				}
 			}
 		}
 	}

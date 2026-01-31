@@ -1,9 +1,10 @@
 package modelchecker
 
 import (
+	"slices"
+
 	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
-	"sort"
 )
 
 // StateVisitor defines the interface for visiting state elements during traversal
@@ -13,13 +14,13 @@ type StateVisitor interface {
 
 // UsedSymmetricValuesCollector collects all SymmetricValue instances in the current state
 type UsedSymmetricValuesCollector struct {
-	usedValues map[string]map[int]bool // prefix -> set of IDs
+	usedValues map[string]map[uint64]bool // prefix -> set of IDs
 }
 
 // NewUsedSymmetricValuesCollector creates a new collector
 func NewUsedSymmetricValuesCollector() *UsedSymmetricValuesCollector {
 	return &UsedSymmetricValuesCollector{
-		usedValues: make(map[string]map[int]bool),
+		usedValues: make(map[string]map[uint64]bool),
 	}
 }
 
@@ -29,31 +30,31 @@ func (c *UsedSymmetricValuesCollector) VisitSymmetricValue(sv lib.SymmetricValue
 	id := sv.GetId()
 
 	if c.usedValues[prefix] == nil {
-		c.usedValues[prefix] = make(map[int]bool)
+		c.usedValues[prefix] = make(map[uint64]bool)
 	}
 	c.usedValues[prefix][id] = true
 }
 
 // GetUsedIds returns a sorted list of IDs that are used for a given prefix
-func (c *UsedSymmetricValuesCollector) GetUsedIds(prefix string) []int {
+func (c *UsedSymmetricValuesCollector) GetUsedIds(prefix string) []uint64 {
 	if c.usedValues[prefix] == nil {
-		return []int{}
+		return []uint64{}
 	}
 
-	ids := make([]int, 0, len(c.usedValues[prefix]))
+	ids := make([]uint64, 0, len(c.usedValues[prefix]))
 	for id := range c.usedValues[prefix] {
 		ids = append(ids, id)
 	}
-	sort.Ints(ids)
+	slices.Sort(ids)
 	return ids
 }
 
 // GetUsedSymmetricValues returns SymmetricValues for a given prefix
-func (c *UsedSymmetricValuesCollector) GetUsedSymmetricValues(prefix string) []lib.SymmetricValue {
+func (c *UsedSymmetricValuesCollector) GetUsedSymmetricValues(prefix string, kind lib.SymmetryKind) []lib.SymmetricValue {
 	ids := c.GetUsedIds(prefix)
 	values := make([]lib.SymmetricValue, len(ids))
 	for i, id := range ids {
-		values[i] = lib.NewSymmetricValue(prefix, id)
+		values[i] = lib.NewSymmetricValueWithKind(prefix, id, kind)
 	}
 	return values
 }
@@ -65,14 +66,14 @@ func (c *UsedSymmetricValuesCollector) HasUsedValues(prefix string) bool {
 
 // GetAllUsedIDs returns all used IDs organized by prefix/domain name.
 // This is used by the symmetry module to initialize its cache.
-func (c *UsedSymmetricValuesCollector) GetAllUsedIDs() map[string][]int {
-	result := make(map[string][]int)
+func (c *UsedSymmetricValuesCollector) GetAllUsedIDs() map[string][]uint64 {
+	result := make(map[string][]uint64)
 	for prefix, idSet := range c.usedValues {
-		ids := make([]int, 0, len(idSet))
+		ids := make([]uint64, 0, len(idSet))
 		for id := range idSet {
 			ids = append(ids, id)
 		}
-		sort.Ints(ids)
+		slices.Sort(ids)
 		result[prefix] = ids
 	}
 	return result
@@ -94,8 +95,8 @@ func visitStarlarkValue(value starlark.Value, visitor StateVisitor, visited map[
 
 	switch value.Type() {
 	case "NoneType", "int", "float", "bool", "string", "bytes", "function",
-		 "builtin_function_or_method", "range", "struct", "symmetric_values",
-		 "model_value", "Channel":
+		"builtin_function_or_method", "range", "struct", "symmetric_values",
+		"model_value", "Channel":
 		return
 
 	case "symmetric_value":
@@ -266,9 +267,10 @@ func (p *Process) getUsedSymmetricValues() [][]lib.SymmetricValue {
 
 		// Get the prefix from the first element
 		prefix := def.Index(0).GetPrefix()
+		kind := def.Index(0).GetKind()
 
 		// Get the actually used values
-		usedValues := collector.GetUsedSymmetricValues(prefix)
+		usedValues := collector.GetUsedSymmetricValues(prefix, kind)
 
 		if len(usedValues) > 0 {
 			result = append(result, usedValues)
