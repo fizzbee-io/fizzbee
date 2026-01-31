@@ -11,12 +11,12 @@ import (
 )
 
 const (
-	ordinalMax uint64 = math.MaxUint64
-	ordinalMid uint64 = ordinalMax / 2
+	ordinalMax int64 = math.MaxInt64 / 2 // Use half of int64 range to keep ordinal values positive
+	ordinalMid int64 = ordinalMax / 2
 )
 
 // midpoint returns lo + (hi - lo) / 2. Returns error if hi - lo < 2.
-func midpoint(lo, hi uint64) (uint64, error) {
+func midpoint(lo, hi int64) (int64, error) {
 	if hi <= lo || hi-lo < 2 {
 		return 0, fmt.Errorf("no space between %d and %d", lo, hi)
 	}
@@ -75,22 +75,22 @@ func IsDisableTransitionError(err error) bool {
 type SymmetryContext struct {
 	// Scanner is a callback that returns ALL currently used values from the process state.
 	// It returns a map of DomainName -> List of IDs.
-	Scanner func() map[string][]uint64
+	Scanner func() map[string][]int64
 
 	// Cache stores the set of active IDs for the current execution.
 	// It is populated initially by Scanner, and updated by Fresh().
 	// Map: DomainName -> ID -> Exists
-	Cache map[string]map[uint64]bool
+	Cache map[string]map[int64]bool
 
 	// initialized tracks if we have loaded the state from Scanner yet.
 	initialized bool
 }
 
 // NewSymmetryContext creates a new symmetry context with the given scanner function
-func NewSymmetryContext(scanner func() map[string][]uint64) *SymmetryContext {
+func NewSymmetryContext(scanner func() map[string][]int64) *SymmetryContext {
 	return &SymmetryContext{
 		Scanner: scanner,
-		Cache:   make(map[string]map[uint64]bool),
+		Cache:   make(map[string]map[int64]bool),
 	}
 }
 
@@ -103,7 +103,7 @@ func (ctx *SymmetryContext) ensureLoaded() {
 	allUsed := ctx.Scanner()
 	for name, ids := range allUsed {
 		if ctx.Cache[name] == nil {
-			ctx.Cache[name] = make(map[uint64]bool)
+			ctx.Cache[name] = make(map[int64]bool)
 		}
 		for _, id := range ids {
 			ctx.Cache[name][id] = true
@@ -116,7 +116,7 @@ func (ctx *SymmetryContext) ensureLoaded() {
 func (ctx *SymmetryContext) EnsureDomainInit(name string) {
 	ctx.ensureLoaded()
 	if ctx.Cache[name] == nil {
-		ctx.Cache[name] = make(map[uint64]bool)
+		ctx.Cache[name] = make(map[int64]bool)
 	}
 }
 
@@ -124,9 +124,11 @@ func (ctx *SymmetryContext) EnsureDomainInit(name string) {
 // This type is stateless - it only contains configuration, not runtime state.
 // Runtime state is managed via the SymmetryContext in thread-local storage.
 type SymmetryDomain struct {
-	Name  string
-	Limit int
-	Kind  SymmetryKind
+	Name       string
+	Limit      int
+	Kind       SymmetryKind
+	Divergence int
+	Start      int
 }
 
 // Starlark Interface for SymmetryDomain
@@ -134,6 +136,9 @@ var _ starlark.Value = (*SymmetryDomain)(nil)
 var _ starlark.HasAttrs = (*SymmetryDomain)(nil)
 
 func (d *SymmetryDomain) String() string {
+	if d.Kind == SymmetryKindInterval {
+		return fmt.Sprintf("symmetry.%s(name=%q, limit=%d, divergence=%d, start=%d)", d.Kind, d.Name, d.Limit, d.Divergence, d.Start)
+	}
 	return fmt.Sprintf("symmetry.%s(name=%q, limit=%d)", d.Kind, d.Name, d.Limit)
 }
 
@@ -165,6 +170,14 @@ func (d *SymmetryDomain) Attr(name string) (starlark.Value, error) {
 		return starlark.String(d.Name), nil
 	case "limit":
 		return starlark.MakeInt(d.Limit), nil
+	case "divergence":
+		if d.Kind == SymmetryKindInterval {
+			return starlark.MakeInt(d.Divergence), nil
+		}
+	case "start":
+		if d.Kind == SymmetryKindInterval {
+			return starlark.MakeInt(d.Start), nil
+		}
 	}
 	return nil, nil
 }
@@ -172,6 +185,9 @@ func (d *SymmetryDomain) Attr(name string) (starlark.Value, error) {
 func (d *SymmetryDomain) AttrNames() []string {
 	if d.Kind == SymmetryKindOrdinal {
 		return []string{"fresh", "values", "segments", "name", "limit"}
+	}
+	if d.Kind == SymmetryKindInterval {
+		return []string{"fresh", "values", "name", "limit", "divergence", "start"}
 	}
 	return []string{"fresh", "choices", "values", "name", "limit"}
 }
@@ -193,7 +209,7 @@ func (d *SymmetryDomain) segments(thread *starlark.Thread, _ *starlark.Builtin, 
 	ctx.EnsureDomainInit(d.Name)
 
 	// Collect and Sort IDs
-	var used []uint64
+	var used []int64
 	for id := range ctx.Cache[d.Name] {
 		used = append(used, id)
 	}
@@ -201,8 +217,8 @@ func (d *SymmetryDomain) segments(thread *starlark.Thread, _ *starlark.Builtin, 
 
 	var segments []starlark.Value
 
-	// Helper to extract uint64 ID from value
-	getID := func(v starlark.Value) (uint64, bool) {
+	// Helper to extract int64 ID from value
+	getID := func(v starlark.Value) (int64, bool) {
 		if sv, ok := v.(SymmetricValue); ok {
 			if sv.prefix == d.Name {
 				return sv.id, true
@@ -211,7 +227,7 @@ func (d *SymmetryDomain) segments(thread *starlark.Thread, _ *starlark.Builtin, 
 		return 0, false
 	}
 
-	var afterID uint64
+	var afterID int64
 	hasAfter := after != nil && after != starlark.None
 	if hasAfter {
 		if id, ok := getID(after); ok {
@@ -221,7 +237,7 @@ func (d *SymmetryDomain) segments(thread *starlark.Thread, _ *starlark.Builtin, 
 		}
 	}
 
-	var beforeID uint64 = ordinalMax
+	var beforeID int64 = ordinalMax
 	hasBefore := before != nil && before != starlark.None
 	if hasBefore {
 		if id, ok := getID(before); ok {
@@ -267,8 +283,8 @@ func (d *SymmetryDomain) segments(thread *starlark.Thread, _ *starlark.Builtin, 
 // Segment represents an interval in an Ordinal Symmetry domain
 type Segment struct {
 	Domain *SymmetryDomain
-	Left   uint64
-	Right  uint64
+	Left   int64
+	Right  int64
 	IsHead bool
 	IsTail bool
 }
@@ -331,7 +347,7 @@ func (s *Segment) fresh(thread *starlark.Thread, _ *starlark.Builtin, args starl
 	}
 
 	// Calculate new ID using midpoint
-	var newID uint64
+	var newID int64
 	var err error
 
 	if s.IsHead && s.IsTail {
@@ -390,18 +406,51 @@ func (d *SymmetryDomain) fresh(thread *starlark.Thread, _ *starlark.Builtin, arg
 	}
 
 	// 4. Allocate the next ID
-	var nextID uint64
+	var nextID int64
 
 	if d.Kind == SymmetryKindNominal {
 		// For nominal symmetry, use the smallest unused ID for canonical forms.
 		for ctx.Cache[d.Name][nextID] {
 			nextID++
 		}
+	} else if d.Kind == SymmetryKindInterval {
+		// Interval: pessimistic allocation (max + 1), starting from d.Start.
+		hasValues := false
+		var minID, maxID int64
+		for id := range ctx.Cache[d.Name] {
+			if !hasValues {
+				minID, maxID = id, id
+				hasValues = true
+			} else {
+				if id > maxID {
+					maxID = id
+				}
+				if id < minID {
+					minID = id
+				}
+			}
+		}
+
+		if !hasValues {
+			nextID = int64(d.Start)
+		} else {
+			nextID = maxID + 1
+		}
+
+		// Eager divergence check: ensure (nextID - minID) <= Divergence.
+		if d.Divergence > 0 && hasValues {
+			if nextID-minID > int64(d.Divergence) {
+				return nil, &DisableTransitionError{
+					Message: fmt.Sprintf("symmetry divergence reached for domain %q (divergence %d, spread %d)", d.Name, d.Divergence, nextID-minID),
+				}
+			}
+		}
+
 	} else if d.Kind == SymmetryKindOrdinal {
 		// For ordinal symmetry, use midpoint-based allocation (tail segment logic).
 		// Find current max
 		hasValues := false
-		var maxID uint64
+		var maxID int64
 		for id := range ctx.Cache[d.Name] {
 			if !hasValues || id > maxID {
 				maxID = id
@@ -446,7 +495,7 @@ func (d *SymmetryDomain) values(thread *starlark.Thread, _ *starlark.Builtin, ar
 	ctx.EnsureDomainInit(d.Name)
 
 	// Collect and Sort IDs for deterministic ordering
-	var ids []uint64
+	var ids []int64
 	for id := range ctx.Cache[d.Name] {
 		ids = append(ids, id)
 	}
@@ -485,8 +534,9 @@ func (d *SymmetryDomain) choices(thread *starlark.Thread, b *starlark.Builtin, a
 var SymmetryModule = &starlarkstruct.Module{
 	Name: "symmetry",
 	Members: starlark.StringDict{
-		"nominal": starlark.NewBuiltin("nominal", makeNominal),
-		"ordinal": starlark.NewBuiltin("ordinal", makeOrdinal),
+		"nominal":  starlark.NewBuiltin("nominal", makeNominal),
+		"ordinal":  starlark.NewBuiltin("ordinal", makeOrdinal),
+		"interval": starlark.NewBuiltin("interval", makeInterval),
 	},
 }
 
@@ -522,4 +572,73 @@ func makeOrdinal(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 		return nil, fmt.Errorf("ordinal: name cannot be empty")
 	}
 	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindOrdinal}, nil
+}
+
+// makeInterval creates a new interval symmetry domain
+// Usage: symmetry.interval(name="s", divergence=None, limit=None, start=0)
+func makeInterval(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var name string
+	var divergence starlark.Value = starlark.None
+	var limit starlark.Value = starlark.None
+	var start int = 0
+
+	if err := starlark.UnpackArgs("interval", args, kwargs, "name", &name, "divergence?", &divergence, "limit?", &limit, "start?", &start); err != nil {
+		return nil, err
+	}
+
+	if name == "" {
+		return nil, fmt.Errorf("interval: name cannot be empty")
+	}
+
+	divergenceInt := -1
+	limitInt := -1
+
+	if divergence != starlark.None {
+		if d, err := starlark.AsInt32(divergence); err == nil {
+			divergenceInt = d
+		} else {
+			return nil, fmt.Errorf("interval: divergence must be an integer")
+		}
+	}
+
+	if limit != starlark.None {
+		if l, err := starlark.AsInt32(limit); err == nil {
+			limitInt = l
+		} else {
+			return nil, fmt.Errorf("interval: limit must be an integer")
+		}
+	}
+
+	// 1. Requirement: At least one of divergence or limit must be provided.
+	if divergenceInt == -1 && limitInt == -1 {
+		return nil, fmt.Errorf("interval: at least one of divergence or limit must be provided")
+	}
+
+	// 2. Derivation
+	if divergenceInt != -1 && limitInt == -1 {
+		// Only divergence provided: limit = divergence + 1
+		limitInt = divergenceInt + 1
+	} else if limitInt != -1 && divergenceInt == -1 {
+		// Only limit provided: divergence = limit - 1
+		divergenceInt = limitInt - 1
+	}
+
+	// 3. Validation
+	if limitInt > divergenceInt+1 {
+		return nil, fmt.Errorf("interval: limit %d cannot fit in divergence %d", limitInt, divergenceInt)
+	}
+	if limitInt <= 0 {
+		return nil, fmt.Errorf("interval: limit must be > 0, got %d", limitInt)
+	}
+	if divergenceInt < 0 {
+		return nil, fmt.Errorf("interval: divergence must be >= 0, got %d", divergenceInt)
+	}
+
+	return &SymmetryDomain{
+		Name:       name,
+		Limit:      limitInt,
+		Divergence: divergenceInt,
+		Start:      start,
+		Kind:       SymmetryKindInterval,
+	}, nil
 }

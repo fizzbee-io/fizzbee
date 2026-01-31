@@ -18,6 +18,7 @@ go_library(
         "protopath.go",
         "starlark.go",
         "state_visitor.go",
+        "symmetry_check.go",
         "testconstants.go",
         "thread.go",
         "trace.go",

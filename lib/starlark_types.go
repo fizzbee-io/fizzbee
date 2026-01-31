@@ -5,14 +5,15 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"go.starlark.net/lib/math"
-	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
-	"go.starlark.net/syntax"
 	"math/rand"
 	"slices"
 	"sort"
 	"strings"
+
+	"go.starlark.net/lib/math"
+	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
+	"go.starlark.net/syntax"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -117,7 +118,7 @@ func MakeSymmetricValues(thread *starlark.Thread, fn *starlark.Builtin, args sta
 	}
 	values := SymmetricValues{}
 	for i := 0; i < count; i++ {
-		values.Tuple = append(values.Tuple, NewSymmetricValue(prefix, uint64(i)))
+		values.Tuple = append(values.Tuple, NewSymmetricValue(prefix, int64(i)))
 	}
 	return values, nil
 }
@@ -1191,7 +1192,7 @@ var _ starlark.Value = (*Bag)(nil)
 // There is a limit in the API, this is required to get 'in' keyword to work
 var _ starlark.Mapping = (*Bag)(nil)
 
-func NewModelValue(prefix string, i uint64) ModelValue {
+func NewModelValue(prefix string, i int64) ModelValue {
 	return ModelValue{
 		prefix: prefix,
 		id:     i,
@@ -1202,14 +1203,14 @@ const ModelValueType = "model_value"
 
 type ModelValue struct {
 	prefix string
-	id     uint64
+	id     int64
 }
 
 func (m ModelValue) GetPrefix() string {
 	return m.prefix
 }
 
-func (m ModelValue) GetId() uint64 {
+func (m ModelValue) GetId() int64 {
 	return m.id
 }
 
@@ -1264,12 +1265,12 @@ var _ starlark.Comparable = ModelValue{}
 
 // NewSymmetricValue creates a new symmetric value with the default Nominal kind.
 // This maintains backward compatibility with existing code.
-func NewSymmetricValue(prefix string, i uint64) SymmetricValue {
+func NewSymmetricValue(prefix string, i int64) SymmetricValue {
 	return SymmetricValue{ModelValue: ModelValue{prefix: prefix, id: i}, Kind: SymmetryKindNominal}
 }
 
 // NewSymmetricValueWithKind creates a new symmetric value with the specified kind.
-func NewSymmetricValueWithKind(prefix string, i uint64, kind SymmetryKind) SymmetricValue {
+func NewSymmetricValueWithKind(prefix string, i int64, kind SymmetryKind) SymmetricValue {
 	return SymmetricValue{ModelValue: ModelValue{prefix: prefix, id: i}, Kind: kind}
 }
 
@@ -1325,4 +1326,32 @@ var _ starlark.Comparable = SymmetricValue{}
 
 func CompareStringer[E fmt.Stringer](a, b E) int {
 	return strings.Compare(a.String(), b.String())
+}
+
+func (s SymmetricValue) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
+	if s.Kind != SymmetryKindInterval && s.Kind != SymmetryKindOrdinal {
+		return nil, nil // nominal doesn't support arithmetic
+	}
+
+	if op == syntax.PLUS {
+		// SymmetricValue + int -> SymmetricValue (or int + SymmetricValue)
+		if i, err := starlark.AsInt32(y); err == nil {
+			return NewSymmetricValueWithKind(s.prefix, s.id+int64(i), s.Kind), nil
+		}
+	} else if op == syntax.MINUS {
+		if side == starlark.Left {
+			// SymmetricValue - int -> SymmetricValue
+			if i, err := starlark.AsInt32(y); err == nil {
+				return NewSymmetricValueWithKind(s.prefix, s.id-int64(i), s.Kind), nil
+			}
+			// SymmetricValue - SymmetricValue -> int (signed difference)
+			if other, ok := y.(SymmetricValue); ok {
+				if s.prefix != other.prefix {
+					return nil, fmt.Errorf("cannot subtract values from different domains: %s vs %s", s.prefix, other.prefix)
+				}
+				return starlark.MakeInt64(s.id - other.id), nil
+			}
+		}
+	}
+	return nil, nil
 }
