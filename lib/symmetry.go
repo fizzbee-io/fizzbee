@@ -159,6 +159,18 @@ func (d *SymmetryDomain) Attr(name string) (starlark.Value, error) {
 		if d.Kind == SymmetryKindNominal {
 			return starlark.NewBuiltin("choices", d.choices), nil
 		}
+	case "choose":
+		if d.Kind == SymmetryKindNominal {
+			return starlark.NewBuiltin("choose", d.choose), nil
+		}
+	case "min":
+		if d.Kind == SymmetryKindOrdinal || d.Kind == SymmetryKindInterval {
+			return starlark.NewBuiltin("min", d.min), nil
+		}
+	case "max":
+		if d.Kind == SymmetryKindOrdinal || d.Kind == SymmetryKindInterval {
+			return starlark.NewBuiltin("max", d.max), nil
+		}
 	case "values":
 		return starlark.NewBuiltin("values", d.values), nil
 	case "segments":
@@ -184,12 +196,12 @@ func (d *SymmetryDomain) Attr(name string) (starlark.Value, error) {
 
 func (d *SymmetryDomain) AttrNames() []string {
 	if d.Kind == SymmetryKindOrdinal {
-		return []string{"fresh", "values", "segments", "name", "limit"}
+		return []string{"fresh", "values", "segments", "name", "limit", "min", "max"}
 	}
 	if d.Kind == SymmetryKindInterval {
-		return []string{"fresh", "values", "name", "limit", "divergence", "start"}
+		return []string{"fresh", "values", "name", "limit", "divergence", "start", "min", "max"}
 	}
-	return []string{"fresh", "choices", "values", "name", "limit"}
+	return []string{"fresh", "choices", "values", "name", "limit", "choose"}
 }
 
 // segments returns a list of Segment objects representing gaps between active values.
@@ -526,6 +538,60 @@ func (d *SymmetryDomain) choices(thread *starlark.Thread, b *starlark.Builtin, a
 
 	// Return all values (which now includes the fresh one if it was generated).
 	return d.values(thread, b, nil, nil)
+}
+
+// choose returns a deterministic default value from the domain.
+// Returns the lowest used value, or creates a fresh one if none exist.
+// For nominal domains, the specific value is an implementation detail —
+// all values are semantically equivalent under symmetry.
+// Usage: domain.choose()
+func (d *SymmetryDomain) choose(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if err := starlark.UnpackArgs("choose", args, kwargs); err != nil {
+		return nil, err
+	}
+	return d.getExtremeOrFresh(thread, b, args, kwargs, false)
+}
+
+// min returns the minimum used value, or creates a fresh one if none exist.
+// Usage: domain.min()
+func (d *SymmetryDomain) min(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if err := starlark.UnpackArgs("min", args, kwargs); err != nil {
+		return nil, err
+	}
+	return d.getExtremeOrFresh(thread, b, args, kwargs, false)
+}
+
+// max returns the maximum used value, or creates a fresh one if none exist.
+// Usage: domain.max()
+func (d *SymmetryDomain) max(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if err := starlark.UnpackArgs("max", args, kwargs); err != nil {
+		return nil, err
+	}
+	return d.getExtremeOrFresh(thread, b, args, kwargs, true)
+}
+
+// getExtremeOrFresh returns the min (or max) used value, or a fresh value if none exist.
+func (d *SymmetryDomain) getExtremeOrFresh(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple, findMax bool) (starlark.Value, error) {
+	ctxVal := thread.Local(SymmetryContextKey)
+	if ctxVal == nil {
+		return nil, fmt.Errorf("internal error: symmetry context not found in thread")
+	}
+	ctx := ctxVal.(*SymmetryContext)
+	ctx.EnsureDomainInit(d.Name)
+
+	if len(ctx.Cache[d.Name]) == 0 {
+		return d.fresh(thread, b, args, kwargs)
+	}
+
+	var result int64
+	first := true
+	for id := range ctx.Cache[d.Name] {
+		if first || (findMax && id > result) || (!findMax && id < result) {
+			result = id
+			first = false
+		}
+	}
+	return NewSymmetricValueWithKind(d.Name, result, d.Kind), nil
 }
 
 // --- Module Construction ---
