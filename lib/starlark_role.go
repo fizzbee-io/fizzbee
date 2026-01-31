@@ -14,15 +14,15 @@ var (
 )
 
 var (
-	roleRefs = map[string]uint64{}
+	roleRefs = map[string]int64{}
 )
 
 func ClearRoleRefs() {
-	roleRefs = map[string]uint64{}
+	roleRefs = map[string]int64{}
 }
 
 type Role struct {
-	Ref         uint64
+	Ref         int64
 	Name        string
 	Symmetric   bool
 	Params      *Struct
@@ -131,7 +131,7 @@ func (r *Role) RefString() string {
 	return GenerateRefString(r.Name, r.Ref)
 }
 
-func GenerateRefString(name string, ref uint64) string {
+func GenerateRefString(name string, ref int64) string {
 	return fmt.Sprintf("role %s#%d", name, ref)
 }
 

@@ -654,7 +654,7 @@ func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
 // The context provides a scanner function that collects all currently used symmetric values
 // from the process state, enabling the symmetry module to track what values are in use.
 func (p *Process) createSymmetryContext() *lib.SymmetryContext {
-	return lib.NewSymmetryContext(func() map[string][]uint64 {
+	return lib.NewSymmetryContext(func() map[string][]int64 {
 		collector := NewUsedSymmetricValuesCollector()
 		p.AcceptVisitor(collector)
 		return collector.GetAllUsedIDs()
@@ -1476,6 +1476,15 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		}
 	}
 
+	if node.actionDepth > 0 {
+		passed, _ := CheckSymmetryConstraints(node.Process)
+		if !passed {
+			// Symmetry constraint violated (e.g., interval divergence exceeded).
+			// Prune this path silently — this is not a verification failure.
+			return false, true
+		}
+	}
+
 	other, found, canonicalHash := p.findVisitedSymmetric(node)
 	if found {
 		// TODO: Enabled should be a property of the link/transition, not the node.
@@ -1734,19 +1743,22 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 	var values [][]lib.SymmetricValue
 	var usedValues [][]lib.SymmetricValue
 
-	// Store ordinal mappings separately: used -> canonical (identity 0..N-1)
-	type ordinalMapping struct {
+	// Static mappings for ordinal (rank squash) and interval (zero-shift).
+	// These have a single canonical form, so they're appended to each permutation.
+	type staticMapping struct {
 		used      []lib.SymmetricValue
 		canonical []lib.SymmetricValue
 	}
-	var postProcessingMappings []ordinalMapping
+	var postProcessingMappings []staticMapping
 
 	if canonicalizeSymmetricValues {
 		// Collect only the symmetric values that are actually used in the state
 		allUsedValues := process.getUsedSymmetricValues()
 
-		// Canonicalize to [k0, k1, k2, ...]
-		// Segregate into Nominal (for permutation) and Ordinal (for static mapping)
+		// Segregate by symmetry kind:
+		// - Nominal: permute all N! orderings to find canonical hash
+		// - Ordinal: static identity mapping (rank squash to 0..N-1)
+		// - Interval: static zero-shift mapping (translate so min becomes 0)
 		for _, used := range allUsedValues {
 			if len(used) == 0 {
 				continue
@@ -1755,11 +1767,20 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 			prefix := used[0].GetPrefix()
 			canonical := make([]lib.SymmetricValue, len(used))
 			for j := 0; j < len(used); j++ {
-				canonical[j] = lib.NewSymmetricValueWithKind(prefix, uint64(j), kind)
+				canonical[j] = lib.NewSymmetricValueWithKind(prefix, int64(j), kind)
 			}
 
 			if kind == lib.SymmetryKindOrdinal {
-				postProcessingMappings = append(postProcessingMappings, ordinalMapping{used: used, canonical: canonical})
+				postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: canonical})
+			} else if kind == lib.SymmetryKindInterval {
+				// Interval symmetry: zero-shift (translate so min becomes 0).
+				// This preserves distances between values, unlike permutation.
+				minID := used[0].GetId() // used is sorted, so first element is min
+				shifted := make([]lib.SymmetricValue, len(used))
+				for j := 0; j < len(used); j++ {
+					shifted[j] = lib.NewSymmetricValueWithKind(prefix, used[j].GetId()-minID, kind)
+				}
+				postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: shifted})
 			} else {
 				values = append(values, canonical)
 				usedValues = append(usedValues, used)

@@ -14,13 +14,13 @@ type StateVisitor interface {
 
 // UsedSymmetricValuesCollector collects all SymmetricValue instances in the current state
 type UsedSymmetricValuesCollector struct {
-	usedValues map[string]map[uint64]bool // prefix -> set of IDs
+	usedValues map[string]map[int64]bool // prefix -> set of IDs
 }
 
 // NewUsedSymmetricValuesCollector creates a new collector
 func NewUsedSymmetricValuesCollector() *UsedSymmetricValuesCollector {
 	return &UsedSymmetricValuesCollector{
-		usedValues: make(map[string]map[uint64]bool),
+		usedValues: make(map[string]map[int64]bool),
 	}
 }
 
@@ -30,18 +30,18 @@ func (c *UsedSymmetricValuesCollector) VisitSymmetricValue(sv lib.SymmetricValue
 	id := sv.GetId()
 
 	if c.usedValues[prefix] == nil {
-		c.usedValues[prefix] = make(map[uint64]bool)
+		c.usedValues[prefix] = make(map[int64]bool)
 	}
 	c.usedValues[prefix][id] = true
 }
 
 // GetUsedIds returns a sorted list of IDs that are used for a given prefix
-func (c *UsedSymmetricValuesCollector) GetUsedIds(prefix string) []uint64 {
+func (c *UsedSymmetricValuesCollector) GetUsedIds(prefix string) []int64 {
 	if c.usedValues[prefix] == nil {
-		return []uint64{}
+		return []int64{}
 	}
 
-	ids := make([]uint64, 0, len(c.usedValues[prefix]))
+	ids := make([]int64, 0, len(c.usedValues[prefix]))
 	for id := range c.usedValues[prefix] {
 		ids = append(ids, id)
 	}
@@ -66,10 +66,10 @@ func (c *UsedSymmetricValuesCollector) HasUsedValues(prefix string) bool {
 
 // GetAllUsedIDs returns all used IDs organized by prefix/domain name.
 // This is used by the symmetry module to initialize its cache.
-func (c *UsedSymmetricValuesCollector) GetAllUsedIDs() map[string][]uint64 {
-	result := make(map[string][]uint64)
+func (c *UsedSymmetricValuesCollector) GetAllUsedIDs() map[string][]int64 {
+	result := make(map[string][]int64)
 	for prefix, idSet := range c.usedValues {
-		ids := make([]uint64, 0, len(idSet))
+		ids := make([]int64, 0, len(idSet))
 		for id := range idSet {
 			ids = append(ids, id)
 		}
