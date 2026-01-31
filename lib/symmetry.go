@@ -150,6 +150,10 @@ func (d *SymmetryDomain) Attr(name string) (starlark.Value, error) {
 	switch name {
 	case "fresh":
 		return starlark.NewBuiltin("fresh", d.fresh), nil
+	case "choices":
+		if d.Kind == SymmetryKindNominal {
+			return starlark.NewBuiltin("choices", d.choices), nil
+		}
 	case "values":
 		return starlark.NewBuiltin("values", d.values), nil
 	case "segments":
@@ -169,7 +173,7 @@ func (d *SymmetryDomain) AttrNames() []string {
 	if d.Kind == SymmetryKindOrdinal {
 		return []string{"fresh", "values", "segments", "name", "limit"}
 	}
-	return []string{"fresh", "values", "name", "limit"}
+	return []string{"fresh", "choices", "values", "name", "limit"}
 }
 
 // segments returns a list of Segment objects representing gaps between active values.
@@ -455,6 +459,24 @@ func (d *SymmetryDomain) values(thread *starlark.Thread, _ *starlark.Builtin, ar
 	}
 
 	return starlark.NewList(elems), nil
+}
+
+// choices returns a list of all currently active values plus one fresh value (if the limit allows).
+// Usage: domain.choices()
+func (d *SymmetryDomain) choices(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if err := starlark.UnpackArgs("choices", args, kwargs); err != nil {
+		return nil, err
+	}
+
+	// Attempt to generate a fresh value.
+	// We ignore DisableTransitionError (limit reached), but propagate other errors.
+	_, err := d.fresh(thread, b, nil, nil)
+	if err != nil && !IsDisableTransitionError(err) {
+		return nil, err
+	}
+
+	// Return all values (which now includes the fresh one if it was generated).
+	return d.values(thread, b, nil, nil)
 }
 
 // --- Module Construction ---
