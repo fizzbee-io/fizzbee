@@ -15,12 +15,14 @@ type StateVisitor interface {
 // UsedSymmetricValuesCollector collects all SymmetricValue instances in the current state
 type UsedSymmetricValuesCollector struct {
 	usedValues map[string]map[int64]bool // prefix -> set of IDs
+	limits     map[string]int            // prefix -> Limit (for rotational domains)
 }
 
 // NewUsedSymmetricValuesCollector creates a new collector
 func NewUsedSymmetricValuesCollector() *UsedSymmetricValuesCollector {
 	return &UsedSymmetricValuesCollector{
 		usedValues: make(map[string]map[int64]bool),
+		limits:     make(map[string]int),
 	}
 }
 
@@ -33,6 +35,9 @@ func (c *UsedSymmetricValuesCollector) VisitSymmetricValue(sv lib.SymmetricValue
 		c.usedValues[prefix] = make(map[int64]bool)
 	}
 	c.usedValues[prefix][id] = true
+	if sv.Limit > 0 {
+		c.limits[prefix] = sv.Limit
+	}
 }
 
 // GetUsedIds returns a sorted list of IDs that are used for a given prefix
@@ -53,8 +58,13 @@ func (c *UsedSymmetricValuesCollector) GetUsedIds(prefix string) []int64 {
 func (c *UsedSymmetricValuesCollector) GetUsedSymmetricValues(prefix string, kind lib.SymmetryKind) []lib.SymmetricValue {
 	ids := c.GetUsedIds(prefix)
 	values := make([]lib.SymmetricValue, len(ids))
+	limit := c.limits[prefix]
 	for i, id := range ids {
-		values[i] = lib.NewSymmetricValueWithKind(prefix, id, kind)
+		if kind == lib.SymmetryKindRotational && limit > 0 {
+			values[i] = lib.NewRotationalSymmetricValue(prefix, id, limit)
+		} else {
+			values[i] = lib.NewSymmetricValueWithKind(prefix, id, kind)
+		}
 	}
 	return values
 }
@@ -256,6 +266,16 @@ func (p *Process) getUsedSymmetricValues() [][]lib.SymmetricValue {
 	collector := NewUsedSymmetricValuesCollector()
 	p.AcceptVisitor(collector)
 
+	// Build a map of materialized rotational domains from globals
+	materializedDomains := make(map[string]*lib.SymmetryDomain)
+	for _, val := range p.Heap.globals {
+		if domain, ok := val.(*lib.SymmetryDomain); ok {
+			if domain.Materialize && domain.Kind == lib.SymmetryKindRotational {
+				materializedDomains[domain.Name] = domain
+			}
+		}
+	}
+
 	// Get all symmetric value definitions
 	defs := p.Heap.GetSymmetryDefs()
 
@@ -268,6 +288,16 @@ func (p *Process) getUsedSymmetricValues() [][]lib.SymmetricValue {
 		// Get the prefix from the first element
 		prefix := def.Index(0).GetPrefix()
 		kind := def.Index(0).GetKind()
+
+		// For materialized rotational domains, return the full set [0..limit-1]
+		if domain, ok := materializedDomains[prefix]; ok {
+			fullSet := make([]lib.SymmetricValue, domain.Limit)
+			for i := 0; i < domain.Limit; i++ {
+				fullSet[i] = lib.NewRotationalSymmetricValue(prefix, int64(i), domain.Limit)
+			}
+			result = append(result, fullSet)
+			continue
+		}
 
 		// Get the actually used values
 		usedValues := collector.GetUsedSymmetricValues(prefix, kind)
