@@ -1274,11 +1274,17 @@ func NewSymmetricValueWithKind(prefix string, i int64, kind SymmetryKind) Symmet
 	return SymmetricValue{ModelValue: ModelValue{prefix: prefix, id: i}, Kind: kind}
 }
 
+// NewRotationalSymmetricValue creates a new symmetric value for rotational domains with the limit set.
+func NewRotationalSymmetricValue(prefix string, i int64, limit int) SymmetricValue {
+	return SymmetricValue{ModelValue: ModelValue{prefix: prefix, id: i}, Kind: SymmetryKindRotational, Limit: limit}
+}
+
 const SymmetricValueType = "symmetric_value"
 
 type SymmetricValue struct {
 	ModelValue
-	Kind SymmetryKind
+	Kind  SymmetryKind
+	Limit int // Only used for rotational kind (domain size for mod arithmetic). 0 for other kinds.
 }
 
 func (s SymmetricValue) GetKind() SymmetryKind {
@@ -1302,6 +1308,9 @@ func (s SymmetricValue) CompareSameType(op syntax.Token, y_ starlark.Value, dept
 		// Ordering only allowed for Ordinal and Interval kinds
 		if s.Kind == SymmetryKindNominal {
 			return false, fmt.Errorf("nominal values do not support ordering comparisons")
+		}
+		if s.Kind == SymmetryKindRotational {
+			return false, fmt.Errorf("rotational values do not support ordering comparisons")
 		}
 		switch op {
 		case syntax.LT:
@@ -1329,6 +1338,9 @@ func CompareStringer[E fmt.Stringer](a, b E) int {
 }
 
 func (s SymmetricValue) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
+	if s.Kind == SymmetryKindRotational {
+		return s.binaryRotational(op, y, side)
+	}
 	if s.Kind != SymmetryKindInterval && s.Kind != SymmetryKindOrdinal {
 		return nil, nil // nominal doesn't support arithmetic
 	}
@@ -1350,6 +1362,39 @@ func (s SymmetricValue) Binary(op syntax.Token, y starlark.Value, side starlark.
 					return nil, fmt.Errorf("cannot subtract values from different domains: %s vs %s", s.prefix, other.prefix)
 				}
 				return starlark.MakeInt64(s.id - other.id), nil
+			}
+		}
+	}
+	return nil, nil
+}
+
+// modPositive returns ((a % m) + m) % m to ensure a positive result.
+func modPositive(a, m int64) int64 {
+	return ((a % m) + m) % m
+}
+
+func (s SymmetricValue) binaryRotational(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
+	limit := int64(s.Limit)
+	if limit <= 0 {
+		return nil, fmt.Errorf("rotational value has invalid limit %d", s.Limit)
+	}
+
+	if op == syntax.PLUS {
+		if i, err := starlark.AsInt32(y); err == nil {
+			return NewRotationalSymmetricValue(s.prefix, modPositive(s.id+int64(i), limit), s.Limit), nil
+		}
+	} else if op == syntax.MINUS {
+		if side == starlark.Left {
+			// SymmetricValue - int -> SymmetricValue (mod limit)
+			if i, err := starlark.AsInt32(y); err == nil {
+				return NewRotationalSymmetricValue(s.prefix, modPositive(s.id-int64(i), limit), s.Limit), nil
+			}
+			// SymmetricValue - SymmetricValue -> plain int (mod limit)
+			if other, ok := y.(SymmetricValue); ok {
+				if s.prefix != other.prefix {
+					return nil, fmt.Errorf("cannot subtract values from different domains: %s vs %s", s.prefix, other.prefix)
+				}
+				return starlark.MakeInt64(modPositive(s.id-other.id, limit)), nil
 			}
 		}
 	}

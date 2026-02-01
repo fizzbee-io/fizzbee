@@ -42,6 +42,12 @@ const (
 	// Operations: ==, !=, <, >, <=, >=, +, -. Reduction: zero-shifting.
 	// Use cases: TCP Sequence Numbers, Raft Log Indices, Clock Drift.
 	SymmetryKindInterval SymmetryKind = "interval"
+
+	// SymmetryKindRotational represents values in Z/limit (integers mod limit).
+	// Operations: ==, !=, +, - (all mod limit). No ordering since the domain wraps.
+	// Reduction: rotate all values by a constant to find the lexicographically smallest set.
+	// Use cases: Ring positions, clock arithmetic, hash ring slots.
+	SymmetryKindRotational SymmetryKind = "rotational"
 )
 
 // String returns the string representation of the SymmetryKind
@@ -82,6 +88,10 @@ type SymmetryContext struct {
 	// Map: DomainName -> ID -> Exists
 	Cache map[string]map[int64]bool
 
+	// LastAllocated tracks the last allocated value for rotational domains.
+	// Map: DomainName -> last allocated ID
+	LastAllocated map[string]int64
+
 	// initialized tracks if we have loaded the state from Scanner yet.
 	initialized bool
 }
@@ -89,8 +99,22 @@ type SymmetryContext struct {
 // NewSymmetryContext creates a new symmetry context with the given scanner function
 func NewSymmetryContext(scanner func() map[string][]int64) *SymmetryContext {
 	return &SymmetryContext{
-		Scanner: scanner,
-		Cache:   make(map[string]map[int64]bool),
+		Scanner:       scanner,
+		Cache:         make(map[string]map[int64]bool),
+		LastAllocated: make(map[string]int64),
+	}
+}
+
+// NewSymmetryContextWithLastAllocated creates a new symmetry context with pre-populated LastAllocated state.
+func NewSymmetryContextWithLastAllocated(scanner func() map[string][]int64, lastAllocated map[string]int64) *SymmetryContext {
+	la := make(map[string]int64, len(lastAllocated))
+	for k, v := range lastAllocated {
+		la[k] = v
+	}
+	return &SymmetryContext{
+		Scanner:       scanner,
+		Cache:         make(map[string]map[int64]bool),
+		LastAllocated: la,
 	}
 }
 
@@ -124,11 +148,12 @@ func (ctx *SymmetryContext) EnsureDomainInit(name string) {
 // This type is stateless - it only contains configuration, not runtime state.
 // Runtime state is managed via the SymmetryContext in thread-local storage.
 type SymmetryDomain struct {
-	Name       string
-	Limit      int
-	Kind       SymmetryKind
-	Divergence int
-	Start      int
+	Name        string
+	Limit       int
+	Kind        SymmetryKind
+	Divergence  int
+	Start       int
+	Materialize bool
 }
 
 // Starlark Interface for SymmetryDomain
@@ -138,6 +163,9 @@ var _ starlark.HasAttrs = (*SymmetryDomain)(nil)
 func (d *SymmetryDomain) String() string {
 	if d.Kind == SymmetryKindInterval {
 		return fmt.Sprintf("symmetry.%s(name=%q, limit=%d, divergence=%d, start=%d)", d.Kind, d.Name, d.Limit, d.Divergence, d.Start)
+	}
+	if d.Kind == SymmetryKindRotational {
+		return fmt.Sprintf("symmetry.%s(name=%q, limit=%d, materialize=%t)", d.Kind, d.Name, d.Limit, d.Materialize)
 	}
 	return fmt.Sprintf("symmetry.%s(name=%q, limit=%d)", d.Kind, d.Name, d.Limit)
 }
@@ -156,11 +184,11 @@ func (d *SymmetryDomain) Attr(name string) (starlark.Value, error) {
 	case "fresh":
 		return starlark.NewBuiltin("fresh", d.fresh), nil
 	case "choices":
-		if d.Kind == SymmetryKindNominal {
+		if d.Kind == SymmetryKindNominal || d.Kind == SymmetryKindRotational {
 			return starlark.NewBuiltin("choices", d.choices), nil
 		}
 	case "choose":
-		if d.Kind == SymmetryKindNominal {
+		if d.Kind == SymmetryKindNominal || d.Kind == SymmetryKindRotational {
 			return starlark.NewBuiltin("choose", d.choose), nil
 		}
 	case "min":
@@ -200,6 +228,9 @@ func (d *SymmetryDomain) AttrNames() []string {
 	}
 	if d.Kind == SymmetryKindInterval {
 		return []string{"fresh", "values", "name", "limit", "divergence", "start", "min", "max"}
+	}
+	if d.Kind == SymmetryKindRotational {
+		return []string{"fresh", "choices", "values", "name", "limit", "choose"}
 	}
 	return []string{"fresh", "choices", "values", "name", "limit", "choose"}
 }
@@ -392,6 +423,20 @@ func (s *Segment) fresh(thread *starlark.Thread, _ *starlark.Builtin, args starl
 	return NewSymmetricValueWithKind(s.Domain.Name, newID, s.Domain.Kind), nil
 }
 
+// ensureMaterialized populates the cache with all [0..limit-1] values for materialized rotational domains.
+func (d *SymmetryDomain) ensureMaterialized(ctx *SymmetryContext) {
+	if !d.Materialize || d.Kind != SymmetryKindRotational {
+		return
+	}
+	ctx.EnsureDomainInit(d.Name)
+	if len(ctx.Cache[d.Name]) >= d.Limit {
+		return
+	}
+	for i := int64(0); i < int64(d.Limit); i++ {
+		ctx.Cache[d.Name][i] = true
+	}
+}
+
 // fresh allocates a new deterministic value from this domain.
 // Returns a DisableTransitionError if the limit is reached.
 // Usage: domain.fresh()
@@ -458,6 +503,31 @@ func (d *SymmetryDomain) fresh(thread *starlark.Thread, _ *starlark.Builtin, arg
 			}
 		}
 
+	} else if d.Kind == SymmetryKindRotational {
+		if d.Materialize {
+			return nil, fmt.Errorf("fresh() not allowed on materialized rotational domain — all values already exist")
+		}
+		// For rotational symmetry, find next unused after last-allocated, wrapping mod limit.
+		last, hasLast := ctx.LastAllocated[d.Name]
+		if !hasLast {
+			last = -1
+		}
+		limit := int64(d.Limit)
+		found := false
+		for i := int64(0); i < limit; i++ {
+			candidate := (last + 1 + i) % limit
+			if !ctx.Cache[d.Name][candidate] {
+				nextID = candidate
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, &DisableTransitionError{
+				Message: fmt.Sprintf("symmetry limit reached for domain %q (limit %d)", d.Name, d.Limit),
+			}
+		}
+		ctx.LastAllocated[d.Name] = nextID
 	} else if d.Kind == SymmetryKindOrdinal {
 		// For ordinal symmetry, use midpoint-based allocation (tail segment logic).
 		// Find current max
@@ -486,6 +556,9 @@ func (d *SymmetryDomain) fresh(thread *starlark.Thread, _ *starlark.Builtin, arg
 	// 5. Update Transient Cache
 	ctx.Cache[d.Name][nextID] = true
 
+	if d.Kind == SymmetryKindRotational {
+		return NewRotationalSymmetricValue(d.Name, nextID, d.Limit), nil
+	}
 	return NewSymmetricValueWithKind(d.Name, nextID, d.Kind), nil
 }
 
@@ -505,6 +578,7 @@ func (d *SymmetryDomain) values(thread *starlark.Thread, _ *starlark.Builtin, ar
 
 	// Ensure domain is initialized
 	ctx.EnsureDomainInit(d.Name)
+	d.ensureMaterialized(ctx)
 
 	// Collect and Sort IDs for deterministic ordering
 	var ids []int64
@@ -516,7 +590,11 @@ func (d *SymmetryDomain) values(thread *starlark.Thread, _ *starlark.Builtin, ar
 	// Convert to SymmetricValue list
 	elems := make([]starlark.Value, len(ids))
 	for i, id := range ids {
-		elems[i] = NewSymmetricValueWithKind(d.Name, id, d.Kind)
+		if d.Kind == SymmetryKindRotational {
+			elems[i] = NewRotationalSymmetricValue(d.Name, id, d.Limit)
+		} else {
+			elems[i] = NewSymmetricValueWithKind(d.Name, id, d.Kind)
+		}
 	}
 
 	return starlark.NewList(elems), nil
@@ -527,6 +605,11 @@ func (d *SymmetryDomain) values(thread *starlark.Thread, _ *starlark.Builtin, ar
 func (d *SymmetryDomain) choices(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	if err := starlark.UnpackArgs("choices", args, kwargs); err != nil {
 		return nil, err
+	}
+
+	if d.Materialize {
+		// Materialized domains have all values already; skip fresh().
+		return d.values(thread, b, nil, nil)
 	}
 
 	// Attempt to generate a fresh value.
@@ -578,6 +661,7 @@ func (d *SymmetryDomain) getExtremeOrFresh(thread *starlark.Thread, b *starlark.
 	}
 	ctx := ctxVal.(*SymmetryContext)
 	ctx.EnsureDomainInit(d.Name)
+	d.ensureMaterialized(ctx)
 
 	if len(ctx.Cache[d.Name]) == 0 {
 		return d.fresh(thread, b, args, kwargs)
@@ -591,6 +675,9 @@ func (d *SymmetryDomain) getExtremeOrFresh(thread *starlark.Thread, b *starlark.
 			first = false
 		}
 	}
+	if d.Kind == SymmetryKindRotational {
+		return NewRotationalSymmetricValue(d.Name, result, d.Limit), nil
+	}
 	return NewSymmetricValueWithKind(d.Name, result, d.Kind), nil
 }
 
@@ -600,9 +687,10 @@ func (d *SymmetryDomain) getExtremeOrFresh(thread *starlark.Thread, b *starlark.
 var SymmetryModule = &starlarkstruct.Module{
 	Name: "symmetry",
 	Members: starlark.StringDict{
-		"nominal":  starlark.NewBuiltin("nominal", makeNominal),
-		"ordinal":  starlark.NewBuiltin("ordinal", makeOrdinal),
-		"interval": starlark.NewBuiltin("interval", makeInterval),
+		"nominal":    starlark.NewBuiltin("nominal", makeNominal),
+		"ordinal":    starlark.NewBuiltin("ordinal", makeOrdinal),
+		"interval":   starlark.NewBuiltin("interval", makeInterval),
+		"rotational": starlark.NewBuiltin("rotational", makeRotational),
 	},
 }
 
@@ -707,4 +795,89 @@ func makeInterval(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 		Start:      start,
 		Kind:       SymmetryKindInterval,
 	}, nil
+}
+
+// makeRotational creates a new rotational symmetry domain
+// Usage: symmetry.rotational(name="pos", limit=5)
+func makeRotational(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var name string
+	var limit int
+	var materialize bool
+	if err := starlark.UnpackArgs("rotational", args, kwargs, "name", &name, "limit", &limit, "materialize?", &materialize); err != nil {
+		return nil, err
+	}
+	if limit < 2 {
+		return nil, fmt.Errorf("rotational: limit must be >= 2, got %d", limit)
+	}
+	if name == "" {
+		return nil, fmt.Errorf("rotational: name cannot be empty")
+	}
+	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindRotational, Materialize: materialize}, nil
+}
+
+// GetCanonicalRotations returns the pivot shift(s) that produce the
+// lexicographically smallest signature for the used value set.
+// Each returned value is a shift amount: to canonicalize, map each value v to (v + shift) % limit.
+func GetCanonicalRotations(usedIDs []int64, limit int) []int64 {
+	n := len(usedIDs)
+	if n == 0 {
+		return []int64{0}
+	}
+
+	lim := int64(limit)
+
+	// For each pivot, compute the signature = sorted [(v - pivot) % limit for v in usedIDs]
+	// We want the lexicographically smallest signature and return all pivots that produce it.
+	type candidate struct {
+		pivot     int64
+		signature []int64
+	}
+
+	var best []candidate
+
+	for _, pivot := range usedIDs {
+		sig := make([]int64, n)
+		for i, v := range usedIDs {
+			sig[i] = ((v - pivot) % lim + lim) % lim
+		}
+		slices.Sort(sig)
+
+		c := candidate{pivot: pivot, signature: sig}
+
+		if best == nil {
+			best = []candidate{c}
+		} else {
+			cmp := sliceCompare(sig, best[0].signature)
+			if cmp < 0 {
+				best = []candidate{c}
+			} else if cmp == 0 {
+				best = append(best, c)
+			}
+		}
+	}
+
+	shifts := make([]int64, len(best))
+	for i, c := range best {
+		shifts[i] = ((-c.pivot) % lim + lim) % lim
+	}
+	return shifts
+}
+
+// sliceCompare compares two int64 slices lexicographically.
+func sliceCompare(a, b []int64) int {
+	for i := 0; i < len(a) && i < len(b); i++ {
+		if a[i] < b[i] {
+			return -1
+		}
+		if a[i] > b[i] {
+			return 1
+		}
+	}
+	if len(a) < len(b) {
+		return -1
+	}
+	if len(a) > len(b) {
+		return 1
+	}
+	return 0
 }

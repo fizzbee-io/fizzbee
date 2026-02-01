@@ -56,7 +56,11 @@ func (h *Heap) GetSymmetryDefs() []*lib.SymmetricValues {
 			// Create a SymmetricValues containing all possible values for this domain
 			values := make([]lib.SymmetricValue, domain.Limit)
 			for i := 0; i < domain.Limit; i++ {
-				values[i] = lib.NewSymmetricValueWithKind(domain.Name, int64(i), domain.Kind)
+				if domain.Kind == lib.SymmetryKindRotational {
+					values[i] = lib.NewRotationalSymmetricValue(domain.Name, int64(i), domain.Limit)
+				} else {
+					values[i] = lib.NewSymmetricValueWithKind(domain.Name, int64(i), domain.Kind)
+				}
 			}
 			sv := lib.NewSymmetricValues(values)
 			symmetryDefs = append(symmetryDefs, sv)
@@ -699,6 +703,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		vars := t.Process.GetAllVariablesNocopy()
 		symCtx := t.Process.createSymmetryContext()
 		_, err := t.Process.Evaluator.ExecPyStmtWithContext(t.getFileName(), stmt.PyStmt, vars, symCtx)
+		t.Process.saveRotationalLastAllocated(symCtx)
 		if err != nil {
 			if lib.IsDisableTransitionError(err) {
 				// Disable the transition similar to RequireStmt
@@ -747,6 +752,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		vars := t.Process.GetAllVariablesNocopy()
 		symCtx := t.Process.createSymmetryContext()
 		val, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), stmt.AnyStmt.IterExpr, vars, symCtx)
+		t.Process.saveRotationalLastAllocated(symCtx)
 		// TODO: This source info should be for the pyExpr not the anyStmt
 		t.Process.PanicOnError(stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.AnyStmt.PyExpr), err)
 		t.Process.updateAllVariablesInScope(vars)
@@ -835,6 +841,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		vars := t.Process.GetAllVariablesNocopy()
 		symCtx := t.Process.createSymmetryContext()
 		val, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), stmt.ForStmt.IterExpr, vars, symCtx)
+		t.Process.saveRotationalLastAllocated(symCtx)
 		// TODO: This source info should be for the pyExpr not the forStmt
 		t.Process.PanicOnError(stmt.ForStmt.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.ForStmt.PyExpr), err)
 
@@ -990,6 +997,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			vars := t.Process.GetAllVariablesNocopy()
 			symCtx := t.Process.createSymmetryContext()
 			_, err := t.Process.Evaluator.ExecPyStmtWithContext(t.getFileName(), pyEquivStmt, vars, symCtx)
+			t.Process.saveRotationalLastAllocated(symCtx)
 			if err != nil {
 				if lib.IsDisableTransitionError(err) {
 					t.Process.Enabled = false
