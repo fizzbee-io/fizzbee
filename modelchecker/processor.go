@@ -1776,13 +1776,23 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 		canonical []lib.SymmetricValue
 	}
 	var postProcessingMappings []staticMapping
-	// rotationalExtraMappings holds additional shift alternatives for tied rotational pivots.
-	// Each entry is a list of extra staticMappings for one rotational domain.
+	// rotationalExtraMappings holds additional shift alternatives for tied pivots/reflections.
+	// Each entry is a list of extra staticMappings for one domain with alternatives.
 	var rotationalExtraMappings [][]staticMapping
+	// extraMappingForPost maps postProcessingMappings index to the rotationalExtraMappings index.
+	extraMappingForPost := make(map[int]int)
 
 	if canonicalizeSymmetricValues {
 		// Collect only the symmetric values that are actually used in the state
 		allUsedValues := process.getUsedSymmetricValues()
+
+		// Build domain map from globals for accessing Reflection flag
+		domainMap := make(map[string]*lib.SymmetryDomain)
+		for _, val := range process.Heap.globals {
+			if domain, ok := val.(*lib.SymmetryDomain); ok {
+				domainMap[domain.Name] = domain
+			}
+		}
 
 		// Segregate by symmetry kind:
 		// - Nominal: permute all N! orderings to find canonical hash
@@ -1800,16 +1810,75 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 			}
 
 			if kind == lib.SymmetryKindOrdinal {
-				postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: canonical})
+				domain := domainMap[prefix]
+				if domain != nil && domain.Reflection {
+					// Ordinal with reflection: forward (0..N-1) and reverse (N-1..0)
+					usedIDs := make([]int64, len(used))
+					for j, v := range used {
+						usedIDs[j] = v.GetId()
+					}
+					fwd, rev, tied := lib.GetOrdinalReflectionCandidates(usedIDs, domain.Limit)
+					_ = fwd // forward is same as canonical (0..N-1)
+					postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: canonical})
+					if tied {
+						// Add reverse mapping as extra alternative
+						revCanonical := make([]lib.SymmetricValue, len(used))
+						for j := range used {
+							revCanonical[j] = lib.NewSymmetricValueWithKind(prefix, rev[j], kind)
+						}
+						extraMappings := []staticMapping{{used: used, canonical: revCanonical}}
+						extraMappingForPost[len(postProcessingMappings)-1] = len(rotationalExtraMappings)
+						rotationalExtraMappings = append(rotationalExtraMappings, extraMappings)
+					}
+				} else {
+					postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: canonical})
+				}
 			} else if kind == lib.SymmetryKindInterval {
 				// Interval symmetry: zero-shift (translate so min becomes 0).
 				// This preserves distances between values, unlike permutation.
 				minID := used[0].GetId() // used is sorted, so first element is min
-				shifted := make([]lib.SymmetricValue, len(used))
-				for j := 0; j < len(used); j++ {
-					shifted[j] = lib.NewSymmetricValueWithKind(prefix, used[j].GetId()-minID, kind)
+				domain := domainMap[prefix]
+				if domain != nil && domain.Reflection {
+					usedIDs := make([]int64, len(used))
+					for j, v := range used {
+						usedIDs[j] = v.GetId()
+					}
+					fwd, rev, tied := lib.GetIntervalReflectionCandidates(usedIDs)
+					if rev != nil && fwd == nil {
+						// Reverse wins
+						revCanonical := make([]lib.SymmetricValue, len(used))
+						for j := range used {
+							revCanonical[j] = lib.NewSymmetricValueWithKind(prefix, rev[j], kind)
+						}
+						postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: revCanonical})
+					} else if fwd != nil && !tied {
+						// Forward wins
+						shifted := make([]lib.SymmetricValue, len(used))
+						for j := range used {
+							shifted[j] = lib.NewSymmetricValueWithKind(prefix, fwd[j], kind)
+						}
+						postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: shifted})
+					} else {
+						// Tied: forward as base, reverse as extra
+						shifted := make([]lib.SymmetricValue, len(used))
+						for j := range used {
+							shifted[j] = lib.NewSymmetricValueWithKind(prefix, fwd[j], kind)
+						}
+						postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: shifted})
+						revCanonical := make([]lib.SymmetricValue, len(used))
+						for j := range used {
+							revCanonical[j] = lib.NewSymmetricValueWithKind(prefix, rev[j], kind)
+						}
+						extraMappingForPost[len(postProcessingMappings)-1] = len(rotationalExtraMappings)
+						rotationalExtraMappings = append(rotationalExtraMappings, []staticMapping{{used: used, canonical: revCanonical}})
+					}
+				} else {
+					shifted := make([]lib.SymmetricValue, len(used))
+					for j := 0; j < len(used); j++ {
+						shifted[j] = lib.NewSymmetricValueWithKind(prefix, used[j].GetId()-minID, kind)
+					}
+					postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: shifted})
 				}
-				postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: shifted})
 			} else if kind == lib.SymmetryKindRotational {
 				// Rotational symmetry: find canonical rotation(s)
 				limit := used[0].Limit
@@ -1817,28 +1886,64 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 				for j, v := range used {
 					usedIDs[j] = v.GetId()
 				}
-				shifts := lib.GetCanonicalRotations(usedIDs, limit)
-				// Single canonical rotation — static mapping
-				shift := shifts[0]
 				lim := int64(limit)
-				shifted := make([]lib.SymmetricValue, len(used))
-				for j, v := range used {
-					shifted[j] = lib.NewRotationalSymmetricValue(prefix, ((v.GetId()+shift)%lim+lim)%lim, limit)
-				}
-				postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: shifted})
 
-				// If multiple tied pivots, add extra alternatives
-				if len(shifts) > 1 {
-					log.Printf("[rotational] domain %q: %d tied pivots out of %d used values (limit=%d), shifts=%v", prefix, len(shifts), len(used), limit, shifts)
-					extraMappings := make([]staticMapping, 0, len(shifts)-1)
-					for _, s := range shifts[1:] {
-						sh := make([]lib.SymmetricValue, len(used))
-						for j, v := range used {
-							sh[j] = lib.NewRotationalSymmetricValue(prefix, ((v.GetId()+s)%lim+lim)%lim, limit)
+				domain := domainMap[prefix]
+				if domain != nil && domain.Reflection {
+					// Rotational with reflection
+					candidates := lib.GetCanonicalRotationsWithReflection(usedIDs, limit)
+					// First candidate is the base mapping
+					first := candidates[0]
+					shifted := make([]lib.SymmetricValue, len(used))
+					for j, v := range used {
+						val := v.GetId()
+						if first.Reflected {
+							val = (lim - val) % lim
 						}
-						extraMappings = append(extraMappings, staticMapping{used: used, canonical: sh})
+						shifted[j] = lib.NewRotationalSymmetricValue(prefix, ((val+first.Shift)%lim+lim)%lim, limit)
 					}
-					rotationalExtraMappings = append(rotationalExtraMappings, extraMappings)
+					postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: shifted})
+
+					if len(candidates) > 1 {
+						extraMappings := make([]staticMapping, 0, len(candidates)-1)
+						for _, c := range candidates[1:] {
+							sh := make([]lib.SymmetricValue, len(used))
+							for j, v := range used {
+								val := v.GetId()
+								if c.Reflected {
+									val = (lim - val) % lim
+								}
+								sh[j] = lib.NewRotationalSymmetricValue(prefix, ((val+c.Shift)%lim+lim)%lim, limit)
+							}
+							extraMappings = append(extraMappings, staticMapping{used: used, canonical: sh})
+						}
+						extraMappingForPost[len(postProcessingMappings)-1] = len(rotationalExtraMappings)
+						rotationalExtraMappings = append(rotationalExtraMappings, extraMappings)
+					}
+				} else {
+					shifts := lib.GetCanonicalRotations(usedIDs, limit)
+					// Single canonical rotation — static mapping
+					shift := shifts[0]
+					shifted := make([]lib.SymmetricValue, len(used))
+					for j, v := range used {
+						shifted[j] = lib.NewRotationalSymmetricValue(prefix, ((v.GetId()+shift)%lim+lim)%lim, limit)
+					}
+					postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: shifted})
+
+					// If multiple tied pivots, add extra alternatives
+					if len(shifts) > 1 {
+
+						extraMappings := make([]staticMapping, 0, len(shifts)-1)
+						for _, s := range shifts[1:] {
+							sh := make([]lib.SymmetricValue, len(used))
+							for j, v := range used {
+								sh[j] = lib.NewRotationalSymmetricValue(prefix, ((v.GetId()+s)%lim+lim)%lim, limit)
+							}
+							extraMappings = append(extraMappings, staticMapping{used: used, canonical: sh})
+						}
+						extraMappingForPost[len(postProcessingMappings)-1] = len(rotationalExtraMappings)
+						rotationalExtraMappings = append(rotationalExtraMappings, extraMappings)
+					}
 				}
 			} else {
 				values = append(values, canonical)
@@ -1927,19 +2032,15 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 			used      []lib.SymmetricValue
 			canonical []lib.SymmetricValue
 		}
-		// For each rotational domain with ties, collect all shift options (base + extras)
+		// For each domain with ties, collect all shift options (base + extras)
 		var rotOptions [][]rotChoice
-		extraIdx := 0
-		for _, mapping := range postProcessingMappings {
-			// Check if this mapping has extra rotational alternatives
-			isRotational := len(mapping.used) > 0 && mapping.used[0].GetKind() == lib.SymmetryKindRotational
-			if isRotational && extraIdx < len(rotationalExtraMappings) {
+		for idx, mapping := range postProcessingMappings {
+			if extraIdx, ok := extraMappingForPost[idx]; ok {
 				opts := []rotChoice{{used: mapping.used, canonical: mapping.canonical}}
 				for _, extra := range rotationalExtraMappings[extraIdx] {
 					opts = append(opts, rotChoice{used: extra.used, canonical: extra.canonical})
 				}
 				rotOptions = append(rotOptions, opts)
-				extraIdx++
 			}
 		}
 
@@ -1971,10 +2072,9 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 						permMap[actualKeys[j]] = append(permMap[actualKeys[j]], symVal)
 					}
 				}
-				// Append non-rotational static mappings
-				for _, mapping := range postProcessingMappings {
-					isRotational := len(mapping.used) > 0 && mapping.used[0].GetKind() == lib.SymmetryKindRotational
-					if isRotational {
+				// Append static mappings that don't have extra alternatives
+				for mi, mapping := range postProcessingMappings {
+					if _, hasExtras := extraMappingForPost[mi]; hasExtras {
 						continue
 					}
 					for k, usedVal := range mapping.used {
@@ -1983,7 +2083,7 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 						}
 					}
 				}
-				// Append rotational mappings from this combination
+				// Append alternative mappings from this combination
 				for _, rc := range combo {
 					for k, usedVal := range rc.used {
 						if k < len(rc.canonical) {
@@ -1994,9 +2094,8 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 			}
 			if len(v) == 0 {
 				// Only static mappings, no nominal permutations
-				for _, mapping := range postProcessingMappings {
-					isRotational := len(mapping.used) > 0 && mapping.used[0].GetKind() == lib.SymmetryKindRotational
-					if isRotational {
+				for mi, mapping := range postProcessingMappings {
+					if _, hasExtras := extraMappingForPost[mi]; hasExtras {
 						continue
 					}
 					for k, usedVal := range mapping.used {
