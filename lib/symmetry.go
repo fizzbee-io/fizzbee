@@ -164,9 +164,9 @@ var _ starlark.HasAttrs = (*SymmetryDomain)(nil)
 func (d *SymmetryDomain) String() string {
 	if d.Kind == SymmetryKindInterval {
 		if d.Reflection {
-			return fmt.Sprintf("symmetry.%s(name=%q, limit=%d, divergence=%d, start=%d, reflection=True)", d.Kind, d.Name, d.Limit, d.Divergence, d.Start)
+			return fmt.Sprintf("symmetry.%s(name=%q, limit=%d, divergence=%d, start=%d, materialize=%t, reflection=True)", d.Kind, d.Name, d.Limit, d.Divergence, d.Start, d.Materialize)
 		}
-		return fmt.Sprintf("symmetry.%s(name=%q, limit=%d, divergence=%d, start=%d)", d.Kind, d.Name, d.Limit, d.Divergence, d.Start)
+		return fmt.Sprintf("symmetry.%s(name=%q, limit=%d, divergence=%d, start=%d, materialize=%t)", d.Kind, d.Name, d.Limit, d.Divergence, d.Start, d.Materialize)
 	}
 	if d.Kind == SymmetryKindRotational {
 		if d.Reflection {
@@ -175,9 +175,9 @@ func (d *SymmetryDomain) String() string {
 		return fmt.Sprintf("symmetry.%s(name=%q, limit=%d, materialize=%t)", d.Kind, d.Name, d.Limit, d.Materialize)
 	}
 	if d.Reflection {
-		return fmt.Sprintf("symmetry.%s(name=%q, limit=%d, reflection=True)", d.Kind, d.Name, d.Limit)
+		return fmt.Sprintf("symmetry.%s(name=%q, limit=%d, materialize=%t, reflection=True)", d.Kind, d.Name, d.Limit, d.Materialize)
 	}
-	return fmt.Sprintf("symmetry.%s(name=%q, limit=%d)", d.Kind, d.Name, d.Limit)
+	return fmt.Sprintf("symmetry.%s(name=%q, limit=%d, materialize=%t)", d.Kind, d.Name, d.Limit, d.Materialize)
 }
 
 func (d *SymmetryDomain) Type() string         { return "symmetry_domain" }
@@ -433,17 +433,24 @@ func (s *Segment) fresh(thread *starlark.Thread, _ *starlark.Builtin, args starl
 	return NewSymmetricValueWithKind(s.Domain.Name, newID, s.Domain.Kind), nil
 }
 
-// ensureMaterialized populates the cache with all [0..limit-1] values for materialized rotational domains.
+// ensureMaterialized populates the cache with all values for materialized domains.
 func (d *SymmetryDomain) ensureMaterialized(ctx *SymmetryContext) {
-	if !d.Materialize || d.Kind != SymmetryKindRotational {
+	if !d.Materialize {
 		return
 	}
 	ctx.EnsureDomainInit(d.Name)
 	if len(ctx.Cache[d.Name]) >= d.Limit {
 		return
 	}
-	for i := int64(0); i < int64(d.Limit); i++ {
-		ctx.Cache[d.Name][i] = true
+
+	if d.Kind == SymmetryKindNominal || d.Kind == SymmetryKindRotational || d.Kind == SymmetryKindOrdinal {
+		for i := int64(0); i < int64(d.Limit); i++ {
+			ctx.Cache[d.Name][i] = true
+		}
+	} else if d.Kind == SymmetryKindInterval {
+		for i := int64(0); i < int64(d.Limit); i++ {
+			ctx.Cache[d.Name][int64(d.Start)+i] = true
+		}
 	}
 }
 
@@ -474,6 +481,10 @@ func (d *SymmetryDomain) fresh(thread *starlark.Thread, _ *starlark.Builtin, arg
 
 	// 4. Allocate the next ID
 	var nextID int64
+
+	if d.Materialize {
+		return nil, fmt.Errorf("fresh() not allowed on materialized domain %q — all values already exist", d.Name)
+	}
 
 	if d.Kind == SymmetryKindNominal {
 		// For nominal symmetry, use the smallest unused ID for canonical forms.
@@ -514,9 +525,6 @@ func (d *SymmetryDomain) fresh(thread *starlark.Thread, _ *starlark.Builtin, arg
 		}
 
 	} else if d.Kind == SymmetryKindRotational {
-		if d.Materialize {
-			return nil, fmt.Errorf("fresh() not allowed on materialized rotational domain — all values already exist")
-		}
 		// For rotational symmetry, find next unused after last-allocated, wrapping mod limit.
 		last, hasLast := ctx.LastAllocated[d.Name]
 		if !hasLast {
@@ -705,11 +713,12 @@ var SymmetryModule = &starlarkstruct.Module{
 }
 
 // makeNominal creates a new nominal symmetry domain
-// Usage: symmetry.nominal(name="id", limit=3)
+// Usage: symmetry.nominal(name="id", limit=3, materialize=False)
 func makeNominal(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name string
 	var limit int
-	if err := starlark.UnpackArgs("nominal", args, kwargs, "name", &name, "limit", &limit); err != nil {
+	var materialize bool
+	if err := starlark.UnpackArgs("nominal", args, kwargs, "name", &name, "limit", &limit, "materialize?", &materialize); err != nil {
 		return nil, err
 	}
 	if limit <= 0 {
@@ -718,16 +727,17 @@ func makeNominal(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 	if name == "" {
 		return nil, fmt.Errorf("nominal: name cannot be empty")
 	}
-	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindNominal}, nil
+	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindNominal, Materialize: materialize}, nil
 }
 
 // makeOrdinal creates a new ordinal symmetry domain
-// Usage: symmetry.ordinal(name="ts", limit=5)
+// Usage: symmetry.ordinal(name="ts", limit=5, materialize=False)
 func makeOrdinal(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name string
 	var limit int
 	var reflection bool
-	if err := starlark.UnpackArgs("ordinal", args, kwargs, "name", &name, "limit", &limit, "reflection?", &reflection); err != nil {
+	var materialize bool
+	if err := starlark.UnpackArgs("ordinal", args, kwargs, "name", &name, "limit", &limit, "reflection?", &reflection, "materialize?", &materialize); err != nil {
 		return nil, err
 	}
 	if limit <= 0 {
@@ -736,7 +746,7 @@ func makeOrdinal(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 	if name == "" {
 		return nil, fmt.Errorf("ordinal: name cannot be empty")
 	}
-	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindOrdinal, Reflection: reflection}, nil
+	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindOrdinal, Reflection: reflection, Materialize: materialize}, nil
 }
 
 // makeInterval creates a new interval symmetry domain
@@ -747,8 +757,9 @@ func makeInterval(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 	var limit starlark.Value = starlark.None
 	var start int = 0
 	var reflection bool
+	var materialize bool
 
-	if err := starlark.UnpackArgs("interval", args, kwargs, "name", &name, "divergence?", &divergence, "limit?", &limit, "start?", &start, "reflection?", &reflection); err != nil {
+	if err := starlark.UnpackArgs("interval", args, kwargs, "name", &name, "divergence?", &divergence, "limit?", &limit, "start?", &start, "reflection?", &reflection, "materialize?", &materialize); err != nil {
 		return nil, err
 	}
 
@@ -801,12 +812,13 @@ func makeInterval(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 	}
 
 	return &SymmetryDomain{
-		Name:       name,
-		Limit:      limitInt,
-		Divergence: divergenceInt,
-		Start:      start,
-		Kind:       SymmetryKindInterval,
-		Reflection: reflection,
+		Name:        name,
+		Limit:       limitInt,
+		Divergence:  divergenceInt,
+		Start:       start,
+		Kind:        SymmetryKindInterval,
+		Reflection:  reflection,
+		Materialize: materialize,
 	}, nil
 }
 
@@ -852,7 +864,7 @@ func GetCanonicalRotations(usedIDs []int64, limit int) []int64 {
 	for _, pivot := range usedIDs {
 		sig := make([]int64, n)
 		for i, v := range usedIDs {
-			sig[i] = ((v - pivot) % lim + lim) % lim
+			sig[i] = ((v-pivot)%lim + lim) % lim
 		}
 		slices.Sort(sig)
 
@@ -872,7 +884,7 @@ func GetCanonicalRotations(usedIDs []int64, limit int) []int64 {
 
 	shifts := make([]int64, len(best))
 	for i, c := range best {
-		shifts[i] = ((-c.pivot) % lim + lim) % lim
+		shifts[i] = ((-c.pivot)%lim + lim) % lim
 	}
 	return shifts
 }
@@ -937,7 +949,7 @@ type RotationCandidate struct {
 func applyRotationSignature(ids []int64, shift, lim int64) []int64 {
 	sig := make([]int64, len(ids))
 	for i, v := range ids {
-		sig[i] = ((v + shift) % lim + lim) % lim
+		sig[i] = ((v+shift)%lim + lim) % lim
 	}
 	slices.Sort(sig)
 	return sig
