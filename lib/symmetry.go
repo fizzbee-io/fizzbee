@@ -154,6 +154,7 @@ type SymmetryDomain struct {
 	Divergence  int
 	Start       int
 	Materialize bool
+	Reflection  bool
 }
 
 // Starlark Interface for SymmetryDomain
@@ -162,10 +163,19 @@ var _ starlark.HasAttrs = (*SymmetryDomain)(nil)
 
 func (d *SymmetryDomain) String() string {
 	if d.Kind == SymmetryKindInterval {
+		if d.Reflection {
+			return fmt.Sprintf("symmetry.%s(name=%q, limit=%d, divergence=%d, start=%d, reflection=True)", d.Kind, d.Name, d.Limit, d.Divergence, d.Start)
+		}
 		return fmt.Sprintf("symmetry.%s(name=%q, limit=%d, divergence=%d, start=%d)", d.Kind, d.Name, d.Limit, d.Divergence, d.Start)
 	}
 	if d.Kind == SymmetryKindRotational {
+		if d.Reflection {
+			return fmt.Sprintf("symmetry.%s(name=%q, limit=%d, materialize=%t, reflection=True)", d.Kind, d.Name, d.Limit, d.Materialize)
+		}
 		return fmt.Sprintf("symmetry.%s(name=%q, limit=%d, materialize=%t)", d.Kind, d.Name, d.Limit, d.Materialize)
+	}
+	if d.Reflection {
+		return fmt.Sprintf("symmetry.%s(name=%q, limit=%d, reflection=True)", d.Kind, d.Name, d.Limit)
 	}
 	return fmt.Sprintf("symmetry.%s(name=%q, limit=%d)", d.Kind, d.Name, d.Limit)
 }
@@ -716,7 +726,8 @@ func makeNominal(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 func makeOrdinal(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name string
 	var limit int
-	if err := starlark.UnpackArgs("ordinal", args, kwargs, "name", &name, "limit", &limit); err != nil {
+	var reflection bool
+	if err := starlark.UnpackArgs("ordinal", args, kwargs, "name", &name, "limit", &limit, "reflection?", &reflection); err != nil {
 		return nil, err
 	}
 	if limit <= 0 {
@@ -725,7 +736,7 @@ func makeOrdinal(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 	if name == "" {
 		return nil, fmt.Errorf("ordinal: name cannot be empty")
 	}
-	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindOrdinal}, nil
+	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindOrdinal, Reflection: reflection}, nil
 }
 
 // makeInterval creates a new interval symmetry domain
@@ -735,8 +746,9 @@ func makeInterval(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 	var divergence starlark.Value = starlark.None
 	var limit starlark.Value = starlark.None
 	var start int = 0
+	var reflection bool
 
-	if err := starlark.UnpackArgs("interval", args, kwargs, "name", &name, "divergence?", &divergence, "limit?", &limit, "start?", &start); err != nil {
+	if err := starlark.UnpackArgs("interval", args, kwargs, "name", &name, "divergence?", &divergence, "limit?", &limit, "start?", &start, "reflection?", &reflection); err != nil {
 		return nil, err
 	}
 
@@ -794,6 +806,7 @@ func makeInterval(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 		Divergence: divergenceInt,
 		Start:      start,
 		Kind:       SymmetryKindInterval,
+		Reflection: reflection,
 	}, nil
 }
 
@@ -803,7 +816,8 @@ func makeRotational(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 	var name string
 	var limit int
 	var materialize bool
-	if err := starlark.UnpackArgs("rotational", args, kwargs, "name", &name, "limit", &limit, "materialize?", &materialize); err != nil {
+	var reflection bool
+	if err := starlark.UnpackArgs("rotational", args, kwargs, "name", &name, "limit", &limit, "materialize?", &materialize, "reflection?", &reflection); err != nil {
 		return nil, err
 	}
 	if limit < 2 {
@@ -812,7 +826,7 @@ func makeRotational(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 	if name == "" {
 		return nil, fmt.Errorf("rotational: name cannot be empty")
 	}
-	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindRotational, Materialize: materialize}, nil
+	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindRotational, Materialize: materialize, Reflection: reflection}, nil
 }
 
 // GetCanonicalRotations returns the pivot shift(s) that produce the
@@ -861,6 +875,147 @@ func GetCanonicalRotations(usedIDs []int64, limit int) []int64 {
 		shifts[i] = ((-c.pivot) % lim + lim) % lim
 	}
 	return shifts
+}
+
+// GetCanonicalRotationsWithReflection returns canonical shifts for both clockwise
+// and counter-clockwise (reflected) orientations. Each returned RotationCandidate
+// includes the shift amount and whether reflection was applied.
+// When reflected, each value v is first mapped to (limit - v) % limit before shifting.
+func GetCanonicalRotationsWithReflection(usedIDs []int64, limit int) []RotationCandidate {
+	lim := int64(limit)
+	n := len(usedIDs)
+	if n == 0 {
+		return []RotationCandidate{{Shift: 0, Reflected: false}}
+	}
+
+	// CW candidates (no reflection)
+	cwShifts := GetCanonicalRotations(usedIDs, limit)
+	cwSig := applyRotationSignature(usedIDs, cwShifts[0], lim)
+
+	// CCW candidates (reflection: v -> (limit - v) % limit)
+	reflected := make([]int64, n)
+	for i, v := range usedIDs {
+		reflected[i] = (lim - v) % lim
+	}
+	ccwShifts := GetCanonicalRotations(reflected, limit)
+	ccwSig := applyRotationSignature(reflected, ccwShifts[0], lim)
+
+	cmp := sliceCompare(cwSig, ccwSig)
+	if cmp < 0 {
+		// CW wins
+		result := make([]RotationCandidate, len(cwShifts))
+		for i, s := range cwShifts {
+			result[i] = RotationCandidate{Shift: s, Reflected: false}
+		}
+		return result
+	} else if cmp > 0 {
+		// CCW wins
+		result := make([]RotationCandidate, len(ccwShifts))
+		for i, s := range ccwShifts {
+			result[i] = RotationCandidate{Shift: s, Reflected: true}
+		}
+		return result
+	}
+	// Tied: return both
+	result := make([]RotationCandidate, 0, len(cwShifts)+len(ccwShifts))
+	for _, s := range cwShifts {
+		result = append(result, RotationCandidate{Shift: s, Reflected: false})
+	}
+	for _, s := range ccwShifts {
+		result = append(result, RotationCandidate{Shift: s, Reflected: true})
+	}
+	return result
+}
+
+// RotationCandidate represents a canonical rotation shift, possibly with reflection.
+type RotationCandidate struct {
+	Shift     int64
+	Reflected bool
+}
+
+// applyRotationSignature returns the sorted signature for a given shift.
+func applyRotationSignature(ids []int64, shift, lim int64) []int64 {
+	sig := make([]int64, len(ids))
+	for i, v := range ids {
+		sig[i] = ((v + shift) % lim + lim) % lim
+	}
+	slices.Sort(sig)
+	return sig
+}
+
+// GetOrdinalReflectionCandidates returns candidate mappings for ordinal with reflection.
+// Forward: squeeze to 0..N-1 (identity rank). Reverse: map v → (limit-1-v), then squeeze.
+// Returns forward candidates, reverse candidates. If one produces a smaller signature,
+// only that one is returned. If tied, both are returned.
+// Each candidate is a mapping from sorted used IDs to canonical values.
+func GetOrdinalReflectionCandidates(usedIDs []int64, limit int) (forward []int64, reverse []int64, tied bool) {
+	n := len(usedIDs)
+	if n == 0 {
+		return nil, nil, false
+	}
+
+	// Forward: squeeze to 0..N-1 (already sorted)
+	fwd := make([]int64, n)
+	for i := range usedIDs {
+		fwd[i] = int64(i)
+	}
+
+	// Reverse: map each v → (limit-1 - rank), where rank is the index in sorted order
+	// This means the highest-ranked value becomes 0, etc.
+	rev := make([]int64, n)
+	for i := range usedIDs {
+		rev[i] = int64(n - 1 - i)
+	}
+
+	// Compare signatures (both are already sorted ascending for forward,
+	// but reverse needs to be sorted to compare)
+	fwdSig := make([]int64, n)
+	copy(fwdSig, fwd)
+	revSig := make([]int64, n)
+	copy(revSig, rev)
+	slices.Sort(fwdSig)
+	slices.Sort(revSig)
+
+	// Both signatures are identical: [0, 1, 2, ..., N-1]
+	// So they're always tied for ordinal. The tie-breaking happens at the full state level.
+	return fwd, rev, true
+}
+
+// GetIntervalReflectionCandidates returns candidate mappings for interval with reflection.
+// Forward: v - min. Reverse: max - v.
+// Returns forward mapped values, reverse mapped values, and whether they're tied.
+// usedIDs must be sorted.
+func GetIntervalReflectionCandidates(usedIDs []int64) (forward []int64, reverse []int64, tied bool) {
+	n := len(usedIDs)
+	if n == 0 {
+		return nil, nil, false
+	}
+
+	minID := usedIDs[0]
+	maxID := usedIDs[n-1]
+
+	fwd := make([]int64, n)
+	rev := make([]int64, n)
+	for i, v := range usedIDs {
+		fwd[i] = v - minID
+		rev[i] = maxID - v
+	}
+
+	// Sort for comparison
+	fwdSorted := make([]int64, n)
+	copy(fwdSorted, fwd)
+	slices.Sort(fwdSorted)
+	revSorted := make([]int64, n)
+	copy(revSorted, rev)
+	slices.Sort(revSorted)
+
+	cmp := sliceCompare(fwdSorted, revSorted)
+	if cmp < 0 {
+		return fwd, nil, false
+	} else if cmp > 0 {
+		return nil, rev, false
+	}
+	return fwd, rev, true
 }
 
 // sliceCompare compares two int64 slices lexicographically.
