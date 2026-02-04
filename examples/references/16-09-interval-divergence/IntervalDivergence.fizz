@@ -1,0 +1,37 @@
+# Interval Divergence: Bounding the spread of interval values.
+#
+# The `divergence` parameter limits (max - min) across all active
+# values in the domain. This prevents unbounded state growth.
+#
+# Parameter rules:
+#   - divergence only:  limit = divergence + 1 (auto-derived)
+#   - limit only:       divergence = limit - 1 (auto-derived)
+#   - both:             must satisfy limit <= divergence + 1
+#   - at least one of divergence or limit is required
+#
+# When a fresh() or arithmetic would exceed the divergence bound,
+# the transition is disabled (pruned from state space).
+#
+# Use case: modeling sliding windows where values can't drift
+# too far apart (e.g., TCP window, Raft log gap).
+
+# divergence=3 means max - min <= 3 at all times.
+# limit is auto-derived to 4 (divergence + 1).
+SEQ = symmetry.interval(name="s", divergence=3)
+
+action Init:
+    head = SEQ.fresh()     # s0
+    tail = SEQ.fresh()     # s1
+
+atomic fair action AdvanceHead:
+    head = head + 1
+    # If head - tail > 3, this transition is pruned.
+
+atomic fair action AdvanceTail:
+    require tail < head
+    tail = tail + 1
+
+# Note: domain methods (values(), max(), min()) cannot be called
+# from assertions. The divergence bound is enforced automatically
+# by the symmetry engine — transitions that would violate it
+# are pruned from the state space.

@@ -1,6 +1,11 @@
 # Example 0084: Symmetric Values for IDs
 # Using symmetric_values() to reduce state space by treating permutations as equivalent
 # Demonstrates: symmetric_values(), state space optimization, interchangeable IDs
+#
+# NOTE: Prefer the symmetry module API for new models. This is equivalent to:
+#   KEYS = symmetry.nominal(name="k", limit=3, materialize=True).values()
+# The symmetry module offers more types (ordinal, interval, rotational)
+# and features (reflection, divergence, segments). See 16-05 through 16-12.
 
 # Define symmetric values instead of regular numbers or strings
 # symmetric_values('prefix', count) creates prefix0, prefix1, prefix2, ...

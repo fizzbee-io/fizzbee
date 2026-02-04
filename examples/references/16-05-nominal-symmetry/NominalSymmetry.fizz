@@ -1,0 +1,30 @@
+# Nominal Symmetry: Unordered, interchangeable identifiers.
+# Operations: == and != only. No ordering, no arithmetic.
+# Reduction: permutations of active set are equivalent.
+# Use cases: user IDs, session tokens, cache keys.
+#
+# Key methods:
+#   fresh()   - allocate a new unique value (deterministic, canonical)
+#   values()  - list all active values
+#   choices() - values() + one fresh (if limit allows)
+#   choose()  - deterministic default value (like TLA+ CHOOSE); for initial values
+
+IDS = symmetry.nominal(name="id", limit=3)
+
+action Init:
+    cache = {}
+
+atomic action Put:
+    # choices() returns existing IDs + one fresh ID (if under limit).
+    # Use with `any` for nondeterministic selection.
+    id = any IDS.choices()
+    cache[id] = "data"
+
+atomic action Evict:
+    # `any` on an empty list disables the transition, so no guard needed.
+    id = any IDS.values()
+    if id in cache:
+        cache.pop(id)
+
+always assertion BoundedSize:
+    return len(cache) <= 3

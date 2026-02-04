@@ -1,0 +1,40 @@
+# Rotational Symmetry: Integers mod N (ring positions).
+# Operations: ==, !=, +int, -int, val-val (all mod limit).
+# No ordering (<, >, etc.) since the domain wraps around.
+# Reduction: rotate all values to lexicographically smallest set.
+# Use cases: ring topologies, clock arithmetic, hash ring slots.
+#
+# Key methods:
+#   fresh()   - next unused position (sequential, wrapping)
+#   values()  - all active values
+#   choices() - values() + one fresh (if under limit)
+#   choose()  - min active value (or fresh if empty)
+#
+# Arithmetic wraps: on a ring of size 5, position 4 + 1 = 0.
+# Difference returns plain int: (a - b) % limit.
+#
+# With rotational symmetry, the model checker recognizes that
+# {0,2} and {1,3} and {3,0} are all equivalent (same gap pattern).
+
+RING = symmetry.rotational(name="pos", limit=5)
+
+action Init:
+    positions = set()
+
+atomic action Place:
+    require len(positions) < 3
+    p = RING.fresh()
+    positions.add(p)
+
+atomic action Advance:
+    require len(positions) > 0
+    p = any positions
+    next_p = p + 1   # wraps mod 5
+    if next_p not in positions:
+        positions.remove(p)
+        positions.add(next_p)
+
+atomic action ComputeGap:
+    require len(positions) == 2
+    pair = RING.values()
+    gap = pair[1] - pair[0]  # plain int, mod 5

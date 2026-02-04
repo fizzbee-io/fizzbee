@@ -1,0 +1,44 @@
+# Ordinal Segments: Inserting values between existing ordinal values.
+# segments() returns gap objects between active values. Each gap
+# has a fresh() method to allocate a value within that gap.
+#
+# With 2 values [a, b], segments() returns 3 gaps:
+#   (-inf, a)  -- head: values less than a
+#   (a, b)     -- body: values between a and b
+#   (b, +inf)  -- tail: values greater than b
+#
+# Filtering: segments(after=v) excludes gaps before v.
+#            segments(before=v) excludes gaps after v.
+#
+# Use cases: inserting events in a timeline, priority insertion.
+
+TIMES = symmetry.ordinal(name="ts", limit=6)
+
+action Init:
+    t_start = TIMES.fresh()
+    t_end = TIMES.fresh()
+
+atomic action InsertAnywhere:
+    # Get all gaps between existing timestamps
+    gaps = TIMES.segments()
+    gap = any gaps
+    t = gap.fresh()
+
+atomic action InsertBetween:
+    # Insert strictly between t_start and t_end.
+    # Ordinal gaps are always non-empty (the domain is dense).
+    gaps = TIMES.segments(after=t_start, before=t_end)
+    gap = any gaps
+    t = gap.fresh()
+    # Guaranteed: t_start < t < t_end
+
+atomic action InsertBeforeEarliest:
+    # Insert before the minimum existing value.
+    # (Inserting after max is just fresh(), but before min needs segments.)
+    earliest = TIMES.min()
+    gaps = TIMES.segments(before=earliest)
+    gap = any gaps
+    t = gap.fresh()
+
+# Note: domain methods like values() cannot be called from assertions
+# (no symmetry context in invariant scope). Use stored state instead.

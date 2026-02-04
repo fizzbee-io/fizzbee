@@ -1,0 +1,37 @@
+# Ordinal Symmetry: Ordered values where only relative rank matters.
+# Operations: ==, !=, <, <=, >, >=. No arithmetic.
+# Reduction: values are squeezed to dense ranks (0,1,2,...).
+# Use cases: logical timestamps, priority levels, version numbers.
+#
+# Key methods:
+#   fresh()  - allocate value greater than all existing (appends to end)
+#   min()    - smallest active value (or fresh if empty)
+#   max()    - largest active value (or fresh if empty)
+#   values() - all active values, sorted ascending
+#
+# The model checker treats states with the same relative ordering
+# as equivalent. E.g., timestamps {10,20,30} and {1,5,99} are
+# equivalent because both have the same rank order.
+
+TIMES = symmetry.ordinal(name="ts", limit=4)
+
+action Init:
+    events = []
+
+atomic action RecordEvent:
+    # fresh() appends after max; min()/max() return the extremes.
+    t = TIMES.fresh()
+    events = events + [t]
+
+atomic action ProcessEvent:
+    # Consuming the oldest event frees a slot, allowing fresh()
+    # to allocate again -- enabling infinite traces without deadlock.
+    require len(events) > 0
+    events = events[1:]
+
+always assertion EventsOrdered:
+    # fresh() always appends, so events are in order
+    for i in range(len(events) - 1):
+        if not (events[i] < events[i + 1]):
+            return False
+    return True

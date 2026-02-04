@@ -1,0 +1,15 @@
+# Interval WITHOUT reflection (for comparison with ReflectionInterval.fizz).
+# Run both and compare state/node counts to see the reduction.
+
+LIMIT = 6
+TICKS = symmetry.interval(name="t", limit=LIMIT, reflection=False)
+
+action Init:
+    t1 = TICKS.min()
+    t2 = TICKS.min()
+
+atomic fair action Tick1:
+    t1 = t1 + 1
+
+atomic fair action Tick2:
+    t2 = t2 + 1
