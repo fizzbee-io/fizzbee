@@ -3,8 +3,9 @@ package lib
 import (
 	ast "fizz/proto"
 	"fmt"
-	"go.starlark.net/starlark"
 	"strings"
+
+	"go.starlark.net/starlark"
 )
 
 var (
@@ -22,7 +23,7 @@ func ClearRoleRefs() {
 }
 
 type Role struct {
-	Ref         int64
+	ID          starlark.Value // Can be *ModelValue or *SymmetricValue
 	Name        string
 	Symmetric   bool
 	Params      *Struct
@@ -30,6 +31,8 @@ type Role struct {
 	Methods     map[string]*starlark.Function
 	RoleMethods map[string]*starlark.Builtin
 	InitValues  *Struct
+
+	// Ref field is removed. Use GetRef() to retrieve the integer ID from the ID field.
 }
 
 func (r *Role) AddMethod(name string, val starlark.Value) error {
@@ -81,10 +84,18 @@ func (r *Role) Attr(name string) (starlark.Value, error) {
 }
 
 func (r *Role) GetId() starlark.Value {
-	if r.Symmetric {
-		return NewSymmetricValue(r.Name, r.Ref)
+	return r.ID
+}
+
+// GetRef returns the integer reference ID from the underlying ID object
+func (r *Role) GetRef() int64 {
+	if sv, ok := r.ID.(*SymmetricValue); ok {
+		return sv.GetId()
 	}
-	return NewModelValue(r.Name, r.Ref)
+	if mv, ok := r.ID.(*ModelValue); ok {
+		return mv.id
+	}
+	return -1
 }
 
 func (r *Role) AttrNames() []string {
@@ -93,7 +104,7 @@ func (r *Role) AttrNames() []string {
 
 func (r *Role) String() string {
 	b := strings.Builder{}
-	b.WriteString(fmt.Sprintf("role %s#%d (", r.Name, r.Ref))
+	b.WriteString(fmt.Sprintf("role %s#%d (", r.Name, r.GetRef()))
 	if len(r.Params.AttrNames()) > 0 {
 		b.WriteString(r.Params.String())
 		b.WriteString(",")
@@ -107,7 +118,7 @@ func (r *Role) MarshalJSON() ([]byte, error) {
 	b := strings.Builder{}
 	b.WriteString("{")
 	b.WriteString(fmt.Sprintf("\"name\": \"%s\",", r.Name))
-	b.WriteString(fmt.Sprintf("\"ref\": %d,", r.Ref))
+	b.WriteString(fmt.Sprintf("\"ref\": %d,", r.GetRef()))
 	b.WriteString(fmt.Sprintf("\"ref_string\": \"%s\",", r.RefStringShort()))
 	b.WriteString("\"params\": ")
 	params, err := r.Params.MarshalJSON()
@@ -128,7 +139,7 @@ func (r *Role) MarshalJSON() ([]byte, error) {
 }
 
 func (r *Role) RefString() string {
-	return GenerateRefString(r.Name, r.Ref)
+	return GenerateRefString(r.Name, r.GetRef())
 }
 
 func GenerateRefString(name string, ref int64) string {
@@ -136,7 +147,7 @@ func GenerateRefString(name string, ref int64) string {
 }
 
 func (r *Role) RefStringShort() string {
-	return fmt.Sprintf("%s#%d", r.Name, r.Ref)
+	return fmt.Sprintf("%s#%d", r.Name, r.GetRef())
 }
 
 func (r *Role) Type() string {
@@ -153,7 +164,7 @@ func (r *Role) Truth() starlark.Bool {
 
 func (r *Role) Hash() (uint32, error) {
 	hash, _ := starlark.String(r.Name).Hash()
-	return hash + uint32(r.Ref), nil
+	return hash + uint32(r.GetRef()), nil
 }
 
 func (r *Role) IsSymmetric() bool {
@@ -181,7 +192,15 @@ func CreateRoleBuiltin(astRole *ast.Role, symmetric bool, roles *[]*Role) *starl
 		for _, function := range astRole.Functions {
 			roleMethods[function.Name] = starlark.NewBuiltin(function.Name, fizz_func_always_error)
 		}
-		r := &Role{Ref: nextRef, Name: name, Symmetric: symmetric, Params: params, Fields: fields, Methods: map[string]*starlark.Function{}, RoleMethods: roleMethods, InitValues: initValues}
+
+		var id starlark.Value
+		if symmetric {
+			id = NewSymmetricValue(name, nextRef)
+		} else {
+			id = NewModelValue(name, nextRef)
+		}
+
+		r := &Role{ID: id, Name: name, Symmetric: symmetric, Params: params, Fields: fields, Methods: map[string]*starlark.Function{}, RoleMethods: roleMethods, InitValues: initValues}
 		*roles = append(*roles, r)
 		return r, nil
 	})

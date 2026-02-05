@@ -47,6 +47,10 @@ const (
 // When false: permute all symmetric values from the definition
 const canonicalizeSymmetricValues = true
 
+// When true: compare StateVisitor vs CloneWithRefs for collecting SymmetricValue pointers
+// Enable for debugging pointer identity issues
+const CompareSymmetricValueMethods = false
+
 const enableCaptureStackTrace = false
 
 type Definition struct {
@@ -358,6 +362,10 @@ func (p *Process) Fork() *Process {
 
 func (p *Process) CloneForAssert(permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) *Process {
 	refs := make(map[starlark.Value]starlark.Value)
+	return p.CloneWithRefs(permutations, alt, refs)
+}
+
+func (p *Process) CloneWithRefs(permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int, refs map[starlark.Value]starlark.Value) *Process {
 	p2 := &Process{
 		Name:      p.Name,
 		Heap:      p.Heap.Clone(refs, permutations, alt),
@@ -1701,11 +1709,21 @@ func (p *Processor) crashThread(node *Node) {
 }
 
 func (p *Process) getSymmetryTranslations() []string {
-	permMap, count := getSymmetryPermutations(p)
+	//fmt.Println("\nCalculating symmetry translations for process:", p.Name)
+	p2, refs, permMap, count := getSymmetryPermutations(p)
+	//fmt.Println("Symmetry permutations count:", count, permMap)
+	//fmt.Println("Permutation map:", permMap)
 	hashes := make([]string, count)
 	for i := 0; i < count; i++ {
-		hashes[i] = p.symmetricHash(permMap, i)
+		hashes[i] = p2.symmetricHashWithoutClone(refs, permMap, i)
 	}
+	// Print unique hashes
+	uniqueHashes := make(map[string]bool)
+	for _, h := range hashes {
+		uniqueHashes[h] = true
+	}
+	//fmt.Printf("Unique hashes: %d out of %d\n", len(uniqueHashes), len(hashes))
+	//fmt.Println(uniqueHashes)
 	return hashes
 }
 
@@ -1732,15 +1750,141 @@ func (p *Processor) findVisitedSymmetric(node *Node) (*Node, bool, string) {
 }
 
 func (p *Process) symmetricHash(permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) string {
-	p2 := p.CloneForAssert(permutations, alt)
+	refs := make(map[starlark.Value]starlark.Value)
+	p2 := p.CloneWithRefs(permutations, alt, refs)
 	return p2.HashCode()
+}
+func (p *Process) symmetricHashWithoutClone(refs map[starlark.Value]starlark.Value, permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) string {
+	// Debug: Verify consistency if needed (can be removed for production speed)
+	// p.CachedHashCode = ""
+	// p.CachedThreadHashes = nil
+	// p.Heap.CachedHashCode = ""
+	// hash0 := p.HashCode()
+
+	// 1. Build refMappings (Prefix -> OldID -> NewID)
+	// This helps us apply the permutation to all instances of SymmetricValue/Role,
+	// not just the ones found as keys in the permutations map.
+	refMappings := make(map[string]map[int64]int64)
+	for symVal, perm := range permutations {
+		prefix := symVal.GetPrefix()
+		if refMappings[prefix] == nil {
+			refMappings[prefix] = make(map[int64]int64)
+		}
+		oldRef := symVal.GetId()
+		newRef := perm[alt].GetId()
+		refMappings[prefix][oldRef] = newRef
+	}
+
+	// 2. Iterate refs to find ALL SymmetricValue and Role pointers, and mutate them if they have a mapping.
+	// We track original values to restore them later.
+	origSymVals := make(map[*lib.SymmetricValue]int64)
+
+	// Helper to mutate SymmetricValue
+	mutateSymValue := func(sv *lib.SymmetricValue) {
+		if mapping, ok := refMappings[sv.GetPrefix()]; ok {
+			if newId, found := mapping[sv.GetId()]; found {
+				if _, recorded := origSymVals[sv]; !recorded {
+					origSymVals[sv] = sv.GetId()
+					sv.SetId(newId)
+				}
+			}
+		}
+	}
+
+	// Iterate over all values in refs (which contains all reachable objects from the clone)
+	for _, val := range refs {
+		if sv, ok := val.(*lib.SymmetricValue); ok {
+			mutateSymValue(sv)
+		}
+	}
+
+	// 3. (Removed explicit Role mutation loop as Roles now hold the same SymmetricValue pointers)
+
+	// 3b. Repair Starlark Dicts
+	// Since we mutated SymmetricValues in-place, any Starlark Dicts using them as keys
+	// are now corrupted (keys in wrong hash buckets). We must re-insert entries.
+	var dictsToRepair []*starlark.Dict
+	for _, val := range refs {
+		if d, ok := val.(*starlark.Dict); ok {
+			dictsToRepair = append(dictsToRepair, d)
+		}
+	}
+	repairDicts := func() {
+		for _, d := range dictsToRepair {
+			items := d.Items()
+			d.Clear()
+			for _, item := range items {
+				d.SetKey(item[0], item[1])
+			}
+		}
+	}
+	repairDicts()
+
+	// 4. Update ChannelMessage receivers (String update)
+	// We construct a replacement map for strings "Name#OldID" -> "Name#NewID"
+	replacements := make(map[string]string)
+	for prefix, mapping := range refMappings {
+		for oldRef, newRef := range mapping {
+			// Role.RefStringShort is "Name#Ref"
+			oldStr := fmt.Sprintf("%s#%d", prefix, oldRef)
+			newStr := fmt.Sprintf("%s#%d", prefix, newRef)
+			replacements[oldStr] = newStr
+		}
+	}
+
+	origReceivers := make(map[*ChannelMessage]string)
+	for _, msgs := range p.ChannelMessages {
+		for _, msg := range msgs {
+			if newReceiver, ok := replacements[msg.receiver]; ok {
+				origReceivers[msg] = msg.receiver
+				msg.receiver = newReceiver
+			}
+		}
+	}
+
+	// 5. Sort p.Roles to ensure canonical order
+	// This is necessary because p.Roles is a slice and its order affects the state representation.
+	// We sort by Name then Ref.
+	origRoles := make([]*lib.Role, len(p.Roles))
+	copy(origRoles, p.Roles)
+	sort.Slice(p.Roles, func(i, j int) bool {
+		if p.Roles[i].Name != p.Roles[j].Name {
+			return p.Roles[i].Name < p.Roles[j].Name
+		}
+		return p.Roles[i].GetRef() < p.Roles[j].GetRef()
+	})
+
+	// 6. Compute Hash
+	p.CachedHashCode = ""
+	p.CachedThreadHashes = nil
+	p.Heap.CachedHashCode = ""
+	hash1 := p.HashCode()
+
+	// 7. Restore Everything
+	copy(p.Roles, origRoles)
+	for msg, oldReceiver := range origReceivers {
+		msg.receiver = oldReceiver
+	}
+	for sv, oldId := range origSymVals {
+		sv.SetId(oldId)
+	}
+	// No need to restore explicit Role refs
+
+	// Repair Dicts again to restore original state validity
+	repairDicts()
+
+	return hash1
+
 }
 
 func (p *Process) GetSymmetryRoles() []*lib.SymmetricValues {
 	m := make(map[string][]*lib.SymmetricValue)
 	for _, role := range p.Roles {
 		if role != nil && role.IsSymmetric() {
-			m[role.Name] = append(m[role.Name], lib.NewSymmetricValue(role.Name, role.Ref))
+			sv, ok := role.GetId().(*lib.SymmetricValue)
+			if ok {
+				m[role.Name] = append(m[role.Name], sv)
+			}
 		}
 	}
 	roleSymValues := make([]*lib.SymmetricValues, 0, len(m))
@@ -1765,7 +1909,7 @@ func (p *Process) addChannelMessage(channel *lib.Channel, roleShortRef string, f
 	}
 }
 
-func getSymmetryPermutations(process *Process) (map[*lib.SymmetricValue][]*lib.SymmetricValue, int) {
+func getSymmetryPermutations(process *Process) (*Process, map[starlark.Value]starlark.Value, map[*lib.SymmetricValue][]*lib.SymmetricValue, int) {
 	var values [][]*lib.SymmetricValue
 	var usedValues [][]*lib.SymmetricValue
 
@@ -1781,10 +1925,13 @@ func getSymmetryPermutations(process *Process) (map[*lib.SymmetricValue][]*lib.S
 	var rotationalExtraMappings [][]staticMapping
 	// extraMappingForPost maps postProcessingMappings index to the rotationalExtraMappings index.
 	extraMappingForPost := make(map[int]int)
-
+	var p2 *Process
+	var refs map[starlark.Value]starlark.Value
 	if canonicalizeSymmetricValues {
-		// Collect only the symmetric values that are actually used in the state
-		allUsedValues := process.getUsedSymmetricValues()
+		// Collect symmetric values using clone-based approach (single clone to get actual pointers)
+		// This replaces both getUsedSymmetricValues() (StateVisitor) and GetSymmetryRoles()
+		var allUsedValues [][]*lib.SymmetricValue
+		p2, refs, allUsedValues = process.getUsedSymmetricValuesFromClone()
 
 		// Build domain map from globals for accessing Reflection flag
 		domainMap := make(map[string]*lib.SymmetryDomain)
@@ -1969,18 +2116,9 @@ func getSymmetryPermutations(process *Process) (map[*lib.SymmetricValue][]*lib.S
 		}
 	}
 
-	// Add symmetric roles (these already only include instantiated roles)
-	// Roles are assumed Nominal
-	roles := process.GetSymmetryRoles()
-	for _, role := range roles {
-		v := make([]*lib.SymmetricValue, role.Len())
-		for j := 0; j < role.Len(); j++ {
-			v[j] = role.Index(j)
-		}
-		slices.SortFunc(v, lib.CompareStringer[*lib.SymmetricValue])
-		values = append(values, v)
-		usedValues = append(usedValues, v)
-	}
+	// Note: Symmetric roles are now included via getUsedSymmetricValuesFromClone()
+	// which extracts them from refs during the preliminary clone.
+	// No need for separate GetSymmetryRoles() call.
 
 	// Generate all permutations
 	permutations := lib.GenerateAllPermutations(values)
@@ -1989,7 +2127,7 @@ func getSymmetryPermutations(process *Process) (map[*lib.SymmetricValue][]*lib.S
 		v[i] = slices.Concat(permutation...)
 	}
 
-	// Build permutation map with actual used values as keys
+	// Build permutation map - usedValues already contains actual pointers from clone
 	permMap := make(map[*lib.SymmetricValue][]*lib.SymmetricValue)
 	actualKeys := make([]*lib.SymmetricValue, 0)
 	for _, used := range usedValues {
@@ -2119,7 +2257,7 @@ func getSymmetryPermutations(process *Process) (map[*lib.SymmetricValue][]*lib.S
 	if finalCount == 0 {
 		finalCount = len(v)
 	}
-	return permMap, finalCount
+	return p2, refs, permMap, finalCount
 }
 
 func (p *Processor) processInit(node *Node) bool {

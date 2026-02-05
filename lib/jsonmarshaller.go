@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
+	"sort"
 	"strings"
 )
 
@@ -84,6 +85,10 @@ func MarshalJSONStarlarkValue(m starlark.Value, depth int) ([]byte, error) {
 		return []byte(buf.String()), nil
 	case "genericmap", "dict":
 		items := m.(starlark.IterableMapping).Items()
+		// Sort items by key to have deterministic output
+		sort.Slice(items, func(i, j int) bool {
+			return items[i][0].String() < items[j][0].String()
+		})
 		buf := strings.Builder{}
 		buf.WriteString("{")
 		first := true
