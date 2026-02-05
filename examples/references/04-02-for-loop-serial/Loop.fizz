@@ -9,8 +9,7 @@ action Init:
     total = 0
 
 action ProcessItems:
-    if len(items) >= MAX:
-        return
+    require len(items) < MAX
 
     # Serial for loop - yields after each iteration
     serial for i in range(MAX):

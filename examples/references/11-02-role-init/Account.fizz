@@ -10,8 +10,7 @@ role Account:
         self.name = self.OWNER  # Use parameter
 
     action Deposit:
-        if self.balance >= 50:
-            return
+        require self.balance < 50
 
         self.balance = self.balance + 10
 
@@ -22,8 +21,7 @@ action Init:
     counter = 0
 
 atomic action IncrementCounter:
-    if counter >= 2:
-        return
+    require counter < 2
     counter = counter + 1
 
 # Each instance has its own state

@@ -8,8 +8,7 @@ action Init:
     result = set()
 
 atomic action SetOperations:
-    if len(result) > 0:
-        return
+    require len(result) == 0
 
     # Set operations
     set_a.add(4)         # Add element

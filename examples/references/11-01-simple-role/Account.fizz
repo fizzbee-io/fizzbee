@@ -9,8 +9,7 @@ role Account:
         self.owner = "alice"
 
     action Deposit:
-        if self.balance >= 100:
-            return
+        require self.balance < 100
 
         self.balance = self.balance + 10
 

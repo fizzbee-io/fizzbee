@@ -12,11 +12,8 @@ action Init:
     requests = 0
 
 atomic action RequestSuccess:
-    if requests >= 5:
-        return
-
-    if circuit_state == State.OPEN:
-        return  # Reject when open
+    require requests < 5
+    require circuit_state != State.OPEN  # Reject when open
 
     requests = requests + 1
     success_count = success_count + 1
@@ -27,11 +24,8 @@ atomic action RequestSuccess:
         circuit_state = State.CLOSED
 
 atomic action RequestFailure:
-    if requests >= 5:
-        return
-
-    if circuit_state == State.OPEN:
-        return  # Reject when open
+    require requests < 5
+    require circuit_state != State.OPEN  # Reject when open
 
     requests = requests + 1
     failure_count = failure_count + 1
@@ -41,8 +35,7 @@ atomic action RequestFailure:
         circuit_state = State.OPEN
 
 atomic action TryReset:
-    if circuit_state != State.OPEN:
-        return
+    require circuit_state == State.OPEN
 
     # Try half-open after timeout
     circuit_state = State.HALF_OPEN

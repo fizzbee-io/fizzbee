@@ -10,19 +10,15 @@ action Init:
     replayed_state = None
 
 atomic action AppendCreateEvent:
-    if len(events) > 0:
-        return
+    require len(events) == 0
 
     event = record(type=EventType.CREATED, value=0)
     events.append(event)
     current_state = 0
 
 atomic action AppendIncrementEvent:
-    if len(events) == 0:
-        return
-
-    if len(events) >= 3:
-        return
+    require len(events) > 0
+    require len(events) < 3
 
     event = record(type=EventType.INCREMENTED, value=1)
     events.append(event)
@@ -31,11 +27,8 @@ atomic action AppendIncrementEvent:
     replayed_state = None
 
 atomic action AppendDecrementEvent:
-    if len(events) == 0:
-        return
-
-    if len(events) >= 3:
-        return
+    require len(events) > 0
+    require len(events) < 3
 
     event = record(type=EventType.DECREMENTED, value=1)
     events.append(event)
@@ -44,11 +37,8 @@ atomic action AppendDecrementEvent:
     replayed_state = None
 
 atomic action ReplayEvents:
-    if replayed_state != None:
-        return
-
-    if len(events) == 0:
-        return
+    require replayed_state == None
+    require len(events) > 0
 
     # Rebuild state from events
     state = 0

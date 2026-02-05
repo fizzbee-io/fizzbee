@@ -11,8 +11,7 @@ action Init:
 
 # ✅ GOOD: Guard clause bounds the state
 atomic action IncrementWithGuard:
-    if counter >= MAX_VALUE:
-        return
+    require counter < MAX_VALUE
 
     counter = counter + 1
 
@@ -22,8 +21,7 @@ atomic action IncrementCyclic:
 
 # ✅ GOOD: Bounded collection growth
 atomic action AddItem:
-    if len(items) >= 5:
-        return
+    require len(items) < 5
 
     items.append(len(items))
 

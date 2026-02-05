@@ -9,8 +9,7 @@ action Init:
     current_state = State.INIT
 
 atomic action Transition:
-    if current_state == State.DONE:
-        return
+    require current_state != State.DONE
 
     # State machine using enum
     if current_state == State.INIT:
@@ -23,8 +22,7 @@ atomic action Transition:
 
 # Can iterate over enum values
 atomic action CheckAllStates:
-    if current_state != State.DONE:
-        return
+    require current_state == State.DONE
 
     # dir() returns all enum values
     for state in dir(State):

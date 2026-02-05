@@ -9,8 +9,7 @@ action Init:
 
 # Combine any with condition
 atomic action ChooseDifferentPair:
-    if first > 0 and second > 0:
-        return
+    require first == 0 or second == 0
 
     first = any options
     # Choose different value using condition
@@ -18,16 +17,14 @@ atomic action ChooseDifferentPair:
 
 # Combine fair any with range
 atomic fair<strong> action FairChoice:
-    if fair_choice > 0:
-        return
+    require fair_choice == 0
 
     # Ensures all values eventually chosen
     fair_choice = fair any options
 
 # Can also combine fair any with filtering by using separate variables
 atomic fair<strong> action FairFilteredChoice:
-    if len(options) == 0:
-        return
+    require len(options) > 0
 
     # Fair choice from available options
     idx = fair any range(len(options))

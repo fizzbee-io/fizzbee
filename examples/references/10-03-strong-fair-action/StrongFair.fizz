@@ -12,8 +12,7 @@ action Toggle:
 
 # Strongly fair action
 fair<strong> action ProcessWhenEnabled:
-    if processed:
-        return
+    require not processed
 
     # Only enabled when toggle is True
     if toggle:

@@ -17,9 +17,7 @@ atomic func CheckLimit():
     return len(items) < MAX_ITEMS
 
 atomic action AddItem:
-    # Check condition inline (functions called from atomic context)
-    if len(items) >= MAX_ITEMS:
-        return
+    require len(items) < MAX_ITEMS
 
     # State variables accessible in actions automatically
     items.append(counter)

@@ -7,8 +7,7 @@ action Init:
     operations = 0
 
 atomic action CASIncrement:
-    if operations >= 3:
-        return
+    require operations < 3
 
     # Read current value
     expected = shared_value
@@ -20,11 +19,8 @@ atomic action CASIncrement:
         operations = operations + 1
 
 atomic action CASDecrement:
-    if operations >= 3:
-        return
-
-    if shared_value == 0:
-        return
+    require operations < 3
+    require shared_value != 0
 
     # Read current value
     expected = shared_value
@@ -36,8 +32,7 @@ atomic action CASDecrement:
         operations = operations + 1
 
 atomic action CASSet:
-    if operations >= 3:
-        return
+    require operations < 3
 
     # Direct set to specific value
     expected = shared_value

@@ -11,29 +11,23 @@ action Init:
     decided_value = None
 
 atomic action Propose:
-    if proposal_value != None:
-        return
+    require proposal_value == None
 
     # Nondeterministically choose value to propose
     proposal_value = any [1, 2]
 
 atomic action Accept:
-    if proposal_value == None:
-        return
-
-    if decided_value != None:
-        return
+    require proposal_value != None
+    require decided_value == None
 
     # Node accepts proposal
     node = any ["node_0", "node_1", "node_2"]
-    if node in acceptances:
-        return
+    require node not in acceptances
 
     acceptances.add(node)
 
 atomic action Decide:
-    if decided_value != None:
-        return
+    require decided_value == None
 
     # Decide when quorum reached
     if len(acceptances) >= QUORUM:

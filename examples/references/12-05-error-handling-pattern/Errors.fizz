@@ -10,8 +10,7 @@ action Init:
     retry_count = 0
 
 action ProcessRequest:
-    if state != "idle":
-        return
+    require state == "idle"
 
     state = "processing"
 
@@ -30,8 +29,7 @@ action ProcessRequest:
         error = ErrorCode.INVALID
 
 action Retry:
-    if state != "error":
-        return
+    require state == "error"
 
     if retry_count >= 2:
         state = "failed"

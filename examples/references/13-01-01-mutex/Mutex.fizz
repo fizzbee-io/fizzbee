@@ -10,26 +10,21 @@ action Init:
     operations = 0
 
 atomic action AcquireLock:
-    if operations >= MAX_OPERATIONS:
-        return
-
+    require operations < MAX_OPERATIONS
     # Only acquire if not held
-    if lock_holder != None:
-        return
+    require lock_holder == None
 
     lock_holder = "thread_a"
 
 atomic action CriticalSection:
-    if lock_holder != "thread_a":
-        return
+    require lock_holder == "thread_a"
 
     # Protected operation
     counter = counter + 1
     operations = operations + 1
 
 atomic action ReleaseLock:
-    if lock_holder != "thread_a":
-        return
+    require lock_holder == "thread_a"
 
     lock_holder = None
 

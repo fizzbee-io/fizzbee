@@ -12,26 +12,19 @@ action Init:
     txn2_committed = False
 
 atomic action Txn1Begin:
-    if txn1_snapshot != None:
-        return
+    require txn1_snapshot == None
 
     txn1_snapshot = committed_value
 
 atomic action Txn1Write:
-    if txn1_snapshot == None:
-        return
-
-    if txn1_write != None:
-        return
+    require txn1_snapshot != None
+    require txn1_write == None
 
     txn1_write = txn1_snapshot + 1
 
 atomic action Txn1Commit:
-    if txn1_write == None:
-        return
-
-    if txn1_committed:
-        return
+    require txn1_write != None
+    require not txn1_committed
 
     # Commit if no conflict (value unchanged since snapshot)
     if committed_value == txn1_snapshot:
@@ -39,26 +32,19 @@ atomic action Txn1Commit:
         txn1_committed = True
 
 atomic action Txn2Begin:
-    if txn2_snapshot != None:
-        return
+    require txn2_snapshot == None
 
     txn2_snapshot = committed_value
 
 atomic action Txn2Write:
-    if txn2_snapshot == None:
-        return
-
-    if txn2_write != None:
-        return
+    require txn2_snapshot != None
+    require txn2_write == None
 
     txn2_write = txn2_snapshot + 10
 
 atomic action Txn2Commit:
-    if txn2_write == None:
-        return
-
-    if txn2_committed:
-        return
+    require txn2_write != None
+    require not txn2_committed
 
     # Commit if no conflict
     if committed_value == txn2_snapshot:

@@ -7,8 +7,7 @@ action Init:
     reached_five = False
 
 atomic action Increment:
-    if value >= 10:
-        return
+    require value < 10
 
     value = value + 1
 

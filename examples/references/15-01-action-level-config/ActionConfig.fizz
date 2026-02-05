@@ -27,15 +27,13 @@ action Init:
 
 # Limited to 5 executions by action_options
 action HighFrequency:
-    if high_freq_count >= 10:
-        return
+    require high_freq_count < 10
 
     high_freq_count = high_freq_count + 1
 
 # No crash injection (crash_on_yield: false)
 action CriticalPath:
-    if critical_count >= 3:
-        return
+    require critical_count < 3
 
     # These steps run without crash injection
     critical_count = critical_count + 1
@@ -43,8 +41,7 @@ action CriticalPath:
 
 # Only runs once at a time (max_concurrent_actions: 1)
 action BackgroundTask:
-    if background_count >= 2:
-        return
+    require background_count < 2
 
     background_count = background_count + 1
 

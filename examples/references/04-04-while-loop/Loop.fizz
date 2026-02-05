@@ -9,8 +9,7 @@ action Init:
     accumulator = 0
 
 atomic action Accumulate:
-    if counter >= MAX:
-        return
+    require counter < MAX
 
     counter = counter + 1
 

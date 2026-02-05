@@ -14,8 +14,7 @@ atomic func process_batch():
     return total
 
 atomic action ProcessData:
-    if len(items) > 0:
-        return
+    require len(items) == 0
 
     # Call atomic function
     result = process_batch()

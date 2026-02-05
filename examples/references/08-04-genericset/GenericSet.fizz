@@ -7,8 +7,7 @@ action Init:
     count = 0
 
 atomic action AddComplexItem:
-    if count >= 2:
-        return
+    require count < 2
 
     # Can add non-hashable types like dicts
     item = {"id": count, "status": "pending"}
@@ -16,8 +15,7 @@ atomic action AddComplexItem:
     count = count + 1
 
 atomic action UpdateItem:
-    if len(items) == 0:
-        return
+    require len(items) > 0
 
     # Add duplicate - will not increase size
     duplicate = {"id": 0, "status": "pending"}

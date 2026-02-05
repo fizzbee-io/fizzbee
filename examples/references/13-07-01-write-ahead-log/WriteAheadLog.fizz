@@ -10,16 +10,14 @@ action Init:
     data_value = 0
 
 atomic action WriteToLog:
-    if len(log) >= MAX_WRITES:
-        return
+    require len(log) < MAX_WRITES
 
     # Log entry before applying
     entry = record(index=len(log), value=len(log) + 1)
     log.append(entry)
 
 atomic action ApplyLogEntry:
-    if applied_index >= len(log):
-        return
+    require applied_index < len(log)
 
     # Apply logged entry to data
     entry = log[applied_index]

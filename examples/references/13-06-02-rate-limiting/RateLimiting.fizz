@@ -21,8 +21,7 @@ atomic action ProcessRequest:
         requests_rejected = requests_rejected + 1
 
 atomic action RefillTokens:
-    if refills >= 2:
-        return
+    require refills < 2
 
     # Add tokens up to capacity
     if tokens < BUCKET_CAPACITY:

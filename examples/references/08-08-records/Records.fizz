@@ -8,8 +8,7 @@ action Init:
     counter = 0
 
 atomic action UpdateRecord:
-    if counter >= 2:
-        return
+    require counter < 2
 
     counter = counter + 1
 

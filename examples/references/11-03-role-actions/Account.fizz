@@ -9,14 +9,12 @@ role Account:
     # Role actions don't take parameters (like top-level actions)
     # self is implicit (no need to declare)
     action Deposit:
-        if self.balance >= 50:
-            return
+        require self.balance < 50
 
         self.balance = self.balance + 10
 
     action Withdraw:
-        if self.balance < 10:
-            return
+        require self.balance >= 10
 
         self.balance = self.balance - 10
 

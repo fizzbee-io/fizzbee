@@ -9,8 +9,7 @@ action Init:
     total = 0
 
 atomic action Increment:
-    if counter >= MAX:
-        return
+    require counter < MAX
 
     counter = counter + 1
     total = total + counter

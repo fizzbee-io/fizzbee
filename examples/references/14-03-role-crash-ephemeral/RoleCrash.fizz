@@ -11,8 +11,7 @@ role Server:
         self.requests = 0
 
     action ProcessRequest:
-        if self.requests >= 2:
-            return
+        require self.requests < 2
 
         # Update disk first, then cache
         self.disk_data = self.disk_data + 1

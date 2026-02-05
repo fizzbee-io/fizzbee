@@ -16,8 +16,7 @@ role Calculator:
         return self.total
 
     atomic action Compute:
-        if self.total >= 10:
-            return
+        require self.total < 10
 
         # Call role functions
         sum = self.add(2, 3)

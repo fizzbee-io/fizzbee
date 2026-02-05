@@ -7,8 +7,7 @@ action Init:
     total = 0
 
 atomic action AddItems:
-    if total >= 4:
-        return
+    require total < 4
 
     # Bags allow duplicates
     items.add(1)
@@ -17,8 +16,7 @@ atomic action AddItems:
     total = total + 1
 
 atomic action RemoveItem:
-    if len(items) == 0:
-        return
+    require len(items) > 0
 
     # Remove one instance
     items.discard(1)
