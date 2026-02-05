@@ -1082,6 +1082,24 @@ fair action Choose:
     value = fair any options
 ```
 
+### Concise vs Block Form
+
+`any` has two forms. **Prefer the concise form** — it keeps code flat and readable:
+
+```python
+# ✅ Concise form (preferred): assigns and continues
+n = any nodes
+require status[n] == "active"
+status[n] = "done"
+
+# Block form: runs indented block for chosen value
+any n in nodes:
+    require status[n] == "active"
+    status[n] = "done"
+```
+
+Both are semantically equivalent. The block form is the older pattern; the concise form avoids unnecessary indentation.
+
 ### Any vs Oneof
 
 ```python
@@ -1396,7 +1414,15 @@ action Init:
 
 **Symmetry reduction** is a powerful technique to reduce state space by exploiting symmetries in the model. When values or role instances are truly interchangeable, the model checker can treat permutations as equivalent, dramatically reducing the number of states to explore.
 
-### Symmetric Values
+### Symmetric Values (Legacy)
+
+> **Recommendation**: Prefer the [Symmetry Module API](#symmetry-module-api-advanced) for new models. It provides finer-grained control (nominal, ordinal, interval, rotational) and additional features (reflection, divergence, segments). The legacy `symmetric_values()` is equivalent to materialized nominal symmetry:
+> ```python
+> # Legacy
+> KEYS = symmetric_values('k', 3)
+> # Equivalent new API
+> KEYS = symmetry.nominal(name="k", limit=3, materialize=True).values()
+> ```
 
 Use `symmetric_values()` to create interchangeable IDs:
 
@@ -1541,6 +1567,247 @@ To see symmetry reduction in action:
 3. Compare state/node counts in output
 
 **Reference**: [16-04-symmetry-comparison](16-04-symmetry-comparison/) provides side-by-side comparison
+
+### Symmetry Module API (Advanced)
+
+The `symmetry` module provides fine-grained control over symmetric value domains with four symmetry types, each preserving different mathematical structure. Unlike `symmetric_values()` (which is nominal-only), the module lets you declare what operations are meaningful for your domain, enabling more aggressive state space reduction.
+
+#### Quick Reference
+
+| Type | Allowed Ops | Canonicalization | Typical Use |
+|:---|:---|:---|:---|
+| `nominal` | `==`, `!=` | Permutation of IDs | User IDs, session tokens |
+| `ordinal` | `==`, `!=`, `<`, `>`, `<=`, `>=` | Rank squashing (0,1,2,...) | Logical timestamps, priorities |
+| `interval` | `==`, `!=`, `<`, `>`, `<=`, `>=`, `+int`, `-int`, `val-val` | Zero-shifting (subtract min) | Sequence numbers, counters |
+| `rotational` | `==`, `!=`, `+int`, `-int`, `val-val` | Rotate to lex-smallest set | Ring positions, clock arithmetic |
+
+#### Constructors
+
+```python
+symmetry.nominal(name, limit, materialize=False)
+symmetry.ordinal(name, limit, reflection=False, materialize=False)
+symmetry.interval(name, divergence=None, limit=None, start=0, reflection=False, materialize=False)
+symmetry.rotational(name, limit, materialize=False, reflection=False)
+```
+
+**Parameters**:
+- `name` (string): Domain identifier, used in value display (e.g., name="ts" produces ts0, ts1, ...)
+- `limit` (int): Maximum number of values in the domain
+- `divergence` (int, interval only): Maximum allowed spread (max - min). If only `divergence` given, `limit = divergence + 1`. If only `limit` given, `divergence = limit - 1`.
+- `start` (int, interval only): Starting value for first allocation (default 0)
+- `reflection` (bool): Enable mirror-state equivalence (not available for nominal)
+- `materialize` (bool): Pre-populate all `limit` values at declaration time. When true, `fresh()` is disallowed.
+
+#### Methods by Type
+
+| Method | Nominal | Ordinal | Interval | Rotational | Description |
+|:---|:---:|:---:|:---:|:---:|:---|
+| `fresh()` | Y | Y | Y | Y | Allocate new canonical value |
+| `values()` | Y | Y | Y | Y | List active values (sorted) |
+| `choose()` | Y | - | - | Y | Deterministic default value (like TLA+ CHOOSE) |
+| `choices()` | Y | - | - | Y | `values()` + one `fresh()` |
+| `min()` | - | Y | Y | - | Smallest active value or fresh |
+| `max()` | - | Y | Y | - | Largest active value or fresh |
+| `segments(after?, before?)` | - | Y | - | - | Gaps between active values |
+
+#### Nominal Symmetry
+
+Values are unordered and interchangeable. Only equality testing is allowed. The model checker treats any permutation of IDs as equivalent.
+
+```python
+IDS = symmetry.nominal(name="id", limit=3)
+
+action Init:
+    cache = {}
+
+atomic action Put:
+    id = any IDS.choices()  # existing IDs + one fresh
+    cache[id] = "data"
+```
+
+`fresh()` allocates the smallest unused ID (canonical form). `choices()` returns all active values plus one fresh value if the limit allows -- use with `any` for nondeterministic selection. `choose()` returns a deterministic default value (like TLA+'s CHOOSE) -- use it when you need an initial value, not for nondeterministic selection.
+
+**Reference**: [16-05-nominal-symmetry](16-05-nominal-symmetry/)
+
+#### Ordinal Symmetry
+
+Values are ordered but only relative rank matters. Distances between values are not preserved. The model checker squeezes values to dense ranks (0, 1, 2, ...).
+
+```python
+TIMES = symmetry.ordinal(name="ts", limit=4)
+
+action Init:
+    events = []
+
+atomic action RecordEvent:
+    # fresh() appends after max; min()/max() return the extremes.
+    t = TIMES.fresh()
+    events = events + [t]
+
+atomic action ProcessEvent:
+    require len(events) > 0
+    events = events[1:]     # frees a slot for fresh() again
+```
+
+`fresh()` always allocates a value greater than all existing values (tail append). Use `segments()` to insert between existing values (see below).
+
+**Reference**: [16-06-ordinal-symmetry](16-06-ordinal-symmetry/)
+
+##### Ordinal Segments (Gap Insertion)
+
+`segments()` returns gap objects between active values. Each gap has a `fresh()` method to allocate a value within that range.
+
+```python
+TIMES = symmetry.ordinal(name="ts", limit=6)
+
+action Init:
+    t_start = TIMES.fresh()
+    t_end = TIMES.fresh()
+
+atomic action InsertBetween:
+    # segments(after=v, before=v) filters to gaps in range.
+    # Ordinal gaps are always non-empty (the domain is dense).
+    gaps = TIMES.segments(after=t_start, before=t_end)
+    gap = any gaps
+    t = gap.fresh()  # guaranteed: t_start < t < t_end
+```
+
+With N active values, `segments()` returns N+1 gaps: a head gap (before first), body gaps (between consecutive pairs), and a tail gap (after last). Ordinal gaps are always non-empty since the domain is dense (infinitely divisible in theory).
+
+**Reference**: [16-07-ordinal-segments](16-07-ordinal-segments/)
+
+#### Interval Symmetry
+
+Values are ordered and distances are meaningful. Supports arithmetic on values. The model checker normalizes by subtracting the minimum (zero-shifting), so `{5,7,8}` and `{0,2,3}` are equivalent.
+
+```python
+TICKS = symmetry.interval(name="t", limit=6)
+
+action Init:
+    t1 = TICKS.min()
+    t2 = TICKS.min()   # same value as t1
+
+atomic fair action Tick1:
+    t1 = t1 + 1        # val + int -> val
+
+atomic fair action Tick2:
+    t2 = t2 + 1
+```
+
+**Arithmetic**: `val + int` and `val - int` produce new symmetric values. `val1 - val2` produces a plain `int` (the distance). Only the gap pattern matters -- the model checker recognizes that `{t1=0,t2=3}` is equivalent to `{t1=100,t2=103}`.
+
+**Reference**: [16-08-interval-symmetry](16-08-interval-symmetry/)
+
+##### Divergence (Bounding Spread)
+
+The `divergence` parameter limits `max - min` across all active values. Transitions that would exceed this bound are pruned from the state space.
+
+```python
+# max spread of 3: states where (max - min) > 3 are unreachable
+SEQ = symmetry.interval(name="s", divergence=3)
+
+action Init:
+    head = SEQ.fresh()     # s0
+    tail = SEQ.fresh()     # s1
+
+atomic fair action AdvanceHead:
+    head = head + 1        # pruned if head - tail > 3
+
+atomic fair action AdvanceTail:
+    require tail < head
+    tail = tail + 1
+```
+
+**Derivation rules**: Provide `divergence`, `limit`, or both. If only one is given, the other is derived: `limit = divergence + 1` or `divergence = limit - 1`.
+
+**Reference**: [16-09-interval-divergence](16-09-interval-divergence/)
+
+#### Rotational Symmetry
+
+Values are integers mod `limit` (ring positions). Arithmetic wraps around. No ordering operators (`<`, `>` not supported) since the domain is circular.
+
+```python
+RING = symmetry.rotational(name="pos", limit=5)
+
+action Init:
+    positions = set()
+
+atomic action Place:
+    p = RING.fresh()
+    positions.add(p)
+
+atomic action Advance:
+    p = any positions
+    next_p = p + 1          # wraps: 4 + 1 = 0 on ring of 5
+    if next_p not in positions:
+        positions.remove(p)
+        positions.add(next_p)
+```
+
+The model checker rotates all values by a constant to find the lexicographically smallest set. So `{0,2}`, `{1,3}`, `{2,4}`, `{3,0}`, `{4,1}` are all the same state (gap pattern = {0,2}).
+
+`val1 - val2` returns a plain `int`: `(a - b) % limit`.
+
+**Reference**: [16-10-rotational-symmetry](16-10-rotational-symmetry/)
+
+#### Reflection Symmetry
+
+Setting `reflection=True` makes mirror-image states equivalent. Available for ordinal, interval, and rotational symmetry (not nominal, since nominal has no structure to reflect).
+
+**Interval reflection**: `{t1=0, t2=3}` is equivalent to `{t1=3, t2=0}`. The model checker considers both `v - min` and `max - v` normalizations and picks the canonical one.
+
+```python
+# With reflection: "t1 ahead by 3" = "t2 ahead by 3"
+TICKS = symmetry.interval(name="t", limit=6, reflection=True)
+```
+
+**Rotational reflection**: Clockwise and counterclockwise orientations are equivalent. On a ring of 6, `{0,1}` (gap=1 clockwise) and `{0,5}` (gap=1 counterclockwise) collapse to one state.
+
+```python
+# Undirected ring: CW and CCW are equivalent
+RING = symmetry.rotational(name="pos", limit=6, reflection=True)
+```
+
+**Impact**: For the two-ticker interval example with `limit=6`: without reflection = 11 states, with reflection = 6 states (~45% reduction).
+
+**Reference**: [16-11-reflection](16-11-reflection/)
+
+#### Materialize
+
+With `materialize=True`, all `limit` values exist from the start. `fresh()` is not allowed. Useful when the value set is fixed and known upfront.
+
+```python
+NODES = symmetry.rotational(name="n", limit=4, materialize=True)
+
+action Init:
+    status = {}
+    for n in NODES.values():  # all 4 values available immediately
+        status[n] = "idle"
+```
+
+Works with all symmetry types. For interval, values start at `start`: e.g., `symmetry.interval(name="x", limit=3, start=10, materialize=True)` creates values 10, 11, 12.
+
+**Reference**: [16-12-materialize](16-12-materialize/)
+
+#### Gotchas and Tips
+
+1. **`fresh()` is deterministic, not nondeterministic.** It always returns the canonical next value. For nondeterministic choice, use `any domain.choices()` (nominal/rotational) or `any domain.values()`.
+
+2. **Domain methods cannot be called from assertions.** The symmetry context is only available during action execution. Store values in state variables and check those in assertions instead.
+
+3. **Limit enforcement is automatic.** When `fresh()` would exceed the limit, the transition is disabled (pruned from the state graph), not an error.
+
+4. **Divergence enforcement is automatic.** For interval symmetry, transitions that would make `(max - min) > divergence` are pruned, including arithmetic results.
+
+5. **Use `set()` or `bag()` to store symmetric values**, not `list()`. Lists preserve insertion order, which breaks symmetry reduction (same pitfall as with `symmetric role`).
+
+6. **Choosing the right type**:
+   - Only need identity? Use **nominal** (maximum reduction).
+   - Need ordering but not distances? Use **ordinal**.
+   - Need ordering AND distances/arithmetic? Use **interval**.
+   - Values wrap around (mod N)? Use **rotational**.
+
+7. **`require` is a guard, not an assertion.** `require cond` disables the transition when `cond` is false -- the action simply doesn't execute. It does **not** report a failure. To check properties, use `always assertion`. Prefer `require` over `if not cond: return` for enabling conditions -- they have the same effect but `require` is more concise and idiomatic.
 
 ---
 

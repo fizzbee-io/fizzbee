@@ -1,0 +1,40 @@
+# Materialize: Pre-populate all domain values at declaration.
+#
+# With materialize=True, all `limit` values exist from the start.
+# - values() immediately returns all values
+# - fresh() is NOT allowed (raises error)
+# - Useful when the set of values is fixed and known upfront
+#
+# Works with all symmetry types:
+#   nominal:    values 0, 1, ..., limit-1
+#   ordinal:    values 0, 1, ..., limit-1
+#   interval:   values start, start+1, ..., start+limit-1
+#   rotational: values 0, 1, ..., limit-1
+#
+# Use cases: fixed-size process rings, known node sets,
+#            enumerated configurations.
+
+NODES = symmetry.rotational(name="n", limit=4, materialize=True)
+
+action Init:
+    # All 4 values exist immediately
+    status = {}
+    for n in NODES.values():
+        status[n] = "idle"
+
+atomic action Activate:
+    n = any NODES.values()
+    require status[n] == "idle"
+    status[n] = "active"
+
+atomic action Deactivate:
+    n = any NODES.values()
+    require status[n] == "active"
+    status[n] = "idle"
+
+atomic action PassToken:
+    n = any NODES.values()
+    require status[n] == "active"
+    next_n = n + 1  # wraps mod 4
+    status[n] = "idle"
+    status[next_n] = "active"

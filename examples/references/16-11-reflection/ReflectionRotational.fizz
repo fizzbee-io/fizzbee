@@ -1,0 +1,30 @@
+# Reflection Symmetry (Rotational): Clockwise = counterclockwise.
+#
+# With reflection=True on a rotational domain, the model checker
+# treats clockwise and counterclockwise orientations as equivalent.
+# On a ring of size 6: {0,1} (gap=1) and {0,5} (gap=5, i.e. -1)
+# are equivalent because one is the mirror of the other.
+#
+# Without reflection: {0,1} and {0,5} are distinct states.
+# With reflection: they collapse to one canonical state.
+#
+# Use case: undirected ring networks where message direction
+# doesn't matter, or symmetric physical arrangements.
+
+RING = symmetry.rotational(name="pos", limit=6, reflection=True)
+
+action Init:
+    positions = set()
+
+atomic action Place:
+    require len(positions) < 3
+    p = RING.fresh()
+    positions.add(p)
+
+atomic action Step:
+    require len(positions) > 0
+    p = any positions
+    next_p = p + 1
+    if next_p not in positions:
+        positions.remove(p)
+        positions.add(next_p)

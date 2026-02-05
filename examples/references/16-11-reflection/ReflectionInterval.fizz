@@ -1,0 +1,28 @@
+# Reflection Symmetry (Interval): Mirror states are equivalent.
+#
+# With reflection=True, the model checker also considers the
+# "mirror image" of each state. For interval symmetry, this means
+# {a, b} with distances [0, d] is equivalent to [d, 0] (reversed).
+#
+# Concretely: state (t1=0, t2=3) is equivalent to (t1=3, t2=0)
+# because reflecting maps v -> (max - v), turning {0,3} into {3,0}
+# which normalizes back to {0,3} with swapped variable bindings.
+#
+# This is useful when two processes are truly interchangeable and
+# "t1 ahead of t2 by 3" is equivalent to "t2 ahead of t1 by 3".
+#
+# Compare: Run this file vs IntervalNoReflection.fizz to see
+# the state space reduction from reflection.
+
+LIMIT = 6
+TICKS = symmetry.interval(name="t", limit=LIMIT, reflection=True)
+
+action Init:
+    t1 = TICKS.min()
+    t2 = TICKS.min()
+
+atomic fair action Tick1:
+    t1 = t1 + 1
+
+atomic fair action Tick2:
+    t2 = t2 + 1

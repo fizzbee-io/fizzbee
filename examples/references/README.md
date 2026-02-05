@@ -36,10 +36,10 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
   - **13-07**: Data/Events (2) - WAL, event sourcing
 - **14**: Fault Injection (4) - Crash and message loss
 - **15**: Configuration (2) - Action-level config, coordination
-- **16**: Symmetry Reduction (4) - State space optimization
+- **16**: Symmetry Reduction (12) - State space optimization (old API + symmetry module)
 - **99**: Miscellaneous (1) - Checkpoints and other utilities
 
-**Total: 88 examples across 17 sections**
+**Total: 98 examples across 17 sections**
 
 ## Examples Created
 
@@ -576,6 +576,55 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: Measuring state space reduction, scaling analysis
 - **Status**: ✅ BOTH PASSED
 - **How to use**: Run both files and compare state/node counts
+
+### 16-05-nominal-symmetry: Nominal Symmetry (symmetry module)
+- **State space**: 8 nodes, 4 unique states
+- **Purpose**: Interchangeable identifiers using `symmetry.nominal()`
+- **Key concepts**: `fresh()`, `values()`, `choices()`, `choose()`, unordered IDs
+- **Status**: ✅ PASSED
+
+### 16-06-ordinal-symmetry: Ordinal Symmetry (symmetry module)
+- **State space**: 5 nodes, 5 unique states
+- **Purpose**: Ordered values where only relative rank matters
+- **Key concepts**: `symmetry.ordinal()`, `fresh()`, `min()`, `max()`, ordering comparisons
+- **Status**: ✅ PASSED
+
+### 16-07-ordinal-segments: Ordinal Segments (gap insertion)
+- **State space**: 4 nodes, 1 unique state
+- **Purpose**: Inserting values between existing ordinal values using `segments()`
+- **Key concepts**: `segments()`, `segment.fresh()`, `after`/`before` filtering
+- **Status**: ✅ PASSED
+
+### 16-08-interval-symmetry: Interval Symmetry (symmetry module)
+- **State space**: 11 nodes, 11 unique states
+- **Purpose**: Ordered values where distance is meaningful, with arithmetic
+- **Key concepts**: `symmetry.interval()`, `val + int`, `val - int`, `val - val`, zero-shifting
+- **Status**: ✅ PASSED
+
+### 16-09-interval-divergence: Interval Divergence
+- **State space**: 5 nodes, 5 unique states
+- **Purpose**: Bounding the spread of interval values with `divergence` parameter
+- **Key concepts**: `divergence`, automatic spread enforcement, derivation rules
+- **Status**: ✅ PASSED
+
+### 16-10-rotational-symmetry: Rotational Symmetry (symmetry module)
+- **State space**: 11 nodes, 6 unique states
+- **Purpose**: Ring/modular arithmetic with wrapping values
+- **Key concepts**: `symmetry.rotational()`, `val + int` (wrapping), `val - val` (mod), ring positions
+- **Status**: ✅ PASSED
+
+### 16-11-reflection: Reflection Symmetry
+- **Files**: ReflectionInterval.fizz (6 states), ReflectionNoReflection.fizz (11 states), ReflectionRotational.fizz (7 states)
+- **Purpose**: Mirror-state equivalence using `reflection=True`
+- **Key concepts**: `reflection=True`, interval reflection (v-min vs max-v), rotational reflection (CW=CCW)
+- **Status**: ✅ ALL PASSED
+- **Note**: Compare ReflectionInterval.fizz (6 states) vs ReflectionNoReflection.fizz (11 states) for ~45% reduction
+
+### 16-12-materialize: Materialized Domains
+- **State space**: 23 nodes, 6 unique states
+- **Purpose**: Pre-populating all domain values with `materialize=True`
+- **Key concepts**: `materialize=True`, `values()` returns all upfront, `fresh()` disallowed
+- **Status**: ✅ PASSED
 
 ### 99-01-checkpoints: Visualization Checkpoints
 - **State space**: 12 nodes, 10 unique states

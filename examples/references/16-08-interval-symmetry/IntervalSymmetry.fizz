@@ -1,0 +1,37 @@
+# Interval Symmetry: Ordered values where distance is meaningful.
+# Operations: ==, !=, <, <=, >, >=, +int, -int, val-val.
+# Reduction: zero-shifting (subtract minimum to normalize).
+# Use cases: sequence numbers, log indices, counters.
+#
+# Key differences from ordinal:
+#   - Supports arithmetic: val + 1, val - 1
+#   - Value difference: val1 - val2 returns a plain int
+#   - fresh() allocates max+1 (pessimistic, sequential)
+#   - `divergence` parameter bounds the max spread (max - min)
+#
+# Key methods:
+#   fresh()  - allocate max+1 (or start value if empty)
+#   min()    - smallest active value (or fresh if empty)
+#   max()    - largest active value (or fresh if empty)
+#   values() - all active values, sorted ascending
+#
+# The model checker normalizes by shifting min to 0.
+# E.g., {5,7,8} and {0,2,3} are equivalent (same distances).
+
+LIMIT = 6
+TICKS = symmetry.interval(name="t", limit=LIMIT)
+
+action Init:
+    t1 = TICKS.min()
+    t2 = TICKS.min()
+
+atomic fair action Tick1:
+    t1 = t1 + 1
+
+atomic fair action Tick2:
+    t2 = t2 + 1
+
+# With interval symmetry, only the *distances* between t1 and t2
+# matter. States {t1=0,t2=0}, {t1=5,t2=5}, {t1=100,t2=100}
+# are all equivalent (distance = 0).
+# Total unique states: O(LIMIT^2) instead of unbounded.
