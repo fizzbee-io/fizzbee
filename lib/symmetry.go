@@ -272,7 +272,7 @@ func (d *SymmetryDomain) segments(thread *starlark.Thread, _ *starlark.Builtin, 
 
 	// Helper to extract int64 ID from value
 	getID := func(v starlark.Value) (int64, bool) {
-		if sv, ok := v.(SymmetricValue); ok {
+		if sv, ok := v.(*SymmetricValue); ok {
 			if sv.prefix == d.Name {
 				return sv.id, true
 			}
