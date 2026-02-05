@@ -11,12 +11,9 @@ action Init:
     consumed = 0
 
 atomic action Produce:
-    if produced >= MAX_ITEMS:
-        return
-
+    require produced < MAX_ITEMS
     # Check buffer capacity
-    if len(buffer) >= BUFFER_SIZE:
-        return
+    require len(buffer) < BUFFER_SIZE
 
     item = produced
     buffer.append(item)
@@ -24,8 +21,7 @@ atomic action Produce:
 
 atomic action Consume:
     # Check buffer has items
-    if len(buffer) == 0:
-        return
+    require len(buffer) > 0
 
     item = buffer[0]
     buffer.remove(item)

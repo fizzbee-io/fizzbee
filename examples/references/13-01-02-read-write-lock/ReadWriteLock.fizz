@@ -11,35 +11,27 @@ action Init:
     operations = 0
 
 atomic action AcquireReadLock:
-    if operations >= MAX_OPS:
-        return
-
+    require operations < MAX_OPS
     # Can read if no writer
-    if writer:
-        return
+    require not writer
 
     readers = readers + 1
 
 atomic action ReleaseReadLock:
-    if readers == 0:
-        return
+    require readers > 0
 
     readers = readers - 1
     operations = operations + 1
 
 atomic action AcquireWriteLock:
-    if operations >= MAX_OPS:
-        return
-
+    require operations < MAX_OPS
     # Can write if no readers and no writer
-    if readers > 0 or writer:
-        return
+    require readers == 0 and not writer
 
     writer = True
 
 atomic action ReleaseWriteLock:
-    if not writer:
-        return
+    require writer
 
     writer = False
     data = data + 1

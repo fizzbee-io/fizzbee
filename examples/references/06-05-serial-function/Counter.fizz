@@ -18,8 +18,7 @@ atomic func process_items():
     return total
 
 atomic action ProcessData:
-    if len(items) >= MAX:
-        return
+    require len(items) < MAX
 
     # Call function from atomic action
     result = process_items()

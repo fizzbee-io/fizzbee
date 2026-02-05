@@ -6,14 +6,12 @@ action Init:
     counter = 0
 
 atomic action Increment:
-    if counter >= 5:
-        return
+    require counter < 5
 
     counter = counter + 1
 
 atomic action BigIncrement:
-    if counter >= 5:
-        return
+    require counter < 5
 
     counter = counter + 3
 

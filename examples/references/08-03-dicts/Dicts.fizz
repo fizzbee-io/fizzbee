@@ -7,8 +7,7 @@ action Init:
     total = 0
 
 atomic action UpdateCounts:
-    if total >= 3:
-        return
+    require total < 3
 
     key = "count_" + str(total)
 
@@ -20,8 +19,7 @@ atomic action UpdateCounts:
     total = total + value + 1
 
 atomic action CheckKeys:
-    if len(counts) == 0:
-        return
+    require len(counts) > 0
 
     # Iterate over keys
     for k in counts.keys():

@@ -8,8 +8,7 @@ action Init:
     second = 0
 
 atomic action ChoosePair:
-    if first > 0 and second > 0:
-        return
+    require first == 0 or second == 0
 
     # Choose two different values from options
     first = any options

@@ -10,8 +10,7 @@ func add_one(x):
     return x + 1
 
 atomic action Calculate:
-    if counter >= 3:
-        return
+    require counter < 3
 
     counter = counter + 1
     # Call function and use return value

@@ -6,8 +6,7 @@ action Init:
     counter = 0
 
 fair action Process:
-    if counter >= 3:
-        return
+    require counter < 3
 
     counter = counter + 1
 

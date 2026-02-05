@@ -12,8 +12,7 @@ role Account:
         temp = 100  # This is NOT part of state
 
     action Deposit:
-        if self.balance >= 50:
-            return
+        require self.balance < 50
 
         # Local variables don't affect state
         amount = 10

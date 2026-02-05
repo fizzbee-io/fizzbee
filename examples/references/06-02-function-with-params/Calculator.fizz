@@ -13,8 +13,7 @@ func multiply(a, b):
     return a * b
 
 atomic action Compute:
-    if x >= 2:
-        return
+    require x < 2
 
     x = x + 1
     # Functions with multiple parameters

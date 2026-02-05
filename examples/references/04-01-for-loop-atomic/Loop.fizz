@@ -7,8 +7,7 @@ action Init:
     total = 0
 
 atomic action ProcessItems:
-    if len(items) > 0:
-        return
+    require len(items) == 0
 
     # Atomic for loop - all iterations execute together
     atomic for i in range(3):

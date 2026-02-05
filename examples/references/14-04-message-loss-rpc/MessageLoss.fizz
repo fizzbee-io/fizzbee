@@ -16,8 +16,7 @@ role Client:
         self.result = None
 
     action SendRequest:
-        if self.state != 'init':
-            return
+        require self.state == 'init'
 
         self.state = 'calling'
         # RPC call - can fail in multiple ways

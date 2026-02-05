@@ -8,8 +8,7 @@ action Init:
     requests = 0
 
 atomic action SendRequest:
-    if requests >= 3:
-        return
+    require requests < 3
 
     request_id = requests
     requests = requests + 1
@@ -20,8 +19,7 @@ atomic action SendRequest:
         counter = counter + 1
 
 atomic action RetryRequest:
-    if requests == 0:
-        return
+    require requests > 0
 
     # Retry with existing request ID
     request_id = any range(requests)

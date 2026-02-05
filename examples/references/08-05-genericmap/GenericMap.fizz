@@ -25,8 +25,7 @@ atomic func UseGenericMap():
     return "none"
 
 atomic action TestGenericMap:
-    if count >= 2:
-        return
+    require count < 2
 
     count = count + 1
     result = UseGenericMap()

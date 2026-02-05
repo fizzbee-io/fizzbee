@@ -10,15 +10,13 @@ action Init:
     step2_committed = False
 
 atomic action ExecuteStep1:
-    if saga_state != State.INIT:
-        return
+    require saga_state == State.INIT
 
     step1_committed = True
     saga_state = State.STEP1_DONE
 
 atomic action ExecuteStep2:
-    if saga_state != State.STEP1_DONE:
-        return
+    require saga_state == State.STEP1_DONE
 
     # Step 2 can fail
     oneof:
@@ -31,14 +29,12 @@ atomic action ExecuteStep2:
         saga_state = State.COMPENSATING
 
 atomic action Complete:
-    if saga_state != State.STEP2_DONE:
-        return
+    require saga_state == State.STEP2_DONE
 
     saga_state = State.COMPLETED
 
 atomic action CompensateStep1:
-    if saga_state != State.COMPENSATING:
-        return
+    require saga_state == State.COMPENSATING
 
     # Rollback step 1
     step1_committed = False

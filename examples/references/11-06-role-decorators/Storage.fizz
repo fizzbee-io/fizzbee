@@ -13,8 +13,7 @@ role Storage:
         self.cache = {}
 
     atomic action Write:
-        if len(self.data) >= 2:
-            return
+        require len(self.data) < 2
 
         key = "key_" + str(len(self.data))
         self.data[key] = "value"

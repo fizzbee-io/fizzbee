@@ -7,8 +7,7 @@ action Init:
     value = 0
 
 action SerialWithAtomic:
-    if counter >= 2:
-        return
+    require counter < 2
 
     # Serial action (default) with atomic block
     counter = counter + 1  # Can yield here
@@ -19,8 +18,7 @@ action SerialWithAtomic:
         value = value + 10
 
 atomic action AtomicWithSerial:
-    if counter >= 2:
-        return
+    require counter < 2
 
     # Whole action is atomic despite inner serial
     x = counter

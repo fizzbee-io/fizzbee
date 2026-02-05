@@ -8,8 +8,7 @@ role Account:
         self.id = self.ACCOUNT_ID
 
     action Deposit:
-        if self.balance >= 100:
-            return
+        require self.balance < 100
 
         self.balance = self.balance + 10
 
@@ -24,8 +23,7 @@ action Init:
     total_processed = 0
 
 atomic action CheckTotal:
-    if total_processed >= 2:
-        return
+    require total_processed < 2
 
     total_processed = total_processed + 1
 

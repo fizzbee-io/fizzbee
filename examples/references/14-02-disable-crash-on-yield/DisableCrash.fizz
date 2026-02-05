@@ -21,8 +21,7 @@ action Init:
     completed = False
 
 fair action MultiStepOperation:
-    if completed:
-        return
+    require not completed
 
     # No crash injected after this
     step1_done = True

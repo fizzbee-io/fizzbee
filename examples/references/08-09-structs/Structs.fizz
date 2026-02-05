@@ -11,8 +11,7 @@ action Init:
     attempts = 0
 
 atomic action UseConfig:
-    if attempts >= config.max_retries:
-        return
+    require attempts < config.max_retries
 
     # Can read fields
     max_val = config.max_retries

@@ -9,8 +9,7 @@ action Init:
     stopped_at = -1
 
 atomic action ProcessWithBreak:
-    if len(evens) > 0:
-        return
+    require len(evens) == 0
 
     for i in range(10):
         if i >= MAX:

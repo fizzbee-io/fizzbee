@@ -12,18 +12,14 @@ action Init:
     commits = 0
 
 atomic action Txn1Read:
-    if txn1_read_version != None:
-        return
+    require txn1_read_version == None
 
     txn1_read_version = version
     txn1_new_value = value + 1
 
 atomic action Txn1Commit:
-    if txn1_read_version == None:
-        return
-
-    if commits >= 2:
-        return
+    require txn1_read_version != None
+    require commits < 2
 
     # CAS: commit only if version unchanged
     if version == txn1_read_version:
@@ -32,18 +28,14 @@ atomic action Txn1Commit:
         commits = commits + 1
 
 atomic action Txn2Read:
-    if txn2_read_version != None:
-        return
+    require txn2_read_version == None
 
     txn2_read_version = version
     txn2_new_value = value + 10
 
 atomic action Txn2Commit:
-    if txn2_read_version == None:
-        return
-
-    if commits >= 2:
-        return
+    require txn2_read_version != None
+    require commits < 2
 
     # CAS: commit only if version unchanged
     if version == txn2_read_version:
@@ -53,8 +45,7 @@ atomic action Txn2Commit:
 
 # Retry failed transaction
 atomic action Txn2Retry:
-    if txn2_read_version == None:
-        return
+    require txn2_read_version != None
 
     # Retry if version changed (CAS would fail)
     if version != txn2_read_version:

@@ -8,8 +8,7 @@ action Init:
     items = []
 
 atomic action AddItem:
-    if len(items) >= MAX:
-        return
+    require len(items) < MAX
 
     # Common list operations
     items.append(len(items))  # Add to end
@@ -18,8 +17,7 @@ atomic action AddItem:
         items.insert(0, -1)  # Insert at position
 
 atomic action RemoveItem:
-    if len(items) == 0:
-        return
+    require len(items) > 0
 
     # Remove operations
     if len(items) > 0:
