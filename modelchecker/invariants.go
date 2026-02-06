@@ -3,12 +3,13 @@ package modelchecker
 import (
 	ast "fizz/proto"
 	"fmt"
-	"github.com/fizzbee-io/fizzbee/lib"
-	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
 	"maps"
 	"slices"
 	"strings"
+
+	"github.com/fizzbee-io/fizzbee/lib"
+	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 )
 
 type InvariantPosition struct {
@@ -409,7 +410,8 @@ func findCyclePath(startNode *Node, nodes map[*Node]bool) []*Link {
 		visited := element.visited
 		fairCount := 0
 		for _, link := range node.Outbound {
-			if link.Fairness != ast.FairnessLevel_FAIRNESS_LEVEL_STRONG {
+			if link.Fairness != ast.FairnessLevel_FAIRNESS_LEVEL_STRONG &&
+				link.Fairness != ast.FairnessLevel_FAIRNESS_LEVEL_WEAK {
 				continue
 			}
 			if !nodes[link.Node] {
