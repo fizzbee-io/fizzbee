@@ -1770,6 +1770,12 @@ func (p *Process) minHashCode(hashes []string) string {
 // findVisitedSymmetric looks up a node in the visited map by trying all symmetry
 // permutation hashes. Returns the matching node and true if found, nil and false otherwise.
 func (p *Processor) findVisitedSymmetric(node *Node) (*Node, bool, string) {
+	// Skip symmetry reduction in simulation mode - we only check one path anyway
+	if p.simulation {
+		hash := node.HashCode()
+		other, ok := p.visited[hash]
+		return other, ok, hash
+	}
 	hashes := node.getSymmetryTranslations()
 	minHash := node.minHashCode(hashes)
 	other, ok := p.visited[minHash]
