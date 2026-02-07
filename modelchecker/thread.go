@@ -5,17 +5,19 @@ import (
 	"encoding/json"
 	ast "fizz/proto"
 	"fmt"
+
 	"github.com/fizzbee-io/fizzbee/lib"
 
-	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
-	"google.golang.org/protobuf/proto"
 	"hash"
 	"maps"
 	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
+
+	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
+	"google.golang.org/protobuf/proto"
 )
 
 var nextActionId = atomic.Int32{}
@@ -70,127 +72,11 @@ func (h *Heap) GetSymmetryDefs() []*lib.SymmetricValues {
 }
 
 func (h *Heap) MarshalJSON() ([]byte, error) {
-	return StringDictToJsonRetainType(h.state)
+	return lib.MarshalJSON(h.state)
 }
 
 func StringDictToJsonRetainType(strDict starlark.StringDict) ([]byte, error) {
-	m := normalizeTypes(strDict)
-	bytes, err := lib.MarshalJSON(m)
-	//fmt.Println("----\n", m, "\n---\n", string(bytes))
-	return bytes, err
-}
-
-func normalizeTypes(stringDict starlark.StringDict) starlark.StringDict {
-	m := make(starlark.StringDict, len(stringDict))
-	for k, v := range stringDict {
-		if v.Type() == "set" {
-			// Convert set to a list.
-			iter := v.(starlark.Iterable).Iterate()
-
-			var x starlark.Value
-			var list []string
-			for iter.Next(&x) {
-				if x.Type() == "role" {
-					role := x.(*lib.Role)
-					list = append(list, role.RefString())
-				} else {
-					list = append(list, x.String())
-				}
-			}
-			sort.Strings(list)
-			values := make([]starlark.Value, len(list))
-			for i, s := range list {
-				values[i] = starlark.String(s)
-			}
-			m[k] = starlark.NewList(values)
-			iter.Done()
-			continue
-		} else if v.Type() == "dict" {
-			// Convert map keys to a sorted list and add re-add them.
-			dict := v.(*starlark.Dict)
-			keys := dict.Keys()
-
-			var list []string
-			var keyMap = make(map[string]starlark.Value)
-			for _, x := range keys {
-				list = append(list, x.String())
-				keyMap[x.String()] = x
-			}
-			sort.Strings(list)
-
-			newDict := starlark.NewDict(len(list))
-			for _, x := range list {
-				key := keyMap[x]
-				val, _, _ := dict.Get(key)
-				err := newDict.SetKey(key, val)
-				PanicOnError(err)
-			}
-			m[k] = newDict
-			continue
-		} else if v.Type() == "role" {
-			// Convert v to Role
-			role := v.(*lib.Role)
-			m[k] = starlark.String(role.RefString())
-		}
-		// list is okay. no changes needed
-		m[k] = v
-	}
-	return m
-}
-
-func StringDictToMap(stringDict starlark.StringDict) map[string]string {
-	m := make(map[string]string, len(stringDict))
-	for k, v := range stringDict {
-		if v.Type() == "set" || v.Type() == "genericset" || v.Type() == "bag" {
-
-			// Convert set to a list.
-			iter := v.(starlark.Iterable).Iterate()
-
-			var x starlark.Value
-			var list []string
-			for iter.Next(&x) {
-				list = append(list, x.String())
-			}
-			sort.Strings(list)
-			m[k] = fmt.Sprintf("%v", list)
-			iter.Done()
-			continue
-		} else if v.Type() == "dict" || v.Type() == "genericmap" {
-			// Convert map keys to a sorted list and add re-add them.
-
-			var keys []starlark.Value
-			var dict starlark.Mapping
-			if v.Type() == "dict" {
-				dict = v.(*starlark.Dict)
-				keys = v.(*starlark.Dict).Keys()
-			} else {
-				dict = v.(*lib.GenericMap)
-				keys = v.(*lib.GenericMap).Keys()
-			}
-
-			var list []string
-			var keyMap = make(map[string]starlark.Value)
-			for _, x := range keys {
-				list = append(list, x.String())
-				keyMap[x.String()] = x
-			}
-			sort.Strings(list)
-
-			newDict := starlark.NewDict(len(list))
-			for _, x := range list {
-				key := keyMap[x]
-				val, _, _ := dict.Get(key)
-				err := newDict.SetKey(key, val)
-				PanicOnError(err)
-			}
-			m[k] = fmt.Sprintf("%v", newDict)
-			continue
-		}
-		// list is okay. no changes needed
-		str := v.String()
-		m[k] = str
-	}
-	return m
+	return lib.MarshalJSON(strDict)
 }
 
 func (h *Heap) ToJson() string {
@@ -206,9 +92,7 @@ func StringDictToJsonString(stringDict starlark.StringDict) string {
 }
 
 func StringDictToJson(stringDict starlark.StringDict) ([]byte, error) {
-	m := StringDictToMap(stringDict)
-	bytes, err := json.Marshal(m)
-	return bytes, err
+	return lib.MarshalJSON(stringDict)
 }
 
 func (h *Heap) String() string {

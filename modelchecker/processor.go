@@ -15,7 +15,6 @@ package modelchecker
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	ast "fizz/proto"
 	"fmt"
 	"log"
@@ -46,10 +45,6 @@ const (
 // When true: canonicalize symmetric values by only permuting values actually used in the state
 // When false: permute all symmetric values from the definition
 const canonicalizeSymmetricValues = true
-
-// When true: compare StateVisitor vs CloneWithRefs for collecting SymmetricValue pointers
-// Enable for debugging pointer identity issues
-const CompareSymmetricValueMethods = false
 
 const enableCaptureStackTrace = false
 
@@ -242,7 +237,7 @@ func NewProcess(name string, files []*ast.File, parent *Process) *Process {
 }
 
 func (p *Process) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
+	return lib.MarshalJSON(map[string]interface{}{
 		"state":            p.Heap,
 		"threads":          p.GetThreads(),
 		"current":          p.Current,
@@ -563,17 +558,39 @@ func (p *Process) HashCode() string {
 
 	h.Write([]byte(StringDictToJsonString(p.Returns)))
 
+	for _, role := range p.Roles {
+		// Include the role's data in the hash to distinguish processes with different role states
+		// This should not use the lib/jsonmarshaller.go, that just substitutes roles with their reference.
+		bytes, err := role.MarshalJSON()
+		if err != nil {
+			panic(err)
+		}
+		h.Write(bytes)
+	}
 	// hash the heap variables as well
 	heapHash := p.Heap.HashCode()
 	h.Write([]byte(heapHash))
 
-	for i, channel := range p.Channels {
-		h.Write([]byte(fmt.Sprintf("%d:%s", i, channel.String())))
+	channelKeys := make([]int, 0, len(p.Channels))
+	for k := range p.Channels {
+		channelKeys = append(channelKeys, k)
 	}
-	for i, messages := range p.ChannelMessages {
+	sort.Ints(channelKeys)
+	for _, k := range channelKeys {
+		channel := p.Channels[k]
+		h.Write([]byte(fmt.Sprintf("%d:%s", k, channel.String())))
+	}
+
+	channelMsgKeys := make([]int, 0, len(p.ChannelMessages))
+	for k := range p.ChannelMessages {
+		channelMsgKeys = append(channelMsgKeys, k)
+	}
+	sort.Ints(channelMsgKeys)
+	for _, k := range channelMsgKeys {
+		messages := p.ChannelMessages[k]
 		// TODO: Sort the messages, for unordered channels
 		for _, message := range messages {
-			h.Write([]byte(fmt.Sprintf("%d:%s", i, message.HashCode())))
+			h.Write([]byte(fmt.Sprintf("%d:%s", k, message.HashCode())))
 		}
 	}
 	p.CachedHashCode = fmt.Sprintf("%x", h.Sum(nil))
@@ -1171,7 +1188,7 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 				p.visited = make(map[string]*Node)
 			}
 
-			if node.Process != nil && *p.config.Options.CrashOnYield && node.Enabled && (node.Name == "yield" || node.Name == "crash") {
+			if node.Process != nil && p.config.Options.GetCrashOnYield() && node.Enabled && (node.Name == "yield" || node.Name == "crash") {
 				failedCrashNode := p.crashProcess(node)
 				if failedCrashNode != nil && failedNode == nil {
 					failedNode = failedCrashNode
@@ -1755,11 +1772,6 @@ func (p *Process) symmetricHash(permutations map[*lib.SymmetricValue][]*lib.Symm
 	return p2.HashCode()
 }
 func (p *Process) symmetricHashWithoutClone(refs map[starlark.Value]starlark.Value, permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) string {
-	// Debug: Verify consistency if needed (can be removed for production speed)
-	// p.CachedHashCode = ""
-	// p.CachedThreadHashes = nil
-	// p.Heap.CachedHashCode = ""
-	// hash0 := p.HashCode()
 
 	// 1. Build refMappings (Prefix -> OldID -> NewID)
 	// This helps us apply the permutation to all instances of SymmetricValue/Role,
@@ -2637,7 +2649,7 @@ func (p *Processor) ResetEphemeralVariables(node *Node, oldRole *lib.Role) {
 }
 
 func (p *Processor) shouldThreadCrash(node *Node) bool {
-	if node.Process.GetThreadsCount() == 0 || node.Process.Current == -1 || !*p.config.Options.CrashOnYield {
+	if node.Process.GetThreadsCount() == 0 || node.Process.Current == -1 || !p.config.Options.GetCrashOnYield() {
 		return false
 	}
 	frameName := node.Process.currentThread().Stack.RawArray()[0].Name

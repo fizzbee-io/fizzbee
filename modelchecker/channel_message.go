@@ -3,6 +3,7 @@ package modelchecker
 import (
 	"crypto/sha256"
 	"fmt"
+
 	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
 )
@@ -44,7 +45,8 @@ func (cm *ChannelMessage) String() string {
 
 func (cm *ChannelMessage) HashCode() string {
 	h := sha256.New()
-	h.Write([]byte(cm.String()))
+	bytes, _ := cm.MarshalJSON()
+	h.Write(bytes)
 	h.Write([]byte(cm.frame.HashCode()))
 	return fmt.Sprintf("%x", h.Sum(nil))
 }

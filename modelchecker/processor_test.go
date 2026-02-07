@@ -3,16 +3,17 @@ package modelchecker
 import (
 	ast "fizz/proto"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.starlark.net/starlark"
-	"google.golang.org/protobuf/encoding/protojson"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.starlark.net/starlark"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // TestRemoveCurrentThread is a unit test for Process.removeCurrentThread.
@@ -98,7 +99,7 @@ func TestProcessor_Start(t *testing.T) {
 		Options: &ast.Options{
 			MaxActions: 1,
 		},
-	}, false, 0, "", "", false, nil)
+	}, false, 0, "", "", false, nil, nil, "")
 	root, _, _ := p1.Start()
 	assert.NotNil(t, root)
 	assert.Equal(t, 91, len(p1.visited))
@@ -121,7 +122,7 @@ func TestProcessor_Tutorials(t *testing.T) {
 	runfilesDir := os.Getenv("RUNFILES_DIR")
 	tests := []struct {
 		filename             string
-		stateConfig		 	 string
+		stateConfig          string
 		maxActions           int
 		expectedNodes        int
 		maxConcurrentActions int
@@ -501,7 +502,6 @@ func TestProcessor_Tutorials(t *testing.T) {
 			stateConfig:   "examples/comparisons/ewd426-token-ring/fizz.yaml",
 			expectedNodes: 2389,
 		},
-
 	}
 	tempDir := CreateTempDirectory(t)
 	_ = tempDir
@@ -532,7 +532,7 @@ func TestProcessor_Tutorials(t *testing.T) {
 				}
 			}
 
-			p1 := NewProcessor(files, stateConfig, false, 0, "", "", false, nil)
+			p1 := NewProcessor(files, stateConfig, false, 0, "", "", false, nil, nil, "")
 			startTime := time.Now()
 			root, _, err := p1.Start()
 			require.Nil(t, err)
@@ -551,7 +551,6 @@ func TestProcessor_Tutorials(t *testing.T) {
 			////WriteFile(t, tempDir, dotFileName, []byte(dotString))
 			////fmt.Printf("Writing dotfile, elapsed: %s\n", time.Since(startTime))
 			//fmt.Printf("\n%s\n", dotString)
-
 
 			//nodes, _ := getAllNodes(root)
 			//_ = nodes

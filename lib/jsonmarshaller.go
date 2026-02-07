@@ -3,10 +3,12 @@ package lib
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
-	"sort"
-	"strings"
 )
 
 func MarshalJSON(obj interface{}) ([]byte, error) {
@@ -22,8 +24,14 @@ func MarshalJSON(obj interface{}) ([]byte, error) {
 	if m, ok := obj.(starlark.StringDict); ok {
 		buf := strings.Builder{}
 		buf.WriteString("{")
+		keys := make([]string, 0, len(m))
+		for k := range m {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
 		first := true
-		for k, v := range m {
+		for _, k := range keys {
+			v := m[k]
 			if !first {
 				buf.WriteString(",")
 			} else {
@@ -39,6 +47,50 @@ func MarshalJSON(obj interface{}) ([]byte, error) {
 			buf.Write(b)
 		}
 		buf.WriteString("}")
+		return []byte(buf.String()), nil
+	}
+	if m, ok := obj.(map[string]interface{}); ok {
+		buf := strings.Builder{}
+		buf.WriteString("{")
+		keys := make([]string, 0, len(m))
+		for k := range m {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		first := true
+		for _, k := range keys {
+			v := m[k]
+			if !first {
+				buf.WriteString(",")
+			} else {
+				first = false
+			}
+			buf.WriteString("\"")
+			buf.WriteString(k)
+			buf.WriteString("\":")
+			b, err := MarshalJSON(v)
+			if err != nil {
+				return nil, err
+			}
+			buf.Write(b)
+		}
+		buf.WriteString("}")
+		return []byte(buf.String()), nil
+	}
+	if s, ok := obj.([]interface{}); ok {
+		buf := strings.Builder{}
+		buf.WriteString("[")
+		for i, v := range s {
+			if i > 0 {
+				buf.WriteString(",")
+			}
+			b, err := MarshalJSON(v)
+			if err != nil {
+				return nil, err
+			}
+			buf.Write(b)
+		}
+		buf.WriteString("]")
 		return []byte(buf.String()), nil
 	}
 	return json.Marshal(obj)
@@ -62,7 +114,7 @@ func MarshalJSONStarlarkValue(m starlark.Value, depth int) ([]byte, error) {
 		return json.Marshal(string(m.(starlark.Bytes)))
 	case "int", "float":
 		return []byte(m.String()), nil
-	case "list", "set", "range", "tuple", "genericset", "bag":
+	case "list", "range", "tuple":
 		iter := m.(starlark.Iterable).Iterate()
 		defer iter.Done()
 		var x starlark.Value
@@ -83,10 +135,44 @@ func MarshalJSONStarlarkValue(m starlark.Value, depth int) ([]byte, error) {
 		}
 		buf.WriteString("]")
 		return []byte(buf.String()), nil
+	case "set", "genericset", "bag":
+		iter := m.(starlark.Iterable).Iterate()
+		defer iter.Done()
+		var x starlark.Value
+		var elements []string
+		for iter.Next(&x) {
+			b, err := MarshalJSONStarlarkValue(x, depth+1)
+			if err != nil {
+				return nil, err
+			}
+			elements = append(elements, string(b))
+		}
+		sort.Strings(elements)
+		buf := strings.Builder{}
+		buf.WriteString("[")
+		for i, el := range elements {
+			if i > 0 {
+				buf.WriteString(",")
+			}
+			buf.WriteString(el)
+		}
+		buf.WriteString("]")
+		return []byte(buf.String()), nil
 	case "genericmap", "dict":
 		items := m.(starlark.IterableMapping).Items()
 		// Sort items by key to have deterministic output
 		sort.Slice(items, func(i, j int) bool {
+			// Marshal keys to JSON and compare strings for more robust sorting
+			// Using direct String() comparison might not match JSON output sort order
+			// but for now String() on starlark values is usually sufficient?
+			// Actually, StringDictToMap was using String().
+			// However, we should be consistent.
+			// If we use MarshalJSONStarlarkValue(items[i][0]) it might be better.
+			// But let's stick to String() for now as it is cheaper?
+			// NO, `String()` on a dict returns "{...}" which might depend on internal order.
+			// But here items[i][0] are keys. Keys are usually immutable (strings, ints, tuples).
+			// Tuples containing dicts are invalid keys.
+			// So String() comparison is mostly safe for keys.
 			return items[i][0].String() < items[j][0].String()
 		})
 		buf := strings.Builder{}
@@ -99,12 +185,36 @@ func MarshalJSONStarlarkValue(m starlark.Value, depth int) ([]byte, error) {
 				first = false
 			}
 			k, v := item[0], item[1]
+			// If the key is a json.Marshaler, use its MarshalJSON method
+			if marshaler, ok := k.(json.Marshaler); ok {
+				kb, err := marshaler.MarshalJSON()
+				if err != nil {
+					return nil, err
+				}
+				// keys in json must be strings. If the key is not a string (e.g. number, bool, object), quote it.
+				if len(kb) > 0 && kb[0] != '"' {
+					kb = []byte(strconv.Quote(string(kb)))
+				}
+				vb, err := MarshalJSONStarlarkValue(v, depth+1)
+				if err != nil {
+					return nil, err
+				}
+				buf.Write(kb)
+				buf.WriteString(":")
+				buf.Write(vb)
+				continue
+			}
+
 			if k.Type() != "string" {
 				k = starlark.String(k.String())
 			}
 			kb, err := MarshalJSONStarlarkValue(k, depth+1)
 			if err != nil {
 				return nil, err
+			}
+			// keys in json must be strings. If the key is not a string (e.g. number, bool, object), quote it.
+			if len(kb) > 0 && kb[0] != '"' {
+				kb = []byte(strconv.Quote(string(kb)))
 			}
 			vb, err := MarshalJSONStarlarkValue(v, depth+1)
 			if err != nil {

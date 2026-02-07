@@ -381,40 +381,6 @@ func (p *Process) getUsedSymmetricValuesFromRefs() [][]*lib.SymmetricValue {
 	return result
 }
 
-// CompareSymmetricValueMethods compares StateVisitor vs CloneWithRefs approaches
-// Returns true if they produce the same pointers, false otherwise with details
-func (p *Process) CompareSymmetricValueMethods() (bool, string) {
-	visitorResult := p.getUsedSymmetricValues()
-	refsResult := p.getUsedSymmetricValuesFromRefs()
-
-	if len(visitorResult) != len(refsResult) {
-		return false, fmt.Sprintf("different number of groups: visitor=%d, refs=%d", len(visitorResult), len(refsResult))
-	}
-
-	for i := range visitorResult {
-		if len(visitorResult[i]) != len(refsResult[i]) {
-			return false, fmt.Sprintf("group %d has different sizes: visitor=%d, refs=%d", i, len(visitorResult[i]), len(refsResult[i]))
-		}
-
-		for j := range visitorResult[i] {
-			vPtr := visitorResult[i][j]
-			rPtr := refsResult[i][j]
-
-			// Check if same pointer
-			if vPtr != rPtr {
-				// Check if same values but different pointers
-				if vPtr.GetPrefix() == rPtr.GetPrefix() && vPtr.GetId() == rPtr.GetId() {
-					return false, fmt.Sprintf("group %d, index %d: same value but DIFFERENT pointers - visitor=%p, refs=%p (prefix=%s, id=%d)",
-						i, j, vPtr, rPtr, vPtr.GetPrefix(), vPtr.GetId())
-				}
-				return false, fmt.Sprintf("group %d, index %d: different values - visitor=%v, refs=%v", i, j, vPtr, rPtr)
-			}
-		}
-	}
-
-	return true, "all pointers match"
-}
-
 // getActualSymmetricValuePointers returns a map from prefix to the actual SymmetricValue pointers
 // found during cloning. These are the real pointers that will be encountered when cloning
 // with permutations, so they should be used as map keys for efficient O(1) lookup.
