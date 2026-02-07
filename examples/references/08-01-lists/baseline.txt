@@ -1,0 +1,14 @@
+Model checking examples/references/08-01-lists/Lists.json
+configFileName: examples/references/08-01-lists/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 9, queued: 0, elapsed: 865.25µs
+Time taken for model checking: 869.25µs
+Writen graph dotfile: examples/references/08-01-lists/out/run_2026-02-06_21-38-42/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/08-01-lists/out/run_2026-02-06_21-38-42/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 9 Unique states: 9
+IsLive: true
+Time taken to check liveness: 110.041µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/08-01-lists/out/run_2026-02-06_21-38-42

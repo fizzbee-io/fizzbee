@@ -1,0 +1,12 @@
+Model checking examples/references/12-04-state-space-best-practices/BoundedCounter.json
+configFileName: examples/references/12-04-state-space-best-practices/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 660, queued: 0, elapsed: 40.05025ms
+Time taken for model checking: 40.058792ms
+Skipping dotfile generation. Too many Nodes: 660
+Valid Nodes: 660 Unique states: 660
+IsLive: true
+Time taken to check liveness: 458.542µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/12-04-state-space-best-practices/out/run_2026-02-06_21-38-48

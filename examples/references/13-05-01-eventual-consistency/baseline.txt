@@ -1,0 +1,18 @@
+Model checking examples/references/13-05-01-eventual-consistency/EventualConsistency.json
+configFileName: examples/references/13-05-01-eventual-consistency/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2} deadlock_detection:false
+Nodes: 30, queued: 0, elapsed: 6.077792ms
+Time taken for model checking: 6.083875ms
+Writen graph dotfile: examples/references/13-05-01-eventual-consistency/out/run_2026-02-06_21-39-29/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/13-05-01-eventual-consistency/out/run_2026-02-06_21-39-29/graph.dot -o graph.svg && open graph.svg
+Writen communication diagram dotfile: examples/references/13-05-01-eventual-consistency/out/run_2026-02-06_21-39-29/communication.dot
+To generate svg, run: 
+dot -Tsvg examples/references/13-05-01-eventual-consistency/out/run_2026-02-06_21-39-29/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 30 Unique states: 26
+Checking eventually always EventuallyConsistent
+IsLive: true
+Time taken to check liveness: 824.625µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/13-05-01-eventual-consistency/out/run_2026-02-06_21-39-29

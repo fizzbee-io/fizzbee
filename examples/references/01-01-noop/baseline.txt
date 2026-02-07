@@ -1,0 +1,14 @@
+Model checking examples/references/01-01-noop/NoOp.json
+configFileName: examples/references/01-01-noop/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 1, queued: 0, elapsed: 115.375µs
+Time taken for model checking: 118.834µs
+Writen graph dotfile: examples/references/01-01-noop/out/run_2026-02-06_21-38-36/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/01-01-noop/out/run_2026-02-06_21-38-36/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 1 Unique states: 1
+IsLive: true
+Time taken to check liveness: 98.416µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/01-01-noop/out/run_2026-02-06_21-38-36

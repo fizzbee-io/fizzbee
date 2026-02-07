@@ -1,0 +1,17 @@
+Model checking examples/references/99-01-checkpoints/Checkpoints.json
+configFileName: examples/references/99-01-checkpoints/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:3 max_concurrent_actions:2}
+Nodes: 104, queued: 0, elapsed: 6.12075ms
+Time taken for model checking: 6.131541ms
+Writen graph dotfile: examples/references/99-01-checkpoints/out/run_2026-02-06_21-39-32/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/99-01-checkpoints/out/run_2026-02-06_21-39-32/graph.dot -o graph.svg && open graph.svg
+Writen communication diagram dotfile: examples/references/99-01-checkpoints/out/run_2026-02-06_21-39-32/communication.dot
+To generate svg, run: 
+dot -Tsvg examples/references/99-01-checkpoints/out/run_2026-02-06_21-39-32/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 104 Unique states: 46
+IsLive: true
+Time taken to check liveness: 2.965959ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/99-01-checkpoints/out/run_2026-02-06_21-39-32

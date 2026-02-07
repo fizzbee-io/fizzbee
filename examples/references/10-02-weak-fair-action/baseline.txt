@@ -1,0 +1,15 @@
+Model checking examples/references/10-02-weak-fair-action/WeakFair.json
+configFileName: examples/references/10-02-weak-fair-action/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 7, queued: 0, elapsed: 400.333µs
+Time taken for model checking: 404.084µs
+Writen graph dotfile: examples/references/10-02-weak-fair-action/out/run_2026-02-06_21-38-45/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/10-02-weak-fair-action/out/run_2026-02-06_21-38-45/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 7 Unique states: 7
+Checking eventually always EventuallyDone
+IsLive: true
+Time taken to check liveness: 164.583µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/10-02-weak-fair-action/out/run_2026-02-06_21-38-45

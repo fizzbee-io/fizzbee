@@ -1,0 +1,15 @@
+Model checking examples/references/16-12-materialize/Materialize.json
+configFileName: examples/references/16-12-materialize/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 24, queued: 0, elapsed: 3.794542ms
+Time taken for model checking: 3.816792ms
+Writen graph dotfile: examples/references/16-12-materialize/out/run_2026-02-05_00-15-02/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/16-12-materialize/out/run_2026-02-05_00-15-02/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 24 Unique states: 6
+IsLive: true
+Time taken to check liveness: 557.666µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/16-12-materialize/out/run_2026-02-05_00-15-02
+./fizz examples/references/16-12-materialize/Materialize.fizz  0.21s user 0.04s system 96% cpu 0.258 total

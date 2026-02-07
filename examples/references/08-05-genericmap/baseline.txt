@@ -1,0 +1,14 @@
+Model checking examples/references/08-05-genericmap/GenericMap.json
+configFileName: examples/references/08-05-genericmap/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 3, queued: 0, elapsed: 319.541µs
+Time taken for model checking: 323.625µs
+Writen graph dotfile: examples/references/08-05-genericmap/out/run_2026-02-06_21-38-43/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/08-05-genericmap/out/run_2026-02-06_21-38-43/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 3 Unique states: 3
+IsLive: true
+Time taken to check liveness: 112.625µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/08-05-genericmap/out/run_2026-02-06_21-38-43

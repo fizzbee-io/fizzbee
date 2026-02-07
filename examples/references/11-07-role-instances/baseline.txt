@@ -1,0 +1,15 @@
+Model checking examples/references/11-07-role-instances/Accounts.json
+configFileName: examples/references/11-07-role-instances/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 330, queued: 0, elapsed: 32.84475ms
+Time taken for model checking: 32.854625ms
+Skipping dotfile generation. Too many Nodes: 330
+Writen communication diagram dotfile: examples/references/11-07-role-instances/out/run_2026-02-06_21-38-47/communication.dot
+To generate svg, run: 
+dot -Tsvg examples/references/11-07-role-instances/out/run_2026-02-06_21-38-47/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 330 Unique states: 330
+IsLive: true
+Time taken to check liveness: 500.084µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/11-07-role-instances/out/run_2026-02-06_21-38-47

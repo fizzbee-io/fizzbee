@@ -1,0 +1,14 @@
+Model checking examples/references/09-02-exists-assertion/Exists.json
+configFileName: examples/references/09-02-exists-assertion/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 11, queued: 0, elapsed: 456.541µs
+Time taken for model checking: 461.166µs
+Writen graph dotfile: examples/references/09-02-exists-assertion/out/run_2026-02-06_21-38-44/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/09-02-exists-assertion/out/run_2026-02-06_21-38-44/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 11 Unique states: 11
+IsLive: true
+Time taken to check liveness: 137.25µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/09-02-exists-assertion/out/run_2026-02-06_21-38-44

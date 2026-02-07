@@ -1,0 +1,26 @@
+Model checking examples/references/02-01-atomic-block/Counter.json
+configFileName: examples/references/02-01-atomic-block/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 2, queued: 1, elapsed: 147.25µs
+Time taken for model checking: 151.083µs
+Writen graph dotfile: examples/references/02-01-atomic-block/out/run_2026-02-06_21-38-37/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/02-01-atomic-block/out/run_2026-02-06_21-38-37/graph.dot -o graph.svg && open graph.svg
+FAILED: Model checker failed. Invariant:  Consistent
+------
+Init
+--
+state: {"a":0,"b":0}
+------
+IncrementSerial
+--
+state: {"a":1,"b":0}
+------
+Writen graph json: examples/references/02-01-atomic-block/out/run_2026-02-06_21-38-37/error-graph.json
+Writen graph dotfile: examples/references/02-01-atomic-block/out/run_2026-02-06_21-38-37/error-graph.dot
+To generate an image file, run: 
+dot -Tsvg examples/references/02-01-atomic-block/out/run_2026-02-06_21-38-37/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: examples/references/02-01-atomic-block/out/run_2026-02-06_21-38-37/error-states.html
+To open: 
+open examples/references/02-01-atomic-block/out/run_2026-02-06_21-38-37/error-states.html

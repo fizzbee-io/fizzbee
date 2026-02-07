@@ -1,0 +1,15 @@
+Model checking examples/references/12-03-advanced-any-patterns/Patterns.json
+configFileName: examples/references/12-03-advanced-any-patterns/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 79, queued: 0, elapsed: 3.742875ms
+Time taken for model checking: 3.748375ms
+Writen graph dotfile: examples/references/12-03-advanced-any-patterns/out/run_2026-02-06_21-38-48/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/12-03-advanced-any-patterns/out/run_2026-02-06_21-38-48/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 79 Unique states: 28
+Checking always eventually FairChoiceMade
+IsLive: true
+Time taken to check liveness: 1.847541ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/12-03-advanced-any-patterns/out/run_2026-02-06_21-38-48

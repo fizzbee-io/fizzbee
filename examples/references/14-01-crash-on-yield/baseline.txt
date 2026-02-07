@@ -1,0 +1,14 @@
+Model checking examples/references/14-01-crash-on-yield/CrashOnYield.json
+configFileName: examples/references/14-01-crash-on-yield/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:3 max_concurrent_actions:2 crash_on_yield:true}
+Nodes: 14, queued: 0, elapsed: 803.875µs
+Time taken for model checking: 807.417µs
+Writen graph dotfile: examples/references/14-01-crash-on-yield/out/run_2026-02-06_21-39-31/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/14-01-crash-on-yield/out/run_2026-02-06_21-39-31/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 14 Unique states: 14
+IsLive: true
+Time taken to check liveness: 233.833µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/14-01-crash-on-yield/out/run_2026-02-06_21-39-31

@@ -1,0 +1,14 @@
+Model checking examples/references/07-03-guard-clauses/Counter.json
+configFileName: examples/references/07-03-guard-clauses/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 4, queued: 0, elapsed: 331.75µs
+Time taken for model checking: 336.959µs
+Writen graph dotfile: examples/references/07-03-guard-clauses/out/run_2026-02-06_21-38-42/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/07-03-guard-clauses/out/run_2026-02-06_21-38-42/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 4 Unique states: 4
+IsLive: true
+Time taken to check liveness: 129.291µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/07-03-guard-clauses/out/run_2026-02-06_21-38-42

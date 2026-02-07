@@ -1,0 +1,15 @@
+Model checking examples/references/05-03-any-fairness/Choice.json
+configFileName: examples/references/05-03-any-fairness/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 16, queued: 0, elapsed: 581.708µs
+Time taken for model checking: 584.875µs
+Writen graph dotfile: examples/references/05-03-any-fairness/out/run_2026-02-06_21-38-40/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/05-03-any-fairness/out/run_2026-02-06_21-38-40/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 16 Unique states: 8
+Checking always eventually AllValuesSelected
+IsLive: true
+Time taken to check liveness: 380.458µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/05-03-any-fairness/out/run_2026-02-06_21-38-40

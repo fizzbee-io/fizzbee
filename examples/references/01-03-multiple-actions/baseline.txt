@@ -1,0 +1,14 @@
+Model checking examples/references/01-03-multiple-actions/Counter.json
+configFileName: examples/references/01-03-multiple-actions/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 201, queued: 0, elapsed: 4.119666ms
+Time taken for model checking: 4.125417ms
+Writen graph dotfile: examples/references/01-03-multiple-actions/out/run_2026-02-06_21-38-36/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/01-03-multiple-actions/out/run_2026-02-06_21-38-36/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 201 Unique states: 201
+IsLive: true
+Time taken to check liveness: 3.111583ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/01-03-multiple-actions/out/run_2026-02-06_21-38-36

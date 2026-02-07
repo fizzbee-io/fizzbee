@@ -1,0 +1,12 @@
+Model checking examples/references/13-01-02-read-write-lock/ReadWriteLock.json
+configFileName: examples/references/13-01-02-read-write-lock/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 7509, queued: 0, elapsed: 510.351958ms
+Time taken for model checking: 510.365791ms
+Skipping dotfile generation. Too many Nodes: 7509
+Valid Nodes: 7509 Unique states: 7509
+IsLive: true
+Time taken to check liveness: 5.358917ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/13-01-02-read-write-lock/out/run_2026-02-06_21-38-49

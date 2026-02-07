@@ -1,0 +1,12 @@
+Model checking examples/references/12-01-nested-flow-modifiers/Nested.json
+configFileName: examples/references/12-01-nested-flow-modifiers/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 5206, queued: 0, elapsed: 250.337459ms
+Time taken for model checking: 250.348459ms
+Skipping dotfile generation. Too many Nodes: 5206
+Valid Nodes: 5206 Unique states: 5200
+IsLive: true
+Time taken to check liveness: 10.798166ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/12-01-nested-flow-modifiers/out/run_2026-02-06_21-38-47
