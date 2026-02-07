@@ -136,14 +136,14 @@ func TestSteadyStateDistribution(t *testing.T) {
 				}
 				stateCfg = &ast.StateSpaceOptions{
 					ContinuePathOnInvariantFailures: true,
-					ContinueOnInvariantFailures: true,
+					ContinueOnInvariantFailures:     true,
 					Options: &ast.Options{
 						MaxActions:           int64(test.maxActions),
 						MaxConcurrentActions: int64(maxThreads),
 					},
 				}
 			}
-			p1 := NewProcessor(files, stateCfg, false, 0, "", "", false, nil)
+			p1 := NewProcessor(files, stateCfg, false, 0, "", "", false, nil, nil, "")
 			root, _, _ := p1.Start()
 			//RemoveMergeNodes(root)
 
