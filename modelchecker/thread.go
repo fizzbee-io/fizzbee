@@ -234,6 +234,10 @@ func (h *Heap) update(k string, v starlark.Value) bool {
 	return false
 }
 
+func (h *Heap) GetValue(k string) starlark.Value {
+	return h.state[k]
+}
+
 func (h *Heap) insert(k string, v starlark.Value) bool {
 	h.state[k] = v
 	return true

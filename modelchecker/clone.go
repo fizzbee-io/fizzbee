@@ -222,16 +222,26 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 	case "role":
 		r := value.(*lib.Role)
 		prefix := r.Name
-		id := r.Ref
+		id := r.GetId() // Get the ID object directly
 		if r.IsSymmetric() {
-			oldSymVal := lib.NewSymmetricValue(r.Name, r.Ref)
-			newVal, err := deepCloneStarlarkValueWithPermutations(oldSymVal, refs, permutations, alt)
+			// Cloning the ID object checks permutations
+			newVal, err := deepCloneStarlarkValueWithPermutations(r.ID, refs, permutations, alt)
 			if err != nil {
 				return nil, err
 			}
-			newRoleId := newVal.(*lib.SymmetricValue)
-			prefix = newRoleId.GetPrefix()
-			id = newRoleId.GetId()
+			id = newVal // Use the new (permuted) ID object
+
+			// If we need prefix from the new ID (though it shouldn't change for roles usually)
+			if sv, ok := id.(*lib.SymmetricValue); ok {
+				prefix = sv.GetPrefix()
+			}
+		} else {
+			// For non-symmetric roles, we still want to clone the ID model value
+			newVal, err := deepCloneStarlarkValueWithPermutations(r.ID, refs, permutations, alt)
+			if err != nil {
+				return nil, err
+			}
+			id = newVal
 		}
 
 		if cached, ok := refs[value]; ok {
@@ -246,7 +256,7 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 				return nil, err
 			}
 			newRole := &lib.Role{
-				Ref:         id,
+				ID:          id,
 				Name:        prefix,
 				Symmetric:   r.IsSymmetric(),
 				Params:      params.(*lib.Struct),
