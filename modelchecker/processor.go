@@ -356,7 +356,7 @@ func (p *Process) Fork() *Process {
 	return p2
 }
 
-func (p *Process) CloneForAssert(permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Process {
+func (p *Process) CloneForAssert(permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) *Process {
 	refs := make(map[starlark.Value]starlark.Value)
 	p2 := &Process{
 		Name:      p.Name,
@@ -1731,13 +1731,13 @@ func (p *Processor) findVisitedSymmetric(node *Node) (*Node, bool, string) {
 	return other, ok, minHash
 }
 
-func (p *Process) symmetricHash(permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) string {
+func (p *Process) symmetricHash(permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) string {
 	p2 := p.CloneForAssert(permutations, alt)
 	return p2.HashCode()
 }
 
 func (p *Process) GetSymmetryRoles() []*lib.SymmetricValues {
-	m := make(map[string][]lib.SymmetricValue)
+	m := make(map[string][]*lib.SymmetricValue)
 	for _, role := range p.Roles {
 		if role != nil && role.IsSymmetric() {
 			m[role.Name] = append(m[role.Name], lib.NewSymmetricValue(role.Name, role.Ref))
@@ -1765,15 +1765,15 @@ func (p *Process) addChannelMessage(channel *lib.Channel, roleShortRef string, f
 	}
 }
 
-func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.SymmetricValue, int) {
-	var values [][]lib.SymmetricValue
-	var usedValues [][]lib.SymmetricValue
+func getSymmetryPermutations(process *Process) (map[*lib.SymmetricValue][]*lib.SymmetricValue, int) {
+	var values [][]*lib.SymmetricValue
+	var usedValues [][]*lib.SymmetricValue
 
 	// Static mappings for ordinal (rank squash) and interval (zero-shift).
 	// These have a single canonical form, so they're appended to each permutation.
 	type staticMapping struct {
-		used      []lib.SymmetricValue
-		canonical []lib.SymmetricValue
+		used      []*lib.SymmetricValue
+		canonical []*lib.SymmetricValue
 	}
 	var postProcessingMappings []staticMapping
 	// rotationalExtraMappings holds additional shift alternatives for tied pivots/reflections.
@@ -1804,7 +1804,7 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 			}
 			kind := used[0].GetKind()
 			prefix := used[0].GetPrefix()
-			canonical := make([]lib.SymmetricValue, len(used))
+			canonical := make([]*lib.SymmetricValue, len(used))
 			for j := 0; j < len(used); j++ {
 				canonical[j] = lib.NewSymmetricValueWithKind(prefix, int64(j), kind)
 			}
@@ -1822,7 +1822,7 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 					postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: canonical})
 					if tied {
 						// Add reverse mapping as extra alternative
-						revCanonical := make([]lib.SymmetricValue, len(used))
+						revCanonical := make([]*lib.SymmetricValue, len(used))
 						for j := range used {
 							revCanonical[j] = lib.NewSymmetricValueWithKind(prefix, rev[j], kind)
 						}
@@ -1846,26 +1846,26 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 					fwd, rev, tied := lib.GetIntervalReflectionCandidates(usedIDs)
 					if rev != nil && fwd == nil {
 						// Reverse wins
-						revCanonical := make([]lib.SymmetricValue, len(used))
+						revCanonical := make([]*lib.SymmetricValue, len(used))
 						for j := range used {
 							revCanonical[j] = lib.NewSymmetricValueWithKind(prefix, rev[j], kind)
 						}
 						postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: revCanonical})
 					} else if fwd != nil && !tied {
 						// Forward wins
-						shifted := make([]lib.SymmetricValue, len(used))
+						shifted := make([]*lib.SymmetricValue, len(used))
 						for j := range used {
 							shifted[j] = lib.NewSymmetricValueWithKind(prefix, fwd[j], kind)
 						}
 						postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: shifted})
 					} else {
 						// Tied: forward as base, reverse as extra
-						shifted := make([]lib.SymmetricValue, len(used))
+						shifted := make([]*lib.SymmetricValue, len(used))
 						for j := range used {
 							shifted[j] = lib.NewSymmetricValueWithKind(prefix, fwd[j], kind)
 						}
 						postProcessingMappings = append(postProcessingMappings, staticMapping{used: used, canonical: shifted})
-						revCanonical := make([]lib.SymmetricValue, len(used))
+						revCanonical := make([]*lib.SymmetricValue, len(used))
 						for j := range used {
 							revCanonical[j] = lib.NewSymmetricValueWithKind(prefix, rev[j], kind)
 						}
@@ -1873,7 +1873,7 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 						rotationalExtraMappings = append(rotationalExtraMappings, []staticMapping{{used: used, canonical: revCanonical}})
 					}
 				} else {
-					shifted := make([]lib.SymmetricValue, len(used))
+					shifted := make([]*lib.SymmetricValue, len(used))
 					for j := 0; j < len(used); j++ {
 						shifted[j] = lib.NewSymmetricValueWithKind(prefix, used[j].GetId()-minID, kind)
 					}
@@ -1894,7 +1894,7 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 					candidates := lib.GetCanonicalRotationsWithReflection(usedIDs, limit)
 					// First candidate is the base mapping
 					first := candidates[0]
-					shifted := make([]lib.SymmetricValue, len(used))
+					shifted := make([]*lib.SymmetricValue, len(used))
 					for j, v := range used {
 						val := v.GetId()
 						if first.Reflected {
@@ -1907,7 +1907,7 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 					if len(candidates) > 1 {
 						extraMappings := make([]staticMapping, 0, len(candidates)-1)
 						for _, c := range candidates[1:] {
-							sh := make([]lib.SymmetricValue, len(used))
+							sh := make([]*lib.SymmetricValue, len(used))
 							for j, v := range used {
 								val := v.GetId()
 								if c.Reflected {
@@ -1924,7 +1924,7 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 					shifts := lib.GetCanonicalRotations(usedIDs, limit)
 					// Single canonical rotation — static mapping
 					shift := shifts[0]
-					shifted := make([]lib.SymmetricValue, len(used))
+					shifted := make([]*lib.SymmetricValue, len(used))
 					for j, v := range used {
 						shifted[j] = lib.NewRotationalSymmetricValue(prefix, ((v.GetId()+shift)%lim+lim)%lim, limit)
 					}
@@ -1935,7 +1935,7 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 
 						extraMappings := make([]staticMapping, 0, len(shifts)-1)
 						for _, s := range shifts[1:] {
-							sh := make([]lib.SymmetricValue, len(used))
+							sh := make([]*lib.SymmetricValue, len(used))
 							for j, v := range used {
 								sh[j] = lib.NewRotationalSymmetricValue(prefix, ((v.GetId()+s)%lim+lim)%lim, limit)
 							}
@@ -1955,11 +1955,11 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 		defs := process.Heap.GetSymmetryDefs()
 
 		for _, def := range defs {
-			v := make([]lib.SymmetricValue, def.Len())
+			v := make([]*lib.SymmetricValue, def.Len())
 			for j := 0; j < def.Len(); j++ {
 				v[j] = def.Index(j)
 			}
-			slices.SortFunc(v, lib.CompareStringer[lib.SymmetricValue])
+			slices.SortFunc(v, lib.CompareStringer[*lib.SymmetricValue])
 
 			// If canonicalization is disabled, we treat everything as nominal (full permutation)
 			// to be safe, or we could potentially return identity for ordinal.
@@ -1973,25 +1973,25 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 	// Roles are assumed Nominal
 	roles := process.GetSymmetryRoles()
 	for _, role := range roles {
-		v := make([]lib.SymmetricValue, role.Len())
+		v := make([]*lib.SymmetricValue, role.Len())
 		for j := 0; j < role.Len(); j++ {
 			v[j] = role.Index(j)
 		}
-		slices.SortFunc(v, lib.CompareStringer[lib.SymmetricValue])
+		slices.SortFunc(v, lib.CompareStringer[*lib.SymmetricValue])
 		values = append(values, v)
 		usedValues = append(usedValues, v)
 	}
 
 	// Generate all permutations
 	permutations := lib.GenerateAllPermutations(values)
-	v := make([][]lib.SymmetricValue, len(permutations))
+	v := make([][]*lib.SymmetricValue, len(permutations))
 	for i, permutation := range permutations {
 		v[i] = slices.Concat(permutation...)
 	}
 
 	// Build permutation map with actual used values as keys
-	permMap := make(map[lib.SymmetricValue][]lib.SymmetricValue)
-	actualKeys := make([]lib.SymmetricValue, 0)
+	permMap := make(map[*lib.SymmetricValue][]*lib.SymmetricValue)
+	actualKeys := make([]*lib.SymmetricValue, 0)
 	for _, used := range usedValues {
 		actualKeys = append(actualKeys, used...)
 	}
@@ -2029,8 +2029,8 @@ func getSymmetryPermutations(process *Process) (map[lib.SymmetricValue][]lib.Sym
 		// Rotational ties: replicate permutations for each combination of rotational shifts.
 		// Build all rotational shift combinations.
 		type rotChoice struct {
-			used      []lib.SymmetricValue
-			canonical []lib.SymmetricValue
+			used      []*lib.SymmetricValue
+			canonical []*lib.SymmetricValue
 		}
 		// For each domain with ties, collect all shift options (base + extras)
 		var rotOptions [][]rotChoice

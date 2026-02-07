@@ -54,7 +54,7 @@ func (h *Heap) GetSymmetryDefs() []*lib.SymmetricValues {
 		// Also handle SymmetryDomain from the new symmetry.nominal() API
 		if domain, ok := value.(*lib.SymmetryDomain); ok {
 			// Create a SymmetricValues containing all possible values for this domain
-			values := make([]lib.SymmetricValue, domain.Limit)
+			values := make([]*lib.SymmetricValue, domain.Limit)
 			for i := 0; i < domain.Limit; i++ {
 				if domain.Kind == lib.SymmetryKindRotational {
 					values[i] = lib.NewRotationalSymmetricValue(domain.Name, int64(i), domain.Limit)
@@ -239,7 +239,7 @@ func (h *Heap) insert(k string, v starlark.Value) bool {
 	return true
 }
 
-func (h *Heap) Clone(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Heap {
+func (h *Heap) Clone(refs map[starlark.Value]starlark.Value, permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) *Heap {
 	return &Heap{state: CloneDict(h.state, refs, permutations, alt), globals: h.globals}
 }
 
@@ -267,7 +267,7 @@ func (s *Scope) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (s *Scope) Clone(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Scope {
+func (s *Scope) Clone(refs map[starlark.Value]starlark.Value, permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) *Scope {
 	if s == nil {
 		return nil
 	}
@@ -362,12 +362,12 @@ func (s *Scope) getAllVisibleVariablesToDict(dict starlark.StringDict) {
 	s.getAllVisibleVariablesResolveRoles(dict, make(map[starlark.Value]starlark.Value))
 }
 
-func CloneDict(oldDict starlark.StringDict, refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) starlark.StringDict {
+func CloneDict(oldDict starlark.StringDict, refs map[starlark.Value]starlark.Value, permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) starlark.StringDict {
 	return CopyDict(oldDict, nil, refs, permutations, alt)
 }
 
 // CopyDict copies values `from` to `to` overriding existing values. If the `to` is nil, creates a new dict.
-func CopyDict(from starlark.StringDict, to starlark.StringDict, refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) starlark.StringDict {
+func CopyDict(from starlark.StringDict, to starlark.StringDict, refs map[starlark.Value]starlark.Value, permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) starlark.StringDict {
 	if to == nil {
 		to = make(starlark.StringDict)
 	}
@@ -423,7 +423,7 @@ func (c *CallFrame) HashCode() string {
 	}
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
-func (c *CallFrame) Clone(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) (*CallFrame, error) {
+func (c *CallFrame) Clone(refs map[starlark.Value]starlark.Value, permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) (*CallFrame, error) {
 	obj := c.obj
 	if c.obj != nil {
 		cloned, err := deepCloneStarlarkValueWithPermutations(c.obj, refs, permutations, alt)
@@ -454,7 +454,7 @@ func NewCallStack() *CallStack {
 	return &CallStack{lib.NewStack[*CallFrame]()}
 }
 
-func (s *CallStack) CloneFrames(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) []*CallFrame {
+func (s *CallStack) CloneFrames(refs map[starlark.Value]starlark.Value, permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) []*CallFrame {
 	frames := s.RawArray()
 	cloned := make([]*CallFrame, len(frames))
 	for i, frame := range frames {
@@ -465,7 +465,7 @@ func (s *CallStack) CloneFrames(refs map[starlark.Value]starlark.Value, permutat
 	return cloned
 }
 
-func (s *CallStack) Clone(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *CallStack {
+func (s *CallStack) Clone(refs map[starlark.Value]starlark.Value, permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) *CallStack {
 	newStack := NewCallStack()
 	for _, frame := range s.CloneFrames(refs, permutations, alt) {
 		newStack.Push(frame)
@@ -568,7 +568,7 @@ func (t *Thread) popFrame() *CallFrame {
 	return frame
 }
 
-func (t *Thread) Clone(refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) *Thread {
+func (t *Thread) Clone(refs map[starlark.Value]starlark.Value, permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) *Thread {
 	// TODO: handle symmetry in stack.Clone()
 	return &Thread{Id: t.Id, Process: t.Process, Files: t.Files, Stack: t.Stack.Clone(refs, permutations, alt), Fairness: t.Fairness}
 }

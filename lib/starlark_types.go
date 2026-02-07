@@ -95,8 +95,8 @@ type SymmetricValues struct {
 	starlark.Tuple
 }
 
-func (s SymmetricValues) Index(i int) SymmetricValue { return s.Tuple.Index(i).(SymmetricValue) }
-func (s SymmetricValues) Type() string               { return "symmetric_values" }
+func (s SymmetricValues) Index(i int) *SymmetricValue { return s.Tuple.Index(i).(*SymmetricValue) }
+func (s SymmetricValues) Type() string                { return "symmetric_values" }
 
 func MakeSymmetricValues(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	prefix := ""
@@ -123,7 +123,7 @@ func MakeSymmetricValues(thread *starlark.Thread, fn *starlark.Builtin, args sta
 	return values, nil
 }
 
-func NewSymmetricValues(values []SymmetricValue) *SymmetricValues {
+func NewSymmetricValues(values []*SymmetricValue) *SymmetricValues {
 	sv := &SymmetricValues{}
 	for _, v := range values {
 		sv.Tuple = append(sv.Tuple, v)
@@ -1192,8 +1192,8 @@ var _ starlark.Value = (*Bag)(nil)
 // There is a limit in the API, this is required to get 'in' keyword to work
 var _ starlark.Mapping = (*Bag)(nil)
 
-func NewModelValue(prefix string, i int64) ModelValue {
-	return ModelValue{
+func NewModelValue(prefix string, i int64) *ModelValue {
+	return &ModelValue{
 		prefix: prefix,
 		id:     i,
 	}
@@ -1206,16 +1206,20 @@ type ModelValue struct {
 	id     int64
 }
 
-func (m ModelValue) GetPrefix() string {
+func (m *ModelValue) GetPrefix() string {
 	return m.prefix
 }
 
-func (m ModelValue) GetId() int64 {
+func (m *ModelValue) GetId() int64 {
 	return m.id
 }
 
-func (m ModelValue) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
-	y := y_.(ModelValue)
+func (m *ModelValue) SetId(id int64) {
+	m.id = id
+}
+
+func (m *ModelValue) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
+	y := y_.(*ModelValue)
 	switch op {
 	case syntax.EQL:
 		return modelValueEqual(m, y), nil
@@ -1226,57 +1230,57 @@ func (m ModelValue) CompareSameType(op syntax.Token, y_ starlark.Value, depth in
 	}
 }
 
-func modelValueEqual(s ModelValue, y ModelValue) bool {
+func modelValueEqual(s *ModelValue, y *ModelValue) bool {
 	return s.prefix == y.prefix && s.id == y.id
 }
 
-func (m ModelValue) String() string {
+func (m *ModelValue) String() string {
 	return fmt.Sprintf("%s%d", m.prefix, m.id)
 }
 
-func (m ModelValue) FullString() string {
+func (m *ModelValue) FullString() string {
 	return fmt.Sprintf("%s%d", m.prefix, m.id)
 }
 
-func (m ModelValue) ShortString() string {
+func (m *ModelValue) ShortString() string {
 	return fmt.Sprintf("%s%d", m.prefix, m.id)
 }
 
-func (m ModelValue) MarshalJSON() ([]byte, error) {
+func (m *ModelValue) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m.FullString())
 }
 
-func (m ModelValue) Type() string {
+func (m *ModelValue) Type() string {
 	return ModelValueType
 }
 
-func (m ModelValue) Freeze() {}
+func (m *ModelValue) Freeze() {}
 
-func (m ModelValue) Truth() starlark.Bool {
+func (m *ModelValue) Truth() starlark.Bool {
 	return true
 }
 
-func (m ModelValue) Hash() (uint32, error) {
+func (m *ModelValue) Hash() (uint32, error) {
 	return starlark.String(m.FullString()).Hash()
 }
 
-var _ starlark.Value = ModelValue{}
-var _ starlark.Comparable = ModelValue{}
+var _ starlark.Value = (*ModelValue)(nil)
+var _ starlark.Comparable = (*ModelValue)(nil)
 
 // NewSymmetricValue creates a new symmetric value with the default Nominal kind.
 // This maintains backward compatibility with existing code.
-func NewSymmetricValue(prefix string, i int64) SymmetricValue {
-	return SymmetricValue{ModelValue: ModelValue{prefix: prefix, id: i}, Kind: SymmetryKindNominal}
+func NewSymmetricValue(prefix string, i int64) *SymmetricValue {
+	return &SymmetricValue{ModelValue: ModelValue{prefix: prefix, id: i}, Kind: SymmetryKindNominal}
 }
 
 // NewSymmetricValueWithKind creates a new symmetric value with the specified kind.
-func NewSymmetricValueWithKind(prefix string, i int64, kind SymmetryKind) SymmetricValue {
-	return SymmetricValue{ModelValue: ModelValue{prefix: prefix, id: i}, Kind: kind}
+func NewSymmetricValueWithKind(prefix string, i int64, kind SymmetryKind) *SymmetricValue {
+	return &SymmetricValue{ModelValue: ModelValue{prefix: prefix, id: i}, Kind: kind}
 }
 
 // NewRotationalSymmetricValue creates a new symmetric value for rotational domains with the limit set.
-func NewRotationalSymmetricValue(prefix string, i int64, limit int) SymmetricValue {
-	return SymmetricValue{ModelValue: ModelValue{prefix: prefix, id: i}, Kind: SymmetryKindRotational, Limit: limit}
+func NewRotationalSymmetricValue(prefix string, i int64, limit int) *SymmetricValue {
+	return &SymmetricValue{ModelValue: ModelValue{prefix: prefix, id: i}, Kind: SymmetryKindRotational, Limit: limit}
 }
 
 const SymmetricValueType = "symmetric_value"
@@ -1287,12 +1291,12 @@ type SymmetricValue struct {
 	Limit int // Only used for rotational kind (domain size for mod arithmetic). 0 for other kinds.
 }
 
-func (s SymmetricValue) GetKind() SymmetryKind {
+func (s *SymmetricValue) GetKind() SymmetryKind {
 	return s.Kind
 }
 
-func (s SymmetricValue) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
-	y := y_.(SymmetricValue)
+func (s *SymmetricValue) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
+	y := y_.(*SymmetricValue)
 
 	// Values from different domains cannot be compared
 	if s.prefix != y.prefix {
@@ -1301,9 +1305,9 @@ func (s SymmetricValue) CompareSameType(op syntax.Token, y_ starlark.Value, dept
 
 	switch op {
 	case syntax.EQL:
-		return modelValueEqual(s.ModelValue, y.ModelValue), nil
+		return symmetricValueEqual(s, y), nil
 	case syntax.NEQ:
-		return !modelValueEqual(s.ModelValue, y.ModelValue), nil
+		return !symmetricValueEqual(s, y), nil
 	case syntax.LT, syntax.LE, syntax.GT, syntax.GE:
 		// Ordering only allowed for Ordinal and Interval kinds
 		if s.Kind == SymmetryKindNominal {
@@ -1326,18 +1330,22 @@ func (s SymmetricValue) CompareSameType(op syntax.Token, y_ starlark.Value, dept
 	return false, fmt.Errorf("%s %s %s not implemented", s.Type(), op, y.Type())
 }
 
-func (s SymmetricValue) Type() string {
+func symmetricValueEqual(s *SymmetricValue, y *SymmetricValue) bool {
+	return s.prefix == y.prefix && s.id == y.id
+}
+
+func (s *SymmetricValue) Type() string {
 	return SymmetricValueType
 }
 
-var _ starlark.Value = SymmetricValue{}
-var _ starlark.Comparable = SymmetricValue{}
+var _ starlark.Value = (*SymmetricValue)(nil)
+var _ starlark.Comparable = (*SymmetricValue)(nil)
 
 func CompareStringer[E fmt.Stringer](a, b E) int {
 	return strings.Compare(a.String(), b.String())
 }
 
-func (s SymmetricValue) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
+func (s *SymmetricValue) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
 	if s.Kind == SymmetryKindRotational {
 		return s.binaryRotational(op, y, side)
 	}
@@ -1357,7 +1365,7 @@ func (s SymmetricValue) Binary(op syntax.Token, y starlark.Value, side starlark.
 				return NewSymmetricValueWithKind(s.prefix, s.id-int64(i), s.Kind), nil
 			}
 			// SymmetricValue - SymmetricValue -> int (signed difference)
-			if other, ok := y.(SymmetricValue); ok {
+			if other, ok := y.(*SymmetricValue); ok {
 				if s.prefix != other.prefix {
 					return nil, fmt.Errorf("cannot subtract values from different domains: %s vs %s", s.prefix, other.prefix)
 				}
@@ -1373,7 +1381,7 @@ func modPositive(a, m int64) int64 {
 	return ((a % m) + m) % m
 }
 
-func (s SymmetricValue) binaryRotational(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
+func (s *SymmetricValue) binaryRotational(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
 	limit := int64(s.Limit)
 	if limit <= 0 {
 		return nil, fmt.Errorf("rotational value has invalid limit %d", s.Limit)
@@ -1390,7 +1398,7 @@ func (s SymmetricValue) binaryRotational(op syntax.Token, y starlark.Value, side
 				return NewRotationalSymmetricValue(s.prefix, modPositive(s.id-int64(i), limit), s.Limit), nil
 			}
 			// SymmetricValue - SymmetricValue -> plain int (mod limit)
-			if other, ok := y.(SymmetricValue); ok {
+			if other, ok := y.(*SymmetricValue); ok {
 				if s.prefix != other.prefix {
 					return nil, fmt.Errorf("cannot subtract values from different domains: %s vs %s", s.prefix, other.prefix)
 				}

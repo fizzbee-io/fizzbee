@@ -9,13 +9,14 @@ import (
 
 // StateVisitor defines the interface for visiting state elements during traversal
 type StateVisitor interface {
-	VisitSymmetricValue(sv lib.SymmetricValue)
+	VisitSymmetricValue(sv *lib.SymmetricValue)
 }
 
 // UsedSymmetricValuesCollector collects all SymmetricValue instances in the current state
 type UsedSymmetricValuesCollector struct {
-	usedValues map[string]map[int64]bool // prefix -> set of IDs
-	limits     map[string]int            // prefix -> Limit (for rotational domains)
+	usedValues map[string]map[int64]bool             // prefix -> set of IDs
+	limits     map[string]int                        // prefix -> Limit (for rotational domains)
+	pointers   map[string]map[int64]*lib.SymmetricValue // prefix -> ID -> actual pointer from state
 }
 
 // NewUsedSymmetricValuesCollector creates a new collector
@@ -23,18 +24,21 @@ func NewUsedSymmetricValuesCollector() *UsedSymmetricValuesCollector {
 	return &UsedSymmetricValuesCollector{
 		usedValues: make(map[string]map[int64]bool),
 		limits:     make(map[string]int),
+		pointers:   make(map[string]map[int64]*lib.SymmetricValue),
 	}
 }
 
 // VisitSymmetricValue records that a symmetric value is used in the state
-func (c *UsedSymmetricValuesCollector) VisitSymmetricValue(sv lib.SymmetricValue) {
+func (c *UsedSymmetricValuesCollector) VisitSymmetricValue(sv *lib.SymmetricValue) {
 	prefix := sv.GetPrefix()
 	id := sv.GetId()
 
 	if c.usedValues[prefix] == nil {
 		c.usedValues[prefix] = make(map[int64]bool)
+		c.pointers[prefix] = make(map[int64]*lib.SymmetricValue)
 	}
 	c.usedValues[prefix][id] = true
+	c.pointers[prefix][id] = sv // Store the actual pointer
 	if sv.Limit > 0 {
 		c.limits[prefix] = sv.Limit
 	}
@@ -54,17 +58,13 @@ func (c *UsedSymmetricValuesCollector) GetUsedIds(prefix string) []int64 {
 	return ids
 }
 
-// GetUsedSymmetricValues returns SymmetricValues for a given prefix
-func (c *UsedSymmetricValuesCollector) GetUsedSymmetricValues(prefix string, kind lib.SymmetryKind) []lib.SymmetricValue {
+// GetUsedSymmetricValues returns the actual SymmetricValue pointers for a given prefix
+func (c *UsedSymmetricValuesCollector) GetUsedSymmetricValues(prefix string, kind lib.SymmetryKind) []*lib.SymmetricValue {
 	ids := c.GetUsedIds(prefix)
-	values := make([]lib.SymmetricValue, len(ids))
-	limit := c.limits[prefix]
+	values := make([]*lib.SymmetricValue, len(ids))
 	for i, id := range ids {
-		if kind == lib.SymmetryKindRotational && limit > 0 {
-			values[i] = lib.NewRotationalSymmetricValue(prefix, id, limit)
-		} else {
-			values[i] = lib.NewSymmetricValueWithKind(prefix, id, kind)
-		}
+		// Return the actual pointers from the state
+		values[i] = c.pointers[prefix][id]
 	}
 	return values
 }
@@ -110,7 +110,7 @@ func visitStarlarkValue(value starlark.Value, visitor StateVisitor, visited map[
 		return
 
 	case "symmetric_value":
-		sv := value.(lib.SymmetricValue)
+		sv := value.(*lib.SymmetricValue)
 		visitor.VisitSymmetricValue(sv)
 
 	case "list":
@@ -183,7 +183,7 @@ func visitStarlarkValue(value starlark.Value, visitor StateVisitor, visited map[
 		role := value.(*lib.Role)
 		if role.IsSymmetric() {
 			roleId := lib.NewSymmetricValue(role.Name, role.Ref)
-			visitor.VisitSymmetricValue(roleId)
+			visitor.VisitSymmetricValue(roleId) // roleId is already a pointer now
 		}
 		visitStarlarkValue(role.Fields, visitor, visited)
 		visitStarlarkValue(role.Params, visitor, visited)
@@ -262,7 +262,7 @@ func visitScope(scope *Scope, visitor StateVisitor, visited map[starlark.Value]b
 }
 
 // getUsedSymmetricValues returns the symmetric values that are actually used in the process state
-func (p *Process) getUsedSymmetricValues() [][]lib.SymmetricValue {
+func (p *Process) getUsedSymmetricValues() [][]*lib.SymmetricValue {
 	collector := NewUsedSymmetricValuesCollector()
 	p.AcceptVisitor(collector)
 
@@ -279,7 +279,7 @@ func (p *Process) getUsedSymmetricValues() [][]lib.SymmetricValue {
 	// Get all symmetric value definitions
 	defs := p.Heap.GetSymmetryDefs()
 
-	result := make([][]lib.SymmetricValue, 0)
+	result := make([][]*lib.SymmetricValue, 0)
 	for _, def := range defs {
 		if def.Len() == 0 {
 			continue
@@ -291,7 +291,7 @@ func (p *Process) getUsedSymmetricValues() [][]lib.SymmetricValue {
 
 		// For materialized rotational domains, return the full set [0..limit-1]
 		if domain, ok := materializedDomains[prefix]; ok {
-			fullSet := make([]lib.SymmetricValue, domain.Limit)
+			fullSet := make([]*lib.SymmetricValue, domain.Limit)
 			for i := 0; i < domain.Limit; i++ {
 				fullSet[i] = lib.NewRotationalSymmetricValue(prefix, int64(i), domain.Limit)
 			}

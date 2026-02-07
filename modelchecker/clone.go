@@ -12,7 +12,7 @@ func deepCloneStarlarkValue(value starlark.Value, refs map[starlark.Value]starla
 	return deepCloneStarlarkValueWithPermutations(value, refs, nil, 0)
 }
 
-func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) (starlark.Value, error) {
+func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starlark.Value]starlark.Value, permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) (starlark.Value, error) {
 	if refs == nil {
 		refs = make(map[starlark.Value]starlark.Value)
 	} else if reflect.TypeOf(value).Kind() != reflect.Ptr {
@@ -25,18 +25,36 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 	// "builtin_function_or_method".
 	switch value.Type() {
 
-	case "NoneType", "int", "float", "bool", "string", "bytes", "function", "range", "struct", "symmetric_values", "model_value", "Channel", "symmetry_domain":
+	case "NoneType", "int", "float", "bool", "string", "bytes", "function", "range", "struct", "symmetric_values", "Channel", "symmetry_domain":
 		//case starlark.Bool, starlark.String, starlark.Int:
 		// For simple values, just return a copy
 		// Also starlark struct is immutable
 		// symmetry_domain is stateless configuration (Name, Limit, DomainType)
 		return value, nil
 
+	case "model_value":
+		// ModelValue is now a pointer type - clone it as a reference
+		v := value.(*lib.ModelValue)
+		newVal := lib.NewModelValue(v.GetPrefix(), v.GetId())
+		refs[value] = newVal
+		return newVal, nil
+
 	case "symmetric_value":
+		// SymmetricValue is now a pointer type - clone it as a reference
+		v := value.(*lib.SymmetricValue)
 		if permutations != nil {
-			v := value.(lib.SymmetricValue)
+			// First try direct pointer lookup
 			if other, ok := permutations[v]; ok {
+				// Return the permuted value - also add to refs for consistency
+				refs[value] = other[alt]
 				return other[alt], nil
+			}
+			// Fall back to value-based lookup (for cases where SymmetricValues are created on-the-fly)
+			for k, other := range permutations {
+				if k.GetPrefix() == v.GetPrefix() && k.GetId() == v.GetId() {
+					refs[value] = other[alt]
+					return other[alt], nil
+				}
 			}
 			panic(fmt.Sprintf("symmetric_value %#v (Kind: %d) should be in %v and alt %v. Keys: %+v", v, v.Kind, permutations, alt, func() []string {
 				keys := make([]string, 0, len(permutations))
@@ -46,7 +64,13 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 				return keys
 			}()))
 		}
-		return value, nil
+		// Clone the symmetric value - now it's a pointer type
+		newVal := lib.NewSymmetricValueWithKind(v.GetPrefix(), v.GetId(), v.GetKind())
+		if v.Kind == lib.SymmetryKindRotational {
+			newVal = lib.NewRotationalSymmetricValue(v.GetPrefix(), v.GetId(), v.Limit)
+		}
+		refs[value] = newVal
+		return newVal, nil
 	case "list":
 		newVal := starlark.NewList(make([]starlark.Value, 0))
 		refs[value] = newVal
@@ -121,16 +145,20 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 		newRight := s.Right
 
 		if permutations != nil {
-			// Map Left ID
-			leftSV := lib.NewSymmetricValueWithKind(s.Domain.Name, s.Left, s.Domain.Kind)
-			if other, ok := permutations[leftSV]; ok {
-				newLeft = other[alt].GetId()
+			// Map Left ID - look up by pointer in permutations
+			for oldSV, newSVs := range permutations {
+				if oldSV.GetPrefix() == s.Domain.Name && oldSV.GetId() == s.Left {
+					newLeft = newSVs[alt].GetId()
+					break
+				}
 			}
 
-			// Map Right ID
-			rightSV := lib.NewSymmetricValueWithKind(s.Domain.Name, s.Right, s.Domain.Kind)
-			if other, ok := permutations[rightSV]; ok {
-				newRight = other[alt].GetId()
+			// Map Right ID - look up by pointer in permutations
+			for oldSV, newSVs := range permutations {
+				if oldSV.GetPrefix() == s.Domain.Name && oldSV.GetId() == s.Right {
+					newRight = newSVs[alt].GetId()
+					break
+				}
 			}
 		}
 
@@ -201,7 +229,7 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 			if err != nil {
 				return nil, err
 			}
-			newRoleId := newVal.(lib.SymmetricValue)
+			newRoleId := newVal.(*lib.SymmetricValue)
 			prefix = newRoleId.GetPrefix()
 			id = newRoleId.GetId()
 		}
@@ -236,7 +264,7 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 }
 
 func deepCloneStringDict(v *starlark.Dict, refs map[starlark.Value]starlark.Value,
-	src map[lib.SymmetricValue][]lib.SymmetricValue, alt int) (*starlark.Dict, error) {
+	src map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) (*starlark.Dict, error) {
 
 	newDict := &starlark.Dict{}
 	refs[v] = newDict
@@ -255,7 +283,7 @@ func deepCloneStringDict(v *starlark.Dict, refs map[starlark.Value]starlark.Valu
 	return newDict, nil
 }
 
-func deepCloneIterableToList(iterable starlark.Iterable, refs map[starlark.Value]starlark.Value, permutations map[lib.SymmetricValue][]lib.SymmetricValue, alt int) ([]starlark.Value, error) {
+func deepCloneIterableToList(iterable starlark.Iterable, refs map[starlark.Value]starlark.Value, permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) ([]starlark.Value, error) {
 	var newList []starlark.Value
 	iter := iterable.Iterate()
 	defer iter.Done()
