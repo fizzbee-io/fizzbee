@@ -1,0 +1,14 @@
+Model checking examples/references/02-03-parallel-block/Counter.json
+configFileName: examples/references/02-03-parallel-block/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 69, queued: 0, elapsed: 1.988125ms
+Time taken for model checking: 1.996042ms
+Writen graph dotfile: examples/references/02-03-parallel-block/out/run_2026-02-06_21-38-37/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/02-03-parallel-block/out/run_2026-02-06_21-38-37/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 69 Unique states: 56
+IsLive: true
+Time taken to check liveness: 1.162667ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/02-03-parallel-block/out/run_2026-02-06_21-38-37

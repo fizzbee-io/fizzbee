@@ -1,0 +1,27 @@
+Model checking examples/references/16-03-list-vs-bag-pitfall/ListVsBag.json
+configFileName: examples/references/16-03-list-vs-bag-pitfall/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:10 max_concurrent_actions:2}
+Nodes: 2, queued: 1, elapsed: 546.833µs
+Time taken for model checking: 555.459µs
+Writen graph dotfile: examples/references/16-03-list-vs-bag-pitfall/out/run_2026-02-05_00-13-25/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/16-03-list-vs-bag-pitfall/out/run_2026-02-05_00-13-25/graph.dot -o graph.svg && open graph.svg
+FAILED: Model checker failed. Invariant:  BothNodesReady
+------
+Init
+--
+state: {"nodes":"[role Node#0 (fields(status = \"READY\")), role Node#1 (fields(status = \"READY\"))]"}
+------
+Node#0.Process
+--
+state: {"nodes":"[role Node#0 (fields(status = \"DONE\")), role Node#1 (fields(status = \"READY\"))]"}
+------
+Writen graph json: examples/references/16-03-list-vs-bag-pitfall/out/run_2026-02-05_00-13-25/error-graph.json
+Writen graph dotfile: examples/references/16-03-list-vs-bag-pitfall/out/run_2026-02-05_00-13-25/error-graph.dot
+To generate an image file, run: 
+dot -Tsvg examples/references/16-03-list-vs-bag-pitfall/out/run_2026-02-05_00-13-25/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: examples/references/16-03-list-vs-bag-pitfall/out/run_2026-02-05_00-13-25/error-states.html
+To open: 
+open examples/references/16-03-list-vs-bag-pitfall/out/run_2026-02-05_00-13-25/error-states.html
+./fizz examples/references/16-03-list-vs-bag-pitfall/ListVsBag.fizz  0.22s user 0.05s system 88% cpu 0.310 total

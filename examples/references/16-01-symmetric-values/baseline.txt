@@ -1,0 +1,15 @@
+Model checking examples/references/16-01-symmetric-values/SymmetricValues.json
+configFileName: examples/references/16-01-symmetric-values/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 12, queued: 0, elapsed: 2.2535ms
+Time taken for model checking: 2.262834ms
+Writen graph dotfile: examples/references/16-01-symmetric-values/out/run_2026-02-05_00-13-18/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/16-01-symmetric-values/out/run_2026-02-05_00-13-18/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 12 Unique states: 4
+IsLive: true
+Time taken to check liveness: 271.458µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/16-01-symmetric-values/out/run_2026-02-05_00-13-18
+./fizz examples/references/16-01-symmetric-values/SymmetricValues.fizz  0.20s user 0.06s system 81% cpu 0.318 total

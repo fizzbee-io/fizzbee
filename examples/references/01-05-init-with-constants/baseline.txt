@@ -1,0 +1,35 @@
+Model checking examples/references/01-05-init-with-constants/Counter.json
+configFileName: examples/references/01-05-init-with-constants/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 4, queued: 0, elapsed: 197.375µs
+Time taken for model checking: 201.167µs
+Writen graph dotfile: examples/references/01-05-init-with-constants/out/run_2026-02-06_21-38-37/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/01-05-init-with-constants/out/run_2026-02-06_21-38-37/graph.dot -o graph.svg && open graph.svg
+DEADLOCK detected
+FAILED: Model checker failed
+------
+Init
+--
+state: {"counter":0,"limit":3}
+------
+Increment
+--
+state: {"counter":1,"limit":3}
+------
+Increment
+--
+state: {"counter":2,"limit":3}
+------
+Increment
+--
+state: {"counter":3,"limit":3}
+------
+Writen graph json: examples/references/01-05-init-with-constants/out/run_2026-02-06_21-38-37/error-graph.json
+Writen graph dotfile: examples/references/01-05-init-with-constants/out/run_2026-02-06_21-38-37/error-graph.dot
+To generate an image file, run: 
+dot -Tsvg examples/references/01-05-init-with-constants/out/run_2026-02-06_21-38-37/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: examples/references/01-05-init-with-constants/out/run_2026-02-06_21-38-37/error-states.html
+To open: 
+open examples/references/01-05-init-with-constants/out/run_2026-02-06_21-38-37/error-states.html

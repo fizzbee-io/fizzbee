@@ -1,0 +1,14 @@
+Model checking examples/references/08-04-genericset/GenericSet.json
+configFileName: examples/references/08-04-genericset/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 3, queued: 0, elapsed: 489.208µs
+Time taken for model checking: 493.584µs
+Writen graph dotfile: examples/references/08-04-genericset/out/run_2026-02-06_21-38-43/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/08-04-genericset/out/run_2026-02-06_21-38-43/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 3 Unique states: 3
+IsLive: true
+Time taken to check liveness: 106.083µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/08-04-genericset/out/run_2026-02-06_21-38-43

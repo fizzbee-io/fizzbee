@@ -1,0 +1,14 @@
+Model checking examples/references/04-04-while-loop/Loop.json
+configFileName: examples/references/04-04-while-loop/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 4, queued: 0, elapsed: 497.667µs
+Time taken for model checking: 504µs
+Writen graph dotfile: examples/references/04-04-while-loop/out/run_2026-02-06_21-38-39/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/04-04-while-loop/out/run_2026-02-06_21-38-39/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 4 Unique states: 4
+IsLive: true
+Time taken to check liveness: 113.458µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/04-04-while-loop/out/run_2026-02-06_21-38-39

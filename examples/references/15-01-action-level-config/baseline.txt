@@ -1,0 +1,14 @@
+Model checking examples/references/15-01-action-level-config/ActionConfig.json
+configFileName: examples/references/15-01-action-level-config/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2 crash_on_yield:true} action_options:{key:"BackgroundTask" value:{max_concurrent_actions:1}} action_options:{key:"CriticalPath" value:{crash_on_yield:false}} action_options:{key:"HighFrequency" value:{max_actions:5}}
+Nodes: 72, queued: 0, elapsed: 3.820708ms
+Time taken for model checking: 3.825625ms
+Writen graph dotfile: examples/references/15-01-action-level-config/out/run_2026-02-06_21-39-32/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/15-01-action-level-config/out/run_2026-02-06_21-39-32/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 72 Unique states: 72
+IsLive: true
+Time taken to check liveness: 1.409708ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/15-01-action-level-config/out/run_2026-02-06_21-39-32

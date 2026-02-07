@@ -1,0 +1,21 @@
+Model checking examples/references/13-01-03-distributed-lock/DistributedLock.json
+configFileName: examples/references/13-01-03-distributed-lock/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2} deadlock_detection:false
+Nodes: 20000, queued: 7308, elapsed: 4.899115166s
+Nodes: 40000, queued: 10388, elapsed: 9.709963875s
+Nodes: 60000, queued: 12740, elapsed: 14.629053208s
+Nodes: 80000, queued: 14721, elapsed: 19.514722583s
+Nodes: 100000, queued: 16481, elapsed: 24.710062875s
+Nodes: 120000, queued: 18049, elapsed: 29.804769916s
+Nodes: 131367, queued: 0, elapsed: 32.577587541s
+Time taken for model checking: 32.577600958s
+Skipping dotfile generation. Too many Nodes: 131367
+Writen communication diagram dotfile: examples/references/13-01-03-distributed-lock/out/run_2026-02-06_21-38-50/communication.dot
+To generate svg, run: 
+dot -Tsvg examples/references/13-01-03-distributed-lock/out/run_2026-02-06_21-38-50/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 131367 Unique states: 131367
+IsLive: true
+Time taken to check liveness: 289.874958ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/13-01-03-distributed-lock/out/run_2026-02-06_21-38-50

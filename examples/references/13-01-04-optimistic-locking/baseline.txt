@@ -1,0 +1,14 @@
+Model checking examples/references/13-01-04-optimistic-locking/OptimisticLocking.json
+configFileName: examples/references/13-01-04-optimistic-locking/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 26, queued: 0, elapsed: 2.817959ms
+Time taken for model checking: 2.822084ms
+Writen graph dotfile: examples/references/13-01-04-optimistic-locking/out/run_2026-02-06_21-39-25/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/13-01-04-optimistic-locking/out/run_2026-02-06_21-39-25/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 26 Unique states: 26
+IsLive: true
+Time taken to check liveness: 291.208µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/13-01-04-optimistic-locking/out/run_2026-02-06_21-39-25

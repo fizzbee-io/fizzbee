@@ -1,0 +1,18 @@
+Model checking examples/references/16-02-symmetric-roles/SymmetricRoles.json
+configFileName: examples/references/16-02-symmetric-roles/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2} liveness:"false" deadlock_detection:false
+Nodes: 10, queued: 0, elapsed: 3.161583ms
+Time taken for model checking: 3.1685ms
+Writen graph dotfile: examples/references/16-02-symmetric-roles/out/run_2026-02-05_00-13-21/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/16-02-symmetric-roles/out/run_2026-02-05_00-13-21/graph.dot -o graph.svg && open graph.svg
+Writen communication diagram dotfile: examples/references/16-02-symmetric-roles/out/run_2026-02-05_00-13-21/communication.dot
+To generate svg, run: 
+dot -Tsvg examples/references/16-02-symmetric-roles/out/run_2026-02-05_00-13-21/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 10 Unique states: 10
+IsLive: true
+Time taken to check liveness: 319.625µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/16-02-symmetric-roles/out/run_2026-02-05_00-13-21
+./fizz examples/references/16-02-symmetric-roles/SymmetricRoles.fizz  0.22s user 0.04s system 95% cpu 0.277 total

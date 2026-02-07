@@ -1,0 +1,14 @@
+Model checking examples/references/12-06-global-variables/Globals.json
+configFileName: examples/references/12-06-global-variables/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 6, queued: 0, elapsed: 360.709µs
+Time taken for model checking: 365.083µs
+Writen graph dotfile: examples/references/12-06-global-variables/out/run_2026-02-06_21-38-49/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/12-06-global-variables/out/run_2026-02-06_21-38-49/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 6 Unique states: 6
+IsLive: true
+Time taken to check liveness: 121.792µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/12-06-global-variables/out/run_2026-02-06_21-38-49

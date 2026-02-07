@@ -1,0 +1,12 @@
+Model checking examples/references/13-06-02-rate-limiting/RateLimiting.json
+configFileName: examples/references/13-06-02-rate-limiting/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 582, queued: 0, elapsed: 45.388666ms
+Time taken for model checking: 45.396791ms
+Skipping dotfile generation. Too many Nodes: 582
+Valid Nodes: 582 Unique states: 582
+IsLive: true
+Time taken to check liveness: 437.167µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/13-06-02-rate-limiting/out/run_2026-02-06_21-39-30

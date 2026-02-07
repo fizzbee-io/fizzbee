@@ -1,0 +1,15 @@
+Model checking examples/references/16-06-ordinal-symmetry/OrdinalSymmetry.json
+configFileName: examples/references/16-06-ordinal-symmetry/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 5, queued: 0, elapsed: 562.125µs
+Time taken for model checking: 568.959µs
+Writen graph dotfile: examples/references/16-06-ordinal-symmetry/out/run_2026-02-05_00-14-46/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/16-06-ordinal-symmetry/out/run_2026-02-05_00-14-46/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 5 Unique states: 5
+IsLive: true
+Time taken to check liveness: 115µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/16-06-ordinal-symmetry/out/run_2026-02-05_00-14-46
+./fizz examples/references/16-06-ordinal-symmetry/OrdinalSymmetry.fizz  0.20s user 0.04s system 95% cpu 0.253 total

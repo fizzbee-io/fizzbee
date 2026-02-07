@@ -1,0 +1,14 @@
+Model checking examples/references/13-04-01-producer-consumer/ProducerConsumer.json
+configFileName: examples/references/13-04-01-producer-consumer/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 18, queued: 0, elapsed: 1.664708ms
+Time taken for model checking: 1.673958ms
+Writen graph dotfile: examples/references/13-04-01-producer-consumer/out/run_2026-02-06_21-39-28/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/13-04-01-producer-consumer/out/run_2026-02-06_21-39-28/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 18 Unique states: 18
+IsLive: true
+Time taken to check liveness: 344.542µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/13-04-01-producer-consumer/out/run_2026-02-06_21-39-28

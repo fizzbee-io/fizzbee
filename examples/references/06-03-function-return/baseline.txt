@@ -1,0 +1,14 @@
+Model checking examples/references/06-03-function-return/Validator.json
+configFileName: examples/references/06-03-function-return/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 21, queued: 0, elapsed: 975.167µs
+Time taken for model checking: 978.792µs
+Writen graph dotfile: examples/references/06-03-function-return/out/run_2026-02-06_21-38-41/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/06-03-function-return/out/run_2026-02-06_21-38-41/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 21 Unique states: 17
+IsLive: true
+Time taken to check liveness: 275.208µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/06-03-function-return/out/run_2026-02-06_21-38-41
