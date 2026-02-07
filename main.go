@@ -1091,6 +1091,12 @@ func GenerateFailurePath(srcFileName string, failurePath []*modelchecker.Link, i
 		if len(node.Returns) > 0 {
 			fmt.Printf("returns: %s\n", strings.ReplaceAll(node.Returns.String(), lib.SymmetryPrefix, ""))
 		}
+		if len(node.Roles) > 0 {
+			for _, role := range node.Roles {
+				roleStr := strings.ReplaceAll(role.Fields.String(), lib.SymmetryPrefix, "")
+				fmt.Printf("%s: %s\n", role.RefStringShort(), roleStr)
+			}
+		}
 	}
 	fmt.Println("------")
 	if !isPlayground {
