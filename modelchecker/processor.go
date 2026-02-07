@@ -517,6 +517,16 @@ func (n *Node) appendState(p *Process, buf *strings.Builder) {
 		buf.WriteString("Returns: ")
 		buf.WriteString(escapedString)
 	}
+	if len(p.Roles) > 0 {
+		for _, role := range p.Roles {
+			buf.WriteString("\\n")
+			buf.WriteString(role.RefStringShort())
+			buf.WriteString(": ")
+			fieldsStr := role.Fields.String()
+			escapedFields := strings.ReplaceAll(fieldsStr, "\"", "\\\"")
+			buf.WriteString(escapedFields)
+		}
+	}
 }
 
 // GetName returns the name
