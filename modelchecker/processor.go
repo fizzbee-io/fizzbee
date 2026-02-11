@@ -1472,10 +1472,23 @@ func processPreInit(init *Node, stmts []*ast.Statement, preinitHookContent strin
 			},
 		}
 
-		// Execute the hook with the current globals
-		_, err := init.Process.Evaluator.ExecPyStmt("<preinit-hook>", pyStmt, globals)
+		// Build a temporary dict with builtins and modules so the hook
+		// can use record(), enum(), symmetry.nominal(), etc.
+		hookGlobals := starlark.StringDict{}
+		maps.Copy(hookGlobals, globals)
+		maps.Copy(hookGlobals, lib.Builtins)
+		maps.Copy(hookGlobals, init.Process.Modules)
+
+		_, err := init.Process.Evaluator.ExecPyStmt("<preinit-hook>", pyStmt, hookGlobals)
 		if err != nil {
 			panic(fmt.Sprintf("Error executing preinit hook: %v", err))
+		}
+
+		// Copy back only top-level vars (may have been overridden by the hook)
+		for _, name := range init.Process.topLevelVars {
+			if v, ok := hookGlobals[name]; ok {
+				globals[name] = v
+			}
 		}
 	}
 
