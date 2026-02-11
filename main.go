@@ -34,6 +34,7 @@ var traceFile string
 var preinitHookFile string
 var trace string
 var preinitHook string
+var traceExtend int
 
 var isTest bool
 
@@ -543,6 +544,12 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		}
 	}
 
+	// Set trace extension depth if configured
+	if guidedTrace != nil && traceExtend > 0 {
+		guidedTrace.ExtendDepth = traceExtend
+		fmt.Printf("Trace will extend %d action(s) beyond the guided path\n", traceExtend)
+	}
+
 	// Resolve preinit hook content (either from file or string)
 	var preinitHookContentResolved string
 	if preinitHookFile != "" {
@@ -848,6 +855,7 @@ func parseFlags() []string {
 	flag.StringVar(&traceFile, "trace-file", "", "Path to trace file for guided execution")
 	flag.StringVar(&preinitHookFile, "preinit-hook-file", "", "Path to Starlark file to execute after preinit but before freezing globals")
 	flag.StringVar(&trace, "trace", "", "Trace content as a string for guided execution (multiline supported)")
+	flag.IntVar(&traceExtend, "trace-extend", 0, "After trace ends, explore this many additional action depths (0 = stop at trace end)")
 	flag.StringVar(&preinitHook, "preinit-hook", "", "Starlark code as a string to execute after preinit but before freezing globals (multiline supported)")
 	flag.BoolVar(&isTest, "test", false, "Testing mode (prevents printing timestamps and other non-deterministic behavior. Default=false")
 	flag.Parse()

@@ -46,6 +46,7 @@ copy_ast=true
 output_dir=""
 trace_file=""
 trace_string=""
+trace_extend=0
 preinit_hook_file=""
 preinit_hook_string=""
 
@@ -102,6 +103,15 @@ while [[ "$1" =~ ^- ]]; do
         shift 2
       else
         echo "Error: --trace requires a string." 1>&2
+        usage
+      fi
+      ;;
+    --trace-extend )
+      if [[ -n "$2" ]] && [[ "$2" =~ ^[0-9]+$ ]]; then
+        trace_extend="$2"
+        shift 2
+      else
+        echo "Error: --trace-extend requires a numeric value." 1>&2
         usage
       fi
       ;;
@@ -210,6 +220,9 @@ if [ -n "$trace_file" ]; then
 fi
 if [ -n "$trace_string" ]; then
   args+=("--trace" "$trace_string")
+fi
+if [ "$trace_extend" -ne 0 ]; then
+  args+=("--trace-extend" "$trace_extend")
 fi
 if [ -n "$preinit_hook_file" ]; then
   args+=("--preinit-hook-file" "$preinit_hook_file")
