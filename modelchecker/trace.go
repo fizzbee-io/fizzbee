@@ -11,6 +11,8 @@ import (
 type GuidedTrace struct {
 	LinkNames    []string
 	currentIndex int
+	ExtendDepth  int // How many actions to explore after trace ends (0 = stop)
+	extendedCount int // How many extended actions taken so far
 }
 
 // parseTrace parses trace content from a scanner
@@ -114,6 +116,11 @@ func (p *Processor) ShouldScheduleNode(node *Node) bool {
 
 	// Check if trace is exhausted
 	if node.guidedTrace.IsExhausted() {
+		// Allow extension if configured
+		if node.guidedTrace.ExtendDepth > 0 && node.guidedTrace.extendedCount < node.guidedTrace.ExtendDepth {
+			node.guidedTrace.extendedCount++
+			return true
+		}
 		return false
 	}
 
