@@ -153,6 +153,7 @@ type Process struct {
 
 	Enabled        bool `json:"-"`
 	ThreadProgress bool `json:"-"`
+	Deadlock       bool `json:"-"`
 
 	Roles    []*lib.Role          `json:"roles"`
 	Channels map[int]*lib.Channel `json:"channels"`
@@ -915,6 +916,8 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 		} else {
 			other.Name = n.Name
 		}
+	} else if yield {
+		other.Name = "yield"
 	}
 	parent := n.Inbound[0].Node
 	other.Inbound = append(other.Inbound, n.Inbound[0])
@@ -1184,6 +1187,7 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 
 		invariantFailure := false
 		symmetryFound := false
+		yieldFoundForStep := false
 		for {
 			if len(p.visited)%20000 == 0 && len(p.visited) != prevCount {
 				if p.isTest {
@@ -1198,7 +1202,7 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 				p.visited = make(map[string]*Node)
 			}
 
-			if node.Process != nil && p.config.Options.GetCrashOnYield() && node.Enabled && (node.Name == "yield" || node.Name == "crash") {
+			if node.Process != nil && p.config.GetOptions().GetCrashOnYield() && node.Enabled && (node.Name == "yield" || node.Name == "crash") {
 				failedCrashNode := p.crashProcess(node)
 				if failedCrashNode != nil && failedNode == nil {
 					failedNode = failedCrashNode
@@ -1207,12 +1211,28 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 					break
 				}
 			}
+			if node.Process != nil && (node.Name == "yield" || node.Name == "crash") {
+				yieldFoundForStep = true
+			}
 			if p.intermediateStates.Len() == 0 {
+				if !yieldFoundForStep && !invariantFailure && !p.stopped && p.config.GetDeadlockDetection() {
+					// Deadlock detected
+					//fmt.Printf("Deadlock detected at node: %v\n", node.Name)
+					if len(node.Inbound) > 0 {
+						failedNode = node.Inbound[0].Node
+					} else {
+						failedNode = node
+					}
+					failedNode.Process.Deadlock = true
+					invariantFailure = true
+				}
 				break
 			}
 			node, _ = p.intermediateStates.Remove()
 		}
-
+		if failedNode != nil {
+			break
+		}
 		if symmetryFound {
 			continue
 		}

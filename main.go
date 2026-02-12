@@ -6,10 +6,6 @@ import (
 	ast "fizz/proto"
 	"flag"
 	"fmt"
-	"github.com/fizzbee-io/fizzbee/lib"
-	"github.com/fizzbee-io/fizzbee/modelchecker"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -19,6 +15,11 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/fizzbee-io/fizzbee/lib"
+	"github.com/fizzbee-io/fizzbee/modelchecker"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 var isPlayground bool
@@ -676,7 +677,10 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			}
 
 		} else if failedNode != nil {
-			if failedNode.FailedInvariants != nil && len(failedNode.FailedInvariants) > 0 && len(failedNode.FailedInvariants[0]) > 0 {
+			if failedNode.Process.Deadlock {
+				fmt.Println("DEADLOCK detected")
+				fmt.Println("FAILED: Model checker failed")
+			} else if failedNode.FailedInvariants != nil && len(failedNode.FailedInvariants) > 0 && len(failedNode.FailedInvariants[0]) > 0 {
 				fmt.Println("FAILED: Model checker failed. Invariant: ", f.Invariants[failedNode.FailedInvariants[0][0]].Name)
 			} else if simulation {
 				fmt.Println("FAILED: Model checker failed. Deadlock/stuttering detected")
