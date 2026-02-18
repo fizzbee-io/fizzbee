@@ -1807,7 +1807,27 @@ Works with all symmetry types. For interval, values start at `start`: e.g., `sym
    - Need ordering AND distances/arithmetic? Use **interval**.
    - Values wrap around (mod N)? Use **rotational**.
 
-7. **`require` is a guard, not an assertion.** `require cond` disables the transition when `cond` is false -- the action simply doesn't execute. It does **not** report a failure. To check properties, use `always assertion`. Prefer `require` over `if not cond: return` for enabling conditions -- they have the same effect but `require` is more concise and idiomatic.
+7. **Choosing the right method for your use case**:
+
+   | Use case | Method | Why |
+   |:---|:---|:---|
+   | **Unique ID per entity** (UUID, primary key) | `id = DOMAIN.fresh()` | Deterministic, exactly one new value. No `any` needed. |
+   | **Pick from interchangeable pool** (text, color, category) | `v = any DOMAIN.choices()` | Explores existing values + one fresh. First call offers only 1 choice (the canonical fresh value), avoiding spurious branching. |
+   | **Fixed known set** (ring nodes, enum-like) | `materialize=True` + `any DOMAIN.values()` | All values exist upfront. `fresh()` is disallowed. |
+
+   **Why prefer `choices()` over `materialize=True` + `values()` for pools?** With `materialize=True`, the first nondeterministic choice offers all N values even though they are all equivalent (symmetry would collapse them to one canonical state anyway). With `choices()` (default `materialize=False`), the first call offers just 1 fresh value — no unnecessary branching. Subsequent calls offer previously-used values plus one fresh, naturally growing the pool only as needed. The total number of unique states is the same, but `choices()` avoids redundant transitions.
+
+   ```python
+   # Recommended: dynamic pool with choices()
+   TEXTS = symmetry.nominal(name="task", limit=3)
+   text = any TEXTS.choices()   # 1st call: [task0]. 2nd call: [task0, task1]. etc.
+
+   # Also valid but creates unnecessary initial branching:
+   TEXTS = symmetry.nominal(name="task", limit=3, materialize=True)
+   text = any TEXTS.values()    # Always: [task0, task1, task2]
+   ```
+
+8. **`require` is a guard, not an assertion.** `require cond` disables the transition when `cond` is false -- the action simply doesn't execute. It does **not** report a failure. To check properties, use `always assertion`. Prefer `require` over `if not cond: return` for enabling conditions -- they have the same effect but `require` is more concise and idiomatic.
 
 ---
 
@@ -2104,7 +2124,12 @@ action Step2:
 **Python features not supported**:
 - `del` statement
 - Arbitrary Python imports (hermetic environment)
-- Some advanced Python features
+- `is` / `is not` operators (use `==` / `!=` instead)
+- Tuple unpacking in `for` loops (`for k, v in dict.items()` fails; use `for k in dict` + `dict[k]`)
+
+**Cross-role function return to `self.*`**: `self.x = otherRole.fn()` crashes. Use a local variable: `result = otherRole.fn()` then `self.x = result`.
+
+For a complete list of gotchas and workarounds, see **[Gotchas and Common Issues](GOTCHAS.md)**.
 
 ### Workarounds
 
@@ -2138,7 +2163,10 @@ always assertion ServerValuePositive:
 
 ## See Also
 
-- [Example Reference](README.md) - 83 runnable examples
+- [Example Reference](README.md) - 100 runnable examples
+- [Performance Guide](PERFORMANCE_GUIDE.md) - Tips for reducing state space and runtime
+- [Gotchas and Common Issues](GOTCHAS.md) - Known pitfalls and workarounds
+- [Verification Guide](VERIFICATION_GUIDE.md) - Simulation, guided traces, and debugging
 - [FizzBee Documentation](https://fizzbee.io/docs/)
 - [GitHub Repository](https://github.com/fizzbee-io/fizzbee)
 

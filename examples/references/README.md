@@ -3,6 +3,9 @@
 Comprehensive reference examples for the FizzBee specification language, organized by topic for easy learning and AI coding agent reference.
 
 📖 **[FizzBee Language Reference Guide](LANGUAGE_REFERENCE.md)** - Complete language specification with syntax and semantics
+⚡ **[Performance Guide](PERFORMANCE_GUIDE.md)** - Tips for reducing state space and runtime
+⚠️ **[Gotchas and Common Issues](GOTCHAS.md)** - Known pitfalls and workarounds
+🔍 **[Verification Guide](VERIFICATION_GUIDE.md)** - How to sanity-check specs with simulation and guided traces
 
 ## Organization
 
@@ -24,7 +27,7 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **08**: Data Types (9) - Collections, enums, records
 - **09**: Assertions (5) - Safety and liveness properties
 - **10**: Fairness (3) - Unfair, weak fair, strong fair
-- **11**: Roles (7) - Role basics and management
+- **11**: Roles (8) - Role basics and management
 - **12**: Advanced (6) - Nesting, config, best practices
 - **13**: Patterns (19) - Distributed systems patterns
   - **13-01**: Locking (4) - Mutex, RW lock, distributed lock
@@ -36,10 +39,10 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
   - **13-07**: Data/Events (2) - WAL, event sourcing
 - **14**: Fault Injection (4) - Crash and message loss
 - **15**: Configuration (2) - Action-level config, coordination
-- **16**: Symmetry Reduction (12) - State space optimization (old API + symmetry module)
+- **16**: Symmetry Reduction (13) - State space optimization (old API + symmetry module)
 - **99**: Miscellaneous (1) - Checkpoints and other utilities
 
-**Total: 98 examples across 17 sections**
+**Total: 100 examples across 17 sections**
 
 ## Examples Created
 
@@ -361,6 +364,13 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: Multiple instances, independent state
 - **Status**: ✅ PASSED
 
+### 11-08-dynamic-role-lifecycle: Dynamic Role Lifecycle
+- **State space**: 113 nodes, 70 unique states
+- **Purpose**: Creating and removing role instances at runtime
+- **Key concepts**: Dynamic `Role()` creation, removal by `__id__`, lifecycle management (hire → work → fire)
+- **Status**: ✅ PASSED
+- **Note**: Non-symmetric version requires `MAX_HIRES` cap because each Worker#N is distinct. Compare with 16-13 for symmetric version.
+
 ### 12-01-nested-flow-modifiers: Nested Flow Modifiers
 - **State space**: 5206 nodes, 5200 unique states
 - **Purpose**: Nesting flow modifiers with different behaviors
@@ -625,6 +635,13 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Purpose**: Pre-populating all domain values with `materialize=True`
 - **Key concepts**: `materialize=True`, `values()` returns all upfront, `fresh()` disallowed
 - **Status**: ✅ PASSED
+
+### 16-13-dynamic-symmetric-roles: Dynamic Symmetric Role Lifecycle
+- **State space**: 9 nodes, 6 unique states
+- **Purpose**: Creating and removing symmetric role instances at runtime
+- **Key concepts**: `symmetric role` + `bag()`, dynamic creation, removal by `__id__`, unlimited lifecycle with symmetry
+- **Status**: ✅ PASSED
+- **Note**: Compare with 11-08 (non-symmetric, 113 nodes / 70 states). Symmetric version needs no hire cap — removed nodes get replaced by fresh ones that map to the same canonical states.
 
 ### 99-01-checkpoints: Visualization Checkpoints
 - **State space**: 12 nodes, 10 unique states
