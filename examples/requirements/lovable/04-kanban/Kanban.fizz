@@ -1,0 +1,140 @@
+---
+deadlock_detection: false
+options:
+    max_concurrent_actions: 1
+---
+
+# Kanban Board — Requirements Specification
+# Architecture: React (browser) + Supabase (database)
+#
+# Cards live in columns: Todo -> InProgress -> Done.
+# Two users can drag cards concurrently.
+# Race: two users see the same card in "Todo", both drag to "InProgress".
+# WIP limit: at most WIP_LIMIT cards in InProgress at once.
+#
+# New concepts: multi-column state machine, concurrent drag, WIP limits
+
+NUM_USERS = 2
+MAX_CARDS = 3
+WIP_LIMIT = 2
+
+IDS = symmetry.nominal(name="card", limit=MAX_CARDS)
+TITLES = symmetry.nominal(name="task", limit=2)
+
+Column = enum("Todo", "InProgress", "Done")
+
+
+# ─── Server (Database) ───────────────────────────────────────────────
+# cards table: list of records preserving creation order
+# Each card has: id, title, column
+
+role Server:
+    action Init:
+        self.cards = []
+
+    atomic func AddCard(id, title):
+        self.cards = self.cards + [record(id=id, title=title, col=Column.Todo)]
+
+    atomic func MoveCard(card_id, from_col, to_col):
+        # WIP limit: reject move to InProgress if at capacity
+        if to_col == Column.InProgress:
+            wip = len([c for c in self.cards if c.col == Column.InProgress])
+            require wip < WIP_LIMIT
+        # Server-side guard: card must still be in expected column
+        require all([c.col == from_col for c in self.cards if c.id == card_id])
+        updated = []
+        for c in self.cards:
+            if c.id == card_id:
+                updated = updated + [record(id=c.id, title=c.title, col=to_col)]
+            else:
+                updated = updated + [c]
+        self.cards = updated
+
+    atomic func DeleteCard(card_id):
+        self.cards = [c for c in self.cards if c.id != card_id]
+
+
+# ─── User (Human + Browser) ──────────────────────────────────────────
+# Each user sees a snapshot of the board. Their view can be stale.
+
+symmetric role User:
+    action Init:
+        self.view = []
+
+    atomic func RefreshView():
+        self.view = db.cards
+
+    # Add a new card to the Todo column
+    atomic action AddCard:
+        id = IDS.fresh()
+        title = any TITLES.choices()
+        db.AddCard(id, title)
+        self.RefreshView()
+
+    # Move a card to the next column (Todo->InProgress->Done)
+    atomic action MoveCardForward:
+        movable = [c for c in self.view if c.col != Column.Done]
+        require len(movable) > 0
+        card = any movable
+        if card.col == Column.Todo:
+            db.MoveCard(card.id, Column.Todo, Column.InProgress)
+        elif card.col == Column.InProgress:
+            db.MoveCard(card.id, Column.InProgress, Column.Done)
+        self.RefreshView()
+
+    # Move a card back (Done->InProgress->Todo)
+    atomic action MoveCardBack:
+        movable = [c for c in self.view if c.col != Column.Todo]
+        require len(movable) > 0
+        card = any movable
+        if card.col == Column.Done:
+            db.MoveCard(card.id, Column.Done, Column.InProgress)
+        elif card.col == Column.InProgress:
+            db.MoveCard(card.id, Column.InProgress, Column.Todo)
+        self.RefreshView()
+
+    # Delete a card
+    atomic action DeleteCard:
+        require len(self.view) > 0
+        card = any self.view
+        db.DeleteCard(card.id)
+        self.RefreshView()
+
+    # Refresh to see latest state
+    atomic fair action Refresh:
+        self.RefreshView()
+
+
+# ─── Initialization ──────────────────────────────────────────────────
+
+action Init:
+    db = Server()
+    users = bag()
+    for i in range(NUM_USERS):
+        users.add(User())
+
+
+# ─── Safety Assertions ───────────────────────────────────────────────
+
+# R1: WIP limit is never exceeded.
+always assertion WipLimitRespected:
+    wip = len([c for c in db.cards if c.col == Column.InProgress])
+    return wip <= WIP_LIMIT
+
+# R2: Cards only move one column at a time (valid transitions).
+transition assertion ValidColumnTransitions(before, after):
+    for ac in after.db.cards:
+        for bc in before.db.cards:
+            if ac.id == bc.id and ac.col != bc.col:
+                if bc.col == Column.Todo and ac.col != Column.InProgress:
+                    return False
+                if bc.col == Column.InProgress and ac.col not in [Column.Todo, Column.Done]:
+                    return False
+                if bc.col == Column.Done and ac.col != Column.InProgress:
+                    return False
+    return True
+
+# R3: No duplicate card IDs.
+always assertion UniqueCardIds:
+    ids = [c.id for c in db.cards]
+    return len(ids) == len(set(ids))

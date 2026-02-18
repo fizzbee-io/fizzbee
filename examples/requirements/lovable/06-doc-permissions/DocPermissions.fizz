@@ -1,0 +1,155 @@
+---
+deadlock_detection: false
+options:
+    max_concurrent_actions: 1
+---
+
+# Document Permissions / CMS — Requirements Specification
+# Architecture: React (browser) + Supabase (database)
+#
+# An owner creates documents and shares them with other users.
+# Permissions: owner (full control), editor (read+write), viewer (read-only).
+# The owner can grant/revoke permissions. A revoked user must not access the doc.
+#
+# New concepts: role hierarchy, access control, permission revocation
+
+NUM_DOCS = 1
+
+DOC_IDS = symmetry.nominal(name="doc", limit=NUM_DOCS)
+CONTENT = symmetry.nominal(name="ver", limit=3)
+
+Permission = enum("NoAccess", "Viewer", "Editor")
+
+
+# ─── Server (Database) ───────────────────────────────────────────────
+# docs table: doc_id -> record(content, owner_id)
+# permissions table: {doc_id: {user_id: permission}}
+
+role Server:
+    action Init:
+        self.docs = {}
+        self.perms = {}
+
+    atomic func CreateDoc(doc_id, owner_id, content):
+        self.docs[doc_id] = record(content=content, owner=owner_id)
+        self.perms[doc_id] = {}
+
+    atomic func EditDoc(doc_id, user_id, new_content):
+        # Must be owner or editor
+        if self.docs[doc_id].owner != user_id:
+            require user_id in self.perms[doc_id]
+            require self.perms[doc_id][user_id] == Permission.Editor
+        self.docs[doc_id] = record(content=new_content, owner=self.docs[doc_id].owner)
+
+    atomic func ReadDoc(doc_id, user_id):
+        # Must be owner, editor, or viewer
+        if self.docs[doc_id].owner != user_id:
+            require user_id in self.perms[doc_id]
+            require self.perms[doc_id][user_id] != Permission.NoAccess
+        return self.docs[doc_id].content
+
+    atomic func GrantPermission(doc_id, owner_id, target_user, perm):
+        require self.docs[doc_id].owner == owner_id
+        self.perms[doc_id][target_user] = perm
+
+    atomic func RevokePermission(doc_id, owner_id, target_user):
+        require self.docs[doc_id].owner == owner_id
+        require target_user in self.perms[doc_id]
+        self.perms[doc_id].pop(target_user)
+
+
+# ─── Owner ────────────────────────────────────────────────────────────
+# Creates docs and manages permissions.
+
+role Owner:
+    action Init:
+        self.my_docs = []
+
+    atomic action CreateDoc:
+        doc_id = DOC_IDS.fresh()
+        content = any CONTENT.choices()
+        db.CreateDoc(doc_id, "owner", content)
+        self.my_docs = self.my_docs + [doc_id]
+
+    atomic action EditDoc:
+        require len(self.my_docs) > 0
+        doc = any self.my_docs
+        new_content = any CONTENT.choices()
+        db.EditDoc(doc, "owner", new_content)
+
+    atomic action GrantViewer:
+        require len(self.my_docs) > 0
+        doc = any self.my_docs
+        db.GrantPermission(doc, "owner", "collaborator", Permission.Viewer)
+
+    atomic action GrantEditor:
+        require len(self.my_docs) > 0
+        doc = any self.my_docs
+        db.GrantPermission(doc, "owner", "collaborator", Permission.Editor)
+
+    atomic action RevokeAccess:
+        require len(self.my_docs) > 0
+        doc = any self.my_docs
+        db.RevokePermission(doc, "owner", "collaborator")
+
+
+# ─── Collaborator (the other user) ───────────────────────────────────
+# Can read or edit depending on granted permission.
+# Their cached permission level may be stale after revocation.
+
+role Collaborator:
+    action Init:
+        self.cached_perm = Permission.NoAccess
+        self.cached_content = None
+
+    atomic func RefreshView(doc_id):
+        if doc_id in db.perms and "collaborator" in db.perms[doc_id]:
+            self.cached_perm = db.perms[doc_id]["collaborator"]
+        else:
+            self.cached_perm = Permission.NoAccess
+
+    atomic action TryRead:
+        require len(db.docs) > 0
+        doc = any db.docs.keys()
+        require self.cached_perm != Permission.NoAccess
+        content = db.ReadDoc(doc, "collaborator")
+        self.cached_content = content
+        self.RefreshView(doc)
+
+    atomic action TryEdit:
+        require len(db.docs) > 0
+        doc = any db.docs.keys()
+        require self.cached_perm == Permission.Editor
+        new_content = any CONTENT.choices()
+        db.EditDoc(doc, "collaborator", new_content)
+        self.RefreshView(doc)
+
+    atomic fair action Refresh:
+        if len(db.docs) > 0:
+            doc = any db.docs.keys()
+            self.RefreshView(doc)
+
+
+# ─── Initialization ──────────────────────────────────────────────────
+
+action Init:
+    db = Server()
+    owner = Owner()
+    collaborator = Collaborator()
+
+
+# ─── Safety Assertions ───────────────────────────────────────────────
+
+# R1: A user with no permission cannot read a document.
+#     (Enforced by require guards in ReadDoc/EditDoc — if those are wrong,
+#     the model checker would find a path where an unauthorized read succeeds.)
+
+# R2: Only the owner can change permissions.
+#     (Enforced structurally: only Owner role calls Grant/Revoke.)
+
+# R3: The owner always retains ownership of their documents.
+always assertion OwnerNeverLosesOwnership:
+    for doc_id in db.docs:
+        if db.docs[doc_id].owner != "owner":
+            return False
+    return True

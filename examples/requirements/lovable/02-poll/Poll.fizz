@@ -1,0 +1,133 @@
+---
+deadlock_detection: false
+options:
+    max_concurrent_actions: 1
+---
+
+# Poll / Voting App — Requirements Specification
+# Architecture: React (browser) + Supabase (database)
+#
+# A creator makes a poll with a fixed set of options. Multiple voters
+# can vote, change their vote, or abstain. The creator can close the poll.
+# Once closed, no more votes are accepted.
+#
+# New concepts: multiple symmetric users, shared mutable resource, close semantics
+
+NUM_VOTERS = 2
+
+# Options are interchangeable — which specific option a voter picks doesn't matter
+OPTIONS = symmetry.nominal(name="opt", limit=3)
+
+Status = enum("Open", "Closed")
+
+
+# ─── Server (Database) ───────────────────────────────────────────────
+# polls table: status, options (fixed set)
+# votes table: voter_id -> option (one vote per voter, can update)
+
+role Server:
+    action Init:
+        self.status = Status.Open
+        self.votes = {}
+
+    atomic func CastVote(voter_id, option):
+        require self.status == Status.Open
+        self.votes[voter_id] = option
+
+    atomic func RemoveVote(voter_id):
+        require self.status == Status.Open
+        require voter_id in self.votes
+        self.votes.pop(voter_id)
+
+    atomic func ClosePoll():
+        self.status = Status.Closed
+
+
+# ─── Voter (Human + Browser) ─────────────────────────────────────────
+# Each voter sees the poll and can vote/change/retract.
+# Voters are symmetric — they are interchangeable.
+
+role Voter:
+    action Init:
+        self.my_vote = None
+        self.poll_open = True
+
+    atomic func RefreshView():
+        self.poll_open = (db.status == Status.Open)
+        if self.__id__ in db.votes:
+            self.my_vote = db.votes[self.__id__]
+        else:
+            self.my_vote = None
+
+    atomic action Vote:
+        require self.poll_open
+        require self.my_vote == None
+        option = any OPTIONS.choices()
+        db.CastVote(self.__id__, option)
+        self.RefreshView()
+
+    atomic action ChangeVote:
+        require self.poll_open
+        require self.my_vote != None
+        new_option = any [o for o in OPTIONS.choices() if o != self.my_vote]
+        db.CastVote(self.__id__, new_option)
+        self.RefreshView()
+
+    atomic action RetractVote:
+        require self.poll_open
+        require self.my_vote != None
+        db.RemoveVote(self.__id__)
+        self.RefreshView()
+
+    atomic fair action RefreshPollStatus:
+        require self.poll_open and db.status == Status.Closed
+        self.RefreshView()
+
+
+# ─── Creator (poll owner) ────────────────────────────────────────────
+# The creator can close the poll. Not a voter in this model.
+
+role Creator:
+    action Init:
+        self.closed = False
+
+    atomic action ClosePoll:
+        require not self.closed
+        db.ClosePoll()
+        self.closed = True
+
+
+# ─── Initialization ──────────────────────────────────────────────────
+
+action Init:
+    db = Server()
+    creator = Creator()
+    voters = bag()
+    for i in range(NUM_VOTERS):
+        voters.add(Voter())
+
+
+# ─── Safety Assertions ───────────────────────────────────────────────
+
+# R1: After refresh, each voter's local my_vote matches the database.
+always assertion VoterViewConsistent:
+    for v in voters:
+        if v.__id__ in db.votes:
+            if v.my_vote != None and v.my_vote != db.votes[v.__id__]:
+                return False
+        else:
+            if v.my_vote != None and not v.poll_open:
+                return False
+    return True
+
+# R2: Once the poll is closed, the votes never change.
+transition assertion ClosedPollIsImmutable(before, after):
+    if before.db.status == Status.Closed:
+        return before.db.votes == after.db.votes
+    return True
+
+# R3: Once the poll is closed, it stays closed.
+transition assertion ClosedStaysClosed(before, after):
+    if before.db.status == Status.Closed:
+        return after.db.status == Status.Closed
+    return True

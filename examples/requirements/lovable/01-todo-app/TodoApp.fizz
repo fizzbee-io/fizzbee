@@ -1,0 +1,137 @@
+---
+deadlock_detection: false
+options:
+    max_concurrent_actions: 1
+---
+
+# Personal Todo App — Requirements Specification
+# Architecture: React (browser) + Supabase (database)
+# Single user — verifies CRUD, toggle, filters, clear-completed
+#
+# Modeled after: /Users/jp/src/my-simple-todo (Lovable-generated)
+# DB schema: id (UUID), text, done (bool), created_at (timestamp)
+# Ordering: ORDER BY created_at ASC — modeled as list insertion order
+
+MAX_ITEMS = 3
+
+# IDs: nominal symmetric — like UUIDs, only equality matters
+IDS = symmetry.nominal(name="id", limit=MAX_ITEMS)
+
+# Texts: interchangeable task descriptions — specific wording doesn't affect behavior
+# Using choices() rather than materialize=True: avoids spurious branching on first add
+TEXTS = symmetry.nominal(name="task", limit=2)
+
+Filter = enum("All", "Pending", "Completed")
+
+
+# ─── Server (Database) ───────────────────────────────────────────────
+# Ground truth. Supabase Postgres with RLS.
+# Stored as a list to preserve insertion order (ORDER BY created_at ASC).
+
+role Server:
+    action Init:
+        self.todos = []
+
+    atomic func AddTodo(id, text):
+        self.todos = self.todos + [record(id=id, text=text, done=False)]
+
+    atomic func ToggleTodo(id):
+        updated = []
+        for t in self.todos:
+            if t.id == id:
+                updated = updated + [record(id=id, text=t.text, done=not t.done)]
+            else:
+                updated = updated + [t]
+        self.todos = updated
+
+    atomic func DeleteTodo(id):
+        self.todos = [t for t in self.todos if t.id != id]
+
+    atomic func ClearCompleted():
+        self.todos = [t for t in self.todos if not t.done]
+
+
+# ─── User (Human + Browser) ──────────────────────────────────────────
+# React frontend. Holds a filtered view refreshed after each mutation.
+# Filter is client-side state; view is derived from DB + filter.
+
+role User:
+    action Init:
+        self.filter = Filter.All
+        self.view = []
+        self.completed_exist = False
+
+    atomic func RefreshView():
+        if self.filter == Filter.All:
+            self.view = db.todos
+        elif self.filter == Filter.Pending:
+            self.view = [t for t in db.todos if not t.done]
+        else:
+            self.view = [t for t in db.todos if t.done]
+        self.completed_exist = len([t for t in db.todos if t.done]) > 0
+
+    # ── CRUD ──
+
+    atomic action AddTodo:
+        id = IDS.fresh()
+        text = any TEXTS.choices()
+        db.AddTodo(id, text)
+        self.RefreshView()
+
+    atomic action ToggleTodo:
+        require len(self.view) > 0
+        index = any range(len(self.view))
+        item = self.view[index]
+        db.ToggleTodo(item.id)
+        self.RefreshView()
+
+    atomic action DeleteTodo:
+        require len(self.view) > 0
+        index = any range(len(self.view))
+        item = self.view[index]
+        db.DeleteTodo(item.id)
+        self.RefreshView()
+
+    # ── Filter & bulk ──
+
+    atomic fair action SwitchFilter:
+        require len(db.todos) > 0
+        new_filter = fair any [f for f in dir(Filter) if self.filter != f]
+        self.filter = new_filter
+        self.RefreshView()
+
+    atomic action ClearCompleted:
+        require self.completed_exist
+        db.ClearCompleted()
+        self.RefreshView()
+
+
+# ─── Initialization ──────────────────────────────────────────────────
+
+action Init:
+    db = Server()
+    user = User()
+
+
+# ─── Safety Assertions ───────────────────────────────────────────────
+
+# R1: The displayed list always matches the current filter applied to the DB.
+#     Catches filter-logic bugs across all possible action sequences.
+always assertion ViewMatchesFilter:
+    if user.filter == Filter.All:
+        expected = db.todos
+    elif user.filter == Filter.Pending:
+        expected = [t for t in db.todos if not t.done]
+    else:
+        expected = [t for t in db.todos if t.done]
+    return user.view == expected
+
+# R2: The "Clear Completed" button visibility stays in sync with the DB.
+always assertion CompletedFlagConsistent:
+    has_completed = len([t for t in db.todos if t.done]) > 0
+    return user.completed_exist == has_completed
+
+# R3: No duplicate todo IDs.
+always assertion UniqueTodoIds:
+    ids = [t.id for t in db.todos]
+    return len(ids) == len(set(ids))

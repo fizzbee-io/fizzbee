@@ -1,0 +1,101 @@
+---
+deadlock_detection: false
+options:
+    max_concurrent_actions: 1
+---
+
+# Booking App (Calendly-style) — Requirements Specification
+# Architecture: React (browser) + Supabase (database)
+#
+# A host creates available time slots. Guests browse slots and book one.
+# Race condition: two guests see the same slot as available, both try to book.
+# The database must prevent double-booking (only one guest per slot).
+#
+# New concepts: stale views, race condition, double-booking prevention
+
+NUM_GUESTS = 2
+NUM_SLOTS = 2
+
+SLOTS = symmetry.nominal(name="slot", limit=NUM_SLOTS)
+
+
+# ─── Server (Database) ───────────────────────────────────────────────
+# slots table: slot_id -> guest_id or None (None = available)
+
+role Server:
+    action Init:
+        self.slots = {}
+
+    atomic func BookSlot(slot_id, guest_id):
+        # RLS / server-side constraint: only book if available
+        require self.slots[slot_id] == None
+        self.slots[slot_id] = guest_id
+
+    atomic func CancelBooking(slot_id, guest_id):
+        require self.slots[slot_id] == guest_id
+        self.slots[slot_id] = None
+
+
+# ─── Guest (Human + Browser) ─────────────────────────────────────────
+# Sees a snapshot of available slots. By the time they click "Book",
+# another guest may have already taken the slot.
+
+symmetric role Guest:
+    action Init:
+        self.view_available = []
+        self.my_booking = None
+
+    atomic func RefreshView():
+        self.view_available = [s for s in db.slots if db.slots[s] == None]
+        # Check if I still have a booking
+        self.my_booking = None
+        for s in db.slots:
+            if db.slots[s] == self.__id__:
+                self.my_booking = s
+
+    # Guest sees available slots and picks one to book
+    atomic action BookSlot:
+        require self.my_booking == None
+        require len(self.view_available) > 0
+        slot = any self.view_available
+        db.BookSlot(slot, self.__id__)
+        self.RefreshView()
+
+    # Guest cancels their existing booking
+    atomic action CancelBooking:
+        require self.my_booking != None
+        db.CancelBooking(self.my_booking, self.__id__)
+        self.RefreshView()
+
+    # Guest refreshes their browser to see latest availability
+    atomic fair action Refresh:
+        self.RefreshView()
+
+
+# ─── Initialization ──────────────────────────────────────────────────
+# Host creates slots, then guests join. Slot creation is setup, not ongoing behavior.
+
+action Init:
+    db = Server()
+    for i in range(NUM_SLOTS):
+        slot_id = SLOTS.fresh()
+        db.slots[slot_id] = None
+    guests = bag()
+    for i in range(NUM_GUESTS):
+        guests.add(Guest())
+
+
+# ─── Safety Assertions ───────────────────────────────────────────────
+
+# R1: Each slot has at most one guest assigned.
+always assertion NoDoubleBooking:
+    booked_guests = [db.slots[s] for s in db.slots if db.slots[s] != None]
+    return len(booked_guests) == len(set(booked_guests))
+
+# R2: A guest holds at most one booking at a time.
+always assertion OneBookingPerGuest:
+    for g in guests:
+        count = len([s for s in db.slots if db.slots[s] == g.__id__])
+        if count > 1:
+            return False
+    return True

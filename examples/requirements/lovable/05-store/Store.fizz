@@ -1,0 +1,116 @@
+---
+deadlock_detection: false
+options:
+    max_concurrent_actions: 1
+---
+
+# Simple Store / Inventory — Requirements Specification
+# Architecture: React (browser) + Supabase (database)
+#
+# A store has products with limited stock. Multiple buyers browse
+# and purchase items. Race condition: two buyers see stock=1, both
+# click "Buy" — only one should succeed.
+#
+# New concepts: quantity constraints, overselling prevention
+
+NUM_BUYERS = 2
+NUM_PRODUCTS = 2
+MAX_STOCK = 2
+
+PRODUCTS = symmetry.nominal(name="prod", limit=NUM_PRODUCTS)
+ORDER_IDS = symmetry.nominal(name="order", limit=4)
+
+
+# ─── Server (Database) ───────────────────────────────────────────────
+# products table: product_id -> stock (int)
+# orders table: list of records (order_id, product_id, buyer_id)
+
+role Server:
+    action Init:
+        self.products = {}
+        self.orders = []
+
+    atomic func Purchase(order_id, product_id, buyer_id):
+        # Server-side constraint: only sell if in stock
+        require self.products[product_id] > 0
+        self.products[product_id] = self.products[product_id] - 1
+        self.orders = self.orders + [record(id=order_id, product=product_id, buyer=buyer_id)]
+
+    atomic func Restock(product_id, qty):
+        self.products[product_id] = self.products[product_id] + qty
+
+
+# ─── Buyer (Human + Browser) ─────────────────────────────────────────
+# Sees product listing with stock counts (possibly stale).
+
+symmetric role Buyer:
+    action Init:
+        self.view_stock = {}
+        self.my_orders = []
+
+    atomic func RefreshView():
+        self.view_stock = db.products
+        self.my_orders = [o for o in db.orders if o.buyer == self.__id__]
+
+    atomic action BuyProduct:
+        # Buyer sees items in stock
+        available = [p for p in self.view_stock if self.view_stock[p] > 0]
+        require len(available) > 0
+        product = any available
+        order_id = ORDER_IDS.fresh()
+        db.Purchase(order_id, product, self.__id__)
+        self.RefreshView()
+
+    atomic fair action Refresh:
+        self.RefreshView()
+
+
+# ─── Admin (store owner) ─────────────────────────────────────────────
+# Can restock products.
+
+role Admin:
+    action Init:
+        pass
+
+    atomic action Restock:
+        available_products = [p for p in db.products]
+        require len(available_products) > 0
+        product = any available_products
+        require db.products[product] < MAX_STOCK
+        db.Restock(product, 1)
+
+
+# ─── Initialization ──────────────────────────────────────────────────
+
+action Init:
+    db = Server()
+    # Create products with initial stock
+    for i in range(NUM_PRODUCTS):
+        pid = PRODUCTS.fresh()
+        db.products[pid] = 1
+    admin = Admin()
+    buyers = bag()
+    for i in range(NUM_BUYERS):
+        buyers.add(Buyer())
+
+
+# ─── Safety Assertions ───────────────────────────────────────────────
+
+# R1: Stock never goes negative (no overselling).
+always assertion NoNegativeStock:
+    for p in db.products:
+        if db.products[p] < 0:
+            return False
+    return True
+
+# R2: Stock never exceeds MAX_STOCK.
+always assertion StockNotOverMax:
+    for p in db.products:
+        if db.products[p] > MAX_STOCK:
+            return False
+    return True
+
+# R3: Each order has a unique ID.
+always assertion UniqueOrderIds:
+    ids = [o.id for o in db.orders]
+    return len(ids) == len(set(ids))

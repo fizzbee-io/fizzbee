@@ -1,0 +1,151 @@
+---
+deadlock_detection: false
+options:
+    max_concurrent_actions: 1
+---
+
+# Approval Workflow — Requirements Specification
+# Architecture: React (browser) + Supabase (database)
+#
+# A submitter creates requests that go through an approval pipeline:
+#   Draft -> Submitted -> Approved / Rejected
+# Rejected requests can be revised and resubmitted.
+# Only the approver can approve/reject. Only the submitter can submit/revise.
+#
+# New concepts: multi-step state machine, role separation, resubmit loops
+
+MAX_REQUESTS = 2
+
+IDS = symmetry.nominal(name="req", limit=MAX_REQUESTS)
+
+Status = enum("Draft", "Submitted", "Approved", "Rejected")
+
+
+# ─── Server (Database) ───────────────────────────────────────────────
+# requests table: list of records (id, status)
+
+role Server:
+    action Init:
+        self.requests = []
+
+    atomic func CreateRequest(id):
+        self.requests = self.requests + [record(id=id, status=Status.Draft)]
+
+    atomic func UpdateStatus(req_id, from_status, to_status):
+        # Guard: only transition from expected status
+        updated = []
+        found = False
+        for r in self.requests:
+            if r.id == req_id and r.status == from_status and not found:
+                updated = updated + [record(id=r.id, status=to_status)]
+                found = True
+            else:
+                updated = updated + [r]
+        require found
+        self.requests = updated
+
+
+# ─── Submitter ────────────────────────────────────────────────────────
+# Creates requests, submits them, revises rejected ones.
+
+role Submitter:
+    action Init:
+        self.view = []
+
+    atomic func RefreshView():
+        self.view = db.requests
+
+    atomic action CreateRequest:
+        id = IDS.fresh()
+        db.CreateRequest(id)
+        self.RefreshView()
+
+    atomic action SubmitRequest:
+        drafts = [r for r in self.view if r.status == Status.Draft]
+        require len(drafts) > 0
+        req = any drafts
+        db.UpdateStatus(req.id, Status.Draft, Status.Submitted)
+        self.RefreshView()
+
+    atomic action ReviseAndResubmit:
+        rejected = [r for r in self.view if r.status == Status.Rejected]
+        require len(rejected) > 0
+        req = any rejected
+        # Revise (back to Draft, then immediately Submit)
+        db.UpdateStatus(req.id, Status.Rejected, Status.Submitted)
+        self.RefreshView()
+
+    atomic fair action Refresh:
+        self.RefreshView()
+
+
+# ─── Approver ─────────────────────────────────────────────────────────
+# Reviews submitted requests and approves or rejects them.
+
+role Approver:
+    action Init:
+        self.view = []
+
+    atomic func RefreshView():
+        self.view = db.requests
+
+    atomic action ApproveRequest:
+        pending = [r for r in self.view if r.status == Status.Submitted]
+        require len(pending) > 0
+        req = any pending
+        db.UpdateStatus(req.id, Status.Submitted, Status.Approved)
+        self.RefreshView()
+
+    atomic action RejectRequest:
+        pending = [r for r in self.view if r.status == Status.Submitted]
+        require len(pending) > 0
+        req = any pending
+        db.UpdateStatus(req.id, Status.Submitted, Status.Rejected)
+        self.RefreshView()
+
+    atomic fair action Refresh:
+        self.RefreshView()
+
+
+# ─── Initialization ──────────────────────────────────────────────────
+
+action Init:
+    db = Server()
+    submitter = Submitter()
+    approver = Approver()
+
+
+# ─── Safety Assertions ───────────────────────────────────────────────
+
+# R1: Valid status transitions only.
+#     Draft -> Submitted -> {Approved, Rejected}
+#     Rejected -> Submitted (resubmit)
+#     No other transitions are possible.
+transition assertion ValidTransitions(before, after):
+    for i in range(len(after.db.requests)):
+        if i < len(before.db.requests):
+            old_status = before.db.requests[i].status
+            new_status = after.db.requests[i].status
+            if old_status != new_status:
+                # Check allowed transitions
+                if old_status == Status.Draft and new_status == Status.Submitted:
+                    pass
+                elif old_status == Status.Submitted and new_status == Status.Approved:
+                    pass
+                elif old_status == Status.Submitted and new_status == Status.Rejected:
+                    pass
+                elif old_status == Status.Rejected and new_status == Status.Submitted:
+                    pass
+                else:
+                    return False
+    return True
+
+# R2: Approved requests are final — they never change status.
+transition assertion ApprovedIsFinal(before, after):
+    for i in range(len(before.db.requests)):
+        if before.db.requests[i].status == Status.Approved:
+            if i >= len(after.db.requests):
+                return False
+            if after.db.requests[i].status != Status.Approved:
+                return False
+    return True

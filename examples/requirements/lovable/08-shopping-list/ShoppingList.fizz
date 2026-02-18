@@ -1,0 +1,135 @@
+---
+deadlock_detection: false
+options:
+    max_concurrent_actions: 1
+---
+
+# Shared Shopping List — Requirements Specification
+# Architecture: React (browser) + Supabase (database)
+#
+# Two household members share a shopping list. Both can add items and
+# check them off as purchased. Race condition: both see "Milk" unchecked,
+# both check it off — should result in checked once, not an error.
+# An item checked by one user should not be "unchecked" by the other.
+#
+# New concepts: collaborative editing, idempotent check-off, concurrent mutation
+
+NUM_USERS = 2
+MAX_ITEMS = 2
+
+IDS = symmetry.nominal(name="item", limit=MAX_ITEMS)
+NAMES = symmetry.nominal(name="name", limit=2)
+
+
+# ─── Server (Database) ───────────────────────────────────────────────
+# items table: list of records preserving insertion order
+# Each item: id, name, checked (bool), checked_by (user or "")
+
+role Server:
+    action Init:
+        self.items = []
+
+    atomic func AddItem(id, name):
+        self.items = self.items + [record(id=id, name=name, checked=False, checked_by="")]
+
+    atomic func CheckOffItem(item_id, user_id):
+        # Idempotent: checking an already-checked item is a no-op
+        updated = []
+        for item in self.items:
+            if item.id == item_id and not item.checked:
+                updated = updated + [record(id=item.id, name=item.name, checked=True, checked_by=user_id)]
+            else:
+                updated = updated + [item]
+        self.items = updated
+
+    atomic func UncheckItem(item_id):
+        updated = []
+        for item in self.items:
+            if item.id == item_id and item.checked:
+                updated = updated + [record(id=item.id, name=item.name, checked=False, checked_by="")]
+            else:
+                updated = updated + [item]
+        self.items = updated
+
+    atomic func RemoveItem(item_id):
+        self.items = [item for item in self.items if item.id != item_id]
+
+    atomic func ClearChecked():
+        self.items = [item for item in self.items if not item.checked]
+
+
+# ─── User (Human + Browser) ──────────────────────────────────────────
+# Each user sees a snapshot of the list. Views may be stale.
+
+symmetric role User:
+    action Init:
+        self.view = []
+
+    atomic func RefreshView():
+        self.view = db.items
+
+    atomic action AddItem:
+        id = IDS.fresh()
+        name = any NAMES.choices()
+        db.AddItem(id, name)
+        self.RefreshView()
+
+    atomic action CheckOffItem:
+        unchecked = [item for item in self.view if not item.checked]
+        require len(unchecked) > 0
+        item = any unchecked
+        db.CheckOffItem(item.id, self.__id__)
+        self.RefreshView()
+
+    atomic action UncheckItem:
+        checked = [item for item in self.view if item.checked]
+        require len(checked) > 0
+        item = any checked
+        db.UncheckItem(item.id)
+        self.RefreshView()
+
+    atomic action RemoveItem:
+        require len(self.view) > 0
+        item = any self.view
+        db.RemoveItem(item.id)
+        self.RefreshView()
+
+    atomic action ClearChecked:
+        has_checked = len([item for item in self.view if item.checked]) > 0
+        require has_checked
+        db.ClearChecked()
+        self.RefreshView()
+
+    atomic fair action Refresh:
+        self.RefreshView()
+
+
+# ─── Initialization ──────────────────────────────────────────────────
+
+action Init:
+    db = Server()
+    users = bag()
+    for i in range(NUM_USERS):
+        users.add(User())
+
+
+# ─── Safety Assertions ───────────────────────────────────────────────
+
+# R1: No duplicate item IDs.
+always assertion UniqueItemIds:
+    ids = [item.id for item in db.items]
+    return len(ids) == len(set(ids))
+
+# R2: A checked item records who checked it off.
+always assertion CheckedHasAuthor:
+    for item in db.items:
+        if item.checked and item.checked_by == "":
+            return False
+    return True
+
+# R3: An unchecked item has no author.
+always assertion UncheckedHasNoAuthor:
+    for item in db.items:
+        if not item.checked and item.checked_by != "":
+            return False
+    return True

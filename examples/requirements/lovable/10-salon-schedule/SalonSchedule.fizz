@@ -1,0 +1,157 @@
+---
+deadlock_detection: false
+options:
+    max_concurrent_actions: 1
+---
+
+# Salon Booking with Schedules and Time
+# Architecture: React (browser) + Supabase (database)
+#
+# Models:
+#   - Employee recurring schedules (day-of-week × time-slot)
+#   - Slot generation from schedule (computed when customer views)
+#   - Passage of time (clock phases within a day, days advancing)
+#   - Past slots can't be booked or cancelled
+#   - Schedule changes only affect future slot generation (existing bookings remain)
+#
+# Time model:
+#   - Calendar day: interval symmetry (only relative distances matter)
+#     No MAX_DAYS needed — states normalize by shifting.
+#   - Day of week: plain int with manual % (no symmetry reduction needed)
+#   - Time phase within day: plain int (BETWEEN=0, SLOT_1=1, ..., SLOT_N=N)
+#     PRE and POST are merged into a single BETWEEN phase (no slot active).
+#
+# Schedule encoding:
+#   (day_of_week, slot_index) → dow * SLOTS_PER_DAY + slot_idx
+
+# ─── Configuration ───────────────────────────────────────────────────
+
+DAYS_IN_WEEK = 2        # 2-day week: different schedules per day
+SLOTS_PER_DAY = 2       # bookable time slots per day
+BOOKING_WINDOW = 1      # can book for today only (1) or today+tomorrow (2)
+
+# Phases per day: 0=BETWEEN (no slot active), 1..SLOTS_PER_DAY = during slot
+# PRE+POST merged: after last slot, clock advances to next day's BETWEEN.
+
+# limit = BOOKING_WINDOW + 1: need +1 slack because AdvanceClock temporarily
+# creates a 2nd day value (clock_day + 1) before cleanup removes old references.
+DAYS = symmetry.interval(name="day", limit=BOOKING_WINDOW + 1)
+
+NUM_CUSTOMERS = 2
+
+APPT_IDS = symmetry.nominal(name="appt", limit=3)
+
+
+# ─── Server (Database) ───────────────────────────────────────────────
+
+role Server:
+    action Init:
+        # schedule: set of encoded codes (dow * SLOTS_PER_DAY + slot)
+        self.schedule = set()
+        # appointments: list of record(id, cal_day, slot, customer)
+        self.appointments = []
+
+    atomic func ToggleSchedule(schedule_code):
+        if schedule_code in self.schedule:
+            self.schedule.discard(schedule_code)
+        else:
+            self.schedule.add(schedule_code)
+
+    atomic func BookAppointment(appt_id, cal_day, slot_idx, dow_idx, cust_id):
+        require dow_idx * SLOTS_PER_DAY + slot_idx in self.schedule
+        require cal_day > clock_day or (cal_day == clock_day and slot_idx + 1 > clock_phase)
+        require all([not (a.cal_day == cal_day and a.slot == slot_idx) for a in self.appointments])
+        self.appointments = self.appointments + [record(id=appt_id, cal_day=cal_day, slot=slot_idx, customer=cust_id)]
+
+    atomic func CancelAppointment(appt_id):
+        require all([a.cal_day > clock_day or (a.cal_day == clock_day and a.slot + 1 > clock_phase) for a in self.appointments if a.id == appt_id])
+        self.appointments = [a for a in self.appointments if a.id != appt_id]
+
+    atomic func CleanupPast():
+        self.appointments = [a for a in self.appointments if a.cal_day >= clock_day]
+
+
+# ─── Employee ────────────────────────────────────────────────────────
+
+role Employee:
+    action Init:
+        pass
+
+    atomic action ToggleScheduleSlot:
+        schedule_code = any range(DAYS_IN_WEEK * SLOTS_PER_DAY)
+        db.ToggleSchedule(schedule_code)
+
+
+# ─── Customer (Human + Browser) ──────────────────────────────────────
+# Two customers competing for the same slot is the core race condition.
+
+symmetric role Customer:
+    action Init:
+        self.view_slots = []
+        self.my_appts = []
+
+    atomic func RefreshView():
+        self.view_slots = [record(cal_day=clock_day + d, slot=s, dow_idx=(clock_dow + d) % DAYS_IN_WEEK)
+            for d in range(BOOKING_WINDOW)
+            for s in range(SLOTS_PER_DAY)
+            if (clock_dow + d) % DAYS_IN_WEEK * SLOTS_PER_DAY + s in db.schedule
+            if d > 0 or s + 1 > clock_phase
+            if all([not (a.cal_day == clock_day + d and a.slot == s) for a in db.appointments])]
+        self.my_appts = [a for a in db.appointments if a.customer == self.__id__]
+
+    atomic action BookSlot:
+        chosen = any self.view_slots
+        appt_id = APPT_IDS.fresh()
+        db.BookAppointment(appt_id, chosen.cal_day, chosen.slot, chosen.dow_idx, self.__id__)
+        self.RefreshView()
+
+    atomic action CancelMyAppointment:
+        appt = any [a for a in self.my_appts if a.cal_day > clock_day or (a.cal_day == clock_day and a.slot + 1 > clock_phase)]
+        db.CancelAppointment(appt.id)
+        self.RefreshView()
+
+    atomic fair action Refresh:
+        self.RefreshView()
+
+
+# ─── Clock ───────────────────────────────────────────────────────────
+
+atomic fair action AdvanceClock:
+    if clock_phase < SLOTS_PER_DAY:
+        clock_phase = clock_phase + 1
+    else:
+        clock_day = clock_day + 1
+        clock_dow = (clock_dow + 1) % DAYS_IN_WEEK
+        clock_phase = 0
+        db.CleanupPast()
+
+
+# ─── Initialization ──────────────────────────────────────────────────
+
+action Init:
+    db = Server()
+    emp = Employee()
+    customers = bag()
+    for i in range(NUM_CUSTOMERS):
+        customers.add(Customer())
+    clock_day = DAYS.min()
+    clock_dow = 0
+    clock_phase = 0
+
+
+# ─── Safety Assertions ───────────────────────────────────────────────
+
+always assertion NoDoubleBooking:
+    for i in range(len(db.appointments)):
+        for j in range(i + 1, len(db.appointments)):
+            if db.appointments[i].cal_day == db.appointments[j].cal_day:
+                if db.appointments[i].slot == db.appointments[j].slot:
+                    return False
+    return True
+
+# All appointments are in the future (past appointments get cleaned up).
+always assertion NoPastAppointments:
+    for a in db.appointments:
+        if a.cal_day < clock_day:
+            return False
+    return True
