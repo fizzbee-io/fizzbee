@@ -1,0 +1,218 @@
+---
+deadlock_detection: false
+options:
+    max_concurrent_actions: 1
+---
+
+# Salon Booking App — Requirements Specification
+# Architecture: React (browser) + Supabase (database)
+#
+# Three personas:
+#   Owner     — add/remove employees, cancel any appointment
+#   Employee  — add/remove own time slots, cancel own appointments (has own browser view)
+#   Customer  — browse available slots, book, cancel own bookings (has own browser view)
+#
+# Race conditions:
+#   - Two customers book the same slot (only one should succeed)
+#   - Customer books while owner removes that employee
+#   - Employee removes a slot while customer is booking it
+#
+# Employees are symmetric roles dynamically created/removed by the Owner.
+# Each employee has their own browser session with a stale view.
+
+NUM_EMPLOYEES = 2
+NUM_CUSTOMERS = 2
+MAX_SLOTS = 2
+MAX_APPTS = 2
+
+SLOT_IDS = symmetry.nominal(name="slot", limit=MAX_SLOTS)
+APPT_IDS = symmetry.nominal(name="appt", limit=MAX_APPTS)
+
+
+# ─── Server (Database) ───────────────────────────────────────────────
+# employees table: set of active employee IDs
+# slots table: slot_id -> employee_id (available, unbooked)
+# appointments table: list of record(id, slot, employee, customer)
+
+role Server:
+    action Init:
+        self.employees = set()
+        self.slots = {}
+        self.appointments = []
+
+    atomic func ActivateEmployee(emp_id):
+        self.employees.add(emp_id)
+
+    atomic func DeactivateEmployee(emp_id):
+        require emp_id in self.employees
+        self.employees.discard(emp_id)
+        # Remove their available slots
+        self.slots = {sid: self.slots[sid] for sid in self.slots if self.slots[sid] != emp_id}
+        # Cancel their appointments (slots not restored — employee is gone)
+        self.appointments = [a for a in self.appointments if a.employee != emp_id]
+
+    atomic func AddSlot(slot_id, emp_id):
+        require emp_id in self.employees
+        self.slots[slot_id] = emp_id
+
+    atomic func RemoveSlot(slot_id):
+        require slot_id in self.slots
+        self.slots.pop(slot_id)
+
+    atomic func BookAppointment(appt_id, slot_id, cust_id):
+        require slot_id in self.slots
+        emp_id = self.slots[slot_id]
+        require emp_id in self.employees
+        self.slots.pop(slot_id)
+        self.appointments = self.appointments + [record(id=appt_id, slot=slot_id, employee=emp_id, customer=cust_id)]
+
+    atomic func CancelAppointment(appt_id):
+        # Restore slot to available if employee is still active
+        for a in self.appointments:
+            if a.id == appt_id:
+                if a.employee in self.employees:
+                    self.slots[a.slot] = a.employee
+        self.appointments = [a for a in self.appointments if a.id != appt_id]
+
+
+# ─── Owner ────────────────────────────────────────────────────────────
+# Manages the business: hires/fires employees, can cancel any appointment.
+
+role Owner:
+    action Init:
+        pass
+
+    atomic action AddEmployee:
+        require len(employees) < NUM_EMPLOYEES
+        emp = Employee()
+        employees.add(emp)
+        db.ActivateEmployee(emp.__id__)
+
+    atomic action RemoveEmployee:
+        require len(employees) > 0
+        emp = any employees
+        db.DeactivateEmployee(emp.__id__)
+        employees = bag([e for e in employees if e.__id__ != emp.__id__])
+
+    atomic action CancelAnyAppointment:
+        require len(db.appointments) > 0
+        appt = any db.appointments
+        db.CancelAppointment(appt.id)
+
+
+# ─── Employee (Browser Session) ──────────────────────────────────────
+# Each employee has their own browser with a stale view of their schedule.
+# Dynamically created/removed by the Owner.
+
+symmetric role Employee:
+    action Init:
+        self.view_slots = {}
+        self.my_appts = []
+
+    atomic func RefreshView():
+        self.view_slots = {sid: db.slots[sid] for sid in db.slots if db.slots[sid] == self.__id__}
+        self.my_appts = [a for a in db.appointments if a.employee == self.__id__]
+
+    # Employee opens up a time slot on their schedule
+    # Uses stale view: employee may try to add a slot after being fired
+    atomic action AddSlot:
+        slot_id = SLOT_IDS.fresh()
+        db.AddSlot(slot_id, self.__id__)
+        self.RefreshView()
+
+    # Employee removes one of their own available slots (from stale view)
+    atomic action RemoveSlot:
+        require len(self.view_slots) > 0
+        slot = any self.view_slots.keys()
+        db.RemoveSlot(slot)
+        self.RefreshView()
+
+    # Employee cancels one of their own appointments (from stale view)
+    atomic action CancelOwnAppointment:
+        require len(self.my_appts) > 0
+        appt = any self.my_appts
+        db.CancelAppointment(appt.id)
+        self.RefreshView()
+
+    # Employee refreshes to see latest schedule
+    atomic fair action Refresh:
+        if self.__id__ in db.employees:
+            self.RefreshView()
+
+
+# ─── Customer (Human + Browser) ──────────────────────────────────────
+# Browses available slots across all employees. View can be stale.
+# Two customers competing for the same slot is the core race condition.
+
+symmetric role Customer:
+    action Init:
+        self.view_slots = {}
+        self.my_appts = []
+
+    atomic func RefreshView():
+        self.view_slots = db.slots
+        self.my_appts = [a for a in db.appointments if a.customer == self.__id__]
+
+    # Customer picks an available slot and books it
+    atomic action BookSlot:
+        require len(self.view_slots) > 0
+        slot = any self.view_slots.keys()
+        appt_id = APPT_IDS.fresh()
+        db.BookAppointment(appt_id, slot, self.__id__)
+        self.RefreshView()
+
+    # Customer cancels one of their own appointments
+    atomic action CancelMyAppointment:
+        require len(self.my_appts) > 0
+        appt = any self.my_appts
+        db.CancelAppointment(appt.id)
+        self.RefreshView()
+
+    # Customer refreshes to see latest availability
+    atomic fair action Refresh:
+        self.RefreshView()
+
+
+# ─── Initialization ──────────────────────────────────────────────────
+
+action Init:
+    db = Server()
+    owner = Owner()
+    employees = bag()
+    customers = bag()
+    for i in range(NUM_CUSTOMERS):
+        customers.add(Customer())
+
+
+# ─── Safety Assertions ───────────────────────────────────────────────
+
+# R1: No double-booking — a slot appears in at most one appointment.
+always assertion NoDoubleBooking:
+    booked_slots = [a.slot for a in db.appointments]
+    return len(booked_slots) == len(set(booked_slots))
+
+# R2: A booked slot is never also listed as available.
+always assertion BookedNotAvailable:
+    for a in db.appointments:
+        if a.slot in db.slots:
+            return False
+    return True
+
+# R3: All appointments reference active employees.
+always assertion AppointmentsHaveActiveEmployee:
+    for a in db.appointments:
+        if a.employee not in db.employees:
+            return False
+    return True
+
+# R4: All available slots belong to active employees.
+always assertion SlotsHaveActiveEmployee:
+    for sid in db.slots:
+        if db.slots[sid] not in db.employees:
+            return False
+    return True
+
+# R5: Unique appointment IDs.
+always assertion UniqueAppointmentIds:
+    ids = [a.id for a in db.appointments]
+    return len(ids) == len(set(ids))
