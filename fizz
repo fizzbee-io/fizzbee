@@ -28,11 +28,147 @@ if [[ $# -gt 0 ]]; then
       }
       exit 0
       ;;
+
+    install-skills)
+      shift  # remove subcommand from $@
+
+      _FIZZ_REPO="fizzbee-io/fizzbee"
+      _FIZZ_BRANCH="main"
+      _FIZZ_RAW="https://raw.githubusercontent.com/${_FIZZ_REPO}/${_FIZZ_BRANCH}"
+      _FIZZ_SKILLS_DIR="${HOME}/.claude/skills"
+      _FIZZ_DOCS_DIR="${_FIZZ_SKILLS_DIR}/fizzbee-docs"
+      _FIZZ_SKILLS=(fizz-spec fizz-check fizz-debug fizz-mbt)
+      _FIZZ_DOCS=(
+        "examples/references/LANGUAGE_REFERENCE.md"
+        "examples/references/GOTCHAS.md"
+        "examples/references/PERFORMANCE_GUIDE.md"
+        "examples/references/VERIFICATION_GUIDE.md"
+        "examples/references/README.md"
+      )
+      _FIZZ_EXAMPLE_NAMES=(
+        "01-counter.fizz"
+        "09-assertions.fizz"
+        "11-roles.fizz"
+        "13-two-phase-commit.fizz"
+        "14-fault-injection.fizz"
+        "16-symmetry.fizz"
+      )
+      _FIZZ_EXAMPLE_PATHS=(
+        "examples/references/01-02-atomic-action/Counter.fizz"
+        "examples/references/09-01-always-assertion/Counter.fizz"
+        "examples/references/11-01-simple-role/Account.fizz"
+        "examples/references/13-02-01-two-phase-commit/TwoPhaseCommit.fizz"
+        "examples/references/14-01-crash-on-yield/CrashOnYield.fizz"
+        "examples/references/16-05-nominal-symmetry/NominalSymmetry.fizz"
+      )
+
+      if command -v curl &>/dev/null; then
+        _DL="curl -fsSL"
+      elif command -v wget &>/dev/null; then
+        _DL="wget -qO-"
+      else
+        echo "Error: curl or wget is required to install skills" >&2
+        exit 1
+      fi
+
+      _do_skills_check() {
+        echo "Would install to: ${_FIZZ_SKILLS_DIR}/"
+        echo ""
+        echo "Skills:"
+        for skill in "${_FIZZ_SKILLS[@]}"; do
+          if [[ -f "${_FIZZ_SKILLS_DIR}/${skill}/SKILL.md" ]]; then
+            echo "  ↻ ${skill}  (already installed, would update)"
+          else
+            echo "  + ${skill}  (new)"
+          fi
+        done
+        echo ""
+        echo "Reference docs (${_FIZZ_DOCS_DIR}/):"
+        for doc in "${_FIZZ_DOCS[@]}"; do
+          name=$(basename "$doc")
+          if [[ -f "${_FIZZ_DOCS_DIR}/${name}" ]]; then
+            echo "  ↻ ${name}  (already installed, would update)"
+          else
+            echo "  + ${name}  (new)"
+          fi
+        done
+      }
+
+      _do_skills_remove() {
+        echo "Removing FizzBee Claude skills and docs..."
+        for skill in "${_FIZZ_SKILLS[@]}"; do
+          if [[ -d "${_FIZZ_SKILLS_DIR}/${skill}" ]]; then
+            rm -rf "${_FIZZ_SKILLS_DIR:?}/${skill}"
+            echo "  ✗ ${skill}"
+          else
+            echo "  - ${skill}  (not installed)"
+          fi
+        done
+        if [[ -d "${_FIZZ_DOCS_DIR}" ]]; then
+          rm -rf "${_FIZZ_DOCS_DIR:?}"
+          echo "  ✗ fizzbee-docs/"
+        else
+          echo "  - fizzbee-docs/  (not installed)"
+        fi
+        echo ""
+        echo "Done."
+      }
+
+      _do_skills_install() {
+        mkdir -p "${_FIZZ_SKILLS_DIR}" "${_FIZZ_DOCS_DIR}" "${_FIZZ_DOCS_DIR}/examples"
+
+        echo "Installing FizzBee Claude skills to ${_FIZZ_SKILLS_DIR}/"
+        echo ""
+        for skill in "${_FIZZ_SKILLS[@]}"; do
+          mkdir -p "${_FIZZ_SKILLS_DIR}/${skill}"
+          $_DL "${_FIZZ_RAW}/.claude/skills/${skill}/SKILL.md" \
+            > "${_FIZZ_SKILLS_DIR}/${skill}/SKILL.md"
+          echo "  ✓ ${skill}"
+        done
+
+        echo ""
+        echo "Installing reference docs to ${_FIZZ_DOCS_DIR}/"
+        echo ""
+        for doc in "${_FIZZ_DOCS[@]}"; do
+          name=$(basename "$doc")
+          $_DL "${_FIZZ_RAW}/${doc}" > "${_FIZZ_DOCS_DIR}/${name}"
+          echo "  ✓ ${name}"
+        done
+
+        echo ""
+        echo "Installing example specs to ${_FIZZ_DOCS_DIR}/examples/"
+        echo ""
+        for i in "${!_FIZZ_EXAMPLE_NAMES[@]}"; do
+          $_DL "${_FIZZ_RAW}/${_FIZZ_EXAMPLE_PATHS[$i]}" \
+            > "${_FIZZ_DOCS_DIR}/examples/${_FIZZ_EXAMPLE_NAMES[$i]}"
+          echo "  ✓ ${_FIZZ_EXAMPLE_NAMES[$i]}"
+        done
+
+        echo ""
+        echo "Done. Skills are now available in all Claude Code sessions."
+        echo ""
+        echo "To use:"
+        echo "  - Claude Code will auto-invoke the right skill based on context"
+        echo "  - Or invoke manually: /fizz-spec  /fizz-check  /fizz-debug  /fizz-mbt"
+        echo ""
+        echo "To update after upgrading fizzbee, run: fizz install-skills"
+      }
+
+      case "${1:-}" in
+        --check)   _do_skills_check ;;
+        --remove)  _do_skills_remove ;;
+        *)         _do_skills_install ;;
+      esac
+      exit 0
+      ;;
   esac
 fi
 
 usage() {
-  echo "Usage: $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--exploration_strategy dfs] [--trace-file tracefile | --trace tracestring] [--preinit-hook-file hookfile | --preinit-hook hookstring] [--copy-ast] [--no-copy-ast] [--output-dir directory] filename"
+  echo "Usage:"
+  echo "  $0 install-skills [--check | --remove]"
+  echo "  $0 mbt-scaffold [options] filename"
+  echo "  $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--exploration_strategy dfs] [--trace-file tracefile | --trace tracestring] [--preinit-hook-file hookfile | --preinit-hook hookstring] [--copy-ast] [--no-copy-ast] [--output-dir directory] filename"
   exit 1
 }
 
