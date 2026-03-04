@@ -118,6 +118,55 @@ curl -sL $(curl -s https://api.github.com/repos/fizzbee-io/fizzbee/releases/late
 
 </details>
 
+# AI Coding Assistant Skills
+
+FizzBee provides skills for AI coding assistants (Claude Code, Cursor, Gemini CLI, and other tools that support the [Agent Skills](https://agentskills.io) standard). The skills give your AI assistant built-in knowledge of the FizzBee language, how to run the model checker, how to debug specs, and how to write model-based tests — without you having to explain any of it.
+
+Four skills are included:
+
+| Skill | Auto-invoked when... |
+|---|---|
+| `fizz-spec` | Writing or editing `.fizz` specification files |
+| `fizz-check` | Verifying a spec or running the model checker |
+| `fizz-debug` | A spec fails, produces unexpected results, or is slow |
+| `fizz-mbt` | Writing Go adapter code alongside a `.fizz` spec |
+
+## Install Skills (one-time setup)
+
+If you installed fizzbee via brew, run:
+
+```bash
+fizz install-skills
+```
+
+This installs skills and reference docs to `~/.claude/skills/`, making them available across all your projects. To preview without making changes:
+
+```bash
+fizz install-skills --check
+```
+
+To remove:
+
+```bash
+fizz install-skills --remove
+```
+
+**Without a local fizzbee install**, you can use the standalone script instead:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/fizzbee-io/fizzbee/main/install-claude-skills.sh | bash
+```
+
+## Keeping Skills Up to Date
+
+Re-run `fizz install-skills` after upgrading fizzbee to get updated skills and docs:
+
+```bash
+brew upgrade fizzbee && fizz install-skills
+```
+
+Once installed, just work normally — your AI assistant will automatically use the right skill based on what you're doing. You can also invoke them explicitly: `/fizz-spec`, `/fizz-check`, `/fizz-debug`, `/fizz-mbt`.
+
 # Development
 
 ## Bazel build
