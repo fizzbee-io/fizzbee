@@ -230,8 +230,9 @@ Cross-role function calls can also be lost (message loss simulation) — model c
 4. **`require` ≠ assertion**: `require x >= 0` disables action; use `always assertion` for invariants
 5. **Lists break symmetry**: use `bag()` not `[]` to hold symmetric role instances
 6. **`any` on empty**: disables the action (no `require len > 0` needed)
-7. **Function calls**: can only call fizz functions from atomic context or inside roles; extract to variable before using in expressions
-8. **`None` works**: use `== None`, not `is None` (no `is` operator)
+7. **`any` keyword vs Python `any()` function**: `x = any([cond for ...])` is a parse error — `any` is the nondeterministic choice keyword. For assignments use `all([...])` or `len([x for x in xs if cond]) > 0`. In guards, `require all([not cond for ...])` is the idiomatic form.
+8. **Function calls**: can only call fizz functions from atomic context or inside roles; extract to variable before using in expressions
+9. **`None` works**: use `== None`, not `is None` (no `is` operator)
 
 ---
 
