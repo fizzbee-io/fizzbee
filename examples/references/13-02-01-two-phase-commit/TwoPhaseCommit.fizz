@@ -12,7 +12,7 @@ role Participant:
 
     func placehold():
         # Participant votes on transaction
-        vote = any ["accepted", "aborted"]
+        vote = oneof ["accepted", "aborted"]
         self.status = vote
         return self.status
 

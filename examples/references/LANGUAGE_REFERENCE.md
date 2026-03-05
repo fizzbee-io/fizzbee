@@ -129,7 +129,7 @@ After the frontmatter (or at the start if no frontmatter), the FizzBee specifica
 - `return` - Return from function/action
 - `pass` - No-op (explicitly enables action)
 - `require` - Guard clause (disables action if false)
-- `any` - Nondeterministic choice
+- `oneof` - Nondeterministic choice (preferred; `any` is deprecated alias)
 - `` `checkpoint` `` - Visualization breakpoint (backtick syntax)
 
 ### State and Scope
@@ -205,7 +205,7 @@ atomic fair action ProduceMessage:
 
 # Both modifiers - atomic, strongly fair
 atomic fair<strong> action SelectValue:
-    value = fair<strong> any options
+    value = fair<strong> oneof options
 ```
 
 **Common mistake**: Using `fair atomic action` instead of `atomic fair action` (syntax error)
@@ -296,7 +296,7 @@ action Example4:
 - Control flow: `if`, `elif`, `else`, `for`, `while`
 - Flow control: `break`, `continue`, `return`
 - Guards: `require`
-- Non-determinism: `any` (but the assignment `x = any ...` does enable)
+- Non-determinism: `oneof` / `any` (but the assignment `x = oneof ...` does enable)
 
 **Critical pitfall**:
 
@@ -1051,14 +1051,14 @@ action Process:
 Nondeterministically chooses from a collection:
 
 ```python
-# Choose any value
-value = any [1, 2, 3, 4, 5]
+# Choose one value
+value = oneof [1, 2, 3, 4, 5]
 
 # Choose with condition
-value = any [x for x in options if x != previous]
+value = oneof [x for x in options if x != previous]
 
 # Choose from range
-index = any range(10)
+index = oneof range(10)
 ```
 
 **Behavior**: Model checker explores all possible choices
@@ -1068,52 +1068,59 @@ index = any range(10)
 ```python
 atomic action ProcessLargeValues:
     # If all values are <= 10, this action is disabled
-    x = any [1, 2, 3, 4, 5] if x > 10
+    x = oneof [1, 2, 3, 4, 5] if x > 10
     # This line never executes
 ```
 
 **Use case**: Conditional action enabling based on available choices
 
-### Fairness with Any
+### Fairness with Oneof
 
 ```python
 # Fair choice (eventually tries all)
 fair action Choose:
-    value = fair any options
+    value = fair oneof options
 ```
 
 ### Concise vs Block Form
 
-`any` has two forms. **Prefer the concise form** — it keeps code flat and readable:
+`oneof` has two forms. **Prefer the concise form** — it keeps code flat and readable:
 
 ```python
 # ✅ Concise form (preferred): assigns and continues
-n = any nodes
+n = oneof nodes
 require status[n] == "active"
 status[n] = "done"
 
 # Block form: runs indented block for chosen value
-any n in nodes:
+oneof n in nodes:
     require status[n] == "active"
     status[n] = "done"
 ```
 
 Both are semantically equivalent. The block form is the older pattern; the concise form avoids unnecessary indentation.
 
-### Any vs Oneof
+### Oneof: Two Meanings
+
+`oneof` is used in two distinct but related ways:
 
 ```python
-# Any: chooses a value
-x = any [1, 2, 3]
+# 1. Choose a value from a collection (∃ — existential)
+x = oneof [1, 2, 3]          # picks one value, assigns it
 
-# Oneof: chooses a branch
+# 2. Choose a branch to execute (∨ — disjunction)
 oneof:
     x = 1
     x = 2
     x = 3
 ```
 
-**Difference**: `any` is an expression, `oneof` is a statement block
+Both mean "nondeterministically pick one". The syntax makes the semantics clear:
+- `x = oneof collection` → pick an element (existential choice)
+- `oneof:` block → pick a branch (disjunctive choice)
+
+**Note**: `any` is a deprecated alias for the existential form (`x = oneof collection`).
+It still works but emits a `DeprecationWarning`. Prefer `oneof`.
 
 ---
 
@@ -1437,7 +1444,7 @@ action Init:
         switches[k] = 'OFF'
 
 atomic action TurnOn:
-    key = any KEYS
+    key = oneof KEYS
     switches[key] = 'ON'
 ```
 
@@ -1621,11 +1628,11 @@ action Init:
     cache = {}
 
 atomic action Put:
-    id = any IDS.choices()  # existing IDs + one fresh
+    id = oneof IDS.choices()  # existing IDs + one fresh
     cache[id] = "data"
 ```
 
-`fresh()` allocates the smallest unused ID (canonical form). `choices()` returns all active values plus one fresh value if the limit allows -- use with `any` for nondeterministic selection. `choose()` returns a deterministic default value (like TLA+'s CHOOSE) -- use it when you need an initial value, not for nondeterministic selection.
+`fresh()` allocates the smallest unused ID (canonical form). `choices()` returns all active values plus one fresh value if the limit allows -- use with `oneof` for nondeterministic selection. `choose()` returns a deterministic default value (like TLA+'s CHOOSE) -- use it when you need an initial value, not for nondeterministic selection.
 
 **Reference**: [16-05-nominal-symmetry](16-05-nominal-symmetry/)
 
@@ -1668,7 +1675,7 @@ atomic action InsertBetween:
     # segments(after=v, before=v) filters to gaps in range.
     # Ordinal gaps are always non-empty (the domain is dense).
     gaps = TIMES.segments(after=t_start, before=t_end)
-    gap = any gaps
+    gap = oneof gaps
     t = gap.fresh()  # guaranteed: t_start < t < t_end
 ```
 
@@ -1737,7 +1744,7 @@ atomic action Place:
     positions.add(p)
 
 atomic action Advance:
-    p = any positions
+    p = oneof positions
     next_p = p + 1          # wraps: 4 + 1 = 0 on ring of 5
     if next_p not in positions:
         positions.remove(p)
@@ -1791,7 +1798,7 @@ Works with all symmetry types. For interval, values start at `start`: e.g., `sym
 
 #### Gotchas and Tips
 
-1. **`fresh()` is deterministic, not nondeterministic.** It always returns the canonical next value. For nondeterministic choice, use `any domain.choices()` (nominal/rotational) or `any domain.values()`.
+1. **`fresh()` is deterministic, not nondeterministic.** It always returns the canonical next value. For nondeterministic choice, use `oneof domain.choices()` (nominal/rotational) or `oneof domain.values()`.
 
 2. **Domain methods cannot be called from assertions.** The symmetry context is only available during action execution. Store values in state variables and check those in assertions instead.
 
@@ -1811,20 +1818,20 @@ Works with all symmetry types. For interval, values start at `start`: e.g., `sym
 
    | Use case | Method | Why |
    |:---|:---|:---|
-   | **Unique ID per entity** (UUID, primary key) | `id = DOMAIN.fresh()` | Deterministic, exactly one new value. No `any` needed. |
-   | **Pick from interchangeable pool** (text, color, category) | `v = any DOMAIN.choices()` | Explores existing values + one fresh. First call offers only 1 choice (the canonical fresh value), avoiding spurious branching. |
-   | **Fixed known set** (ring nodes, enum-like) | `materialize=True` + `any DOMAIN.values()` | All values exist upfront. `fresh()` is disallowed. |
+   | **Unique ID per entity** (UUID, primary key) | `id = DOMAIN.fresh()` | Deterministic, exactly one new value. No `oneof` needed. |
+   | **Pick from interchangeable pool** (text, color, category) | `v = oneof DOMAIN.choices()` | Explores existing values + one fresh. First call offers only 1 choice (the canonical fresh value), avoiding spurious branching. |
+   | **Fixed known set** (ring nodes, enum-like) | `materialize=True` + `oneof DOMAIN.values()` | All values exist upfront. `fresh()` is disallowed. |
 
    **Why prefer `choices()` over `materialize=True` + `values()` for pools?** With `materialize=True`, the first nondeterministic choice offers all N values even though they are all equivalent (symmetry would collapse them to one canonical state anyway). With `choices()` (default `materialize=False`), the first call offers just 1 fresh value — no unnecessary branching. Subsequent calls offer previously-used values plus one fresh, naturally growing the pool only as needed. The total number of unique states is the same, but `choices()` avoids redundant transitions.
 
    ```python
    # Recommended: dynamic pool with choices()
    TEXTS = symmetry.nominal(name="task", limit=3)
-   text = any TEXTS.choices()   # 1st call: [task0]. 2nd call: [task0, task1]. etc.
+   text = oneof TEXTS.choices()  # 1st call: [task0]. 2nd call: [task0, task1]. etc.
 
    # Also valid but creates unnecessary initial branching:
    TEXTS = symmetry.nominal(name="task", limit=3, materialize=True)
-   text = any TEXTS.values()    # Always: [task0, task1, task2]
+   text = oneof TEXTS.values()  # Always: [task0, task1, task2]
    ```
 
 8. **`require` is a guard, not an assertion.** `require cond` disables the transition when `cond` is false -- the action simply doesn't execute. It does **not** report a failure. To check properties, use `always assertion`. Prefer `require` over `if not cond: return` for enabling conditions -- they have the same effect but `require` is more concise and idiomatic.

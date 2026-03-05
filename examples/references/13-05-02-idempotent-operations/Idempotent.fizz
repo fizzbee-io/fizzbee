@@ -22,7 +22,7 @@ atomic action RetryRequest:
     require requests > 0
 
     # Retry with existing request ID
-    request_id = any range(requests)
+    request_id = oneof range(requests)
 
     # Idempotent: no effect if already processed
     if request_id not in processed_ids:

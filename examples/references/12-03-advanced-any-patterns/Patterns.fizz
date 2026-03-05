@@ -11,23 +11,23 @@ action Init:
 atomic action ChooseDifferentPair:
     require first == 0 or second == 0
 
-    first = any options
+    first = oneof options
     # Choose different value using condition
-    second = any options if second != first
+    second = oneof options if second != first
 
 # Combine fair any with range
 atomic fair<strong> action FairChoice:
     require fair_choice == 0
 
     # Ensures all values eventually chosen
-    fair_choice = fair any options
+    fair_choice = fair oneof options
 
 # Can also combine fair any with filtering by using separate variables
 atomic fair<strong> action FairFilteredChoice:
     require len(options) > 0
 
     # Fair choice from available options
-    idx = fair any range(len(options))
+    idx = fair oneof range(len(options))
     chosen = options[idx]
 
 # Safety: first and second are different

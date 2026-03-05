@@ -48,7 +48,7 @@ role Coordinator:
         # Checkpoints work in atomic actions too
         # They don't create yield points, just visualization markers
         `evaluating`
-        choice = any ["approve", "reject"]
+        choice = oneof ["approve", "reject"]
 
         `decision_made`
         self.decision = choice

@@ -216,11 +216,11 @@ reusable because new instances are interchangeable with old ones.
 **Symptom**: Parse error or unexpected behavior when using `any(...)` to
 check if at least one element in a collection satisfies a condition.
 
-**Cause**: `any` is a FizzBee keyword for nondeterministic choice. The
-parser tries to interpret `any` as the nondeterministic choice operator
-first. When used in an assignment like `x = any([...])`, the parser sees
-it as a nondeterministic choice over a list literal, not a function call,
-causing a parse error or wrong semantics.
+**Cause**: `any` is a FizzBee keyword for nondeterministic choice
+(deprecated — prefer `oneof`). The parser tries to interpret `any` as the
+nondeterministic choice operator first. When used in an assignment like
+`x = any([...])`, the parser sees it as a nondeterministic choice over a
+list literal, not a function call, causing a parse error or wrong semantics.
 
 In some contexts (e.g., directly inside `if` or `require`) the parser
 falls back to treating `any` as an identifier, so the Python `any()`
@@ -254,6 +254,16 @@ if not any([x > 0 for x in items]):
 **Rule of thumb**: never write `x = any(...)`. Use `all(...)` or
 `len([...]) > 0` for assignments. For guards, `require all([not ...])` is
 the idiomatic FizzBee style anyway (see Performance Guide).
+
+**Note**: The `oneof` keyword (preferred over `any` for nondeterministic
+choice) does not have this collision — `oneof` cannot be used as an
+identifier, so `oneof([...])` is always a parse error. Use `oneof` to
+avoid the ambiguity entirely:
+
+```python
+x = oneof items          # preferred (no collision risk)
+x = any items            # deprecated (emits DeprecationWarning)
+```
 
 ---
 

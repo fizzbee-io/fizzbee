@@ -14,7 +14,7 @@ atomic action ChooseOne:
 
     # Any picks one element nondeterministically
     # Model checker explores all possibilities
-    chosen = any options
+    chosen = oneof options
 
 # Creates branches for each option: chosen=1, chosen=2, chosen=3
 

@@ -28,7 +28,7 @@ atomic action Place:
 
 atomic action Advance:
     require len(positions) > 0
-    p = any positions
+    p = oneof positions
     next_p = p + 1   # wraps mod 5
     if next_p not in positions:
         positions.remove(p)

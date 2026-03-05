@@ -17,12 +17,12 @@ action Init:
 atomic action Put:
     # choices() returns existing IDs + one fresh ID (if under limit).
     # Use with `any` for nondeterministic selection.
-    id = any IDS.choices()
+    id = oneof IDS.choices()
     cache[id] = "data"
 
 atomic action Evict:
-    # `any` on an empty list disables the transition, so no guard needed.
-    id = any IDS.values()
+    # `oneof` on an empty list disables the transition, so no guard needed.
+    id = oneof IDS.values()
     if id in cache:
         cache.pop(id)
 

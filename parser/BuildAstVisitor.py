@@ -1038,7 +1038,13 @@ class BuildAstVisitor(FizzParserVisitor):
                 if (child.getSymbol().type == FizzParser.LINE_BREAK
                         or child.getSymbol().type == FizzParser.COLON
                         or child.getSymbol().type == FizzParser.INDENT
+                        or child.getSymbol().type == FizzParser.ONEOF
+                        or child.getSymbol().type == FizzParser.IN
                 ):
+                    continue
+                if child.getSymbol().type == FizzParser.ANY:
+                    import sys
+                    print("DeprecationWarning: 'any VAR in COLLECTION:' is deprecated, use 'oneof VAR in COLLECTION:' instead", file=sys.stderr)
                     continue
                 self.log_symbol(child)
             else:
@@ -1090,7 +1096,13 @@ class BuildAstVisitor(FizzParserVisitor):
                     continue
                 if (child.getSymbol().type == FizzParser.LINE_BREAK
                         or child.getSymbol().type == FizzParser.INDENT
+                        or child.getSymbol().type == FizzParser.ASSIGN
+                        or child.getSymbol().type == FizzParser.ONEOF
                 ):
+                    continue
+                if child.getSymbol().type == FizzParser.ANY:
+                    import sys
+                    print("DeprecationWarning: 'VAR = any COLLECTION' is deprecated, use 'VAR = oneof COLLECTION' instead", file=sys.stderr)
                     continue
                 self.log_symbol(child)
             else:

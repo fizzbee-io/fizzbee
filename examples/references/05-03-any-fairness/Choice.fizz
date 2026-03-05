@@ -7,7 +7,7 @@ action Init:
 
 atomic fair<strong> action SelectValue:
     # Fair any ensures all indices eventually chosen
-    idx = fair any range(len(values))
+    idx = fair oneof range(len(values))
     values[idx] = True
 
 # Liveness: all values eventually become True

@@ -21,12 +21,12 @@ atomic action TurnOn:
     # Model checker explores all possible choices
     # With symmetric values: states where k0=ON,k1=OFF,k2=OFF
     # are equivalent to k1=ON,k0=OFF,k2=OFF
-    key = any KEYS
+    key = oneof KEYS
     if switches[key] == 'OFF':
         switches[key] = 'ON'
 
 atomic action TurnOff:
-    key = any KEYS
+    key = oneof KEYS
     if switches[key] == 'ON':
         switches[key] = 'OFF'
 
