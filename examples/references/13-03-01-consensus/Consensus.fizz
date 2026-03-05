@@ -14,14 +14,14 @@ atomic action Propose:
     require proposal_value == None
 
     # Nondeterministically choose value to propose
-    proposal_value = any [1, 2]
+    proposal_value = oneof [1, 2]
 
 atomic action Accept:
     require proposal_value != None
     require decided_value == None
 
     # Node accepts proposal
-    node = any ["node_0", "node_1", "node_2"]
+    node = oneof ["node_0", "node_1", "node_2"]
     require node not in acceptances
 
     acceptances.add(node)

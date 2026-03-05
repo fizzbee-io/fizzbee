@@ -23,17 +23,17 @@ action Init:
         status[n] = "idle"
 
 atomic action Activate:
-    n = any NODES.values()
+    n = oneof NODES.values()
     require status[n] == "idle"
     status[n] = "active"
 
 atomic action Deactivate:
-    n = any NODES.values()
+    n = oneof NODES.values()
     require status[n] == "active"
     status[n] = "idle"
 
 atomic action PassToken:
-    n = any NODES.values()
+    n = oneof NODES.values()
     require status[n] == "active"
     next_n = n + 1  # wraps mod 4
     status[n] = "idle"

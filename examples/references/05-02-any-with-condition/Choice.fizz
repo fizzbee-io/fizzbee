@@ -11,8 +11,8 @@ atomic action ChoosePair:
     require first == 0 or second == 0
 
     # Choose two different values from options
-    first = any options
-    second = any options if second != first
+    first = oneof options
+    second = oneof options if second != first
 
 # Safety: first and second must be different (unless both 0)
 always assertion DifferentValues:

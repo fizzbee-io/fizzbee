@@ -99,7 +99,7 @@ role Server:
         return self.data.get(key, None)
 
     action Write:
-        key = any self.pending_keys
+        key = oneof self.pending_keys
         self.data[key] = self.pending[key]
 ```
 
@@ -133,10 +133,16 @@ action Choose:
 ### Nondeterminism
 
 ```python
-x = any [1, 2, 3]              # pick any element
-x = any range(10)              # pick any integer 0..9
-x = any items                  # pick any element from collection
-# Note: any on empty collection disables the action
+x = oneof [1, 2, 3]            # pick one element (nondeterministic)
+x = oneof range(10)            # pick one integer 0..9
+x = oneof items                # pick one element from collection
+# Note: oneof on empty collection disables the action
+
+oneof x in items:              # for-each style: pick one x, execute body
+    process(x)
+
+# `any` is a deprecated alias for `oneof` (emits DeprecationWarning)
+x = any items                  # old form — still works but deprecated
 ```
 
 ### Assertions
@@ -171,7 +177,7 @@ id = IDS.fresh()
 
 # Interchangeable pool (e.g., task content)
 TEXTS = symmetry.nominal(name="task", limit=3)
-v = any TEXTS.choices()   # grows naturally: 1 option first, then more
+v = oneof TEXTS.choices()   # grows naturally: 1 option first, then more
 
 # Symmetric roles (N! reduction for N instances)
 symmetric role Worker:
@@ -229,8 +235,8 @@ Cross-role function calls can also be lost (message loss simulation) — model c
 3. **Role Init ordering**: create globals before creating roles that depend on them
 4. **`require` ≠ assertion**: `require x >= 0` disables action; use `always assertion` for invariants
 5. **Lists break symmetry**: use `bag()` not `[]` to hold symmetric role instances
-6. **`any` on empty**: disables the action (no `require len > 0` needed)
-7. **`any` keyword vs Python `any()` function**: `x = any([cond for ...])` is a parse error — `any` is the nondeterministic choice keyword. For assignments use `all([...])` or `len([x for x in xs if cond]) > 0`. In guards, `require all([not cond for ...])` is the idiomatic form.
+6. **`oneof`/`any` on empty**: disables the action (no `require len > 0` needed)
+7. **`any` keyword vs Python `any()` function**: `x = any([cond for ...])` is a parse error — `any` is the deprecated nondeterministic choice keyword. Prefer `oneof` (no collision: `oneof` can't be an identifier). For boolean checks use `all([...])` or `len([x for x in xs if cond]) > 0`.
 8. **Function calls**: can only call fizz functions from atomic context or inside roles; extract to variable before using in expressions
 9. **`None` works**: use `== None`, not `is None` (no `is` operator)
 
@@ -294,7 +300,7 @@ action Hire:
     employees.add(Employee())
 
 action Fire:
-    target = any [e for e in employees if e.active]
+    target = oneof [e for e in employees if e.active]
     employees = bag([e for e in employees if e.__id__ != target.__id__])
 ```
 
