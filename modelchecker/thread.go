@@ -260,7 +260,7 @@ func CopyDict(from starlark.StringDict, to starlark.StringDict, refs map[starlar
 		to = make(starlark.StringDict)
 	}
 	for k, v := range from {
-		if v.Type() == "builtin_function_or_method" || v.Type() == "module" {
+		if v.Type() == "builtin_function_or_method" || v.Type() == "module" || v.Type() == "failed_module" {
 			continue
 		}
 		newValue, err := deepCloneStarlarkValueWithPermutations(v, refs, permutations, alt)

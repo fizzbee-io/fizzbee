@@ -86,6 +86,24 @@ func (s *Stats) Increment(action string) {
 	s.Counts[action]++
 }
 
+// FailedModule is a placeholder for a .star file that failed to load.
+// It satisfies starlark.HasAttrs so the error is deferred until the module
+// is actually used (attribute access), rather than aborting at load time.
+type FailedModule struct {
+	name string
+	err  error
+}
+
+func (m *FailedModule) String() string        { return fmt.Sprintf("<failed module %q>", m.name) }
+func (m *FailedModule) Type() string          { return "failed_module" }
+func (m *FailedModule) Freeze()               {}
+func (m *FailedModule) Truth() starlark.Bool  { return starlark.False }
+func (m *FailedModule) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: failed_module") }
+func (m *FailedModule) AttrNames() []string   { return nil }
+func (m *FailedModule) Attr(name string) (starlark.Value, error) {
+	return nil, fmt.Errorf("cannot use %q.%s: module failed to load: %v", m.name, name, m.err)
+}
+
 func HandleModules(path string) map[string]starlark.Value {
 	//module_file := path + "/sample.star"
 	files, err := filepath.Glob(path + "/*.star")
@@ -96,8 +114,13 @@ func HandleModules(path string) map[string]starlark.Value {
 	for _, file := range files {
 		fmt.Println(file)
 		moduleName := getFileNameWithoutExt(file)
-		module := LoadModule(file)
-		modules[moduleName] = &starlarkstruct.Module{Name: moduleName, Members: module}
+		module, err := LoadModule(file)
+		if err != nil {
+			log.Printf("WARNING: failed to load module %q: %v", file, err)
+			modules[moduleName] = &FailedModule{name: moduleName, err: err}
+		} else {
+			modules[moduleName] = &starlarkstruct.Module{Name: moduleName, Members: module}
+		}
 	}
 	return modules
 }
@@ -110,7 +133,7 @@ func getFileNameWithoutExt(filePath string) string {
 	return fileNameWithExt[:len(fileNameWithExt)-len(filepath.Ext(fileNameWithExt))]
 }
 
-func LoadModule(moduleFile string) starlark.StringDict {
+func LoadModule(moduleFile string) (starlark.StringDict, error) {
 	thread := &starlark.Thread{
 		Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
 	}
@@ -118,10 +141,9 @@ func LoadModule(moduleFile string) starlark.StringDict {
 	predeclared := starlark.StringDict{}
 	globals, err := starlark.ExecFileOptions(options, thread, moduleFile, nil, predeclared)
 	if err != nil {
-		panic(err)
-		return nil
+		return nil, err
 	}
-	return globals
+	return globals, nil
 }
 
 type Process struct {

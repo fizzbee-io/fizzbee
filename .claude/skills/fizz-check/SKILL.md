@@ -136,6 +136,22 @@ fizz --trace-file mytrace.txt spec.fizz
 
 ## Configuration Overrides
 
+### Spec options (deadlock_detection, max_concurrent_actions, etc.)
+
+Checker options go in YAML frontmatter inside the `.fizz` file or in a separate `fizz.yaml`. Prefer frontmatter to keep config and spec together, unless sharing config across multiple specs:
+
+```
+---
+deadlock_detection: false
+options:
+  max_concurrent_actions: 1
+  crash_on_yield: true
+---
+# rest of the spec...
+```
+
+### Constant overrides (preinit-hook)
+
 Override constants without editing the spec — useful for testing different configurations:
 
 ```bash
