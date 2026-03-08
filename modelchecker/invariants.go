@@ -118,7 +118,8 @@ func CheckInvariant(process *Process, invariant *ast.Invariant) bool {
 	ref := make(map[starlark.Value]starlark.Value)
 	vars := CloneDict(process.Heap.state, ref, nil, 0)
 	vars["__returns__"] = NewDictFromStringDict(process.Returns)
-	cond, err := process.Evaluator.EvalPyExpr(process.Files[0].GetSourceInfo().GetFileName(), pyExpr, vars)
+	symCtx := process.createSymmetryContext()
+	cond, err := process.Evaluator.EvalPyExprWithContext(process.Files[0].GetSourceInfo().GetFileName(), pyExpr, vars, symCtx)
 	PanicOnError(err)
 	return bool(cond.Truth())
 }

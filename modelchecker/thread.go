@@ -615,8 +615,9 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		for i, branch := range stmt.IfStmt.Branches {
 			vars := t.Process.GetAllVariablesNocopy()
 			conditionExpr := branch.GetConditionExpr()
-			cond, err := t.Process.Evaluator.EvalExpr(t.getFileName(), conditionExpr, vars)
-
+			symCtx := t.Process.createSymmetryContext()
+			cond, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), conditionExpr, vars, symCtx)
+			t.Process.saveRotationalLastAllocated(symCtx)
 			t.Process.PanicOnError(conditionExpr.GetSourceInfo(), fmt.Sprintf("Error checking condition: %s", branch.Condition), err)
 			t.Process.updateAllVariablesInScope(vars)
 			if cond.Truth() {
@@ -684,7 +685,9 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			if stmt.AnyStmt.Condition != "" {
 				vars := fork.GetAllVariablesNocopy()
 				vars[stmt.AnyStmt.LoopVars[0]] = x
-				cond, err := fork.Evaluator.EvalExpr(t.getFileName(), stmt.AnyStmt.ConditionExpr, vars)
+				symCtx := fork.createSymmetryContext()
+				cond, err := fork.Evaluator.EvalExprWithContext(t.getFileName(), stmt.AnyStmt.ConditionExpr, vars, symCtx)
+				fork.saveRotationalLastAllocated(symCtx)
 				//PanicOnError(err)
 				// TODO: This source info should be for the condition not the anyStmt
 				fork.PanicOnError(stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Error checking condition: %s", stmt.AnyStmt.Condition), err)
@@ -774,7 +777,9 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 	} else if stmt.RequireStmt != nil {
 		t.Process.ThreadProgress = false
 		vars := t.Process.GetAllVariablesNocopy()
-		cond, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.RequireStmt.GetConditionExpr(), vars)
+		symCtx := t.Process.createSymmetryContext()
+		cond, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), stmt.RequireStmt.GetConditionExpr(), vars, symCtx)
+		t.Process.saveRotationalLastAllocated(symCtx)
 		//PanicOnError(err)
 		t.Process.PanicOnError(stmt.RequireStmt.GetSourceInfo(), fmt.Sprintf("Error checking condition: %s", stmt.RequireStmt.Condition), err)
 		t.Process.updateAllVariablesInScope(vars)
@@ -788,7 +793,8 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		vars := t.Process.GetAllVariablesNocopy()
 		var val starlark.Value = starlark.None
 		if stmt.ReturnStmt.PyExpr != "" {
-			v, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.ReturnStmt.GetExpr(), vars)
+			symCtx := t.Process.createSymmetryContext()
+			v, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), stmt.ReturnStmt.GetExpr(), vars, symCtx)
 			t.Process.PanicOnError(stmt.ReturnStmt.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.ReturnStmt.PyExpr), err)
 			//PanicOnError(err)
 			val = v
@@ -911,7 +917,9 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			for i, arg := range stmt.CallStmt.Args {
 				// TODO: Is it really required to GetAllVariables() for each arg?
 
-				val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), arg.Expr, vars)
+				symCtx := t.Process.createSymmetryContext()
+				val, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), arg.Expr, vars, symCtx)
+				t.Process.saveRotationalLastAllocated(symCtx)
 				// TODO: This source info should be for the pyExpr not the callStmt
 				t.Process.PanicOnError(arg.Expr.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", arg.PyExpr), err)
 				//PanicOnError(err)
@@ -933,7 +941,9 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 				// handle default values
 				if _, ok := newFrame.vars[param.Name]; !ok {
 					if param.DefaultPyExpr != "" {
-						val, err := t.Process.Evaluator.EvalExpr(t.getFileName(), param.DefaultExpr, vars)
+						symCtx := t.Process.createSymmetryContext()
+						val, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), param.DefaultExpr, vars, symCtx)
+						t.Process.saveRotationalLastAllocated(symCtx)
 						t.Process.PanicOnError(param.GetDefaultExpr().GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", param.DefaultPyExpr), err)
 						//PanicOnError(err)
 						t.Process.updateAllVariablesInScope(vars)
@@ -1098,7 +1108,9 @@ func (t *Thread) executeWhileStatement() ([]*Process, bool) {
 		panic("Only atomic/serial flow is supported for while statements")
 	}
 	vars := t.Process.GetAllVariablesNocopy()
-	cond, err := t.Process.Evaluator.EvalExpr(t.getFileName(), stmt.GetIterExpr(), vars)
+	symCtx := t.Process.createSymmetryContext()
+	cond, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), stmt.GetIterExpr(), vars, symCtx)
+	t.Process.saveRotationalLastAllocated(symCtx)
 	t.Process.PanicOnError(stmt.GetIterExpr().GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.PyExpr), err)
 	//PanicOnError(err)
 	t.Process.updateAllVariablesInScope(vars)
