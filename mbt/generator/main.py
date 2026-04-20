@@ -1,4 +1,5 @@
 import argparse
+import re
 import sys
 import os
 
@@ -48,6 +49,14 @@ def parse_args():
             default=None,
             help="Base directory to compute relative paths for spec references (default: same as --out-dir)"
         )
+        parser.add_argument(
+            "--playwright",
+            default=False,
+            action='store_true',
+            help="Generate a Playwright/browser adapter scaffold (TypeScript only): includes StateGetter, "
+                 "AfterActionHook, OverridesProvider, waitForDOMSettled, and role state stubs detected "
+                 "from Init action body. Implies --gen-adapter."
+        )
 
         args = parser.parse_args()
         if args.rel_root is None:
@@ -73,10 +82,49 @@ def parse_args():
             if not args.java_package:
                 parser.error("--java-package is required when --lang=java")
 
+        if args.playwright:
+            if args.lang != "typescript":
+                parser.error("--playwright is only supported with --lang=typescript")
+            # --playwright implies --gen-adapter
+            args.gen_adapter = True
+
         if not args.input_spec.endswith(".fizz"):
             print("Warning: input_spec does not end with .fizz", file=sys.stderr)
 
         return args
+
+def extract_role_state_fields(role):
+    """Extract state field names from a role's Init action by scanning PyStmt nodes.
+
+    Looks for top-level statements of the form ``self.fieldname = ...`` in the
+    Init action body.  These are the canonical state variable declarations in
+    FizzBee roles (all role state must be declared in ``action Init``).
+
+    Returns a list of field name strings in declaration order, deduplicated.
+    """
+    init_action = next((a for a in role.actions if a.name == "Init"), None)
+    if init_action is None:
+        return []
+    block = init_action.block
+    if not block:
+        return []
+
+    pattern = re.compile(r'^self\.(\w+)\s*=')
+    fields = []
+    seen = set()
+    for stmt in block.stmts:
+        # py_stmt.code is the raw Starlark text for simple assignment statements.
+        # It will be an empty string for non-PyStmt statements (blocks, ifs, etc.).
+        code = stmt.py_stmt.code.strip() if stmt.py_stmt.code else ""
+        if code:
+            m = pattern.match(code)
+            if m:
+                field = m.group(1)
+                if field not in seen:
+                    seen.add(field)
+                    fields.append(field)
+    return fields
+
 
 def main(argv):
     args = parse_args()
@@ -346,11 +394,21 @@ def generate_typescript(args, filename, parsedAst, data_path):
 
     env = Environment(loader=FileSystemLoader(os.path.join(data_path, "typescript")))
 
+    # Choose adapter template: playwright variant adds StateGetter, AfterActionHook,
+    # OverridesProvider, waitForDOMSettled, and per-role state field stubs.
+    adapter_template = "adapters.playwright.ts.j2" if args.playwright else "adapters.ts.j2"
+
     templates = [
         ("interfaces.ts.j2", "_interfaces", True, True),
-        ("adapters.ts.j2", "_adapters", args.gen_adapter, False),
+        (adapter_template, "_adapters", args.gen_adapter, False),
         ("test.ts.j2", "_test", True, True),
     ]
+
+    # Extract per-role state fields for the Playwright template (empty dict otherwise).
+    role_state_fields = {}
+    if args.playwright:
+        for role in parsedAst.roles:
+            role_state_fields[role.name] = extract_role_state_fields(role)
 
     for tpl_name, out_file_suffix, enabled, overwrite in templates:
         if not enabled:
@@ -362,6 +420,7 @@ def generate_typescript(args, filename, parsedAst, data_path):
             model_name=base_pascal_case(filename),
             model_base_name=model_base_name,
             source_path=rel_spec_path,
+            role_state_fields=role_state_fields,
         )
 
         out_file = typescript_filenames(filename, [out_file_suffix])[0]

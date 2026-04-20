@@ -1,0 +1,132 @@
+// Generated Playwright scaffold by fizzbee-mbt generator
+// Source: {{ source_path }}
+// Implement the TODOs to connect your FizzBee spec to the real app under test.
+//
+// This scaffold includes:
+//   - StateGetter: maps real browser state to spec model state for assertion
+//   - AfterActionHook: waits for DOM to settle after every action
+//   - OverridesProvider: replaces spec constants with generated test data (fuzzing)
+//
+// Typical workflow:
+//   1. Implement init() / cleanup() / cleanupAll() with your PlaywrightEnv
+//   2. Implement each action method to drive the browser
+//   3. Implement getState() to read observable state (DOM, URL, localStorage)
+//   4. Optionally implement provideOverrides() for fuzz testing
+
+import { Arg, NotImplementedError, IGNORE, ignored, StateGetter,
+         AfterActionHook, OverridesProvider, OverridesBuilder, FuzzOptions, Tuple } from '@fizzbee/mbt';
+import { waitForDOMSettled } from '@fizzbee/mbt/playwright';
+import { Page } from 'playwright';
+import fc from 'fast-check';
+import { {% for role in file.roles %}{{ role.name }}Role, {% endfor %}{{ model_name }}Model } from './{{ model_base_name }}_interfaces.js';
+
+{% for role in file.roles %}
+// ── {{ role.name }} role adapter ───────────────────────────────────────────────
+export class {{ role.name }}RoleAdapter implements {{ role.name }}Role, StateGetter {
+  constructor(private readonly page: Page) {}
+
+  // Maps real browser state to the spec's model state for assertion.
+  // FizzBee compares the returned object against the spec state after every action.
+  //
+  // Sentinel values:
+  //   IGNORE        — field exists but value is not compared (e.g. DB-generated IDs)
+  //   ignored()     — unique placeholder map key whose value is not compared;
+  //                   use a fresh ignored() per entry so the map has the right size
+  async getState(): Promise<Record<string, any>> {
+    return {
+      {%- for field in role_state_fields[role.name] %}
+      // TODO: read {{ field }} from the browser (DOM, URL, localStorage, etc.)
+      {{ field }}: IGNORE,
+      {%- endfor %}
+    };
+  }
+
+  {%- for action in role.actions %}
+  {%- if action.name != "Init" %}
+  async action{{ action.name }}(args: Arg[]): Promise<any> {
+    // TODO: implement action {{ action.name }}
+    // args[] contains the nondeterministic choices from the spec in declaration order.
+    throw new NotImplementedError('{{ role.name }}.action{{ action.name }} not implemented');
+  }
+  {%- endif %}
+  {%- endfor %}
+}
+{% endfor %}
+// ── Model adapter ──────────────────────────────────────────────────────────────
+// Manages browser lifecycle and wires roles to the test runner.
+export class {{ model_name }}ModelAdapter implements {{ model_name }}Model, AfterActionHook, OverridesProvider {
+  private page?: Page;
+  {% for role in file.roles -%}
+  private {{ role.name | lower }}Role?: {{ role.name }}RoleAdapter;
+  {% endfor %}
+  // init() is called before each test run — create a fresh page and reset app state.
+  async init(): Promise<void> {
+    // TODO: create a page via your PlaywrightEnv and navigate to the app.
+    // Example using PlaywrightEnv (see playwright_env.ts for a reference impl):
+    //   this.page = await this.env.createPage();
+    //   this.{{ file.roles[0].name | lower }}Role = new {{ file.roles[0].name }}RoleAdapter(this.page!);
+    throw new NotImplementedError('init not implemented');
+  }
+
+  // cleanup() is called after each test run — close/reset the page.
+  async cleanup(): Promise<void> {
+    // TODO: close the page (called between every test trace).
+    // Example: await this.env.closePage(this.page!);
+  }
+
+  // cleanupAll() is called once at the very end — close the browser.
+  async cleanupAll(): Promise<void> {
+    // TODO: close the browser and any shared resources.
+    // Example: await this.env.closeAll();
+  }
+
+  // Called after every action — waits for all DOM mutations to settle.
+  // Do not replace this with waitForTimeout; waitForDOMSettled is precise and fast.
+  async afterAction(): Promise<void> {
+    await waitForDOMSettled(this.page as any, { debounceTimeout: 1 });
+  }
+
+  // Called once per fuzz run — override spec constants with generated test data.
+  // The seed in options makes runs reproducible.
+  provideOverrides(builder: OverridesBuilder, options: FuzzOptions): void {
+    // TODO: override spec constants with fast-check generated values.
+    // Example for a TODO_STRINGS constant:
+    //   const samples = fc.sample(
+    //     fc.string({ unit: 'grapheme', minLength: 1, maxLength: 30 })
+    //       .filter(s => s.trim().length > 0),
+    //     { seed: options.seed, numRuns: 3 }
+    //   );
+    //   builder.setTuple('TODO_STRINGS', new Tuple(...samples));
+  }
+
+  async getRoles(): Promise<Map<string, any>> {
+    const roles = new Map<string, any>();
+    {% for role in file.roles -%}
+    roles.set('{{ role.name }}#0', this.{{ role.name | lower }}Role);
+    {% endfor -%}
+    return roles;
+  }
+
+  {%- for action in file.actions %}
+  {%- if action.name != "Init" %}
+
+  async action{{ action.name }}(args: Arg[]): Promise<any> {
+    // TODO: implement action {{ action.name }}
+    throw new NotImplementedError('action{{ action.name }} not implemented');
+  }
+  {%- endif %}
+  {%- endfor %}
+}
+
+export function new{{ model_name }}Model(): {{ model_name }}Model {
+  return new {{ model_name }}ModelAdapter();
+}
+
+export function getTestOptions(): Record<string, any> {
+  return {
+    'max-seq-runs': 1000,
+    'max-parallel-runs': 0,      // Playwright is not thread-safe; sequential only
+    'max-fuzz-seq-runs': 4,
+    'max-actions': 10,
+  };
+}
