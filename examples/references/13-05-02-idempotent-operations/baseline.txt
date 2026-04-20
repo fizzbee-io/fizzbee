@@ -7,7 +7,7 @@ Time taken for model checking: 508.75µs
 Writen graph dotfile: examples/references/13-05-02-idempotent-operations/out/run_2026-03-07_23-56-07/graph.dot
 To generate svg, run: 
 dot -Tsvg examples/references/13-05-02-idempotent-operations/out/run_2026-03-07_23-56-07/graph.dot -o graph.svg && open graph.svg
-Valid Nodes: 7 Unique states: 4
+Valid Nodes: 4 Unique states: 4
 IsLive: true
 Time taken to check liveness: 111.958µs
 PASSED: Model checker completed successfully

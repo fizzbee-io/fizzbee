@@ -612,10 +612,61 @@ func traverseBFS(rootNode *Node, maxActions int64) ([]*Node, []string, *Node, in
 	for _, node := range result {
 		entry := visited[node]
 		if entry.deadNode != nil && entry.livePaths == 0 && (node.Process == nil || (node.Stats != nil && node.Stats.TotalActions < int(maxActions))) {
-			// TODO: Remove these internal node path. These will mess with probabilistic analysis
-			deadlock = entry.deadNode
+			// Return the yield node itself (not the dead non-yield node) so the
+			// deadlock trace stops at the meaningful stuck state rather than
+			// pointing into a dead nondeterministic branch.
+			deadlock = node
 			break
 		}
 	}
+
+	// Remove non-yield nodes that cannot reach any yield/init/crash node.
+	// Such nodes arise when a nondeterministic choice (oneof) creates branches
+	// that are all subsequently disabled by a require statement.
+	// We detect them via backward BFS from yield nodes: any non-yield node not
+	// reachable backwards from a yield is dead and should be excluded from the
+	// result and from all Outbound link lists.
+	// Note: ExtractFailurePath uses Inbound pointers, so modifying Outbound is safe.
+	{
+		aliveSet := make(map[*Node]bool)
+		reverseAdj := make(map[*Node][]*Node)
+		for _, node := range result {
+			if node.Name == "yield" || node.Name == "init" || node.Name == "crash" {
+				aliveSet[node] = true
+			}
+			for _, link := range node.Outbound {
+				reverseAdj[link.Node] = append(reverseAdj[link.Node], node)
+			}
+		}
+		backQueue := lib.NewQueue[*Node]()
+		for node := range aliveSet {
+			backQueue.Enqueue(node)
+		}
+		for backQueue.Count() > 0 {
+			node, _ := backQueue.Dequeue()
+			for _, parent := range reverseAdj[node] {
+				if !aliveSet[parent] {
+					aliveSet[parent] = true
+					backQueue.Enqueue(parent)
+				}
+			}
+		}
+		filtered := result[:0]
+		for _, node := range result {
+			if !aliveSet[node] {
+				continue
+			}
+			filteredLinks := node.Outbound[:0]
+			for _, link := range node.Outbound {
+				if aliveSet[link.Node] {
+					filteredLinks = append(filteredLinks, link)
+				}
+			}
+			node.Outbound = filteredLinks
+			filtered = append(filtered, node)
+		}
+		result = filtered
+	}
+
 	return result, msgs, deadlock, yield
 }

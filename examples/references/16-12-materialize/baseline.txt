@@ -7,7 +7,7 @@ Time taken for model checking: 3.214541ms
 Writen graph dotfile: examples/references/16-12-materialize/out/run_2026-03-07_23-56-11/graph.dot
 To generate svg, run: 
 dot -Tsvg examples/references/16-12-materialize/out/run_2026-03-07_23-56-11/graph.dot -o graph.svg && open graph.svg
-Valid Nodes: 24 Unique states: 6
+Valid Nodes: 21 Unique states: 6
 IsLive: true
 Time taken to check liveness: 438.875µs
 PASSED: Model checker completed successfully
