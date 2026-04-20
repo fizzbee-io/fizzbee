@@ -912,6 +912,30 @@ class BuildAstVisitor(FizzParserVisitor):
 
         raise Exception("visitStmt childProto (unknown) type", childProto.__class__.__name__, dir(childProto), childProto)
 
+    # Visit a parse tree produced by FizzParser#simple_stmt.
+    # Handles inline suite bodies like `if cond: return` where suite = simple_stmt.
+    def visitSimple_stmt(self, ctx:FizzParser.Simple_stmtContext):
+        childProto = self.visitChildren(ctx)
+        if childProto is None:
+            return None
+        if isinstance(childProto, ast.Statement):
+            return childProto
+        if isinstance(childProto, ast.PyStmt):
+            return ast.Statement(source_info=get_source_info(ctx), py_stmt=childProto)
+        elif isinstance(childProto, ast.ReturnStmt):
+            return ast.Statement(source_info=get_source_info(ctx), return_stmt=childProto)
+        elif isinstance(childProto, ast.BreakStmt):
+            return ast.Statement(source_info=get_source_info(ctx), break_stmt=childProto)
+        elif isinstance(childProto, ast.ContinueStmt):
+            return ast.Statement(source_info=get_source_info(ctx), continue_stmt=childProto)
+        elif isinstance(childProto, ast.RequireStmt):
+            return ast.Statement(source_info=get_source_info(ctx), require_stmt=childProto)
+        elif isinstance(childProto, ast.CallStmt):
+            return ast.Statement(source_info=get_source_info(ctx), call_stmt=childProto)
+        elif isinstance(childProto, ast.AnyStmt):
+            return ast.Statement(source_info=get_source_info(ctx), any_stmt=childProto)
+        raise Exception("visitSimple_stmt childProto (unknown) type", childProto.__class__.__name__, childProto)
+
     # Visit a parse tree produced by FizzParser#if_stmt.
     def visitIf_stmt(self, ctx:FizzParser.If_stmtContext):
         print("\n\nvisitIf_stmt",ctx.__class__.__name__)
