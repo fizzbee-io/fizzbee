@@ -7,7 +7,7 @@ Time taken for model checking: 2.63525ms
 Writen graph dotfile: examples/references/13-03-01-consensus/out/run_2026-03-07_23-56-04/graph.dot
 To generate svg, run: 
 dot -Tsvg examples/references/13-03-01-consensus/out/run_2026-03-07_23-56-04/graph.dot -o graph.svg && open graph.svg
-Valid Nodes: 42 Unique states: 25
+Valid Nodes: 40 Unique states: 25
 IsLive: true
 Time taken to check liveness: 470.625µs
 PASSED: Model checker completed successfully

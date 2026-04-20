@@ -7,7 +7,7 @@ Time taken for model checking: 1.315542ms
 Writen graph dotfile: examples/references/16-01-symmetric-values/out/run_2026-03-07_23-56-09/graph.dot
 To generate svg, run: 
 dot -Tsvg examples/references/16-01-symmetric-values/out/run_2026-03-07_23-56-09/graph.dot -o graph.svg && open graph.svg
-Valid Nodes: 12 Unique states: 4
+Valid Nodes: 10 Unique states: 4
 IsLive: true
 Time taken to check liveness: 284.333µs
 PASSED: Model checker completed successfully
