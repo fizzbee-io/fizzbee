@@ -194,19 +194,23 @@ func CheckSimpleExistsWitness(nodes []*Node) []*InvariantPosition {
 			}
 		}
 	}
-	satisfiedInvariants := make([]int, 0)
 	for _, node := range nodes {
+		if !node.IsYieldNode() {
+			continue
+		}
 		if len(existsInvariantPositions) == 0 {
 			break
 		}
+		satisfiedInvariants := make([]int, 0)
 		for j, position := range existsInvariantPositions {
 			// If the node has witness in this position, then the invariant is satisfied
 			if node.Process.Witness[position.FileIndex][position.InvariantIndex] {
 				satisfiedInvariants = append(satisfiedInvariants, j)
 			}
 		}
-		// remove the satisfied invariants
-		for _, index := range satisfiedInvariants {
+		// remove the satisfied invariants in reverse order to avoid index shifting
+		for k := len(satisfiedInvariants) - 1; k >= 0; k-- {
+			index := satisfiedInvariants[k]
 			existsInvariantPositions = slices.Delete(existsInvariantPositions, index, index+1)
 		}
 	}
