@@ -306,6 +306,135 @@ action Fire:
 
 ---
 
+## Modeling E2E Behavior and Requirements
+
+Use this pattern when modeling user-facing apps, UI flows, or product requirements — not just distributed protocols. The spec becomes both a formal model and a contract for model-based testing (MBT).
+
+### Role Design
+
+| App type | Roles |
+|---|---|
+| Single-user local app (TodoMVC) | `role App` — one role for everything |
+| Client-server or localStorage | `role System` + `role User` |
+| Marketplace | `role System` + `role Seller` + `role Buyer` |
+| Multi-role service | `role System` + one role per user type |
+
+**`System`** holds the authoritative application state (what the DB / localStorage / server knows). It is implementation-agnostic — the same spec works whether state lives in localStorage, a REST API, or a database.
+
+**User roles** hold what the user sees and controls: their current view, selections, form inputs. Each user type gets its own role.
+
+**Single `App` role** is fine for purely local apps with no meaningful gap between storage and UI state (e.g., TodoMVC where shown_todos is always derived from the store).
+
+### Front matter for interactive apps
+
+```yaml
+---
+liveness: "false"          # no liveness assertions needed for UI specs
+deadlock_detection: false  # interactive apps don't deadlock
+options:
+  max_concurrent_actions: 1  # one user at a time
+---
+```
+
+### MBT-ready spec conventions
+
+Four conventions make a spec directly usable for model-based testing:
+
+**1. Explicit view state** — store what the user sees as a separate field, not recomputed on the fly:
+
+```python
+role System:
+    action Init:
+        self.todos = {}        # authoritative store (localStorage / DB)
+        self.shown_todos = []  # derived view — maps to visible DOM items
+
+    atomic func refresh():
+        self.shown_todos = [self.todos[id] for id in self.todos]
+```
+
+**2. Index-based picks** — actions that select an item use an index into the view list, not an ID. This matches how the adapter calls the action (args[0] = index into rendered list):
+
+```python
+atomic action DeleteTodo:
+    require len(self.shown_todos) > 0
+    idx = oneof range(len(self.shown_todos))   # args[0] in adapter
+    t = self.shown_todos[idx]
+    self.todos.pop(t.id)
+    self.refresh()
+```
+
+**3. IDs for generated records** — if the spec creates records with opaque IDs (todos, tickets, bookings), prefer symmetry values over integer counters. This keeps the state space compact without sacrificing correctness:
+- `symmetry.nominal` — only identity matters, no ordering (UUID v4-style IDs)
+- `symmetry.ordinal` — relative order matters but not distance (UUID v7-style IDs, insertion order)
+- `symmetry.interval` — numeric distance matters (sequence numbers, timestamps, version counters)
+
+```python
+IDS = symmetry.nominal(name="id", limit=MAX_ITEMS)  # limit = max coexisting IDs
+id = IDS.fresh()                                     # allocate a new unique ID
+```
+
+**4. Named input constants** — collect all user-supplied strings into top-level constants so the adapter's `OverridesProvider` can replace them with fuzz-generated values:
+
+```python
+TODO_STRINGS = ("Buy milk", "Walk dog", "Write spec")   # overridable
+WHITESPACE_STRINGS = (" ", "")                           # leave as-is
+
+atomic action AddTodo:
+    raw = oneof TODO_STRINGS + WHITESPACE_STRINGS
+    title = raw.strip()
+    ...
+```
+
+### Full example skeleton
+
+```python
+---
+liveness: "false"
+deadlock_detection: false
+options:
+  max_concurrent_actions: 1
+---
+
+MAX_ITEMS = 3
+IDS = symmetry.nominal(name="id", limit=MAX_ITEMS)
+INPUT_STRINGS = ("hello", "world", "foo")
+
+role System:
+    action Init:
+        self.items = {}        # id → record
+        self.view = []         # filtered/sorted view shown to user
+
+    atomic func refresh():
+        self.view = [self.items[id] for id in self.items]
+
+role User:
+    action Init:
+        self.selected = None
+
+    atomic action AddItem:
+        require len(system.items) < MAX_ITEMS
+        raw = oneof INPUT_STRINGS
+        id = IDS.fresh()
+        system.items[id] = record(id=id, text=raw)
+        system.refresh()
+
+    atomic action SelectItem:
+        require len(system.view) > 0
+        idx = oneof range(len(system.view))   # adapter: args[0]
+        self.selected = system.view[idx].id
+
+action Init:
+    system = System()
+    user = User()
+
+always assertion ItemsBounded:
+    return len(system.items) <= MAX_ITEMS
+```
+
+Once the spec is ready, use the **`fizz-mbt` skill** to generate adapter code (TypeScript/Playwright, Go, Rust, or Java) that connects the spec to the real system under test.
+
+---
+
 ## Reference Examples (by topic)
 
 Installed example specs (after `fizz install-skills`):
