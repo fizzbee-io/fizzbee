@@ -97,7 +97,7 @@ func (t *GuidedTrace) GetCurrentIndex() int {
 // Returns true if the node should be added to the queue
 // This is called before adding nodes to the queue to filter based on trace
 func (p *Processor) ShouldScheduleNode(node *Node) bool {
-	if len(node.guidedTrace.LinkNames) == 0 {
+	if len(node.guidedTrace.LinkNames) == 0 && node.guidedTrace.ExtendDepth == 0 {
 		return true // Not in trace mode, schedule everything
 	}
 

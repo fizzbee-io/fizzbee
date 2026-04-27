@@ -56,7 +56,7 @@ func main() {
 	//fmt.Println("dirPath:", dirPath)
 	// Calculate the relative path
 	var stateConfig *ast.StateSpaceOptions
-	if traceFile != "" || trace != "" {
+	if traceFile != "" || trace != "" || traceExtend > 0 {
 		stateConfig = getStateConfigForTraceChecking(stateConfig)
 	} else {
 		stateConfig = loadStateOptions(dirPath, f.GetFrontMatter())
@@ -542,6 +542,15 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			fmt.Println("Error: --trace and --simulation cannot be used together")
 			return nil
 		}
+	} else if traceExtend > 0 {
+		// No trace specified but --trace-extend given: explore traceExtend steps
+		// from the initial state (empty trace). guidedTrace with no LinkNames but
+		// ExtendDepth > 0 signals "explore N steps from Init" to ShouldScheduleNode.
+		if simulation {
+			fmt.Println("Error: --trace-extend and --simulation cannot be used together")
+			return nil
+		}
+		guidedTrace = &modelchecker.GuidedTrace{}
 	}
 
 	// Set trace extension depth if configured
