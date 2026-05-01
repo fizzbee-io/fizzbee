@@ -26,6 +26,7 @@ Complete reference guide for the FizzBee specification language for modeling dis
 15. [Configuration](#configuration)
 16. [Symmetry Reduction](#symmetry-reduction)
 17. [Best Practices](#best-practices)
+18. [Standard Library](#standard-library)
 
 ---
 
@@ -45,7 +46,8 @@ FizzBee is a Python-like formal specification language for modeling distributed 
 FizzBee uses Starlark as its expression and statement engine:
 - Python-compatible syntax for expressions
 - Deterministic execution
-- No arbitrary Python imports (hermetic environment)
+- No `import` statement and no arbitrary Python imports — a curated set of
+  modules is auto-imported globally (see [Standard Library](#standard-library))
 - Built-in support for common data structures
 
 ---
@@ -2118,6 +2120,132 @@ action Step2:
 
 ---
 
+## Standard Library
+
+FizzBee has no `import` statement. A curated set of modules and top-level
+builtins is auto-imported globally and is always available. This list is
+authoritative — anything not on it is not available.
+
+### Top-level builtins
+
+Always in scope, no qualifier needed:
+
+| Name | Purpose |
+| :--- | :--- |
+| `struct(field=val, …)` | **Immutable, hashable.** Anonymous struct (`go.starlark.net` `starlarkstruct`). Can be used in `set`s and as `dict` keys. Use when you want a tuple-with-named-fields that participates in hash-based collections. Cannot be mutated after construction. |
+| `record(field=val, …)` | **Mutable, NOT hashable.** FizzBee record — ordered and printable in traces. Cannot be used in `set` or as a `dict` key (the hash-based collections will reject it). To put records in collections, use `genericset` / `genericmap`. |
+| `enum(NAME1, NAME2, …)` | Enum factory. `Color = enum("RED", "GREEN")` then `Color.RED`. |
+| `genericset()` | Set that supports non-hashable values (records, lists, dicts). Implemented via linear scan rather than hashing — minor performance cost, irrelevant at model-checker scale where collections hold a handful of entries. Use this when you need a set of records. |
+| `genericmap()` | Map that supports non-hashable keys (records, lists, dicts). Same linear-scan implementation rationale as `genericset`. |
+| `bag()` | Mutable multiset (counts duplicates). Methods: `add`, `add_all`, `clear`, `discard`, `pop`, `remove`. |
+| `symmetric_values(name, n)` | **Legacy.** Use the `symmetry` module instead (see below). |
+
+Plus everything Starlark provides: `len`, `range`, `min`, `max`, `sum`,
+`sorted`, `reversed`, `zip`, `enumerate`, `any`, `all` (the predicate, not
+the deprecated nondeterminism alias), `print`, `type`, `int`, `str`,
+`bool`, `float`, `list`, `dict`, `set`, `tuple`.
+
+### `math` module
+
+Standard math functions. From `go.starlark.net/lib/math`:
+
+```python
+math.sqrt(x)    math.pow(x, y)   math.exp(x)    math.log(x)
+math.log10(x)   math.log2(x)     math.fabs(x)   math.mod(x, y)
+math.ceil(x)    math.floor(x)    math.round(x)  math.remainder(x, y)
+math.sin(x)     math.cos(x)      math.tan(x)
+math.asin(x)    math.acos(x)     math.atan(x)   math.atan2(y, x)
+math.sinh(x)    math.cosh(x)     math.tanh(x)
+math.gamma(x)   math.hypot(x, y)
+```
+
+Constants: `math.pi`, `math.e`, `math.inf`, `math.nan`.
+
+### `itertools` module
+
+**Limited subset.** Only the following five functions are available — all
+other Python `itertools` names (`accumulate`, `count`, `cycle`, `repeat`,
+`groupby`, `islice`, `tee`, `takewhile`, `dropwhile`, etc.) are **not**
+implemented and will fail at parse time:
+
+```python
+itertools.chain(*iterables)
+itertools.combinations(iterable, r)
+itertools.combinations_with_replacement(iterable, r)
+itertools.permutations(iterable, r=None)
+itertools.product(*iterables, repeat=1)
+```
+
+**Use these only when the requirements actually call for "any subset of N
+participants" or "any pair / any group of K".** Don't reach for them by
+default — most actions just pick one element with `oneof`.
+
+**Pattern A — fixed-size subset (assertions / per-pair checks).** Use
+`combinations(items, k)` inside a `for` loop. No `oneof` involved; you
+iterate every k-sized subset deterministically:
+
+```python
+# Raft "log matching" assertion: every pair of nodes must satisfy a property
+always assertion LogMatching:
+    for pair in itertools.combinations(nodes, 2):
+        # ... check pair[0] and pair[1] ...
+```
+
+**Pattern B — variable-size subset (nondeterminism in actions).** Build
+a list of subsets across allowed sizes, then `oneof` over that list. Pick
+the size bounds deliberately:
+
+```python
+# Helper — keep min_len and max_len near the call site so the choice is visible
+all_subsets = []
+for k in range(min_len, max_len + 1):
+    for s in itertools.combinations(items, k):
+        all_subsets.append(list(s))
+chosen = oneof all_subsets
+```
+
+When picking `min_len` / `max_len`:
+
+- **Powerset minus empty** → `min_len=1, max_len=len(items)`. For "split
+  this expense among any non-empty subset of group members."
+- **Quorum / majority subsets** → `min_len=N//2 + 1, max_len=N`. For
+  Raft-style "the leader needs votes from a majority of nodes":
+  `all_subsets(eligible, NUM_NODES // 2 + 1, NUM_NODES)`.
+- **Bounded committee** → fixed window like `min_len=2, max_len=4`.
+  Useful when modeling has tight state-space limits and a true powerset
+  (`2^N`) would blow up.
+
+State-space cost is `sum(C(N, k) for k in [min_len..max_len])`. For
+N=3 the full powerset is 7 branches; for N=5 it's 31; for N=8 it's 255.
+Tighten the bounds before increasing N.
+
+### `symmetry` module
+
+Domain factories for state-space reduction. See
+[Symmetry Module API](#symmetry-module-api-advanced) for full semantics:
+
+```python
+symmetry.nominal(name, limit, materialize=False)
+symmetry.ordinal(name, limit, reflection=False, materialize=False)
+symmetry.interval(name, divergence=None, limit=None, start=0, reflection=False, materialize=False)
+symmetry.rotational(name, limit, materialize=False, reflection=False)
+```
+
+Domain instances expose: `fresh()`, `choices()`, `choose()`, `values()`,
+`min()`, `max()`, `segments()` (interval only).
+
+### Method-call form
+
+Built-in methods on dict / set / bag / list / string follow Python naming.
+Supported methods (registered in `lib/starlark_types.go`):
+
+- **dict**: `clear`, `get`, `items`, `keys`, `pop`, `popitem`, `setdefault`, `update`, `values`
+- **set**: `add`, `clear`, `difference`, `discard`, `intersection`, `issubset`, `issuperset`, `pop`, `remove`, `symmetric_difference`, `union`
+- **bag**: `add`, `add_all`, `clear`, `discard`, `pop`, `remove`
+- **list / string**: standard Starlark methods
+
+---
+
 ## Known Issues and Limitations
 
 ### Current Limitations
@@ -2130,7 +2258,8 @@ action Step2:
 
 **Python features not supported**:
 - `del` statement
-- Arbitrary Python imports (hermetic environment)
+- `import` statement — there is no user-level import; a curated set of
+  modules is pre-imported globally. See [Standard Library](#standard-library).
 - `is` / `is not` operators (use `==` / `!=` instead)
 - Tuple unpacking in `for` loops (`for k, v in dict.items()` fails; use `for k in dict` + `dict[k]`)
 
