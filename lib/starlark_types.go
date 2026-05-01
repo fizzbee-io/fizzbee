@@ -40,6 +40,7 @@ var (
 		"math":             math.Module,
 		"itertools":        ItertoolsModule,
 		"symmetry":         SymmetryModule,
+		"sum":              starlark.NewBuiltin("sum", builtinSum),
 	}
 
 	StarlarkPtrTypes = []starlark.Value{
@@ -90,6 +91,41 @@ var (
 		"remove":  starlark.NewBuiltin("remove", bag_remove),
 	}
 )
+
+// builtinSum implements sum(iterable, start=0), matching Python's semantics.
+// Returns an int if all values are ints, otherwise a float.
+// Uses starlark.Binary for addition so int/float coercion is handled automatically.
+func builtinSum(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var iterable starlark.Iterable
+	start := starlark.Value(starlark.MakeInt(0))
+	if err := starlark.UnpackPositionalArgs("sum", args, kwargs, 1, &iterable, &start); err != nil {
+		return nil, err
+	}
+	switch start.(type) {
+	case starlark.Int, starlark.Float:
+	default:
+		return nil, fmt.Errorf("sum: start must be a number, got %s", start.Type())
+	}
+
+	acc := start
+	iter := iterable.Iterate()
+	defer iter.Done()
+
+	var x starlark.Value
+	for iter.Next(&x) {
+		switch x.(type) {
+		case starlark.Int, starlark.Float:
+		default:
+			return nil, fmt.Errorf("sum: unsupported type %s", x.Type())
+		}
+		var err error
+		acc, err = starlark.Binary(syntax.PLUS, acc, x)
+		if err != nil {
+			return nil, fmt.Errorf("sum: %v", err)
+		}
+	}
+	return acc, nil
+}
 
 type SymmetricValues struct {
 	starlark.Tuple
