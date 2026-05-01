@@ -1626,6 +1626,13 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	}
 
 	if yield {
+		// Mark this node as a yield BEFORE scheduling its successors. The
+		// trace-extend yield-aware boundary check in ShouldScheduleNode reads
+		// parent.Process.IsYieldNode(), which depends on Name being set; if we
+		// scheduled first and labelled later, every successor would see a
+		// non-yield parent and the extension would never bound.
+		node.Name = "yield"
+
 		if len(forks) > 0 {
 			//fmt.Println("yield and fork at the same time")
 			for _, fork := range forks {
@@ -1634,7 +1641,6 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		} else {
 			p.YieldNode(node)
 		}
-		node.Name = "yield"
 
 		if p.shouldThreadCrash(node) {
 			p.crashThread(node)

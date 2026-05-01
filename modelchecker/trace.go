@@ -116,12 +116,27 @@ func (p *Processor) ShouldScheduleNode(node *Node) bool {
 
 	// Check if trace is exhausted
 	if node.guidedTrace.IsExhausted() {
-		// Allow extension if configured
-		if node.guidedTrace.ExtendDepth > 0 && node.guidedTrace.extendedCount < node.guidedTrace.ExtendDepth {
-			node.guidedTrace.extendedCount++
-			return true
+		if node.guidedTrace.ExtendDepth == 0 {
+			return false
 		}
-		return false
+		// Count every scheduled node past the trace end as before. The twist:
+		// after the count reaches ExtendDepth we still need to push through any
+		// non-yield branch nodes (e.g. `oneof` choices) to reach the next yield
+		// boundary, otherwise the state graph stores partial/intermediate states
+		// the explorer can't walk back to.
+		//
+		// So: when the budget is exhausted, only refuse to schedule when the
+		// parent is a yield node — that's the natural stopping point. If the
+		// parent is non-yield, keep scheduling until we hit a yield.
+		if node.guidedTrace.extendedCount >= node.guidedTrace.ExtendDepth {
+			parent := node.Inbound[0].Node
+			parentIsYield := parent != nil && parent.Process != nil && parent.Process.IsYieldNode()
+			if parentIsYield {
+				return false
+			}
+		}
+		node.guidedTrace.extendedCount++
+		return true
 	}
 
 	// Get the next expected link name from trace
