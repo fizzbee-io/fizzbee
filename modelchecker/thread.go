@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/fizzbee-io/fizzbee/lib"
+	"github.com/golang/glog"
 
 	"hash"
 	"maps"
@@ -618,7 +619,20 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			symCtx := t.Process.createSymmetryContext()
 			cond, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), conditionExpr, vars, symCtx)
 			t.Process.saveRotationalLastAllocated(symCtx)
-			t.Process.PanicOnError(conditionExpr.GetSourceInfo(), fmt.Sprintf("Error checking condition: %s", branch.Condition), err)
+			if err != nil {
+				if lib.IsDisableTransitionError(err) {
+					// e.g. `if domain.fresh() != None:` exhausting its limit —
+					// disable the whole transition. Note: control does NOT
+					// fall through to elif/else; the action is simply not
+					// taken from this state.
+					glog.V(2).Infof("transition disabled at if-condition: %s (cond=%q)", err, branch.Condition)
+					t.Process.Enabled = false
+					t.Process.ThreadProgress = false
+					t.Aborted = true
+					return nil, false
+				}
+				t.Process.PanicOnError(conditionExpr.GetSourceInfo(), fmt.Sprintf("Error checking condition: %s", branch.Condition), err)
+			}
 			t.Process.updateAllVariablesInScope(vars)
 			if cond.Truth() {
 				currentFrame.pc = fmt.Sprintf("%s.IfStmt.Branches[%d].Block", currentFrame.pc, i)
@@ -920,9 +934,20 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 				symCtx := t.Process.createSymmetryContext()
 				val, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), arg.Expr, vars, symCtx)
 				t.Process.saveRotationalLastAllocated(symCtx)
-				// TODO: This source info should be for the pyExpr not the callStmt
-				t.Process.PanicOnError(arg.Expr.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", arg.PyExpr), err)
-				//PanicOnError(err)
+				if err != nil {
+					if lib.IsDisableTransitionError(err) {
+						// e.g. `domain.fresh()` exhausting its limit when used
+						// directly as a call argument — disable the transition
+						// instead of panicking.
+						glog.V(2).Infof("transition disabled at call-arg expr: %s (expr=%q)", err, arg.PyExpr)
+						t.Process.Enabled = false
+						t.Process.ThreadProgress = false
+						t.Aborted = true
+						return nil, false
+					}
+					// TODO: This source info should be for the pyExpr not the callStmt
+					t.Process.PanicOnError(arg.Expr.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", arg.PyExpr), err)
+				}
 				t.Process.updateAllVariablesInScope(vars)
 				if !hasNamedArgs && arg.Name == "" {
 					if i >= len(def.params) {
@@ -944,8 +969,18 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 						symCtx := t.Process.createSymmetryContext()
 						val, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), param.DefaultExpr, vars, symCtx)
 						t.Process.saveRotationalLastAllocated(symCtx)
-						t.Process.PanicOnError(param.GetDefaultExpr().GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", param.DefaultPyExpr), err)
-						//PanicOnError(err)
+						if err != nil {
+							if lib.IsDisableTransitionError(err) {
+								// Default parameter expression couldn't be evaluated
+								// (e.g. domain.fresh() exhausted) — disable the transition.
+								glog.V(2).Infof("transition disabled at default-param expr: %s (expr=%q)", err, param.DefaultPyExpr)
+								t.Process.Enabled = false
+								t.Process.ThreadProgress = false
+								t.Aborted = true
+								return nil, false
+							}
+							t.Process.PanicOnError(param.GetDefaultExpr().GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", param.DefaultPyExpr), err)
+						}
 						t.Process.updateAllVariablesInScope(vars)
 						newFrame.vars[param.Name] = val
 					} else {
