@@ -29,6 +29,7 @@ var copyAst bool
 var outputDir string
 var seed int64
 var maxRuns int
+var simFirstTraces int
 var explorationStrategy string
 var traceFile string
 var preinitHookFile string
@@ -586,6 +587,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 	runs := 0
 	var p1 *modelchecker.Processor
 	var holder atomic.Pointer[modelchecker.Processor]
+	var lastRootNode *modelchecker.Node
 
 	setupSignalHandler(&holder, &stopped)
 
@@ -598,9 +600,14 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 
 		rootNode, failedNode, endTime, err := startModelChecker(p1)
 		runs++
+		lastRootNode = rootNode
 
-		if writeDotFileIfNeeded(p1, rootNode, outDir) {
-			return nil
+		if !simulation {
+			if writeDotFileIfNeeded(p1, rootNode, outDir) {
+				return nil
+			}
+		} else if i <= simFirstTraces {
+			writeDotFileIfNeeded(p1, rootNode, outDir)
 		}
 
 		if err != nil {
@@ -712,6 +719,14 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		}
 	}
 	fmt.Println("Stopped after", runs, "runs at ", time.Now())
+	if simulation && p1 != nil {
+		if runs-simFirstTraces > 1 {
+			fmt.Println("Not printing intermediate traces (only the last trace is shown)")
+		}
+		if runs > simFirstTraces {
+			writeDotFileIfNeeded(p1, lastRootNode, outDir)
+		}
+	}
 	return nil
 }
 
@@ -867,6 +882,7 @@ func parseFlags() []string {
 	flag.StringVar(&outputDir, "output-dir", "", "Custom output directory path (if not specified, uses default SPEC_DIR/out/run_timestamp)")
 	flag.Int64Var(&seed, "seed", 0, "Seed for random number generator used in simulation mode")
 	flag.IntVar(&maxRuns, "max_runs", 0, "Maximum number of simulation runs/paths to explore. Default=0 for unlimited")
+	flag.IntVar(&simFirstTraces, "simulation_first_traces", 0, "In simulation mode, write dot files for the first N runs (default 0). The last run is always written.")
 	flag.StringVar(&explorationStrategy, "exploration_strategy", "bfs", "Exploration strategy for exhaustive model checking. Options: bfs (default), dfs, random.")
 	flag.StringVar(&traceFile, "trace-file", "", "Path to trace file for guided execution")
 	flag.StringVar(&preinitHookFile, "preinit-hook-file", "", "Path to Starlark file to execute after preinit but before freezing globals")

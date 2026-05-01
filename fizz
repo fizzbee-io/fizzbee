@@ -168,7 +168,7 @@ usage() {
   echo "Usage:"
   echo "  $0 install-skills [--check | --remove]"
   echo "  $0 mbt-scaffold [options] filename"
-  echo "  $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--exploration_strategy dfs] [--trace-file tracefile | --trace tracestring] [--preinit-hook-file hookfile | --preinit-hook hookstring] [--copy-ast] [--no-copy-ast] [--output-dir directory] filename"
+  echo "  $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--simulation_first_traces intNumber] [--exploration_strategy dfs] [--trace-file tracefile | --trace tracestring] [--preinit-hook-file hookfile | --preinit-hook hookstring] [--copy-ast] [--no-copy-ast] [--output-dir directory] filename"
   exit 1
 }
 
@@ -176,6 +176,7 @@ usage() {
 simulation=false
 seed=0
 max_runs=0
+simulation_first_traces=0
 exploration_strategy=bfs
 test=false
 copy_ast=true
@@ -212,6 +213,15 @@ while [[ "$1" =~ ^- ]]; do
         shift 2
       else
         echo "Error: --max_runs requires a numeric value." 1>&2
+        usage
+      fi
+      ;;
+    --simulation_first_traces )
+      if [[ -n "$2" ]] && [[ "$2" =~ ^[0-9]+$ ]]; then
+        simulation_first_traces="$2"
+        shift 2
+      else
+        echo "Error: --simulation_first_traces requires a numeric value." 1>&2
         usage
       fi
       ;;
@@ -347,6 +357,9 @@ if [ "$seed" -ne 0 ]; then
 fi
 if [ "$max_runs" -ne 0 ]; then
   args+=("--max_runs" "$max_runs")
+fi
+if [ "$simulation_first_traces" -ne 0 ]; then
+  args+=("--simulation_first_traces" "$simulation_first_traces")
 fi
 if [ "$exploration_strategy" != "bfs" ]; then
   args+=("--exploration_strategy" "$exploration_strategy")
