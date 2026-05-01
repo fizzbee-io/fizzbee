@@ -636,16 +636,23 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			}
 			if !simulation {
 				fmt.Println("Valid Nodes:", len(nodes), "Unique states:", yieldsCount)
-				invariants := modelchecker.CheckSimpleExistsWitness(nodes)
-				if len(invariants) > 0 {
-					fmt.Println("\nFAILED: Expected states never reached")
-					for i2, invariant := range invariants {
-						fmt.Printf("Invariant %d: %s\n", i2, f.Invariants[invariant.InvariantIndex].Name)
+				// Skip the exists-witness check in trace mode: a guided trace
+				// only explores a slice of the state space, so `exists`
+				// invariants legitimately can't be satisfied yet. Letting the
+				// failure short-circuit here would also skip writing the
+				// nodes/links pb files, which the trace consumer needs.
+				if guidedTrace == nil {
+					invariants := modelchecker.CheckSimpleExistsWitness(nodes)
+					if len(invariants) > 0 {
+						fmt.Println("\nFAILED: Expected states never reached")
+						for i2, invariant := range invariants {
+							fmt.Printf("Invariant %d: %s\n", i2, f.Invariants[invariant.InvariantIndex].Name)
+						}
+						if !isTest {
+							fmt.Println("Time taken to check invariant: ", time.Now().Sub(endTime))
+						}
+						return nil
 					}
-					if !isTest {
-						fmt.Println("Time taken to check invariant: ", time.Now().Sub(endTime))
-					}
-					return nil
 				}
 			}
 			if !simulation && !p1.Stopped() && guidedTrace == nil {
