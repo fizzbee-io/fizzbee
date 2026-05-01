@@ -2138,12 +2138,16 @@ Always in scope, no qualifier needed:
 | `genericset()` | Set that supports non-hashable values (records, lists, dicts). Implemented via linear scan rather than hashing — minor performance cost, irrelevant at model-checker scale where collections hold a handful of entries. Use this when you need a set of records. |
 | `genericmap()` | Map that supports non-hashable keys (records, lists, dicts). Same linear-scan implementation rationale as `genericset`. |
 | `bag()` | Mutable multiset (counts duplicates). Methods: `add`, `add_all`, `clear`, `discard`, `pop`, `remove`. |
+| `sum(iterable, start=0)` | Sum a list/set/bag/tuple of numbers. Returns `int` if all values are ints, `float` otherwise. Example: `sum([a.balance for a in accounts])`. |
 | `symmetric_values(name, n)` | **Legacy.** Use the `symmetry` module instead (see below). |
 
-Plus everything Starlark provides: `len`, `range`, `min`, `max`, `sum`,
-`sorted`, `reversed`, `zip`, `enumerate`, `any`, `all` (the predicate, not
-the deprecated nondeterminism alias), `print`, `type`, `int`, `str`,
+Plus everything Starlark provides: `len`, `range`, `min`, `max`,
+`sorted`, `reversed`, `zip`, `enumerate`, `all`, `print`, `type`, `int`, `str`,
 `bool`, `float`, `list`, `dict`, `set`, `tuple`.
+
+**Note on `any`**: `any` is a reserved keyword in FizzBee (deprecated alias
+for `oneof`). The Python `any([...])` predicate form is a **parse error**.
+Use `len([x for x in xs if cond]) > 0` instead.
 
 ### `math` module
 
