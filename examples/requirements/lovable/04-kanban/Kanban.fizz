@@ -28,7 +28,7 @@ Column = enum("Todo", "InProgress", "Done")
 # cards table: list of records preserving creation order
 # Each card has: id, title, column
 
-role Server:
+role System:
     action Init:
         self.cards = []
 
@@ -62,42 +62,39 @@ symmetric role User:
         self.view = []
 
     atomic func RefreshView():
-        self.view = db.cards
+        self.view = system.cards
 
     # Add a new card to the Todo column
     atomic action AddCard:
         id = IDS.fresh()
-        title = any TITLES.choices()
-        db.AddCard(id, title)
+        title = oneof TITLES.choices()
+        system.AddCard(id, title)
         self.RefreshView()
 
     # Move a card to the next column (Todo->InProgress->Done)
     atomic action MoveCardForward:
         movable = [c for c in self.view if c.col != Column.Done]
-        require len(movable) > 0
-        card = any movable
+        card = oneof movable
         if card.col == Column.Todo:
-            db.MoveCard(card.id, Column.Todo, Column.InProgress)
+            system.MoveCard(card.id, Column.Todo, Column.InProgress)
         elif card.col == Column.InProgress:
-            db.MoveCard(card.id, Column.InProgress, Column.Done)
+            system.MoveCard(card.id, Column.InProgress, Column.Done)
         self.RefreshView()
 
     # Move a card back (Done->InProgress->Todo)
     atomic action MoveCardBack:
         movable = [c for c in self.view if c.col != Column.Todo]
-        require len(movable) > 0
-        card = any movable
+        card = oneof movable
         if card.col == Column.Done:
-            db.MoveCard(card.id, Column.Done, Column.InProgress)
+            system.MoveCard(card.id, Column.Done, Column.InProgress)
         elif card.col == Column.InProgress:
-            db.MoveCard(card.id, Column.InProgress, Column.Todo)
+            system.MoveCard(card.id, Column.InProgress, Column.Todo)
         self.RefreshView()
 
     # Delete a card
     atomic action DeleteCard:
-        require len(self.view) > 0
-        card = any self.view
-        db.DeleteCard(card.id)
+        card = oneof self.view
+        system.DeleteCard(card.id)
         self.RefreshView()
 
     # Refresh to see latest state
@@ -108,7 +105,7 @@ symmetric role User:
 # ─── Initialization ──────────────────────────────────────────────────
 
 action Init:
-    db = Server()
+    system = System()
     users = bag()
     for i in range(NUM_USERS):
         users.add(User())
@@ -118,13 +115,13 @@ action Init:
 
 # R1: WIP limit is never exceeded.
 always assertion WipLimitRespected:
-    wip = len([c for c in db.cards if c.col == Column.InProgress])
+    wip = len([c for c in system.cards if c.col == Column.InProgress])
     return wip <= WIP_LIMIT
 
 # R2: Cards only move one column at a time (valid transitions).
 transition assertion ValidColumnTransitions(before, after):
-    for ac in after.db.cards:
-        for bc in before.db.cards:
+    for ac in after.system.cards:
+        for bc in before.system.cards:
             if ac.id == bc.id and ac.col != bc.col:
                 if bc.col == Column.Todo and ac.col != Column.InProgress:
                     return False
@@ -136,5 +133,5 @@ transition assertion ValidColumnTransitions(before, after):
 
 # R3: No duplicate card IDs.
 always assertion UniqueCardIds:
-    ids = [c.id for c in db.cards]
+    ids = [c.id for c in system.cards]
     return len(ids) == len(set(ids))

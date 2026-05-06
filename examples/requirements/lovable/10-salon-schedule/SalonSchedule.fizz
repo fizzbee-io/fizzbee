@@ -44,7 +44,7 @@ APPT_IDS = symmetry.nominal(name="appt", limit=3)
 
 # ─── Server (Database) ───────────────────────────────────────────────
 
-role Server:
+role System:
     action Init:
         # schedule: set of encoded codes (dow * SLOTS_PER_DAY + slot)
         self.schedule = set()
@@ -78,8 +78,8 @@ role Employee:
         pass
 
     atomic action ToggleScheduleSlot:
-        schedule_code = any range(DAYS_IN_WEEK * SLOTS_PER_DAY)
-        db.ToggleSchedule(schedule_code)
+        schedule_code = oneof range(DAYS_IN_WEEK * SLOTS_PER_DAY)
+        system.ToggleSchedule(schedule_code)
 
 
 # ─── Customer (Human + Browser) ──────────────────────────────────────
@@ -94,20 +94,20 @@ symmetric role Customer:
         self.view_slots = [record(cal_day=clock_day + d, slot=s, dow_idx=(clock_dow + d) % DAYS_IN_WEEK)
             for d in range(BOOKING_WINDOW)
             for s in range(SLOTS_PER_DAY)
-            if (clock_dow + d) % DAYS_IN_WEEK * SLOTS_PER_DAY + s in db.schedule
+            if (clock_dow + d) % DAYS_IN_WEEK * SLOTS_PER_DAY + s in system.schedule
             if d > 0 or s + 1 > clock_phase
-            if all([not (a.cal_day == clock_day + d and a.slot == s) for a in db.appointments])]
-        self.my_appts = [a for a in db.appointments if a.customer == self.__id__]
+            if all([not (a.cal_day == clock_day + d and a.slot == s) for a in system.appointments])]
+        self.my_appts = [a for a in system.appointments if a.customer == self.__id__]
 
     atomic action BookSlot:
-        chosen = any self.view_slots
+        chosen = oneof self.view_slots
         appt_id = APPT_IDS.fresh()
-        db.BookAppointment(appt_id, chosen.cal_day, chosen.slot, chosen.dow_idx, self.__id__)
+        system.BookAppointment(appt_id, chosen.cal_day, chosen.slot, chosen.dow_idx, self.__id__)
         self.RefreshView()
 
     atomic action CancelMyAppointment:
-        appt = any [a for a in self.my_appts if a.cal_day > clock_day or (a.cal_day == clock_day and a.slot + 1 > clock_phase)]
-        db.CancelAppointment(appt.id)
+        appt = oneof [a for a in self.my_appts if a.cal_day > clock_day or (a.cal_day == clock_day and a.slot + 1 > clock_phase)]
+        system.CancelAppointment(appt.id)
         self.RefreshView()
 
     atomic fair action Refresh:
@@ -123,13 +123,13 @@ atomic fair action AdvanceClock:
         clock_day = clock_day + 1
         clock_dow = (clock_dow + 1) % DAYS_IN_WEEK
         clock_phase = 0
-        db.CleanupPast()
+        system.CleanupPast()
 
 
 # ─── Initialization ──────────────────────────────────────────────────
 
 action Init:
-    db = Server()
+    system = System()
     emp = Employee()
     customers = bag()
     for i in range(NUM_CUSTOMERS):
@@ -142,16 +142,16 @@ action Init:
 # ─── Safety Assertions ───────────────────────────────────────────────
 
 always assertion NoDoubleBooking:
-    for i in range(len(db.appointments)):
-        for j in range(i + 1, len(db.appointments)):
-            if db.appointments[i].cal_day == db.appointments[j].cal_day:
-                if db.appointments[i].slot == db.appointments[j].slot:
+    for i in range(len(system.appointments)):
+        for j in range(i + 1, len(system.appointments)):
+            if system.appointments[i].cal_day == system.appointments[j].cal_day:
+                if system.appointments[i].slot == system.appointments[j].slot:
                     return False
     return True
 
 # All appointments are in the future (past appointments get cleaned up).
 always assertion NoPastAppointments:
-    for a in db.appointments:
+    for a in system.appointments:
         if a.cal_day < clock_day:
             return False
     return True

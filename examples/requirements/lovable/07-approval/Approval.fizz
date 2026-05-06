@@ -24,7 +24,7 @@ Status = enum("Draft", "Submitted", "Approved", "Rejected")
 # ─── Server (Database) ───────────────────────────────────────────────
 # requests table: list of records (id, status)
 
-role Server:
+role System:
     action Init:
         self.requests = []
 
@@ -53,26 +53,24 @@ role Submitter:
         self.view = []
 
     atomic func RefreshView():
-        self.view = db.requests
+        self.view = system.requests
 
     atomic action CreateRequest:
         id = IDS.fresh()
-        db.CreateRequest(id)
+        system.CreateRequest(id)
         self.RefreshView()
 
     atomic action SubmitRequest:
         drafts = [r for r in self.view if r.status == Status.Draft]
-        require len(drafts) > 0
-        req = any drafts
-        db.UpdateStatus(req.id, Status.Draft, Status.Submitted)
+        req = oneof drafts
+        system.UpdateStatus(req.id, Status.Draft, Status.Submitted)
         self.RefreshView()
 
     atomic action ReviseAndResubmit:
         rejected = [r for r in self.view if r.status == Status.Rejected]
-        require len(rejected) > 0
-        req = any rejected
+        req = oneof rejected
         # Revise (back to Draft, then immediately Submit)
-        db.UpdateStatus(req.id, Status.Rejected, Status.Submitted)
+        system.UpdateStatus(req.id, Status.Rejected, Status.Submitted)
         self.RefreshView()
 
     atomic fair action Refresh:
@@ -87,20 +85,18 @@ role Approver:
         self.view = []
 
     atomic func RefreshView():
-        self.view = db.requests
+        self.view = system.requests
 
     atomic action ApproveRequest:
         pending = [r for r in self.view if r.status == Status.Submitted]
-        require len(pending) > 0
-        req = any pending
-        db.UpdateStatus(req.id, Status.Submitted, Status.Approved)
+        req = oneof pending
+        system.UpdateStatus(req.id, Status.Submitted, Status.Approved)
         self.RefreshView()
 
     atomic action RejectRequest:
         pending = [r for r in self.view if r.status == Status.Submitted]
-        require len(pending) > 0
-        req = any pending
-        db.UpdateStatus(req.id, Status.Submitted, Status.Rejected)
+        req = oneof pending
+        system.UpdateStatus(req.id, Status.Submitted, Status.Rejected)
         self.RefreshView()
 
     atomic fair action Refresh:
@@ -110,7 +106,7 @@ role Approver:
 # ─── Initialization ──────────────────────────────────────────────────
 
 action Init:
-    db = Server()
+    system = System()
     submitter = Submitter()
     approver = Approver()
 
@@ -122,10 +118,10 @@ action Init:
 #     Rejected -> Submitted (resubmit)
 #     No other transitions are possible.
 transition assertion ValidTransitions(before, after):
-    for i in range(len(after.db.requests)):
-        if i < len(before.db.requests):
-            old_status = before.db.requests[i].status
-            new_status = after.db.requests[i].status
+    for i in range(len(after.system.requests)):
+        if i < len(before.system.requests):
+            old_status = before.system.requests[i].status
+            new_status = after.system.requests[i].status
             if old_status != new_status:
                 # Check allowed transitions
                 if old_status == Status.Draft and new_status == Status.Submitted:
@@ -142,10 +138,10 @@ transition assertion ValidTransitions(before, after):
 
 # R2: Approved requests are final — they never change status.
 transition assertion ApprovedIsFinal(before, after):
-    for i in range(len(before.db.requests)):
-        if before.db.requests[i].status == Status.Approved:
-            if i >= len(after.db.requests):
+    for i in range(len(before.system.requests)):
+        if before.system.requests[i].status == Status.Approved:
+            if i >= len(after.system.requests):
                 return False
-            if after.db.requests[i].status != Status.Approved:
+            if after.system.requests[i].status != Status.Approved:
                 return False
     return True

@@ -9,11 +9,11 @@ Guide for writing formal specifications of apps built with Lovable
 
 | Lovable Component | FizzBee Model |
 |:---|:---|
-| Supabase database | `role Server` (single instance, ground truth) |
+| Supabase database | `role System` (single instance, ground truth) |
 | User's browser | `role User` or `symmetric role Customer` (view + actions) |
 | React component state | `self.view_*` fields on user roles |
-| Supabase table row | Record in a list on the Server role |
-| Row-level security (RLS) | `require` guards in Server functions |
+| Supabase table row | Record in a list on the System role |
+| Row-level security (RLS) | `require` guards in System functions |
 | Supabase realtime | Not modeled — user refreshes manually (stale views) |
 
 ### Why Model Stale Views?
@@ -24,7 +24,7 @@ models this explicitly:
 
 1. **RefreshView**: Reads current database state into `self.view_*`
 2. **User action**: Reads from `self.view_*` (potentially stale)
-3. **Server function**: Validates against current database state with `require`
+3. **System function**: Validates against current database state with `require`
 
 This pattern catches race conditions where two users see the same slot
 as available but only one can book it.
@@ -43,7 +43,7 @@ options:
 # Constants and symmetry domains
 # ...
 
-role Server:
+role System:
     action Init:
         # Initialize database tables as lists/sets/dicts
     # Atomic functions for database operations (INSERT, UPDATE, DELETE)
@@ -53,16 +53,16 @@ symmetric role User:
     action Init:
         # Initialize view state
     atomic func RefreshView():
-        # Read from db.* into self.view_*
+        # Read from system.* into self.view_*
     atomic action SomeUserAction:
-        # Pick from self.view_*, call db.SomeOperation(), refresh view
+        # Pick from self.view_*, call system.SomeOperation(), refresh view
 
 # Clock (if time matters)
 atomic fair action AdvanceClock:
     # Advance time, clean up past data
 
 action Init:
-    db = Server()
+    system = System()
     users = bag()
     for i in range(NUM_USERS):
         users.add(User())
@@ -98,21 +98,21 @@ self.schedule.add(schedule_code)
 self.schedule.discard(schedule_code)
 ```
 
-### Stale View → Server Validation
+### Stale View → System Validation
 
 The core race condition pattern:
 
 ```python
 symmetric role Customer:
     atomic func RefreshView():
-        self.view_slots = [s for s in db.available_slots if is_valid(s)]
+        self.view_slots = [s for s in system.available_slots if is_valid(s)]
 
     atomic action BookSlot:
-        chosen = any self.view_slots          # Pick from stale view
-        db.BookSlot(chosen, self.__id__)      # Server validates
+        chosen = oneof self.view_slots          # Pick from stale view
+        system.BookSlot(chosen, self.__id__)      # System validates
         self.RefreshView()                     # Refresh after action
 
-role Server:
+role System:
     atomic func BookSlot(slot, customer_id):
         require slot in self.available_slots   # Might fail if stale
         self.available_slots.remove(slot)
@@ -132,11 +132,11 @@ role Owner:
     atomic action HireEmployee:
         emp = Employee()
         employees.add(emp)
-        db.ActivateEmployee(emp.__id__)
+        system.ActivateEmployee(emp.__id__)
 
     atomic action FireEmployee:
-        emp = any employees
-        db.DeactivateEmployee(emp.__id__)
+        emp = oneof employees
+        system.DeactivateEmployee(emp.__id__)
         employees = bag([e for e in employees if e.__id__ != emp.__id__])
 ```
 
@@ -160,7 +160,7 @@ atomic fair action AdvanceClock:
         clock_day = clock_day + 1
         clock_dow = (clock_dow + 1) % DAYS_IN_WEEK
         clock_phase = 0
-        db.CleanupPast()  # Free interval slots for garbage-collected data
+        system.CleanupPast()  # Free interval slots for garbage-collected data
 ```
 
 **Why `limit = BOOKING_WINDOW + 1`?** When `AdvanceClock` increments
@@ -187,10 +187,10 @@ Garbage-collect old records to free slots.
 
 ```python
 # CRASHES
-self.cached = db.ReadDoc(doc_id)
+self.cached = system.ReadDoc(doc_id)
 
 # WORKS
-content = db.ReadDoc(doc_id)
+content = system.ReadDoc(doc_id)
 self.cached = content
 ```
 
@@ -201,7 +201,7 @@ self.cached = content
 1. **List comprehensions over loops**: Each statement creates nodes.
    Collapse nested loops and if-chains into single comprehensions.
 
-2. **`any` blocks on empty**: No need for `require len(xs) > 0` before `any xs`.
+2. **`oneof` blocks on empty**: No need for `require len(xs) > 0` before `oneof xs`. (`any` is the deprecated alias for `oneof`.)
 
 3. **`require all([...])`** instead of for-loop with require.
 
