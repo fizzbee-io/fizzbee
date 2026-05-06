@@ -25,7 +25,7 @@ Status = enum("Open", "Closed")
 # polls table: status, options (fixed set)
 # votes table: voter_id -> option (one vote per voter, can update)
 
-role Server:
+role System:
     action Init:
         self.status = Status.Open
         self.votes = {}
@@ -53,34 +53,34 @@ role Voter:
         self.poll_open = True
 
     atomic func RefreshView():
-        self.poll_open = (db.status == Status.Open)
-        if self.__id__ in db.votes:
-            self.my_vote = db.votes[self.__id__]
+        self.poll_open = (system.status == Status.Open)
+        if self.__id__ in system.votes:
+            self.my_vote = system.votes[self.__id__]
         else:
             self.my_vote = None
 
     atomic action Vote:
         require self.poll_open
         require self.my_vote == None
-        option = any OPTIONS.choices()
-        db.CastVote(self.__id__, option)
+        option = oneof OPTIONS.choices()
+        system.CastVote(self.__id__, option)
         self.RefreshView()
 
     atomic action ChangeVote:
         require self.poll_open
         require self.my_vote != None
-        new_option = any [o for o in OPTIONS.choices() if o != self.my_vote]
-        db.CastVote(self.__id__, new_option)
+        new_option = oneof [o for o in OPTIONS.choices() if o != self.my_vote]
+        system.CastVote(self.__id__, new_option)
         self.RefreshView()
 
     atomic action RetractVote:
         require self.poll_open
         require self.my_vote != None
-        db.RemoveVote(self.__id__)
+        system.RemoveVote(self.__id__)
         self.RefreshView()
 
     atomic fair action RefreshPollStatus:
-        require self.poll_open and db.status == Status.Closed
+        require self.poll_open and system.status == Status.Closed
         self.RefreshView()
 
 
@@ -93,14 +93,14 @@ role Creator:
 
     atomic action ClosePoll:
         require not self.closed
-        db.ClosePoll()
+        system.ClosePoll()
         self.closed = True
 
 
 # ─── Initialization ──────────────────────────────────────────────────
 
 action Init:
-    db = Server()
+    system = System()
     creator = Creator()
     voters = bag()
     for i in range(NUM_VOTERS):
@@ -112,8 +112,8 @@ action Init:
 # R1: After refresh, each voter's local my_vote matches the database.
 always assertion VoterViewConsistent:
     for v in voters:
-        if v.__id__ in db.votes:
-            if v.my_vote != None and v.my_vote != db.votes[v.__id__]:
+        if v.__id__ in system.votes:
+            if v.my_vote != None and v.my_vote != system.votes[v.__id__]:
                 return False
         else:
             if v.my_vote != None and not v.poll_open:
@@ -122,12 +122,12 @@ always assertion VoterViewConsistent:
 
 # R2: Once the poll is closed, the votes never change.
 transition assertion ClosedPollIsImmutable(before, after):
-    if before.db.status == Status.Closed:
-        return before.db.votes == after.db.votes
+    if before.system.status == Status.Closed:
+        return before.system.votes == after.system.votes
     return True
 
 # R3: Once the poll is closed, it stays closed.
 transition assertion ClosedStaysClosed(before, after):
-    if before.db.status == Status.Closed:
-        return after.db.status == Status.Closed
+    if before.system.status == Status.Closed:
+        return after.system.status == Status.Closed
     return True

@@ -25,7 +25,7 @@ NAMES = symmetry.nominal(name="name", limit=2)
 # items table: list of records preserving insertion order
 # Each item: id, name, checked (bool), checked_by (user or "")
 
-role Server:
+role System:
     action Init:
         self.items = []
 
@@ -66,38 +66,35 @@ symmetric role User:
         self.view = []
 
     atomic func RefreshView():
-        self.view = db.items
+        self.view = system.items
 
     atomic action AddItem:
         id = IDS.fresh()
-        name = any NAMES.choices()
-        db.AddItem(id, name)
+        name = oneof NAMES.choices()
+        system.AddItem(id, name)
         self.RefreshView()
 
     atomic action CheckOffItem:
         unchecked = [item for item in self.view if not item.checked]
-        require len(unchecked) > 0
-        item = any unchecked
-        db.CheckOffItem(item.id, self.__id__)
+        item = oneof unchecked
+        system.CheckOffItem(item.id, self.__id__)
         self.RefreshView()
 
     atomic action UncheckItem:
         checked = [item for item in self.view if item.checked]
-        require len(checked) > 0
-        item = any checked
-        db.UncheckItem(item.id)
+        item = oneof checked
+        system.UncheckItem(item.id)
         self.RefreshView()
 
     atomic action RemoveItem:
-        require len(self.view) > 0
-        item = any self.view
-        db.RemoveItem(item.id)
+        item = oneof self.view
+        system.RemoveItem(item.id)
         self.RefreshView()
 
     atomic action ClearChecked:
         has_checked = len([item for item in self.view if item.checked]) > 0
         require has_checked
-        db.ClearChecked()
+        system.ClearChecked()
         self.RefreshView()
 
     atomic fair action Refresh:
@@ -107,7 +104,7 @@ symmetric role User:
 # ─── Initialization ──────────────────────────────────────────────────
 
 action Init:
-    db = Server()
+    system = System()
     users = bag()
     for i in range(NUM_USERS):
         users.add(User())
@@ -117,19 +114,19 @@ action Init:
 
 # R1: No duplicate item IDs.
 always assertion UniqueItemIds:
-    ids = [item.id for item in db.items]
+    ids = [item.id for item in system.items]
     return len(ids) == len(set(ids))
 
 # R2: A checked item records who checked it off.
 always assertion CheckedHasAuthor:
-    for item in db.items:
+    for item in system.items:
         if item.checked and item.checked_by == "":
             return False
     return True
 
 # R3: An unchecked item has no author.
 always assertion UncheckedHasNoAuthor:
-    for item in db.items:
+    for item in system.items:
         if not item.checked and item.checked_by != "":
             return False
     return True

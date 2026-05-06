@@ -25,7 +25,7 @@ ORDER_IDS = symmetry.nominal(name="order", limit=4)
 # products table: product_id -> stock (int)
 # orders table: list of records (order_id, product_id, buyer_id)
 
-role Server:
+role System:
     action Init:
         self.products = {}
         self.orders = []
@@ -49,16 +49,15 @@ symmetric role Buyer:
         self.my_orders = []
 
     atomic func RefreshView():
-        self.view_stock = db.products
-        self.my_orders = [o for o in db.orders if o.buyer == self.__id__]
+        self.view_stock = system.products
+        self.my_orders = [o for o in system.orders if o.buyer == self.__id__]
 
     atomic action BuyProduct:
         # Buyer sees items in stock
         available = [p for p in self.view_stock if self.view_stock[p] > 0]
-        require len(available) > 0
-        product = any available
+        product = oneof available
         order_id = ORDER_IDS.fresh()
-        db.Purchase(order_id, product, self.__id__)
+        system.Purchase(order_id, product, self.__id__)
         self.RefreshView()
 
     atomic fair action Refresh:
@@ -73,21 +72,20 @@ role Admin:
         pass
 
     atomic action Restock:
-        available_products = [p for p in db.products]
-        require len(available_products) > 0
-        product = any available_products
-        require db.products[product] < MAX_STOCK
-        db.Restock(product, 1)
+        available_products = [p for p in system.products]
+        product = oneof available_products
+        require system.products[product] < MAX_STOCK
+        system.Restock(product, 1)
 
 
 # ─── Initialization ──────────────────────────────────────────────────
 
 action Init:
-    db = Server()
+    system = System()
     # Create products with initial stock
     for i in range(NUM_PRODUCTS):
         pid = PRODUCTS.fresh()
-        db.products[pid] = 1
+        system.products[pid] = 1
     admin = Admin()
     buyers = bag()
     for i in range(NUM_BUYERS):
@@ -98,19 +96,19 @@ action Init:
 
 # R1: Stock never goes negative (no overselling).
 always assertion NoNegativeStock:
-    for p in db.products:
-        if db.products[p] < 0:
+    for p in system.products:
+        if system.products[p] < 0:
             return False
     return True
 
 # R2: Stock never exceeds MAX_STOCK.
 always assertion StockNotOverMax:
-    for p in db.products:
-        if db.products[p] > MAX_STOCK:
+    for p in system.products:
+        if system.products[p] > MAX_STOCK:
             return False
     return True
 
 # R3: Each order has a unique ID.
 always assertion UniqueOrderIds:
-    ids = [o.id for o in db.orders]
+    ids = [o.id for o in system.orders]
     return len(ids) == len(set(ids))

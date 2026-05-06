@@ -25,7 +25,7 @@ Permission = enum("NoAccess", "Viewer", "Editor")
 # docs table: doc_id -> record(content, owner_id)
 # permissions table: {doc_id: {user_id: permission}}
 
-role Server:
+role System:
     action Init:
         self.docs = {}
         self.perms = {}
@@ -67,30 +67,26 @@ role Owner:
 
     atomic action CreateDoc:
         doc_id = DOC_IDS.fresh()
-        content = any CONTENT.choices()
-        db.CreateDoc(doc_id, "owner", content)
+        content = oneof CONTENT.choices()
+        system.CreateDoc(doc_id, "owner", content)
         self.my_docs = self.my_docs + [doc_id]
 
     atomic action EditDoc:
-        require len(self.my_docs) > 0
-        doc = any self.my_docs
-        new_content = any CONTENT.choices()
-        db.EditDoc(doc, "owner", new_content)
+        doc = oneof self.my_docs
+        new_content = oneof CONTENT.choices()
+        system.EditDoc(doc, "owner", new_content)
 
     atomic action GrantViewer:
-        require len(self.my_docs) > 0
-        doc = any self.my_docs
-        db.GrantPermission(doc, "owner", "collaborator", Permission.Viewer)
+        doc = oneof self.my_docs
+        system.GrantPermission(doc, "owner", "collaborator", Permission.Viewer)
 
     atomic action GrantEditor:
-        require len(self.my_docs) > 0
-        doc = any self.my_docs
-        db.GrantPermission(doc, "owner", "collaborator", Permission.Editor)
+        doc = oneof self.my_docs
+        system.GrantPermission(doc, "owner", "collaborator", Permission.Editor)
 
     atomic action RevokeAccess:
-        require len(self.my_docs) > 0
-        doc = any self.my_docs
-        db.RevokePermission(doc, "owner", "collaborator")
+        doc = oneof self.my_docs
+        system.RevokePermission(doc, "owner", "collaborator")
 
 
 # ─── Collaborator (the other user) ───────────────────────────────────
@@ -103,37 +99,35 @@ role Collaborator:
         self.cached_content = None
 
     atomic func RefreshView(doc_id):
-        if doc_id in db.perms and "collaborator" in db.perms[doc_id]:
-            self.cached_perm = db.perms[doc_id]["collaborator"]
+        if doc_id in system.perms and "collaborator" in system.perms[doc_id]:
+            self.cached_perm = system.perms[doc_id]["collaborator"]
         else:
             self.cached_perm = Permission.NoAccess
 
     atomic action TryRead:
-        require len(db.docs) > 0
-        doc = any db.docs.keys()
+        doc = oneof system.docs.keys()
         require self.cached_perm != Permission.NoAccess
-        content = db.ReadDoc(doc, "collaborator")
+        content = system.ReadDoc(doc, "collaborator")
         self.cached_content = content
         self.RefreshView(doc)
 
     atomic action TryEdit:
-        require len(db.docs) > 0
-        doc = any db.docs.keys()
+        doc = oneof system.docs.keys()
         require self.cached_perm == Permission.Editor
-        new_content = any CONTENT.choices()
-        db.EditDoc(doc, "collaborator", new_content)
+        new_content = oneof CONTENT.choices()
+        system.EditDoc(doc, "collaborator", new_content)
         self.RefreshView(doc)
 
     atomic fair action Refresh:
-        if len(db.docs) > 0:
-            doc = any db.docs.keys()
+        if len(system.docs) > 0:
+            doc = oneof system.docs.keys()
             self.RefreshView(doc)
 
 
 # ─── Initialization ──────────────────────────────────────────────────
 
 action Init:
-    db = Server()
+    system = System()
     owner = Owner()
     collaborator = Collaborator()
 
@@ -149,7 +143,7 @@ action Init:
 
 # R3: The owner always retains ownership of their documents.
 always assertion OwnerNeverLosesOwnership:
-    for doc_id in db.docs:
-        if db.docs[doc_id].owner != "owner":
+    for doc_id in system.docs:
+        if system.docs[doc_id].owner != "owner":
             return False
     return True

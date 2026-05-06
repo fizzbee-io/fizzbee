@@ -28,7 +28,7 @@ Filter = enum("All", "Pending", "Completed")
 # Ground truth. Supabase Postgres with RLS.
 # Stored as a list to preserve insertion order (ORDER BY created_at ASC).
 
-role Server:
+role System:
     action Init:
         self.todos = []
 
@@ -63,53 +63,51 @@ role User:
 
     atomic func RefreshView():
         if self.filter == Filter.All:
-            self.view = db.todos
+            self.view = system.todos
         elif self.filter == Filter.Pending:
-            self.view = [t for t in db.todos if not t.done]
+            self.view = [t for t in system.todos if not t.done]
         else:
-            self.view = [t for t in db.todos if t.done]
-        self.completed_exist = len([t for t in db.todos if t.done]) > 0
+            self.view = [t for t in system.todos if t.done]
+        self.completed_exist = len([t for t in system.todos if t.done]) > 0
 
     # ── CRUD ──
 
     atomic action AddTodo:
         id = IDS.fresh()
-        text = any TEXTS.choices()
-        db.AddTodo(id, text)
+        text = oneof TEXTS.choices()
+        system.AddTodo(id, text)
         self.RefreshView()
 
     atomic action ToggleTodo:
-        require len(self.view) > 0
-        index = any range(len(self.view))
+        index = oneof range(len(self.view))
         item = self.view[index]
-        db.ToggleTodo(item.id)
+        system.ToggleTodo(item.id)
         self.RefreshView()
 
     atomic action DeleteTodo:
-        require len(self.view) > 0
-        index = any range(len(self.view))
+        index = oneof range(len(self.view))
         item = self.view[index]
-        db.DeleteTodo(item.id)
+        system.DeleteTodo(item.id)
         self.RefreshView()
 
     # ── Filter & bulk ──
 
     atomic fair action SwitchFilter:
-        require len(db.todos) > 0
-        new_filter = fair any [f for f in dir(Filter) if self.filter != f]
+        require len(system.todos) > 0
+        new_filter = fair oneof [f for f in dir(Filter) if self.filter != f]
         self.filter = new_filter
         self.RefreshView()
 
     atomic action ClearCompleted:
         require self.completed_exist
-        db.ClearCompleted()
+        system.ClearCompleted()
         self.RefreshView()
 
 
 # ─── Initialization ──────────────────────────────────────────────────
 
 action Init:
-    db = Server()
+    system = System()
     user = User()
 
 
@@ -119,19 +117,19 @@ action Init:
 #     Catches filter-logic bugs across all possible action sequences.
 always assertion ViewMatchesFilter:
     if user.filter == Filter.All:
-        expected = db.todos
+        expected = system.todos
     elif user.filter == Filter.Pending:
-        expected = [t for t in db.todos if not t.done]
+        expected = [t for t in system.todos if not t.done]
     else:
-        expected = [t for t in db.todos if t.done]
+        expected = [t for t in system.todos if t.done]
     return user.view == expected
 
 # R2: The "Clear Completed" button visibility stays in sync with the DB.
 always assertion CompletedFlagConsistent:
-    has_completed = len([t for t in db.todos if t.done]) > 0
+    has_completed = len([t for t in system.todos if t.done]) > 0
     return user.completed_exist == has_completed
 
 # R3: No duplicate todo IDs.
 always assertion UniqueTodoIds:
-    ids = [t.id for t in db.todos]
+    ids = [t.id for t in system.todos]
     return len(ids) == len(set(ids))
