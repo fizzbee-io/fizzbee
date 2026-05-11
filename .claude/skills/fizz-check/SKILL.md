@@ -29,9 +29,9 @@ Note: `fizz` is the installed binary. If building from source, use `./fizz` (wra
 | Flag | Default | Description |
 |---|---|---|
 | `-x` / `--simulation` | off | Simulation mode: single random path, fast |
-| `--seed N` | 0 | Random seed for reproducible simulation |
-| `--max_runs N` | 0 (unlimited) | Number of simulation runs |
-| `--exploration_strategy` | `bfs` | State exploration: `bfs`, `dfs`, or `random` |
+| `--seed N` | 0 | Random seed for reproducible simulation / random exploration |
+| `--max_runs N` | 0 (unlimited) | Number of simulation runs (simulation mode only) |
+| `--exploration_strategy` | `bfs` | State exploration: `bfs`, `dfs`, or `random` (model checking) |
 | `--trace "line1\nline2"` | — | Guided trace: follow specific action sequence |
 | `--trace-file FILE` | — | Load guided trace from file |
 | `--trace-extend N` | 0 | After trace, explore N more steps (shows enabled actions) |
@@ -68,6 +68,21 @@ Convert to SVG for visual inspection:
 ```bash
 dot -Tsvg out/*/graph.dot -o graph.svg && open graph.svg
 ```
+
+---
+
+## When to use what
+
+| Mode | Exhaustive? | Memory | Speed | Trace length | Liveness | `exists` |
+|---|---|---|---|---|---|---|
+| Model checking — BFS (default) | yes | high | slow on large graphs | shortest counterexample | yes | yes |
+| Model checking — DFS | yes* | low | fast on large graphs | not minimal | yes | yes |
+| Model checking — Random-order traversal | yes* | medium | varies | not minimal | yes | yes |
+| Simulation (`-x`) | no | negligible | fastest | not minimal | per-trace only | no |
+
+\* DFS and Random-order traversal are exhaustive **only without a `max_actions` cap**. With a cap (global or per-action), paths past the limit are pruned and coverage is incomplete. BFS with `max_actions` still covers all states reachable within the cap.
+
+**Memory:** simulation is O(d) (depth only) — negligible. BFS is O(b^d). DFS is noticeably lower than BFS; random-order is in between. Simulation often finds bugs faster than exhaustive checking, at the cost of non-exhaustiveness.
 
 ---
 
@@ -176,6 +191,19 @@ NUM_SERVERS=1" spec.fizz
 fizz -x --max_runs 1 --seed 42 --preinit-hook "NUM_CLIENTS=100
 NUM_SERVERS=10" spec.fizz
 ```
+
+---
+
+## Gotchas
+
+- **DFS / Random + `max_actions` is not exhaustive.** A `max_actions` cap (global or per-action in frontmatter) prunes paths past the limit. With BFS the bounded prefix is fully covered; with DFS / Random the cap interacts with the traversal order, so reachable states within the limit may still be missed. If you need exhaustive coverage with a cap, use BFS.
+- **`exists` assertions are disabled in simulation mode.** Simulation checks individual execution traces only; `exists` requires evaluating branches across the state graph.
+- **Simulation traces are not minimal.** Simulation produces *a* failing path, not the *shortest* one. Once you have a failing seed, narrow the bug with a guided `--trace` or model-check a smaller config to get a minimal counterexample.
+- **Random-seed simulation: passing ≠ correct.** "Passed across 1000 seeds" raises confidence but is not a proof. For correctness claims, model-check.
+- **`crash_on_yield: true` matters.** When set, BFS/DFS/Random fork a crash branch at every yield, multiplying state count. Switch off (or omit) when you only care about the happy-path graph; switch on to verify crash recovery.
+- **Symmetry reduction is skipped in simulation.** It only matters within a single run, so simulation explores raw states. State counts in simulation output are not comparable to model-checker output.
+- **`--max_runs 0` in simulation means unlimited** (runs until interrupted). Always set `--max_runs N` when scripting.
+- **`--seed` only matters when there is randomness.** It applies to simulation and `--exploration_strategy random`; ignored under BFS/DFS.
 
 ---
 
