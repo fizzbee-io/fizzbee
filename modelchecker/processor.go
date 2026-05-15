@@ -1204,35 +1204,10 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 			continue
 		}
 
-		invariantFailure := false
-		symmetryFound := false
-		for {
-			if len(p.visited)%20000 == 0 && len(p.visited) != prevCount {
-				if p.isTest {
-					fmt.Printf("Nodes: %d, queued: %d\n", len(p.visited), p.queue.Len())
-				} else {
-					fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
-				}
-				prevCount = len(p.visited)
-			}
-			invariantFailure, symmetryFound = p.processNode(node)
-			if p.guidedTrace != nil {
-				p.visited = make(map[string]*Node)
-			}
+		invariantFailure, symmetryFound, crashFailedNode, finalNode := p.expandToYield(node, startTime, &prevCount)
 
-			if node.Process != nil && p.config.Options.GetCrashOnYield() && node.Enabled && (node.Name == "yield" || node.Name == "crash") {
-				failedCrashNode := p.crashProcess(node)
-				if failedCrashNode != nil && failedNode == nil {
-					failedNode = failedCrashNode
-				}
-				if failedCrashNode != nil && !p.config.ContinueOnInvariantFailures {
-					break
-				}
-			}
-			if p.intermediateStates.Len() == 0 {
-				break
-			}
-			node, _ = p.intermediateStates.Remove()
+		if crashFailedNode != nil && failedNode == nil {
+			failedNode = crashFailedNode
 		}
 
 		if symmetryFound {
@@ -1240,7 +1215,7 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 		}
 
 		if invariantFailure && failedNode == nil {
-			failedNode = node
+			failedNode = finalNode
 		}
 		if invariantFailure && !p.config.ContinueOnInvariantFailures {
 			break
@@ -1262,6 +1237,59 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 	}
 
 	return p.Init, failedNode, err
+}
+
+// expandToYield drains a node through its non-yield (mid-action) successors
+// until reaching yield points. Yield-point successors are scheduled onto
+// p.queue inside processNode (via YieldNode/YieldFork). Mid-action successors
+// are drained from p.intermediateStates and processed inline.
+//
+// Behavior is identical to the inline loop it replaces in Start; the
+// extraction exists so a planned experimental queue-of-processed-nodes path
+// can share it.
+//
+// Returns:
+//   - invariantFailure: result of the final processNode call.
+//   - symmetryFound: result of the final processNode call.
+//   - crashFailedNode: the FIRST crash-injected node that failed an invariant
+//     during this expansion (or nil). Caller decides whether to record it.
+//   - finalNode: the node that processNode was called on in the last iteration
+//     (may differ from the input when intermediateStates produced extra
+//     non-yield successors).
+//
+// prevCount is mutated in-place to track the last logged visited count.
+func (p *Processor) expandToYield(node *Node, startTime time.Time, prevCount *int) (
+	invariantFailure bool, symmetryFound bool, crashFailedNode *Node, finalNode *Node) {
+	finalNode = node
+	for {
+		if len(p.visited)%20000 == 0 && len(p.visited) != *prevCount {
+			if p.isTest {
+				fmt.Printf("Nodes: %d, queued: %d\n", len(p.visited), p.queue.Len())
+			} else {
+				fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
+			}
+			*prevCount = len(p.visited)
+		}
+		invariantFailure, symmetryFound = p.processNode(finalNode)
+		if p.guidedTrace != nil {
+			p.visited = make(map[string]*Node)
+		}
+
+		if finalNode.Process != nil && p.config.Options.GetCrashOnYield() && finalNode.Enabled && (finalNode.Name == "yield" || finalNode.Name == "crash") {
+			crashed := p.crashProcess(finalNode)
+			if crashed != nil && crashFailedNode == nil {
+				crashFailedNode = crashed
+			}
+			if crashed != nil && !p.config.ContinueOnInvariantFailures {
+				break
+			}
+		}
+		if p.intermediateStates.Len() == 0 {
+			break
+		}
+		finalNode, _ = p.intermediateStates.Remove()
+	}
+	return
 }
 
 func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) {
