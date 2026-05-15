@@ -654,8 +654,15 @@ func (p *Process) removeThread(threadIndex int) {
 // GetAllVariables returns all variables visible in the Current thread.
 // This includes state variables and variables from the Current thread's variables in the top call frame
 func (p *Process) GetAllVariables() starlark.StringDict {
-	// Shallow clone the globals
-	dict := maps.Clone(p.Heap.globals)
+	// Resolution precedence (Python-like, last write wins via maps.Copy):
+	// builtins < globals < state < self < locals/scope. Builtins seed the
+	// dict so any user-defined name (global, state, self, local) with the
+	// same spelling shadows them. Without this ordering, a global or local
+	// named `sum`, `bag`, `enum`, `record`, ... would be silently replaced
+	// by the matching builtin — see #340 (sum builtin) + the 11-04
+	// role-functions runtime panic that motivated this fix.
+	dict := maps.Clone(lib.Builtins)
+	maps.Copy(dict, p.Heap.globals)
 
 	roleRefs := make(map[starlark.Value]starlark.Value)
 	for _, role := range p.Roles {
@@ -673,7 +680,6 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 	}
 	CopyDict(frame.vars, dict, roleRefs, nil, 0)
 	frame.scope.getAllVisibleVariablesResolveRoles(dict, roleRefs)
-	maps.Copy(dict, lib.Builtins)
 	dict["deepcopy"] = starlark.NewBuiltin("deepcopy", DeepCopyBuiltIn)
 	dict["resolve_role"] = lib.CreateResolveRoleBuiltIn(&p.Roles)
 	maps.Copy(dict, p.Modules)
@@ -691,8 +697,10 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 // GetAllVariablesNocopy returns all variables visible in the Current thread, without deep copying.
 // This includes state variables and variables from the Current thread's variables in the top call frame
 func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
-	// Shallow clone the globals
-	dict := maps.Clone(p.Heap.globals)
+	// Resolution precedence: builtins < globals < state < self < locals.
+	// See GetAllVariables for the full rationale.
+	dict := maps.Clone(lib.Builtins)
+	maps.Copy(dict, p.Heap.globals)
 
 	maps.Copy(dict, p.Heap.state)
 	frame := p.currentThread().currentFrame()
@@ -702,7 +710,6 @@ func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
 	maps.Copy(dict, frame.vars)
 	frame.scope.getAllVisibleVariablesToDictNoCopy(dict)
 
-	maps.Copy(dict, lib.Builtins)
 	dict["deepcopy"] = starlark.NewBuiltin("deepcopy", DeepCopyBuiltIn)
 	dict["resolve_role"] = lib.CreateResolveRoleBuiltIn(&p.Roles)
 	maps.Copy(dict, p.Modules)
