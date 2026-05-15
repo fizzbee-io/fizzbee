@@ -176,6 +176,16 @@ type Process struct {
 	Enabled        bool `json:"-"`
 	ThreadProgress bool `json:"-"`
 
+	// IsYield: true when this process is at a yield boundary. Set in
+	// processNode-at-yield BEFORE calling YieldNode/YieldFork so the
+	// trace-extend boundary check (ShouldScheduleNode -> IsYieldNode)
+	// sees the yield label without polluting Process.Name. Process.Name
+	// gets set to "yield" AFTER scheduling (restoring pre-ef25c33 order)
+	// so child processes created by Fork() inherit the parent's previous
+	// (action) Name instead of "yield" — see #345 follow-up to ef25c33.
+	// Not propagated by Fork(): children start with IsYield=false.
+	IsYield bool `json:"-"`
+
 	Roles    []*lib.Role          `json:"roles"`
 	Channels map[int]*lib.Channel `json:"channels"`
 
@@ -307,6 +317,9 @@ func (p *Process) GetThreadsCount() int {
 func (p *Process) IsYieldNode() bool {
 	if p == nil {
 		return false
+	}
+	if p.IsYield {
+		return true
 	}
 	switch p.Name {
 	case "yield", "crash", "init":
@@ -1925,18 +1938,25 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	}
 
 	if yield {
-		// Mark this node as a yield BEFORE scheduling its successors. The
-		// trace-extend yield-aware boundary check in ShouldScheduleNode reads
-		// parent.Process.IsYieldNode(), which depends on Name being set; if we
-		// scheduled first and labelled later, every successor would see a
-		// non-yield parent and the extension would never bound.
-		node.Name = "yield"
+		// Mark this node as a yield BEFORE scheduling so the trace-extend
+		// yield-aware boundary check in ShouldScheduleNode (which reads
+		// parent.Process.IsYieldNode()) sees the right answer. We set the
+		// IsYield flag rather than overwriting Name here because Name gets
+		// inherited via Process.Fork() into the children scheduled below;
+		// pre-ef25c33 children inherited the previous (action) Name, and
+		// downstream code (notably markovchain's yieldsCount) relies on
+		// only true yield-points carrying Name == "yield". Name is set
+		// AFTER scheduling, restoring pre-ef25c33 ordering for the Name
+		// label while keeping ef25c33's trace-extend fix via IsYield.
+		node.Process.IsYield = true
 
 		// In OLD mode this immediately schedules successor action-starts. In
 		// NEW (experimentalProcessedQueue) mode it instead saves the forks
 		// onto the node and queues the yield-point itself for later
 		// expansion by startProcessedQueue.
 		p.publishYieldPoint(node, forks)
+
+		node.Name = "yield"
 
 		if p.shouldThreadCrash(node) {
 			p.crashThread(node)
