@@ -38,6 +38,7 @@ var preinitHook string
 var traceExtend int
 
 var isTest bool
+var experimentalProcessedQueue bool
 
 func main() {
 	args := parseFlags()
@@ -596,6 +597,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		i++
 
 		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy, isTest, hashes, guidedTrace, preinitHookContentResolved)
+		p1.SetExperimentalProcessedQueue(experimentalProcessedQueue)
 		holder.Store(p1)
 
 		rootNode, failedNode, endTime, err := startModelChecker(p1)
@@ -890,6 +892,7 @@ func parseFlags() []string {
 	flag.IntVar(&traceExtend, "trace-extend", 0, "After trace ends, explore this many additional action depths (0 = stop at trace end)")
 	flag.StringVar(&preinitHook, "preinit-hook", "", "Starlark code as a string to execute after preinit but before freezing globals (multiline supported)")
 	flag.BoolVar(&isTest, "test", false, "Testing mode (prevents printing timestamps and other non-deterministic behavior. Default=false")
+	flag.BoolVar(&experimentalProcessedQueue, "experimental_processed_queue", false, "EXPERIMENTAL: BFS variant where the queue holds processed (yield-point) nodes instead of unprocessed action-starts. Dedupes successors before they enter the queue, reducing peak queue memory. Default=false (use existing path).")
 	flag.Parse()
 
 	// Validate that both file and string versions are not provided

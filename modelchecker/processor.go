@@ -883,6 +883,12 @@ type Node struct {
 	stacktrace string
 
 	DuplicateOf *Node
+
+	// yieldForks: in the experimental processed-queue mode, when a node
+	// reaches yield, its forks list (from thread.Execute) is saved here so
+	// startProcessedQueue can replay YieldNode/YieldFork later when the
+	// yield-point is popped and expanded. Nil for OLD-mode nodes.
+	yieldForks []*Process `json:"-"`
 }
 
 type Link struct {
@@ -1065,6 +1071,84 @@ type Processor struct {
 	guidedTrace        *GuidedTrace
 	preinitHookContent string
 	visitedMapTracking int // 0=default, 1=enabled, 2=disabled
+
+	// experimentalProcessedQueue: when true, p.queue holds processed
+	// (yield-point) nodes rather than unprocessed action-starts. See
+	// startProcessedQueue for the loop that drives this mode. Off by default.
+	experimentalProcessedQueue bool
+
+	// pendingActionStarts: NEW-mode buffer used by enqueueScheduled to
+	// collect action-starts that would have gone to p.queue in OLD mode.
+	// Drained by startProcessedQueue while expanding a popped yield-point.
+	pendingActionStarts []*Node
+
+	// expandedYieldPoints: NEW-mode buffer populated by publishYieldPoint
+	// each time processNode reaches a fresh yield-point. Flushed into
+	// p.queue after a yield-point's expansion completes.
+	expandedYieldPoints []*Node
+
+	// peakQueueLen: maximum observed length of p.queue during the run.
+	// Tracks the design's specific target metric (peak processing-queue
+	// memory). Reported in the run summary.
+	peakQueueLen int
+
+	// peakPendingActionStarts: maximum observed length of pendingActionStarts
+	// in NEW mode. Always 0 in OLD mode. Reported in the run summary.
+	peakPendingActionStarts int
+}
+
+// SetExperimentalProcessedQueue switches the processor to the experimental
+// queue-of-processed-nodes path. Must be called before Start.
+func (p *Processor) SetExperimentalProcessedQueue(v bool) {
+	p.experimentalProcessedQueue = v
+}
+
+// publishYieldPoint records yp as a freshly-discovered yield-point. In OLD
+// mode it immediately schedules yp's successor action-starts via
+// YieldNode/YieldFork. In NEW (experimentalProcessedQueue) mode the
+// scheduling is deferred — the forks are saved on yp and the node is
+// appended to expandedYieldPoints; startProcessedQueue replays the
+// scheduling when yp is popped from p.queue.
+func (p *Processor) publishYieldPoint(yp *Node, forks []*Process) {
+	if p.experimentalProcessedQueue {
+		yp.yieldForks = forks
+		p.expandedYieldPoints = append(p.expandedYieldPoints, yp)
+		return
+	}
+	if len(forks) > 0 {
+		for _, fork := range forks {
+			p.YieldFork(yp, fork)
+		}
+	} else {
+		p.YieldNode(yp)
+	}
+}
+
+// enqueueScheduled is the routing point for action-start nodes that the
+// scheduling code paths (scheduleAction, YieldNode's thread/channel forks,
+// scheduleChannelMessages) used to add directly to p.queue. In OLD mode it
+// is a thin wrapper around addToProcessingQueue. In NEW mode the node is
+// buffered in pendingActionStarts so startProcessedQueue can drain it
+// during the expansion of the owning yield-point.
+func (p *Processor) enqueueScheduled(node *Node) {
+	if p.experimentalProcessedQueue {
+		p.pendingActionStarts = append(p.pendingActionStarts, node)
+		if l := len(p.pendingActionStarts); l > p.peakPendingActionStarts {
+			p.peakPendingActionStarts = l
+		}
+		return
+	}
+	p.addToProcessingQueue(node)
+}
+
+// addToProcessingQueue adds a node to the main processing queue and tracks
+// the peak length for memory-comparison reporting. All adds to p.queue (in
+// either mode) should go through this helper so peak tracking is accurate.
+func (p *Processor) addToProcessingQueue(node *Node) {
+	p.queue.Add(node)
+	if l := p.queue.Len(); l > p.peakQueueLen {
+		p.peakQueueLen = l
+	}
 }
 
 func NewProcessor(files []*ast.File, options *ast.StateSpaceOptions, simulation bool, seed int64, dirPath string, strategy string, test bool, hashes JoinHashes, trace *GuidedTrace, preinitHookContent string) *Processor {
@@ -1182,6 +1266,9 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 	if p.simulation {
 		return p.StartSimulation()
 	}
+	if p.experimentalProcessedQueue {
+		return p.startProcessedQueue()
+	}
 	if p.Init != nil {
 		panic("processor already started")
 	}
@@ -1191,7 +1278,7 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 		return init, failedNode, err
 	}
 
-	p.queue.Add(p.Init)
+	p.addToProcessingQueue(p.Init)
 	prevCount := 0
 	for p.queue.Len() != 0 && !p.stopped {
 		node, found := p.queue.Remove()
@@ -1235,6 +1322,7 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 	} else {
 		fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
 	}
+	p.printPeakSummary()
 
 	return p.Init, failedNode, err
 }
@@ -1245,8 +1333,8 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 // are drained from p.intermediateStates and processed inline.
 //
 // Behavior is identical to the inline loop it replaces in Start; the
-// extraction exists so a planned experimental queue-of-processed-nodes path
-// can share it.
+// extraction exists so the planned experimental queue-of-processed-nodes
+// path can share it.
 //
 // Returns:
 //   - invariantFailure: result of the final processNode call.
@@ -1290,6 +1378,182 @@ func (p *Processor) expandToYield(node *Node, startTime time.Time, prevCount *in
 		finalNode, _ = p.intermediateStates.Remove()
 	}
 	return
+}
+
+// startProcessedQueue is the experimental BFS variant where p.queue holds
+// PROCESSED yield-point nodes rather than UNPROCESSED action-starts.
+//
+// Compared to Start:
+//
+//   - Init is processed first; its yield-point is enqueued (not its action
+//     successors). publishYieldPoint, in NEW mode, captures the yield-point
+//     into p.expandedYieldPoints rather than calling YieldNode/YieldFork.
+//
+//   - Each main-loop iteration pops a yield-point yp, then expands it by
+//     replaying the YieldNode (or per-fork YieldFork) call that was deferred
+//     at publish time. Those calls schedule action-starts via
+//     enqueueScheduled — in NEW mode that buffers into pendingActionStarts.
+//
+//   - pendingActionStarts is drained inline. Each expandToYield call may
+//     reveal one or more new yield-points (via publishYieldPoint), which
+//     accumulate in expandedYieldPoints and are flushed into p.queue at the
+//     end of each yp's expansion. Duplicates are filtered before they enter
+//     the queue (processNode short-circuits on findVisitedSymmetric hits, so
+//     publishYieldPoint is never called for them).
+//
+// The dedup-before-enqueue is the source of the expected memory savings:
+// p.queue size is bounded by distinct yield-points, not by
+// (yield-point × outgoing actions).
+func (p *Processor) startProcessedQueue() (init *Node, failedNode *Node, err error) {
+	if p.Init != nil {
+		panic("processor already started")
+	}
+	startTime := time.Now()
+	init, failedNode, err = p.InitializeNode()
+	if err != nil {
+		return init, failedNode, err
+	}
+
+	prevCount := 0
+
+	// Phase 1: process Init. The "normal" path is that Init is an action
+	// whose body yields, so publishYieldPoint appends Init's yield-point to
+	// expandedYieldPoints. The "no Init action" path (processInit, used for
+	// specs whose first action isn't named Init) instead schedules each
+	// top-level action-start directly via enqueueScheduled, populating
+	// pendingActionStarts WITHOUT producing a yield-point. drainAndFlush
+	// covers both: it drains any pendingActionStarts (handling the
+	// processInit case) and then flushes whatever yield-points were
+	// discovered into the queue.
+	invariantFailure, _, crashFailedNode, finalNode := p.expandToYield(p.Init, startTime, &prevCount)
+	if crashFailedNode != nil && failedNode == nil {
+		failedNode = crashFailedNode
+	}
+	if invariantFailure {
+		if failedNode == nil {
+			failedNode = finalNode
+		}
+		if !p.config.ContinueOnInvariantFailures {
+			p.printRunSummary(startTime)
+			return p.Init, failedNode, err
+		}
+	}
+	var earlyReturn bool
+	earlyReturn, failedNode = p.drainAndFlush(startTime, &prevCount, failedNode)
+	if earlyReturn {
+		p.printRunSummary(startTime)
+		return p.Init, failedNode, err
+	}
+
+	// Phase 2: drain the processed-queue. Each iteration replays yp's
+	// deferred YieldNode/YieldFork to schedule its successor action-starts,
+	// then drainAndFlush processes them through to their yield-points and
+	// pushes those into the queue.
+	for p.queue.Len() != 0 && !p.stopped {
+		yp, found := p.queue.Remove()
+		if !found {
+			panic("queue should not be empty")
+		}
+		if yp.actionDepth > int(p.config.Options.MaxActions) {
+			continue
+		}
+
+		// Replay the deferred YieldNode/YieldFork to schedule yp's
+		// successor action-starts into pendingActionStarts.
+		if len(yp.yieldForks) > 0 {
+			for _, fork := range yp.yieldForks {
+				p.YieldFork(yp, fork)
+			}
+		} else {
+			p.YieldNode(yp)
+		}
+		// yieldForks no longer needed; release for GC.
+		yp.yieldForks = nil
+
+		earlyReturn, failedNode = p.drainAndFlush(startTime, &prevCount, failedNode)
+		if earlyReturn {
+			p.printRunSummary(startTime)
+			return p.Init, failedNode, err
+		}
+	}
+
+	p.printRunSummary(startTime)
+	return p.Init, failedNode, err
+}
+
+// drainAndFlush drains pendingActionStarts (running expandToYield on each)
+// and then flushes any resulting yield-points into p.queue. Used by
+// startProcessedQueue from both Phase 1 (post-Init, covers processInit's
+// no-yield-published case) and Phase 2 (after each popped yield-point's
+// deferred scheduling has populated pendingActionStarts).
+//
+// Returns earlyReturn=true when an invariant failure with
+// !ContinueOnInvariantFailures requires the caller to abort the main loop.
+// newFailedNode is the (possibly updated) failedNode the caller should
+// propagate.
+func (p *Processor) drainAndFlush(startTime time.Time, prevCount *int, failedNode *Node) (earlyReturn bool, newFailedNode *Node) {
+	newFailedNode = failedNode
+	for len(p.pendingActionStarts) > 0 {
+		as := p.pendingActionStarts[0]
+		p.pendingActionStarts = p.pendingActionStarts[1:]
+
+		if as.actionDepth > int(p.config.Options.MaxActions) {
+			continue
+		}
+
+		invariantFailure, symmetryFound, crashFailedNode, finalNode := p.expandToYield(as, startTime, prevCount)
+		if crashFailedNode != nil && newFailedNode == nil {
+			newFailedNode = crashFailedNode
+		}
+		if symmetryFound {
+			continue
+		}
+		if invariantFailure && newFailedNode == nil {
+			newFailedNode = finalNode
+		}
+		if invariantFailure && !p.config.ContinueOnInvariantFailures {
+			return true, newFailedNode
+		}
+	}
+	p.flushExpandedYieldPoints()
+	return false, newFailedNode
+}
+
+// flushExpandedYieldPoints moves freshly-discovered yield-points from the
+// per-expansion buffer into the main processed queue and resets the buffer.
+func (p *Processor) flushExpandedYieldPoints() {
+	for _, yp := range p.expandedYieldPoints {
+		p.addToProcessingQueue(yp)
+	}
+	p.expandedYieldPoints = p.expandedYieldPoints[:0]
+}
+
+// printRunSummary emits the same per-run summary line that Start emits at
+// completion. Extracted so startProcessedQueue can share it.
+func (p *Processor) printRunSummary(startTime time.Time) {
+	if p.isTest {
+		fmt.Printf("Nodes: %d, queued: %d\n", len(p.visited), p.queue.Len())
+	} else {
+		fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
+	}
+	p.printPeakSummary()
+}
+
+// printPeakSummary reports the peak processing-queue length observed during
+// the run, plus (in NEW mode) the peak pendingActionStarts buffer length.
+// These are the design's target memory metrics — comparing peak queue length
+// across OLD vs NEW runs shows the dedup-before-enqueue savings.
+func (p *Processor) printPeakSummary() {
+	mode := "old"
+	if p.experimentalProcessedQueue {
+		mode = "new"
+	}
+	if p.experimentalProcessedQueue {
+		fmt.Printf("Peak (%s): queue=%d pendingActionStarts=%d\n",
+			mode, p.peakQueueLen, p.peakPendingActionStarts)
+	} else {
+		fmt.Printf("Peak (%s): queue=%d\n", mode, p.peakQueueLen)
+	}
 }
 
 func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) {
@@ -1661,14 +1925,11 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		// non-yield parent and the extension would never bound.
 		node.Name = "yield"
 
-		if len(forks) > 0 {
-			//fmt.Println("yield and fork at the same time")
-			for _, fork := range forks {
-				p.YieldFork(node, fork)
-			}
-		} else {
-			p.YieldNode(node)
-		}
+		// In OLD mode this immediately schedules successor action-starts. In
+		// NEW (experimentalProcessedQueue) mode it instead saves the forks
+		// onto the node and queues the yield-point itself for later
+		// expansion by startProcessedQueue.
+		p.publishYieldPoint(node, forks)
 
 		if p.shouldThreadCrash(node) {
 			p.crashThread(node)
@@ -1776,7 +2037,10 @@ func (p *Processor) crashRole(node *Node, role *lib.Role) (*Node, *Node) {
 	crashNode.Attach()
 	p.visited[canonicalHash] = crashNode
 
-	p.YieldNode(crashNode)
+	// Crash variants have no forks (single deterministic crash continuation),
+	// so pass nil. In NEW mode the crash yield-point is queued like any
+	// other; in OLD mode YieldNode runs immediately.
+	p.publishYieldPoint(crashNode, nil)
 	return crashNode, nil
 }
 
@@ -1801,7 +2065,7 @@ func (p *Processor) crashThread(node *Node) {
 	}
 	crashNode.Attach()
 	p.visited[canonicalHash] = crashNode
-	p.YieldNode(crashNode)
+	p.publishYieldPoint(crashNode, nil)
 }
 
 func (p *Process) getSymmetryTranslations() []string {
@@ -2368,7 +2632,7 @@ func (p *Processor) processInit(node *Node) bool {
 		thread.currentFrame().pc = fmt.Sprintf("Actions[%d]", i)
 		thread.currentFrame().Name = action.Name
 		if p.ShouldScheduleNode(newNode) {
-			p.queue.Add(newNode)
+			p.enqueueScheduled(newNode)
 		}
 	}
 	return false
@@ -2386,7 +2650,7 @@ func (p *Processor) YieldNode(node *Node) {
 		newNode.Inbound[len(newNode.Inbound)-1].ReqId = i
 		newNode.ThreadProgress = true
 		if p.ShouldScheduleNode(newNode) {
-			p.queue.Add(newNode)
+			p.enqueueScheduled(newNode)
 		}
 	}
 	p.scheduleChannelMessages(node)
@@ -2435,7 +2699,7 @@ func (p *Processor) YieldFork(node *Node, process *Process) {
 		newNode.Inbound[len(newNode.Inbound)-1].ReqId = i
 		newNode.ThreadProgress = true
 		if p.ShouldScheduleNode(newNode) {
-			p.queue.Add(newNode)
+			p.enqueueScheduled(newNode)
 		}
 	}
 	p.scheduleChannelMessages(node)
@@ -2467,7 +2731,7 @@ func (p *Processor) scheduleChannelMessages(node *Node) {
 
 			thread.Stack.Push(frame)
 			if p.ShouldScheduleNode(newNode) {
-				p.queue.Add(newNode)
+				p.enqueueScheduled(newNode)
 			}
 
 			// TODO(jp): Handle the case where the messages get dropped
@@ -2519,7 +2783,7 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 	}
 
 	if p.ShouldScheduleNode(newNode) {
-		p.queue.Add(newNode)
+		p.enqueueScheduled(newNode)
 	}
 }
 
