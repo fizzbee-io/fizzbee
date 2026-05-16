@@ -39,6 +39,7 @@ Note: `fizz` is the installed binary. If building from source, use `./fizz` (wra
 | `--preinit-hook-file FILE` | — | Load preinit hook from `.cfg` file |
 | `--output-dir DIR` | auto-timestamped | Where to write output |
 | `--no-copy-ast` | off | Don't copy AST to output dir |
+| `--experimental_processed_queue` | off | EXPERIMENTAL: queue holds processed yield-points instead of unprocessed action-starts. Dedupes successors before they enter the queue → smaller peak queue memory (~10× on BFS, ~3× on DFS). State space and assertion outcomes unchanged under BFS. **Under DFS / Random with `max_actions` set, exploration order differs and may visit a different subset within the bound** — see Gotchas. |
 
 ---
 
@@ -197,6 +198,7 @@ NUM_SERVERS=10" spec.fizz
 ## Gotchas
 
 - **DFS / Random + `max_actions` is not exhaustive.** A `max_actions` cap (global or per-action in frontmatter) prunes paths past the limit. With BFS the bounded prefix is fully covered; with DFS / Random the cap interacts with the traversal order, so reachable states within the limit may still be missed. If you need exhaustive coverage with a cap, use BFS.
+- **`--experimental_processed_queue` shifts DFS/Random exploration order.** The flag dedupes successors before enqueue, which changes the order siblings are visited (drains them before descending). Under BFS this is purely a memory-layout change — same nodes, same unique-state count. Under DFS / Random, combined with a `max_actions` cap, the changed order can prune a *different* subset of reachable states than the existing path would. Without the cap (or with `max_actions` raised above the spec's natural diameter), both paths converge to the same canonical state set. If you compare baselines across the flag, set `max_actions` high enough that the bound never bites.
 - **`exists` assertions are disabled in simulation mode.** Simulation checks individual execution traces only; `exists` requires evaluating branches across the state graph.
 - **Simulation traces are not minimal.** Simulation produces *a* failing path, not the *shortest* one. Once you have a failing seed, narrow the bug with a guided `--trace` or model-check a smaller config to get a minimal counterexample.
 - **Random-seed simulation: passing ≠ correct.** "Passed across 1000 seeds" raises confidence but is not a proof. For correctness claims, model-check.

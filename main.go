@@ -892,7 +892,7 @@ func parseFlags() []string {
 	flag.IntVar(&traceExtend, "trace-extend", 0, "After trace ends, explore this many additional action depths (0 = stop at trace end)")
 	flag.StringVar(&preinitHook, "preinit-hook", "", "Starlark code as a string to execute after preinit but before freezing globals (multiline supported)")
 	flag.BoolVar(&isTest, "test", false, "Testing mode (prevents printing timestamps and other non-deterministic behavior. Default=false")
-	flag.BoolVar(&experimentalProcessedQueue, "experimental_processed_queue", false, "EXPERIMENTAL: BFS variant where the queue holds processed (yield-point) nodes instead of unprocessed action-starts. Dedupes successors before they enter the queue, reducing peak queue memory. Default=false (use existing path).")
+	flag.BoolVar(&experimentalProcessedQueue, "experimental_processed_queue", false, "EXPERIMENTAL: queue holds processed (yield-point) nodes instead of unprocessed action-starts. Dedupes successors before they enter the queue, reducing peak queue memory (~10x on BFS, ~3x on DFS). State space and assertion outcomes are identical under BFS. Under DFS/Random combined with max_actions, the changed exploration order may prune a different subset of states than the default path within the bound — raise max_actions above the spec's natural diameter to avoid the divergence. Default=false.")
 	flag.Parse()
 
 	// Validate that both file and string versions are not provided
