@@ -604,6 +604,18 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		runs++
 		lastRootNode = rootNode
 
+		// Early deadlock detection (NEW path only): startProcessedQueue
+		// aborts the run on the first detected deadlock and exposes it
+		// here. Report and exit before any post-run graph traversal — no
+		// point doing the rest of the work, and dumpFailedNode reads
+		// node.Inbound which is still populated for this node.
+		if earlyDead := p1.GetEarlyDeadlock(); earlyDead != nil && !simulation {
+			fmt.Println("DEADLOCK detected (early)")
+			fmt.Println("FAILED: Model checker failed")
+			dumpFailedNode(sourceFileName, earlyDead, rootNode, outDir)
+			return nil
+		}
+
 		if !simulation {
 			if writeDotFileIfNeeded(p1, rootNode, outDir) {
 				return nil

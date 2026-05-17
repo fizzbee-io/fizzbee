@@ -1115,6 +1115,30 @@ type Processor struct {
 	// peakPendingActionStarts: maximum observed length of pendingActionStarts
 	// in NEW mode. Always 0 in OLD mode. Reported in the run summary.
 	peakPendingActionStarts int
+
+	// earlyDeadlock: in NEW mode with deadlock_detection enabled, set to
+	// the first yield-point whose expansion produced zero successors
+	// (and is not at the actionDepth bound). startProcessedQueue aborts
+	// the run when this is set; main.go reports it as a deadlock.
+	// nil otherwise.
+	earlyDeadlock *Node
+
+	// dedupHitsInExpansion: incremented every time processNode short-
+	// circuits on a findVisitedSymmetric dedup hit. Reset at the start of
+	// each Phase-2 yp expansion in startProcessedQueue. Used by the
+	// early-deadlock check: a yp whose expansion ALSO produced no new
+	// yps in p.queue AND had zero dedup hits genuinely has no live
+	// successors. (A dedup hit means the action-start reached a previously
+	// visited state — a live transition that wouldn't grow the queue.)
+	dedupHitsInExpansion int
+}
+
+// GetEarlyDeadlock returns the first deadlocked yield-point detected during
+// the run, or nil if none was found / detection is disabled / not in NEW
+// mode. A non-nil result means the model checker aborted exploration on
+// finding the deadlock rather than running to queue-exhaustion.
+func (p *Processor) GetEarlyDeadlock() *Node {
+	return p.earlyDeadlock
 }
 
 // SetExperimentalProcessedQueue switches the processor to the experimental
@@ -1490,8 +1514,33 @@ func (p *Processor) startProcessedQueue() (init *Node, failedNode *Node, err err
 		// yieldForks no longer needed; release for GC.
 		yp.yieldForks = nil
 
+		// Snapshot signals before expansion so we can tell after
+		// drainAndFlush whether yp produced any live successors:
+		//   1. queue length grew — new yield-points were enqueued.
+		//   2. dedupHitsInExpansion grew — action-starts reached
+		//      already-visited canonical states (no queue growth but a
+		//      real transition out of yp).
+		// Both must be zero to flag yp as a deadlock.
+		queueLenBefore := p.queue.Len()
+		p.dedupHitsInExpansion = 0
+
 		earlyReturn, failedNode = p.drainAndFlush(startTime, &prevCount, failedNode)
 		if earlyReturn {
+			p.printRunSummary(startTime)
+			return p.Init, failedNode, err
+		}
+
+		// Early deadlock detection: no new yield-points enqueued AND no
+		// dedup hits from yp's expansion AND not at the actionDepth bound.
+		// The OLD path detects this post-run by walking the graph
+		// (markovchain.go); here we have the signal at hand and fast-fail.
+		if p.config.GetDeadlockDetection() &&
+			p.queue.Len() == queueLenBefore &&
+			p.dedupHitsInExpansion == 0 &&
+			yp.actionDepth < int(p.config.Options.MaxActions) {
+			if p.earlyDeadlock == nil {
+				p.earlyDeadlock = yp
+			}
 			p.printRunSummary(startTime)
 			return p.Init, failedNode, err
 		}
@@ -1905,6 +1954,12 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 				}
 			}
 			node.Duplicate(other, yield)
+			// Count this as a "live successor" signal for the early
+			// deadlock detector in startProcessedQueue Phase 2. A dedup
+			// hit means an action-start reached a previously visited
+			// canonical state — a real transition out of the current yp,
+			// even though no new entry is added to p.queue.
+			p.dedupHitsInExpansion++
 			return false, false
 		} else {
 			node.Attach()
