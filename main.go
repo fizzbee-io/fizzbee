@@ -39,6 +39,7 @@ var traceExtend int
 
 var isTest bool
 var experimentalProcessedQueue bool
+var experimentalNoGraph bool
 
 func main() {
 	args := parseFlags()
@@ -48,11 +49,33 @@ func main() {
 		os.Exit(1)
 	}
 
+	// --experimental_no_graph implies --experimental_processed_queue (the
+	// drop-graph optimization only makes sense in the queue-of-processed
+	// model). Auto-enable rather than erroring out.
+	if experimentalNoGraph && !experimentalProcessedQueue {
+		fmt.Println("Note: --experimental_no_graph auto-enables --experimental_processed_queue.")
+		experimentalProcessedQueue = true
+	}
+
 	// Get the input JSON file name from command line argument
 	jsonFilename := args[0]
 	dirPath := filepath.Dir(jsonFilename)
 
 	f := loadInputJSON(jsonFilename)
+
+	// --experimental_no_graph cannot support liveness checks (no graph to
+	// run SCC/cycle detection on). Refuse upfront if the spec declares any
+	// always-eventually / eventually-always / eventually invariants.
+	if experimentalNoGraph {
+		for _, inv := range f.Invariants {
+			for _, op := range inv.TemporalOperators {
+				if op == "eventually" || op == "always-eventually" || op == "eventually-always" {
+					fmt.Printf("--experimental_no_graph refused: spec declares liveness invariant '%s' (operator '%s'). The no-graph mode keeps no state graph, so cycle-based liveness checks cannot run.\n", inv.Name, op)
+					os.Exit(1)
+				}
+			}
+		}
+	}
 
 	sourceFileName := filepath.Join(dirPath, f.SourceInfo.GetFileName())
 	//fmt.Println("dirPath:", dirPath)
@@ -64,6 +87,14 @@ func main() {
 		stateConfig = loadStateOptions(dirPath, f.GetFrontMatter())
 		fmt.Printf("StateSpaceOptions: %+v\n", stateConfig)
 		applyDefaultStateOptions(stateConfig)
+	}
+
+	// no_graph mode cannot drive crash simulation (the crash variants
+	// rely on the in-memory graph: Attach/visited/Inbound). Warn loudly
+	// when crash_on_yield is on; the per-yield-point crashProcess /
+	// crashThread calls are no-oped below in the processor.
+	if experimentalNoGraph && stateConfig.GetOptions().GetCrashOnYield() {
+		fmt.Println("WARNING: --experimental_no_graph disables crash-on-yield simulation. Crash variants will NOT be explored. Set crash_on_yield: false to silence this warning, or omit --experimental_no_graph to keep crash simulation.")
 	}
 
 	outDir, err := createOutputDir(dirPath, isTest)
@@ -598,6 +629,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 
 		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy, isTest, hashes, guidedTrace, preinitHookContentResolved)
 		p1.SetExperimentalProcessedQueue(experimentalProcessedQueue)
+		p1.SetExperimentalNoGraph(experimentalNoGraph)
 		holder.Store(p1)
 
 		rootNode, failedNode, endTime, err := startModelChecker(p1)
@@ -608,15 +640,25 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		// aborts the run on the first detected deadlock and exposes it
 		// here. Report and exit before any post-run graph traversal — no
 		// point doing the rest of the work, and dumpFailedNode reads
-		// node.Inbound which is still populated for this node.
+		// node.Inbound which is still populated for this node. In
+		// no-graph mode the Inbound back-pointer was cleared, so fall
+		// back to the lightweight pathTail trace.
 		if earlyDead := p1.GetEarlyDeadlock(); earlyDead != nil && !simulation {
 			fmt.Println("DEADLOCK detected (early)")
 			fmt.Println("FAILED: Model checker failed")
-			dumpFailedNode(sourceFileName, earlyDead, rootNode, outDir)
+			if experimentalNoGraph {
+				path := earlyDead.PathNames()
+				fmt.Printf("Trace (%d steps):\n", len(path))
+				for _, step := range path {
+					fmt.Printf("  %s\n", step)
+				}
+			} else {
+				dumpFailedNode(sourceFileName, earlyDead, rootNode, outDir)
+			}
 			return nil
 		}
 
-		if !simulation {
+		if !simulation && !experimentalNoGraph {
 			if writeDotFileIfNeeded(p1, rootNode, outDir) {
 				return nil
 			}
@@ -626,6 +668,34 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 
 		if err != nil {
 			printTraceAndExit(err)
+		}
+
+		// In no-graph mode there's no in-memory state graph to walk for
+		// dot generation, exists-witness checking, liveness, or deadlock
+		// detection via traverseBFS. Print a minimal summary and return.
+		// (Liveness was already refused at startup; deadlock detection in
+		// no-graph mode happens at expansion time inside startProcessedQueue.)
+		if experimentalNoGraph {
+			if failedNode != nil {
+				if failedNode.FailedInvariants != nil && len(failedNode.FailedInvariants) > 0 && len(failedNode.FailedInvariants[0]) > 0 {
+					fmt.Println("FAILED: Model checker failed. Invariant:", f.Invariants[failedNode.FailedInvariants[0][0]].Name)
+				} else {
+					fmt.Println("FAILED: Model checker failed")
+				}
+				path := failedNode.PathNames()
+				fmt.Printf("Trace (%d steps):\n", len(path))
+				for _, step := range path {
+					fmt.Printf("  %s\n", step)
+				}
+				return nil
+			}
+			fmt.Printf("Visited entries: %d  Unique states: %d\n", p1.GetVisitedNodesCount(), p1.GetUniqueYieldCount())
+			if p1.Stopped() {
+				fmt.Println("Model checker stopped")
+				return nil
+			}
+			fmt.Println("PASSED: Model checker completed successfully")
+			return rootNode
 		}
 
 		// Check if trace was fully executed
@@ -905,6 +975,7 @@ func parseFlags() []string {
 	flag.StringVar(&preinitHook, "preinit-hook", "", "Starlark code as a string to execute after preinit but before freezing globals (multiline supported)")
 	flag.BoolVar(&isTest, "test", false, "Testing mode (prevents printing timestamps and other non-deterministic behavior. Default=false")
 	flag.BoolVar(&experimentalProcessedQueue, "experimental_processed_queue", false, "EXPERIMENTAL: queue holds processed (yield-point) nodes instead of unprocessed action-starts. Dedupes successors before they enter the queue, reducing peak queue memory (~10x on BFS, ~3x on DFS). State space and assertion outcomes are identical under BFS. Under DFS/Random combined with max_actions, the changed exploration order may prune a different subset of states than the default path within the bound — raise max_actions above the spec's natural diameter to avoid the divergence. Default=false.")
+	flag.BoolVar(&experimentalNoGraph, "experimental_no_graph", false, "EXPERIMENTAL: drops the in-memory state graph after processing each yield-point. Keeps symmetry reduction, dedup, unique-state count, and safety/transition assertions. Does NOT support liveness assertions — refuses to run if any are present. Auto-enables --experimental_processed_queue. Massive RSS reduction at the cost of trace replayability (only a lightweight action-name chain is kept for failure reporting). Default=false.")
 	flag.Parse()
 
 	// Validate that both file and string versions are not provided

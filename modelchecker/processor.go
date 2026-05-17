@@ -909,6 +909,47 @@ type Node struct {
 	// startProcessedQueue can replay YieldNode/YieldFork later when the
 	// yield-point is popped and expanded. Nil for OLD-mode nodes.
 	yieldForks []*Process `json:"-"`
+
+	// pathTail: in experimental no-graph mode, a lightweight linked-list
+	// node holding the action / link name that produced this node, plus a
+	// pointer to its parent's pathTail. Used for reconstructing a failure
+	// trace without keeping ancestor Process objects alive. Nil otherwise.
+	// Siblings share the parent's pathTail pointer.
+	pathTail *pathNode `json:"-"`
+}
+
+// pathNode is a single entry in the no-graph mode's action-name chain. It
+// references its parent pathNode only — never a Process or full Node — so
+// the chain does not pin any Process state in memory.
+type pathNode struct {
+	name   string
+	parent *pathNode
+}
+
+// collectPath walks a pathTail back to the root and returns the action-name
+// sequence in forward order (from Init to the node).
+func collectPath(tail *pathNode) []string {
+	depth := 0
+	for p := tail; p != nil; p = p.parent {
+		depth++
+	}
+	out := make([]string, depth)
+	i := depth - 1
+	for p := tail; p != nil; p = p.parent {
+		out[i] = p.name
+		i--
+	}
+	return out
+}
+
+// PathNames returns the action-name chain leading to this node in no-graph
+// mode (empty in other modes). Used by the failure reporter to print a
+// reproducible trace without requiring the in-memory state graph.
+func (n *Node) PathNames() []string {
+	if n == nil {
+		return nil
+	}
+	return collectPath(n.pathTail)
 }
 
 type Link struct {
@@ -1097,6 +1138,17 @@ type Processor struct {
 	// startProcessedQueue for the loop that drives this mode. Off by default.
 	experimentalProcessedQueue bool
 
+	// experimentalNoGraph: when true (and experimentalProcessedQueue must
+	// also be true), the model checker skips dedup, skips Outbound link
+	// tracking, drops heavy Process fields (Heap/Threads/Roles/Channels)
+	// from yield-points after their expansion completes, and detects
+	// deadlocks at expansion time rather than post-traversal. Liveness
+	// checks are NOT supported in this mode — main.go rejects specs that
+	// declare any eventually/always-eventually/eventually-always invariants
+	// at startup. The failure path (parent pointer chain via Inbound[0])
+	// remains intact so a failure trace can be reconstructed on demand.
+	experimentalNoGraph bool
+
 	// pendingActionStarts: NEW-mode buffer used by enqueueScheduled to
 	// collect action-starts that would have gone to p.queue in OLD mode.
 	// Drained by startProcessedQueue while expanding a popped yield-point.
@@ -1131,6 +1183,12 @@ type Processor struct {
 	// successors. (A dedup hit means the action-start reached a previously
 	// visited state — a live transition that wouldn't grow the queue.)
 	dedupHitsInExpansion int
+
+	// uniqueYieldCount: incremented each time publishYieldPoint records a
+	// NEW yield-point (after dedup, so duplicates do not double-count).
+	// Used by no-graph mode to report "Unique states" without the in-memory
+	// graph traversal (markovchain's yieldsCount).
+	uniqueYieldCount int
 }
 
 // GetEarlyDeadlock returns the first deadlocked yield-point detected during
@@ -1147,6 +1205,55 @@ func (p *Processor) SetExperimentalProcessedQueue(v bool) {
 	p.experimentalProcessedQueue = v
 }
 
+// SetExperimentalNoGraph enables the no-graph memory mode. Must be called
+// before Start. Caller is responsible for also enabling
+// experimentalProcessedQueue and for refusing specs with liveness assertions.
+func (p *Processor) SetExperimentalNoGraph(v bool) {
+	p.experimentalNoGraph = v
+}
+
+// breakParentRef releases a freshly-forked child's back-reference to its
+// parent Node so the parent can be GC'd once it leaves the queue. The
+// Inbound link's metadata (Name, etc.) is preserved; only the .Node pointer
+// is nilled out. No-op outside no_graph mode.
+func (p *Processor) breakParentRef(child *Node) {
+	if !p.experimentalNoGraph {
+		return
+	}
+	if len(child.Inbound) > 0 {
+		child.Inbound[0].Node = nil
+	}
+}
+
+// extendPath adds an action-name entry to the child's pathTail in no_graph
+// mode, sharing the parent's chain prefix via pointer. Must be called BEFORE
+// breakParentRef so parent.pathTail is still reachable from child.
+// No-op outside no_graph mode. Call only for true action transitions
+// (scheduleAction); thread-continuation / channel-message / intermediate
+// forks inherit the parent's pathTail unchanged.
+func (p *Processor) extendPath(parent *Node, child *Node, name string) {
+	if !p.experimentalNoGraph {
+		return
+	}
+	if parent != nil {
+		child.pathTail = &pathNode{name: name, parent: parent.pathTail}
+	} else {
+		child.pathTail = &pathNode{name: name}
+	}
+}
+
+// inheritPath copies the parent's pathTail to the child without extending
+// it. Used for forks that aren't action transitions (thread continuations,
+// channel messages, intermediate non-yield forks, crash variants).
+func (p *Processor) inheritPath(parent *Node, child *Node) {
+	if !p.experimentalNoGraph {
+		return
+	}
+	if parent != nil {
+		child.pathTail = parent.pathTail
+	}
+}
+
 // publishYieldPoint records yp as a freshly-discovered yield-point. In OLD
 // mode it immediately schedules yp's successor action-starts via
 // YieldNode/YieldFork. In NEW (experimentalProcessedQueue) mode the
@@ -1154,6 +1261,9 @@ func (p *Processor) SetExperimentalProcessedQueue(v bool) {
 // appended to expandedYieldPoints; startProcessedQueue replays the
 // scheduling when yp is popped from p.queue.
 func (p *Processor) publishYieldPoint(yp *Node, forks []*Process) {
+	// Only called for NEW (not dedup-skipped) yield-points — processNode
+	// short-circuits before reaching the publish step on dedup hits.
+	p.uniqueYieldCount++
 	if p.experimentalProcessedQueue {
 		yp.yieldForks = forks
 		p.expandedYieldPoints = append(p.expandedYieldPoints, yp)
@@ -1166,6 +1276,14 @@ func (p *Processor) publishYieldPoint(yp *Node, forks []*Process) {
 	} else {
 		p.YieldNode(yp)
 	}
+}
+
+// GetUniqueYieldCount returns the number of distinct yield-points discovered
+// during the run. Equivalent to markovchain's yieldsCount but maintained
+// incrementally so it's available even in no-graph mode where the post-run
+// graph traversal is skipped.
+func (p *Processor) GetUniqueYieldCount() int {
+	return p.uniqueYieldCount
 }
 
 // enqueueScheduled is the routing point for action-start nodes that the
@@ -1407,7 +1525,12 @@ func (p *Processor) expandToYield(node *Node, startTime time.Time, prevCount *in
 			p.visited = make(map[string]*Node)
 		}
 
-		if finalNode.Process != nil && p.config.Options.GetCrashOnYield() && finalNode.Enabled && (finalNode.Name == "yield" || finalNode.Name == "crash") {
+		// no_graph mode disables crash simulation: crashRole/crashThread
+		// rely on visited/Attach/Inbound to register the crash variant in
+		// the graph, none of which work when the graph is dropped. A
+		// warning is printed at startup; revisit in a follow-up if
+		// crash-resilience simulation is needed in no_graph mode.
+		if finalNode.Process != nil && p.config.Options.GetCrashOnYield() && finalNode.Enabled && (finalNode.Name == "yield" || finalNode.Name == "crash") && !p.experimentalNoGraph {
 			crashed := p.crashProcess(finalNode)
 			if crashed != nil && crashFailedNode == nil {
 				crashFailedNode = crashed
@@ -1534,6 +1657,8 @@ func (p *Processor) startProcessedQueue() (init *Node, failedNode *Node, err err
 		// dedup hits from yp's expansion AND not at the actionDepth bound.
 		// The OLD path detects this post-run by walking the graph
 		// (markovchain.go); here we have the signal at hand and fast-fail.
+		// In no_graph mode this is the ONLY deadlock-detection mechanism
+		// available (no graph to traverse).
 		if p.config.GetDeadlockDetection() &&
 			p.queue.Len() == queueLenBefore &&
 			p.dedupHitsInExpansion == 0 &&
@@ -1543,6 +1668,21 @@ func (p *Processor) startProcessedQueue() (init *Node, failedNode *Node, err err
 			}
 			p.printRunSummary(startTime)
 			return p.Init, failedNode, err
+		}
+
+		// In no-graph mode, yp is no longer referenced by the queue and its
+		// expansion's outputs have been enqueued (with parent back-refs
+		// broken). Strip the heavy fields and break the Process.Parent
+		// chain so yp + its ancestor Process objects become GC-eligible.
+		if p.experimentalNoGraph && yp.Process != nil {
+			yp.Process.Heap = nil
+			yp.Process.Threads = nil
+			yp.Process.Roles = nil
+			yp.Process.Channels = nil
+			yp.Process.ChannelMessages = nil
+			yp.Process.Parent = nil
+			yp.Process.Children = nil
+			yp.Inbound = nil
 		}
 	}
 
@@ -1564,6 +1704,11 @@ func (p *Processor) drainAndFlush(startTime time.Time, prevCount *int, failedNod
 	newFailedNode = failedNode
 	for len(p.pendingActionStarts) > 0 {
 		as := p.pendingActionStarts[0]
+		// Nil out so the backing array doesn't keep the popped *Node
+		// reachable after the slice header advances — matters in no_graph
+		// mode where the action-start would otherwise stay alive only
+		// because of this slot.
+		p.pendingActionStarts[0] = nil
 		p.pendingActionStarts = p.pendingActionStarts[1:]
 
 		if as.actionDepth > int(p.config.Options.MaxActions) {
@@ -1591,8 +1736,12 @@ func (p *Processor) drainAndFlush(startTime time.Time, prevCount *int, failedNod
 // flushExpandedYieldPoints moves freshly-discovered yield-points from the
 // per-expansion buffer into the main processed queue and resets the buffer.
 func (p *Processor) flushExpandedYieldPoints() {
-	for _, yp := range p.expandedYieldPoints {
+	for i, yp := range p.expandedYieldPoints {
 		p.addToProcessingQueue(yp)
+		// Nil out so the backing array doesn't retain references after
+		// re-slicing — important in no_graph mode where yps would
+		// otherwise stay alive only because of this buffer.
+		p.expandedYieldPoints[i] = nil
 	}
 	p.expandedYieldPoints = p.expandedYieldPoints[:0]
 }
@@ -1943,7 +2092,17 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	}
 
 	other, found, canonicalHash := p.findVisitedSymmetric(node)
-	if found {
+	if p.experimentalNoGraph {
+		// No-graph mode: visited stores hashes only (values are nil). Skip
+		// Attach (no graph edges) and skip the Enabled-vs-existing logic
+		// that would otherwise re-promote a not-yet-enabled visited entry —
+		// in no_graph mode we don't keep the existing Node to compare.
+		if found {
+			// Pure dedup hit; the current node won't be retained either.
+			return false, false
+		}
+		p.visited[canonicalHash] = nil
+	} else if found {
 		// TODO: Enabled should be a property of the link/transition, not the node.
 		// We will keep the enabled state in the node, during execution but have to be
 		// copied to the link/transition when attaching/merging similar to Fairness.
@@ -1986,6 +2145,8 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		for _, fork := range forks {
 			newNode := node.ForkForAlternatePaths(fork, fork.Name)
 			if p.ShouldScheduleNode(newNode) {
+				p.inheritPath(node, newNode)
+				p.breakParentRef(newNode)
 				p.intermediateStates.Add(newNode)
 			}
 		}
@@ -2013,7 +2174,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 
 		node.Name = "yield"
 
-		if p.shouldThreadCrash(node) {
+		if p.shouldThreadCrash(node) && !p.experimentalNoGraph {
 			p.crashThread(node)
 		}
 
@@ -2714,6 +2875,8 @@ func (p *Processor) processInit(node *Node) bool {
 		thread.currentFrame().pc = fmt.Sprintf("Actions[%d]", i)
 		thread.currentFrame().Name = action.Name
 		if p.ShouldScheduleNode(newNode) {
+			p.extendPath(node, newNode, action.Name)
+			p.breakParentRef(newNode)
 			p.enqueueScheduled(newNode)
 		}
 	}
@@ -2732,6 +2895,8 @@ func (p *Processor) YieldNode(node *Node) {
 		newNode.Inbound[len(newNode.Inbound)-1].ReqId = i
 		newNode.ThreadProgress = true
 		if p.ShouldScheduleNode(newNode) {
+			p.inheritPath(node, newNode)
+			p.breakParentRef(newNode)
 			p.enqueueScheduled(newNode)
 		}
 	}
@@ -2781,6 +2946,8 @@ func (p *Processor) YieldFork(node *Node, process *Process) {
 		newNode.Inbound[len(newNode.Inbound)-1].ReqId = i
 		newNode.ThreadProgress = true
 		if p.ShouldScheduleNode(newNode) {
+			p.inheritPath(node, newNode)
+			p.breakParentRef(newNode)
 			p.enqueueScheduled(newNode)
 		}
 	}
@@ -2813,6 +2980,8 @@ func (p *Processor) scheduleChannelMessages(node *Node) {
 
 			thread.Stack.Push(frame)
 			if p.ShouldScheduleNode(newNode) {
+				p.inheritPath(node, newNode)
+				p.breakParentRef(newNode)
 				p.enqueueScheduled(newNode)
 			}
 
@@ -2865,6 +3034,14 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 	}
 
 	if p.ShouldScheduleNode(newNode) {
+		// In no_graph mode, extend the lightweight action-name chain before
+		// breakParentRef nils the back-reference.
+		actionLabel := action.Name
+		if role != nil {
+			actionLabel = role.RefStringShort() + "." + action.Name
+		}
+		p.extendPath(node, newNode, actionLabel)
+		p.breakParentRef(newNode)
 		p.enqueueScheduled(newNode)
 	}
 }
