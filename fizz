@@ -168,7 +168,18 @@ usage() {
   echo "Usage:"
   echo "  $0 install-skills [--check | --remove]"
   echo "  $0 mbt-scaffold [options] filename"
-  echo "  $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--simulation_first_traces intNumber] [--exploration_strategy dfs] [--trace-file tracefile | --trace tracestring] [--preinit-hook-file hookfile | --preinit-hook hookstring] [--copy-ast] [--no-copy-ast] [--output-dir directory] filename"
+  echo "  $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--simulation_first_traces intNumber] [--exploration_strategy dfs] [--trace-file tracefile | --trace tracestring] [--preinit-hook-file hookfile | --preinit-hook hookstring] [--copy-ast] [--no-copy-ast] [--output-dir directory] [experimental] filename"
+  echo ""
+  echo "  Experimental flags (advanced; off by default):"
+  echo "    --experimental_processed_queue"
+  echo "        Queue holds processed (yield-point) nodes instead of unprocessed"
+  echo "        action-starts. Dedupes successors before they enter the queue,"
+  echo "        reducing peak queue memory. Works with BFS, DFS, or random."
+  echo "    --experimental_no_graph"
+  echo "        Drops the in-memory state graph after each yield-point is"
+  echo "        expanded. Major RSS reduction; refuses specs with liveness"
+  echo "        assertions; disables crash-on-yield simulation. Auto-enables"
+  echo "        --experimental_processed_queue."
   exit 1
 }
 
@@ -187,6 +198,7 @@ trace_extend=0
 preinit_hook_file=""
 preinit_hook_string=""
 experimental_processed_queue=false
+experimental_no_graph=false
 
 # Parse options
 while [[ "$1" =~ ^- ]]; do
@@ -305,6 +317,10 @@ while [[ "$1" =~ ^- ]]; do
       experimental_processed_queue=true
       shift
       ;;
+    --experimental_no_graph )
+      experimental_no_graph=true
+      shift
+      ;;
     -h | --help )
       usage
       ;;
@@ -359,6 +375,9 @@ if [ "$internal_profile" = true ]; then
 fi
 if [ "$experimental_processed_queue" = true ]; then
   args+=("--experimental_processed_queue")
+fi
+if [ "$experimental_no_graph" = true ]; then
+  args+=("--experimental_no_graph")
 fi
 if [ "$seed" -ne 0 ]; then
   args+=("--seed" "$seed")
