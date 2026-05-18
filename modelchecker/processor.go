@@ -396,6 +396,15 @@ func (p *Process) CloneForAssert(permutations map[*lib.SymmetricValue][]*lib.Sym
 }
 
 func (p *Process) CloneWithRefs(permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int, refs map[starlark.Value]starlark.Value) *Process {
+	// Copy p.Returns so the clone's HashCode (used by symmetric-permutation
+	// hashing) sees the same action-return data as the original. A fresh
+	// empty map here would silently strip per-action returns from the
+	// dedup key and collapse states that differ only in what an action
+	// returned.
+	returnsCopy := make(starlark.StringDict, len(p.Returns))
+	for k, v := range p.Returns {
+		returnsCopy[k] = v
+	}
 	p2 := &Process{
 		Name:      p.Name,
 		Heap:      p.Heap.Clone(refs, permutations, alt),
@@ -408,7 +417,7 @@ func (p *Process) CloneWithRefs(permutations map[*lib.SymmetricValue][]*lib.Symm
 
 		Children:    []*Process{},
 		Files:       p.Files,
-		Returns:     make(starlark.StringDict),
+		Returns:     returnsCopy,
 		SymbolTable: p.SymbolTable,
 		Modules:     p.Modules,
 		Labels:      make([]string, 0),
