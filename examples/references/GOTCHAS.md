@@ -292,3 +292,45 @@ role Worker:
     action Process:
         result = compute()
 ```
+
+## 13. `max_actions` Can Mask Unbounded Specs
+
+**Symptom**: Spec PASSES under `max_actions: N`, but state count keeps
+growing as you raise `N`, or BFS runs out of memory at larger configs.
+
+**Cause**: `max_actions` prunes paths past the cap. A spec with truly
+unbounded growth (e.g., a counter that can be incremented forever via a
+loop with no `require` bound) will look "complete" because the cap stops
+the exploration, not natural exhaustion.
+
+**Fix**: Add `always` bound assertions on any counter, accumulator, or
+collection size that you believe is structurally bounded. Use a small
+safety multiplier (e.g., `BOUND_SLACK = 2`).
+
+```python
+BOUND_SLACK = 2
+
+always assertion WriterCountersBounded:
+    for w in writers:
+        if w.writes > MAX_WRITES_PER_WRITER * BOUND_SLACK:
+            return False
+    return True
+
+always assertion InboxBounded:
+    for n in nodes:
+        if len(n.inbox) > MAX_INFLIGHT * BOUND_SLACK:
+            return False
+    return True
+```
+
+Run simulation first — it often trips these in seconds:
+```bash
+./fizz -x --max_runs 1000 spec.fizz
+```
+
+An assertion firing means the bound *might* be wrong (loosen it) *or* the
+spec is genuinely unbounded (find the loop and fix the spec). PASSED at
+2× across many runs is evidence of finiteness, not a proof.
+
+See `VERIFICATION_GUIDE.md` §8 for the full pattern, more examples, and
+how to identify which variables to bound.
