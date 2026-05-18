@@ -2145,7 +2145,11 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		for _, fork := range forks {
 			newNode := node.ForkForAlternatePaths(fork, fork.Name)
 			if p.ShouldScheduleNode(newNode) {
-				p.inheritPath(node, newNode)
+				// Intermediate forks carry choice information in fork.Name:
+				// "Stmt:N" / "Any:var=value" / "For:value" / "checkpoint".
+				// These need to be in the trace so guided-trace replay can
+				// re-make the same nondeterministic choices.
+				p.extendPath(node, newNode, fork.Name)
 				p.breakParentRef(newNode)
 				p.intermediateStates.Add(newNode)
 			}
@@ -2969,7 +2973,8 @@ func (p *Processor) YieldFork(node *Node, process *Process) {
 func (p *Processor) scheduleChannelMessages(node *Node) {
 	for i, msgs := range node.ChannelMessages {
 		for j, _ := range msgs {
-			newNode := node.ForkForAlternatePaths(node.Process.Fork(), fmt.Sprintf("channel-%d-message-%d", i, j))
+			linkName := fmt.Sprintf("channel-%d-message-%d", i, j)
+			newNode := node.ForkForAlternatePaths(node.Process.Fork(), linkName)
 			newMsg := newNode.ChannelMessages[i][j]
 			newNode.ChannelMessages[i] = append(newNode.ChannelMessages[i][:j], newNode.ChannelMessages[i][j+1:]...)
 			thread := newNode.Process.NewThread()
@@ -2980,7 +2985,10 @@ func (p *Processor) scheduleChannelMessages(node *Node) {
 
 			thread.Stack.Push(frame)
 			if p.ShouldScheduleNode(newNode) {
-				p.inheritPath(node, newNode)
+				// Channel-message links are matched against the trace
+				// during replay (unlike thread-X which are auto-scheduled),
+				// so they must be in the trace.
+				p.extendPath(node, newNode, linkName)
 				p.breakParentRef(newNode)
 				p.enqueueScheduled(newNode)
 			}

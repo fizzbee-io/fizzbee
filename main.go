@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime/pprof"
@@ -124,7 +125,7 @@ func main() {
 				return
 			}
 		}
-		modelCheckSingleSpec(f, stateConfig, dirPath, outDir, sourceFileName, nil)
+		modelCheckSingleSpec(f, stateConfig, dirPath, outDir, sourceFileName, jsonFilename, nil)
 	}
 }
 
@@ -202,7 +203,7 @@ func runCompositionalModelChecking(f *ast.File, dirPath string, outDir string) {
 			return
 		}
 		fmt.Println("Model checking composed spec:", composedSourceFileName)
-		root := modelCheckSingleSpec(composedFile, composedStateConfig, dirPath, composedOutDir, composedSourceFileName, nil)
+		root := modelCheckSingleSpec(composedFile, composedStateConfig, dirPath, composedOutDir, composedSourceFileName, composedJsonFileName, nil)
 		if root == nil {
 			fmt.Println("Error in model checking composed spec:", spec.Name, "Aborting")
 			return
@@ -284,7 +285,7 @@ func runRefinementModelChecking(f *ast.File, dirPath string, outDir string, json
 		}
 
 		fmt.Println("Model checking abstract spec:", abstractSourceFile)
-		root := modelCheckSingleSpec(abstractFile, stateConfig, dirPath, abstractOutDir, abstractSourceFile, nil)
+		root := modelCheckSingleSpec(abstractFile, stateConfig, dirPath, abstractOutDir, abstractSourceFile, abstractJsonFile, nil)
 		if root == nil {
 			fmt.Println("Error in model checking abstract spec:", spec.Name)
 			return
@@ -324,7 +325,7 @@ func runRefinementModelChecking(f *ast.File, dirPath string, outDir string, json
 		return
 	}
 
-	root := modelCheckSingleSpec(f, stateConfig, dirPath, implOutDir, f.SourceInfo.GetFileName(), joinHashes)
+	root := modelCheckSingleSpec(f, stateConfig, dirPath, implOutDir, f.SourceInfo.GetFileName(), jsonFilename, joinHashes)
 	if root == nil {
 		fmt.Println("Error in model checking implementation spec")
 		return
@@ -544,7 +545,50 @@ func addToJoinHashes(joinHashes modelchecker.JoinHashes, i int, from, to *modelc
 	joinHashes[key][i][pair] = true
 }
 
-func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPath string, outDir string, sourceFileName string, hashes modelchecker.JoinHashes) *modelchecker.Node {
+// replayTraceWithFullState writes the action-name path to a trace file
+// (so the user has it on disk too) and re-execs the binary with
+// --trace-file pointing at it. The replay runs in default mode (with
+// graph) so the standard error-report machinery prints the per-step
+// state — converting the lightweight no_graph trace into the full
+// rich output that the user would have seen without --experimental_no_graph.
+// Best-effort: failures to write/exec just print a fallback command.
+func replayTraceWithFullState(path []string, outDir, jsonFilename string) {
+	if len(path) == 0 || jsonFilename == "" {
+		return
+	}
+	traceFile := filepath.Join(outDir, "trace.txt")
+	body := strings.Join(path, "\n") + "\n"
+	if err := os.WriteFile(traceFile, []byte(body), 0644); err != nil {
+		fmt.Printf("(replay skipped: %v)\n", err)
+		return
+	}
+	self, err := os.Executable()
+	if err != nil {
+		fmt.Printf("(replay skipped: %v)\nReplay manually with:\n  fizz --trace-file %s <spec.fizz>\n", err, traceFile)
+		return
+	}
+	// Preserve flags that change which spec state space the replay sees.
+	// preinit-hook flags override spec constants; if we drop them the
+	// replay reads a different spec (different NUM_WRITERS, etc.) and the
+	// trace won't match anything. Everything else is safe to leave at
+	// default for the replay — guided trace fixes the path either way.
+	args := []string{"--trace-file", traceFile}
+	if preinitHookFile != "" {
+		args = append(args, "--preinit-hook-file", preinitHookFile)
+	}
+	if preinitHook != "" {
+		args = append(args, "--preinit-hook", preinitHook)
+	}
+	args = append(args, jsonFilename)
+	fmt.Println()
+	fmt.Println("=== Replaying trace with full per-step state ===")
+	cmd := exec.Command(self, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	_ = cmd.Run()
+}
+
+func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPath string, outDir string, sourceFileName string, jsonFilename string, hashes modelchecker.JoinHashes) *modelchecker.Node {
 	// Parse trace if provided (either from file or string)
 	var guidedTrace *modelchecker.GuidedTrace
 	if traceFile != "" {
@@ -652,6 +696,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 				for _, step := range path {
 					fmt.Printf("  %s\n", step)
 				}
+				replayTraceWithFullState(path, outDir, jsonFilename)
 			} else {
 				dumpFailedNode(sourceFileName, earlyDead, rootNode, outDir)
 			}
@@ -687,6 +732,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 				for _, step := range path {
 					fmt.Printf("  %s\n", step)
 				}
+				replayTraceWithFullState(path, outDir, jsonFilename)
 				return nil
 			}
 			fmt.Printf("Visited entries: %d  Unique states: %d\n", p1.GetVisitedNodesCount(), p1.GetUniqueYieldCount())
