@@ -284,6 +284,92 @@ The graph shows all reachable states and transitions. Look for:
 - Missing transitions — actions that should be enabled but aren't
 - Unexpected branching — actions creating more states than expected
 
+### 8. Guard Against Unbounded State
+
+If your spec passes model checking under `max_actions`, that does **not** prove
+the state space is finite. The cap may be silently clipping an infinite path.
+
+**Possible symptoms of a hidden unbounded counter** (any one is suggestive,
+none is required):
+- The model checker runs out of memory, or `queued` keeps growing under BFS.
+- The BFS `queued` count climbs steadily then drops to 0 (consistent with
+  `max_actions` clipping rather than natural exhaustion — but BFS can also
+  drain gradually in a true finite spec, so this is a hint, not proof).
+- Total node count keeps growing as you raise `max_actions`.
+- Some quantity that "should" be bounded by your design isn't structurally
+  guaranteed by any `require`.
+
+**The technique: bound assertions.**
+
+For every counter, accumulator, or collection you believe is bounded, add an
+`always` assertion encoding that bound — with a small safety multiplier
+(e.g., 2× the expected max) so a slightly-higher-than-expected natural max
+(off-by-one, interleaving slack, retry overhead) doesn't flag false positives:
+
+```python
+BOUND_SLACK = 2
+
+# Per-role counter
+always assertion WriterCountersBounded:
+    for w in writers:
+        if w.writes > MAX_WRITES_PER_WRITER * BOUND_SLACK:
+            return False
+    return True
+
+# Collection size
+always assertion ObjectCountBounded:
+    return len(objects) <= NUM_WRITERS * MAX_WRITES_PER_WRITER * BOUND_SLACK
+
+# Monotonic ID / sequence number
+always assertion ObjectIdsBounded:
+    if len(objects) == 0:
+        return True
+    return max(objects.keys()) <= NUM_WRITERS * MAX_WRITES_PER_WRITER * BOUND_SLACK
+
+# Pending-work queue / buffer
+always assertion InboxBounded:
+    for n in nodes:
+        if len(n.inbox) > MAX_INFLIGHT * BOUND_SLACK:
+            return False
+    return True
+
+# Map size (e.g., per-key history)
+always assertion HistorySizeBounded:
+    for k in history:
+        if len(history[k]) > MAX_VERSIONS * BOUND_SLACK:
+            return False
+    return True
+```
+
+Then run simulation first (cheap, often finds violations in seconds):
+
+```bash
+./fizz -x --max_runs 1000 spec.fizz
+```
+
+**Reading the result:**
+
+- **Assertion fires** → there's a *likely* unboundedness. Either the bound
+  expectation is wrong (the structural max is higher than you thought —
+  loosen the assertion), or the spec really is unbounded (find the loop in
+  the failure trace and fix the spec).
+- **Assertion doesn't fire** across many runs *and* model checking finishes
+  at higher `max_actions` → evidence in favor of finiteness, but not a
+  proof. Simulation can miss adversarial paths; consider whether you've
+  bounded *all* the right quantities.
+
+**Where to add bound assertions** — for every stateful variable (globals,
+role fields, nested collections), ask:
+
+- Is there a `require` that limits how often it's incremented / appended to?
+- Can the action be re-enabled after the body runs, without that re-enable
+  being itself bounded?
+- Is the body's effect bounded by something *already* bounded (objects size,
+  role count), or by something else that itself can grow?
+
+If you can't trace it back to "bounded by X" where X is a constant or
+another bounded quantity, encode a bound assertion.
+
 ---
 
 ## Summary: Verification Checklist
@@ -301,3 +387,7 @@ The graph shows all reachable states and transitions. Look for:
 5. **Full model check**: `./fizz spec.fizz`
    - Verify PASSED with assertions
    - Compare state counts across configs for sanity
+6. **Bound assertions** for any counter / collection you believe is bounded
+   - `BOUND_SLACK = 2` multiplier; simulation often trips these in seconds
+   - Assertion fires → likely unbounded (or your bound was wrong)
+   - PASSED with bounds intact across higher `max_actions` → evidence of finiteness, not proof
