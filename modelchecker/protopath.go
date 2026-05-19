@@ -8,29 +8,50 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 var re = regexp.MustCompile(`Stmts\[\d+\]`)
 
 type ProtoPath struct {
-	// TODO(jayaprabhakar): A quick hack, fix this. It is safe because this field is immutable.
+	mu       sync.RWMutex
 	filesMap map[*ast.File]map[string]proto.Message
 }
+
 var protoPathInstance = &ProtoPath{filesMap: make(map[*ast.File]map[string]proto.Message)}
 
 func GetProtoFieldByPath(file *ast.File, location string) proto.Message {
-	if protoPathInstance.filesMap[file] == nil {
-		protoPathInstance.filesMap[file] = make(map[string]proto.Message)
-	} else if val, ok := protoPathInstance.filesMap[file][location]; ok {
-		return val
+	// Fast path: read-locked cache lookup. Parallel callers (e.g. parallel
+	// simulation workers) hit this most of the time once the cache is warm.
+	protoPathInstance.mu.RLock()
+	if inner, ok := protoPathInstance.filesMap[file]; ok {
+		if val, hit := inner[location]; hit {
+			protoPathInstance.mu.RUnlock()
+			return val
+		}
 	}
+	protoPathInstance.mu.RUnlock()
+
+	// Slow path: compute outside the lock (reflection on the read-only AST
+	// is safe without the lock), then insert under a write lock with a
+	// re-check in case a concurrent caller already populated the entry.
 	field := GetFieldByPath(file, location)
-	if field == nil {
-		protoPathInstance.filesMap[file][location] = nil
-		return nil
+	var protobuf proto.Message
+	if field != nil {
+		protobuf = convertToProto(field.Elem().Interface(), field.Type())
 	}
-	protobuf := convertToProto(field.Elem().Interface(), field.Type())
-	protoPathInstance.filesMap[file][location] = protobuf
+
+	protoPathInstance.mu.Lock()
+	defer protoPathInstance.mu.Unlock()
+	inner, ok := protoPathInstance.filesMap[file]
+	if !ok {
+		inner = make(map[string]proto.Message)
+		protoPathInstance.filesMap[file] = inner
+	}
+	if existing, hit := inner[location]; hit {
+		return existing
+	}
+	inner[location] = protobuf
 	return protobuf
 }
 
