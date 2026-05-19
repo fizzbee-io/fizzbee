@@ -30,6 +30,11 @@ message Link {
   int64 req_id = 7;
   map<int64, int64> new_to_old_threads = 8;
   string type = 9;
+  // Action return values for this transition. name is the action name (or
+  // role.action for role actions); value is the starlark repr of the
+  // returned value (e.g. `"x"` for a string, `42` for an int, `[1, 2]`
+  // for a list). Sorted by name for deterministic output.
+  repeated NameValue returns = 10;
 }
 
 message Links {
