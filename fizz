@@ -168,7 +168,13 @@ usage() {
   echo "Usage:"
   echo "  $0 install-skills [--check | --remove]"
   echo "  $0 mbt-scaffold [options] filename"
-  echo "  $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--simulation_first_traces intNumber] [--exploration_strategy dfs] [--trace-file tracefile | --trace tracestring] [--preinit-hook-file hookfile | --preinit-hook hookstring] [--copy-ast] [--no-copy-ast] [--output-dir directory] [experimental] filename"
+  echo "  $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--simulation_first_traces intNumber] [--exploration_strategy dfs] [--trace-file tracefile | --trace tracestring] [--preinit-hook-file hookfile | --preinit-hook hookstring] [--copy-ast] [--no-copy-ast] [--output-dir directory] [--parallel intNumber] [experimental] filename"
+  echo ""
+  echo "  --parallel N"
+  echo "    Run N simulation processes in parallel (only with -x and no --seed)."
+  echo "    Workers split --max_runs evenly. Each worker writes to its own"
+  echo "    sub-directory; the first failing worker's output is shown."
+  echo "    Default=1 (sequential)."
   echo ""
   echo "  Experimental flags (advanced; off by default):"
   echo "    --experimental_processed_queue"
@@ -205,6 +211,7 @@ preinit_hook_string=""
 experimental_processed_queue=false
 experimental_no_graph=false
 experimental_no_state_returns=false
+parallel=1
 
 # Parse options
 while [[ "$1" =~ ^- ]]; do
@@ -331,6 +338,15 @@ while [[ "$1" =~ ^- ]]; do
       experimental_no_state_returns=true
       shift
       ;;
+    --parallel )
+      if [[ -n "$2" ]] && [[ "$2" =~ ^[0-9]+$ ]]; then
+        parallel="$2"
+        shift 2
+      else
+        echo "Error: --parallel requires a positive integer value." 1>&2
+        usage
+      fi
+      ;;
     -h | --help )
       usage
       ;;
@@ -427,6 +443,167 @@ if [ -n "$output_dir" ]; then
 fi
 
 args+=("$json_filename")
+
+# --- PARALLEL SIMULATION HANDLER -------------------------------------------
+# Only fires when --simulation, no fixed seed, and --parallel > 1. Each
+# worker is its own fizzbee subprocess — sidesteps all the in-process
+# shared-state hazards (roleRefs, nextChannelId, etc.). Compatible with
+# macOS bash 3.2 (uses only basic array and arithmetic features).
+#
+# Behavior:
+# - Splits --max_runs evenly across workers (0 => unlimited per worker).
+# - Each worker writes to its own out dir + log file.
+# - Polling loop: on first worker that records a failure sentinel, kill
+#   surviving workers. Up to ~500ms latency before survivors are killed.
+# - Ctrl-C kills all live workers and exits with 130 (SIGINT convention).
+# - On success: aggregate "PASSED: N total runs across W workers".
+# - On failure: print the first failing worker's full log + its out dir.
+if [ "$simulation" = true ] && [ "$parallel" -gt 1 ] && [ "$seed" -eq 0 ]; then
+  # set -e is on at the top of the script; turn off inside this block so
+  # expected non-zero exits (kill of an already-dead worker, grep with no
+  # match, etc.) don't abort the script. We exit explicitly at the end.
+  set +e
+
+  # Pick a base output dir for this parallel run.
+  if [ -n "$output_dir" ]; then
+    parallel_base_dir="$output_dir/parallel_$(date +%Y-%m-%d_%H-%M-%S)"
+  else
+    parallel_base_dir="$(dirname "$json_filename")/out/parallel_$(date +%Y-%m-%d_%H-%M-%S)"
+  fi
+  mkdir -p "$parallel_base_dir"
+  failure_sentinel="$parallel_base_dir/.failure"
+
+  # Per-worker max_runs: split evenly (>=1 each). 0 means unlimited.
+  if [ "$max_runs" -gt 0 ]; then
+    worker_max_runs=$(( max_runs / parallel ))
+    if [ "$worker_max_runs" -lt 1 ]; then
+      worker_max_runs=1
+    fi
+  else
+    worker_max_runs=0
+  fi
+
+  echo "Running $parallel parallel simulation workers ($worker_max_runs runs each, output: $parallel_base_dir)"
+
+  # Build per-worker flags by filtering out --max_runs and --output-dir from
+  # the existing args array (we set those per worker), and stripping off the
+  # trailing positional JSON filename. Go's flag.Parse stops at the first
+  # non-flag arg, so we must keep flags before the JSON filename in the
+  # final invocation. Bash 3.2 compatible: indexed array with skip flag.
+  worker_flags=()
+  skip_next=0
+  for a in "${args[@]}"; do
+    if [ "$skip_next" -eq 1 ]; then
+      skip_next=0
+      continue
+    fi
+    case "$a" in
+      --max_runs|--output-dir)
+        skip_next=1
+        ;;
+      "$json_filename")
+        # Skip the positional JSON filename; we append it after the per-
+        # worker flags below.
+        ;;
+      *)
+        worker_flags+=("$a")
+        ;;
+    esac
+  done
+
+  # Spawn N workers. Each runs the fizzbee binary on the (already-parsed)
+  # json file, with per-worker --max_runs and --output-dir.
+  pids=()
+  i=0
+  while [ "$i" -lt "$parallel" ]; do
+    worker_out="$parallel_base_dir/worker_$i"
+    worker_log="$parallel_base_dir/worker_$i.log"
+    mkdir -p "$worker_out"
+    (
+      "$FIZZBEE_BIN" "${worker_flags[@]}" \
+        --max_runs "$worker_max_runs" --output-dir "$worker_out" \
+        "$json_filename" \
+        > "$worker_log" 2>&1
+      # Binary doesn't exit non-zero on FAILED — detect from output.
+      if grep -qE "^FAILED|^DEADLOCK" "$worker_log" 2>/dev/null; then
+        # First-writer-wins is fine; sentinel just signals "someone failed".
+        touch "$failure_sentinel"
+      fi
+    ) &
+    pids+=("$!")
+    i=$(( i + 1 ))
+  done
+
+  # Ctrl-C: kill all live workers, exit 130 (SIGINT convention).
+  trap '
+    echo
+    echo "Interrupted. Killing workers..."
+    for p in "${pids[@]}"; do
+      kill "$p" 2>/dev/null
+    done
+    exit 130
+  ' INT TERM
+
+  # Polling loop: wait for failure sentinel OR all workers to finish.
+  while true; do
+    if [ -f "$failure_sentinel" ]; then
+      # Someone failed — kill survivors.
+      for p in "${pids[@]}"; do
+        kill "$p" 2>/dev/null
+      done
+      break
+    fi
+    alive=0
+    for p in "${pids[@]}"; do
+      if kill -0 "$p" 2>/dev/null; then
+        alive=$(( alive + 1 ))
+      fi
+    done
+    if [ "$alive" -eq 0 ]; then
+      break
+    fi
+    sleep 0.5
+  done
+
+  # Reap all workers (including any killed by the survivors loop).
+  for p in "${pids[@]}"; do
+    wait "$p" 2>/dev/null
+  done
+
+  # Aggregate result.
+  rm -f "$temp_output"
+  if [ -f "$failure_sentinel" ]; then
+    # Print first failing worker's full log (iterate in worker-id order).
+    i=0
+    while [ "$i" -lt "$parallel" ]; do
+      log="$parallel_base_dir/worker_$i.log"
+      if [ -f "$log" ] && grep -qE "^FAILED|^DEADLOCK" "$log" 2>/dev/null; then
+        echo "=== Worker $i failed (output dir: $parallel_base_dir/worker_$i) ==="
+        cat "$log"
+        exit 1
+      fi
+      i=$(( i + 1 ))
+    done
+    # Sentinel set but no log matched (race / killed mid-write); generic msg.
+    echo "FAILED: a worker reported failure but no log captured the trace. Check $parallel_base_dir"
+    exit 1
+  fi
+
+  # All success — sum "Stopped after N runs" across workers.
+  total=0
+  i=0
+  while [ "$i" -lt "$parallel" ]; do
+    log="$parallel_base_dir/worker_$i.log"
+    n=$(grep -oE "Stopped after [0-9]+" "$log" 2>/dev/null | grep -oE "[0-9]+" | head -1)
+    if [ -n "$n" ]; then
+      total=$(( total + n ))
+    fi
+    i=$(( i + 1 ))
+  done
+  echo "PASSED: $total simulation runs across $parallel workers"
+  exit 0
+fi
+# --- END PARALLEL SIMULATION HANDLER ---------------------------------------
 
 
 # Run the second command with the JSON filename
