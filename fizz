@@ -180,6 +180,11 @@ usage() {
   echo "        expanded. Major RSS reduction; refuses specs with liveness"
   echo "        assertions; disables crash-on-yield simulation. Auto-enables"
   echo "        --experimental_processed_queue."
+  echo "    --experimental_no_state_returns"
+  echo "        Omits Process.Returns from HashCode, JSON state, and dot-file"
+  echo "        state labels. Returns remain available on the per-transition"
+  echo "        Link.Returns field. Use to verify downstream consumers (graph,"
+  echo "        MBT, explorer) have migrated to reading from links."
   exit 1
 }
 
@@ -199,6 +204,7 @@ preinit_hook_file=""
 preinit_hook_string=""
 experimental_processed_queue=false
 experimental_no_graph=false
+experimental_no_state_returns=false
 
 # Parse options
 while [[ "$1" =~ ^- ]]; do
@@ -321,6 +327,10 @@ while [[ "$1" =~ ^- ]]; do
       experimental_no_graph=true
       shift
       ;;
+    --experimental_no_state_returns )
+      experimental_no_state_returns=true
+      shift
+      ;;
     -h | --help )
       usage
       ;;
@@ -378,6 +388,9 @@ if [ "$experimental_processed_queue" = true ]; then
 fi
 if [ "$experimental_no_graph" = true ]; then
   args+=("--experimental_no_graph")
+fi
+if [ "$experimental_no_state_returns" = true ]; then
+  args+=("--experimental_no_state_returns")
 fi
 if [ "$seed" -ne 0 ]; then
   args+=("--seed" "$seed")

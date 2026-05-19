@@ -5,13 +5,37 @@ import (
 	"fizz/proto"
 	"fmt"
 	"github.com/fizzbee-io/fizzbee/lib"
+	"go.starlark.net/starlark"
 	proto3 "google.golang.org/protobuf/proto"
 	"log"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 )
+
+// returnsToNameValues serializes Link.Returns (action name -> starlark value)
+// to a sorted slice of proto NameValue entries so the order is deterministic
+// across runs.
+func returnsToNameValues(returns starlark.StringDict) []*proto.NameValue {
+	if len(returns) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(returns))
+	for name := range returns {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	out := make([]*proto.NameValue, 0, len(names))
+	for _, name := range names {
+		out = append(out, &proto.NameValue{
+			Name:  name,
+			Value: returns[name].String(),
+		})
+	}
+	return out
+}
 
 func GenerateProtoOfJson(nodes []*Node, pathPrefix string) ([]string, []string, error) {
 	dir := filepath.Dir(pathPrefix)
@@ -90,6 +114,7 @@ func GenerateProtoOfJson(nodes []*Node, pathPrefix string) ([]string, []string, 
 				Weight:          1.0 / float64(numLinks),
 				NewToOldThreads: intMap,
 				Type:            outboundLink.Type,
+				Returns:         returnsToNameValues(outboundLink.Returns),
 			})
 
 			if len(links) >= linksShardSize {
@@ -157,6 +182,7 @@ func GenerateErrorPathProtoOfJson(errorPath []*Link, pathPrefix string) ([]strin
 			Labels:   outboundLink.Labels,
 			Messages: outboundLink.Messages,
 			Weight:   1.0,
+			Returns:  returnsToNameValues(outboundLink.Returns),
 		}
 		links = append(links, protoLink)
 
@@ -304,6 +330,9 @@ func GenerateDotFile(node *Node, visited map[*Node]bool) string {
 			label := child.Name
 			if child.Labels != nil && len(child.Labels) > 0 {
 				label += "[" + strings.Join(child.Labels, ", ") + "]"
+			}
+			if len(child.Returns) > 0 {
+				label += "\n returns: " + StringDictToJsonString(child.Returns)
 			}
 			if len(child.ThreadsMap) > 0 {
 				label += fmt.Sprintf("\n ThreadsMap: %v", child.ThreadsMap)

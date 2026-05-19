@@ -46,6 +46,15 @@ const (
 // When false: permute all symmetric values from the definition
 const canonicalizeSymmetricValues = true
 
+// excludeReturnsFromState, when true, omits Process.Returns from HashCode,
+// JSON state serialization, and the dot-file state label. Returns remain
+// populated during execution (functions/invariants still read them) and are
+// always available on Link.Returns. Use this to verify downstream consumers
+// have migrated to reading return values from links rather than from state.
+// Toggled via Processor.SetExperimentalNoStateReturns; planned to become the
+// default once consumers have migrated.
+var excludeReturnsFromState bool
+
 const enableCaptureStackTrace = false
 
 type Definition struct {
@@ -269,7 +278,7 @@ func NewProcess(name string, files []*ast.File, parent *Process) *Process {
 }
 
 func (p *Process) MarshalJSON() ([]byte, error) {
-	return lib.MarshalJSON(map[string]interface{}{
+	fields := map[string]interface{}{
 		"state":            p.Heap,
 		"threads":          p.GetThreads(),
 		"current":          p.Current,
@@ -277,11 +286,14 @@ func (p *Process) MarshalJSON() ([]byte, error) {
 		"failedInvariants": p.FailedInvariants,
 		"stats":            p.Stats,
 		"witness":          p.Witness,
-		"returns":          StringDictToJsonString(p.Returns),
 		"roles":            p.Roles,
 		"channels":         p.Channels,
 		"channel_messages": p.ChannelMessages,
-	})
+	}
+	if !excludeReturnsFromState {
+		fields["returns"] = StringDictToJsonString(p.Returns)
+	}
+	return lib.MarshalJSON(fields)
 }
 
 func (p *Process) HasFailedInvariants() bool {
@@ -554,7 +566,7 @@ func (n *Node) appendState(p *Process, buf *strings.Builder) {
 		buf.WriteString("State: ")
 		buf.WriteString(escapedString)
 	}
-	if len(p.Returns) > 0 {
+	if !excludeReturnsFromState && len(p.Returns) > 0 {
 		jsonString := StringDictToJsonString(p.Returns)
 		// Escape double quotes
 		escapedString := strings.ReplaceAll(jsonString, "\"", "\\\"")
@@ -610,7 +622,9 @@ func (p *Process) HashCode() string {
 		h.Write([]byte(hash))
 	}
 
-	h.Write([]byte(StringDictToJsonString(p.Returns)))
+	if !excludeReturnsFromState {
+		h.Write([]byte(StringDictToJsonString(p.Returns)))
+	}
 
 	for _, role := range p.Roles {
 		// Include the role's data in the hash to distinguish processes with different role states
@@ -972,6 +986,10 @@ type Link struct {
 	ReqId            int
 	ThreadsMap       map[int]int
 	FailedInvariants map[int][]int
+	// Returns holds the action's return value (if any) for this transition.
+	// Forward-compatible field for consumers (graph, MBT, explorer) to migrate
+	// to reading return values from the link instead of from Process.Returns.
+	Returns starlark.StringDict
 }
 
 func (l *Link) IsCrashLink() bool {
@@ -1025,6 +1043,7 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 		ChoiceFairness: n.Inbound[0].ChoiceFairness,
 		Messages:       n.Inbound[0].Messages,
 		ReqId:          n.Inbound[0].ReqId,
+		Returns:        n.Inbound[0].Returns,
 	}
 	parent.Outbound = append(parent.Outbound, newOutLink)
 
@@ -1075,6 +1094,7 @@ func (n *Node) Attach() {
 		ChoiceFairness: n.Inbound[0].ChoiceFairness,
 		Messages:       n.Inbound[0].Messages,
 		ReqId:          n.Inbound[0].ReqId,
+		Returns:        n.Inbound[0].Returns,
 
 		FailedInvariants: n.Inbound[0].FailedInvariants,
 	}
@@ -1219,6 +1239,15 @@ func (p *Processor) SetExperimentalProcessedQueue(v bool) {
 // experimentalProcessedQueue and for refusing specs with liveness assertions.
 func (p *Processor) SetExperimentalNoGraph(v bool) {
 	p.experimentalNoGraph = v
+}
+
+// SetExperimentalNoStateReturns toggles whether Process.Returns is included
+// in HashCode, JSON state, and dot labels. When true, returns are visible
+// only via Link.Returns — use this to verify downstream consumers have
+// migrated. Sets a package-level variable (the flag is process-wide, not
+// per-Processor).
+func (p *Processor) SetExperimentalNoStateReturns(v bool) {
+	excludeReturnsFromState = v
 }
 
 // breakParentRef releases a freshly-forked child's back-reference to its
@@ -1771,16 +1800,14 @@ func (p *Processor) printRunSummary(startTime time.Time) {
 // These are the design's target memory metrics — comparing peak queue length
 // across OLD vs NEW runs shows the dedup-before-enqueue savings.
 func (p *Processor) printPeakSummary() {
-	mode := "old"
-	if p.experimentalProcessedQueue {
-		mode = "new"
+	// Only print under the experimental queue mode — the metric is meaningful
+	// for comparing old vs new dedup behavior. Printing in the default path
+	// causes baseline drift for every reference spec.
+	if !p.experimentalProcessedQueue {
+		return
 	}
-	if p.experimentalProcessedQueue {
-		fmt.Printf("Peak (%s): queue=%d pendingActionStarts=%d\n",
-			mode, p.peakQueueLen, p.peakPendingActionStarts)
-	} else {
-		fmt.Printf("Peak (%s): queue=%d\n", mode, p.peakQueueLen)
-	}
+	fmt.Printf("Peak (new): queue=%d pendingActionStarts=%d\n",
+		p.peakQueueLen, p.peakPendingActionStarts)
 }
 
 func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) {
@@ -2061,6 +2088,14 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		node.Inbound[0].Fairness = node.Process.Fairness
 
 		node.Inbound[0].Messages = append(node.Inbound[0].Messages, node.Process.Messages...)
+
+		if len(node.Process.Returns) > 0 {
+			returns := make(starlark.StringDict, len(node.Process.Returns))
+			for k, v := range node.Process.Returns {
+				returns[k] = v
+			}
+			node.Inbound[0].Returns = returns
+		}
 	}
 
 	// If the node is already visited, merge the nodes and return
