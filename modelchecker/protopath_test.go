@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
+	"sync"
 	"testing"
 )
 
@@ -75,6 +76,45 @@ func TestGetNextPath(t *testing.T) {
 func TestEndOfBlock(t *testing.T) {
 	assert.Equal(t, "Actions[0].Block.Stmts[0].AnyStmt.Block.Stmts[0].IfStmt.Branches[0].Block.$",
 		EndOfBlock("Actions[0].Block.Stmts[0].AnyStmt.Block.Stmts[0].IfStmt.Branches[0].Block.Stmts[0]"))
+}
+
+// TestGetProtoFieldByPath_Concurrent exercises the cache under parallel reads
+// + writes. Run with `go test -race` to catch any locking regression. The
+// shared protoPathInstance cache is hit by every Processor; parallel
+// simulation workers must not race on it.
+func TestGetProtoFieldByPath_Concurrent(t *testing.T) {
+	file, err := readFileToAst()
+	require.Nil(t, err)
+
+	paths := []string{
+		"Actions[0]",
+		"Actions[0].Block",
+		"Actions[0].Block.Stmts[0]",
+		"Actions[0].Block.Stmts[0].AnyStmt",
+		"Actions[0].Block.Stmts[0].AnyStmt.Block",
+		"Actions[1]",
+		"Actions[1].Block",
+		"Actions[1].Block.Stmts[0]",
+		"Actions[1].Block.Stmts[0].AnyStmt",
+		"NonExistentPath[42]", // exercises the nil-result cache entry
+	}
+
+	const workers = 16
+	const iterations = 200
+
+	var wg sync.WaitGroup
+	wg.Add(workers)
+	for w := 0; w < workers; w++ {
+		go func() {
+			defer wg.Done()
+			for i := 0; i < iterations; i++ {
+				for _, p := range paths {
+					_ = GetProtoFieldByPath(file, p)
+				}
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 func readFileToAst() (*ast.File, error) {
