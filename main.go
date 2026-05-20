@@ -668,6 +668,26 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 
 	setupSignalHandler(&holder, &stopped)
 
+	// Periodic simulation progress: print "\rSimulated N runs" to stderr
+	// every 100 runs when stderr is a TTY. Silent otherwise so log files,
+	// pipes, and parallel-worker captures stay clean. simProgressEmitted
+	// tracks whether we ever wrote a \r line; if so, callers below must
+	// emit \n to stderr before any non-progress output so the next message
+	// doesn't append to the progress line.
+	simProgressOnTty := false
+	simProgressEmitted := false
+	if simulation {
+		if fi, err := os.Stderr.Stat(); err == nil && (fi.Mode()&os.ModeCharDevice) != 0 {
+			simProgressOnTty = true
+		}
+	}
+	clearProgressLine := func() {
+		if simProgressEmitted {
+			fmt.Fprintln(os.Stderr)
+			simProgressEmitted = false
+		}
+	}
+
 	i := 0
 	for !stopped && (maxRuns <= 0 || i < maxRuns) {
 		i++
@@ -681,6 +701,17 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		rootNode, failedNode, endTime, err := startModelChecker(p1)
 		runs++
 		lastRootNode = rootNode
+
+		if simProgressOnTty && runs%100 == 0 {
+			// \033[K clears any leftover characters from a prior longer
+			// line (e.g. if maxRuns digit count shrinks across runs).
+			if maxRuns > 0 {
+				fmt.Fprintf(os.Stderr, "\r\033[KSimulated %d / %d runs", runs, maxRuns)
+			} else {
+				fmt.Fprintf(os.Stderr, "\r\033[KSimulated %d runs", runs)
+			}
+			simProgressEmitted = true
+		}
 
 		// Early deadlock detection (NEW path only): startProcessedQueue
 		// aborts the run on the first detected deadlock and exposes it
@@ -838,6 +869,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			}
 
 		} else if failedNode != nil {
+			clearProgressLine()
 			if failedNode.FailedInvariants != nil && len(failedNode.FailedInvariants) > 0 && len(failedNode.FailedInvariants[0]) > 0 {
 				fmt.Println("FAILED: Model checker failed. Invariant: ", f.Invariants[failedNode.FailedInvariants[0][0]].Name)
 			} else if simulation {
@@ -850,6 +882,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			return nil
 		}
 	}
+	clearProgressLine()
 	fmt.Println("Stopped after", runs, "runs at ", time.Now())
 	if simulation && p1 != nil {
 		if runs-simFirstTraces > 1 {
