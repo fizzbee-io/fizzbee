@@ -870,10 +870,21 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 
 		} else if failedNode != nil {
 			clearProgressLine()
+			// Always-assertion failures live on the node's Process.FailedInvariants.
+			// Transition-assertion failures live on the *inbound link* — see
+			// processor.go where CheckTransitionInvariants writes to
+			// node.Inbound[0].FailedInvariants. Without checking the link, a
+			// transition-assertion failure in simulation falls through to the
+			// misleading "Deadlock/stuttering" message, and in model-checking
+			// mode nothing about the failure is printed at all.
 			if failedNode.FailedInvariants != nil && len(failedNode.FailedInvariants) > 0 && len(failedNode.FailedInvariants[0]) > 0 {
 				fmt.Println("FAILED: Model checker failed. Invariant: ", f.Invariants[failedNode.FailedInvariants[0][0]].Name)
+			} else if len(failedNode.Inbound) > 0 && failedNode.Inbound[0].FailedInvariants != nil && len(failedNode.Inbound[0].FailedInvariants[0]) > 0 {
+				fmt.Println("FAILED: Model checker failed. Transition Invariant:", f.Invariants[failedNode.Inbound[0].FailedInvariants[0][0]].Name)
 			} else if simulation {
 				fmt.Println("FAILED: Model checker failed. Deadlock/stuttering detected")
+			} else {
+				fmt.Println("FAILED: Model checker failed (no failed-invariant metadata on the failing node; see trace below).")
 			}
 			if simulation {
 				fmt.Println("seed:", p1.Seed)
