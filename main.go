@@ -737,11 +737,16 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		}
 
 		if !simulation && !experimentalNoGraph {
-			if writeDotFileIfNeeded(p1, rootNode, outDir) {
+			if writeDotFileIfNeeded(p1, rootNode, outDir, "graph.dot") {
 				return nil
 			}
 		} else if i <= simFirstTraces {
-			writeDotFileIfNeeded(p1, rootNode, outDir)
+			// One file per captured run so the first N traces are
+			// preserved instead of overwriting each other on a shared
+			// graph.dot path. The "last run" still lands at graph.dot
+			// below (line 903) so existing tooling reading that canonical
+			// name keeps working.
+			writeDotFileIfNeeded(p1, rootNode, outDir, fmt.Sprintf("graph_run_%d.dot", i))
 		}
 
 		if err != nil {
@@ -899,9 +904,12 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		if runs-simFirstTraces > 1 {
 			fmt.Println("Not printing intermediate traces (only the last trace is shown)")
 		}
-		if runs > simFirstTraces {
-			writeDotFileIfNeeded(p1, lastRootNode, outDir)
-		}
+		// Always write the canonical graph.dot so downstream tooling
+		// (skills/scripts/docs that grep `out/*/graph.dot`) finds it
+		// even when --simulation_first_traces >= runs. When the last
+		// run was also captured as graph_run_<runs>.dot, this is a
+		// duplicate write — same content under the canonical name.
+		writeDotFileIfNeeded(p1, lastRootNode, outDir, "graph.dot")
 	}
 	return nil
 }
@@ -935,10 +943,15 @@ func printTraceAndExit(err error) {
 	os.Exit(1)
 }
 
-func writeDotFileIfNeeded(p1 *modelchecker.Processor, rootNode *modelchecker.Node, outDir string) bool {
+// writeDotFileIfNeeded writes the graph .dot file for the given root node
+// to outDir/fileName when the visited-node count is small enough to be
+// useful. fileName lets callers separate per-run outputs in simulation
+// mode (graph_run_1.dot, graph_run_2.dot, …) from the canonical
+// "last result" graph.dot used by the model-check path.
+func writeDotFileIfNeeded(p1 *modelchecker.Processor, rootNode *modelchecker.Node, outDir string, fileName string) bool {
 	if p1.GetVisitedNodesCount() < 250 || (simulation && p1.GetVisitedNodesCount() < 1000) {
 		dotString := modelchecker.GenerateDotFile(rootNode, make(map[*modelchecker.Node]bool))
-		dotFileName := filepath.Join(outDir, "graph.dot")
+		dotFileName := filepath.Join(outDir, fileName)
 		// Write the content to the file
 		err := os.WriteFile(dotFileName, []byte(dotString), 0644)
 		if err != nil {
