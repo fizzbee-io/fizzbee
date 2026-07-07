@@ -71,7 +71,17 @@ func CheckTransitionInvariants(process *Process) map[int][]int {
 	}
 	return results
 }
+// NextStatesProber lazily computes the successor yield-states of the process
+// being checked, for the next_states() assertion builtin. nil means the
+// builtin is unavailable in this evaluation context (composition joins,
+// post-run re-evaluation).
+type NextStatesProber func() []*NextTransition
+
 func CheckInvariants(process *Process) map[int][]int {
+	return CheckInvariantsWithProber(process, nil)
+}
+
+func CheckInvariantsWithProber(process *Process, prober NextStatesProber) map[int][]int {
 	if len(process.Files) > 1 {
 		panic("Invariant checking not supported for multiple files")
 	}
@@ -91,7 +101,7 @@ func CheckInvariants(process *Process) map[int][]int {
 				if slices.Contains(invariant.TemporalOperators, "transition") {
 					continue
 				}
-				passed = CheckAssertion(process, invariant, j)
+				passed = CheckAssertion(process, invariant, j, prober)
 				if (slices.Contains(invariant.TemporalOperators, "eventually") || slices.Contains(invariant.TemporalOperators, "exists")) && passed /*&& (len(process.Threads) == 0 || process.Name == "yield")*/ {
 					process.Witness[i][j] = true
 				} else if !(slices.Contains(invariant.TemporalOperators, "eventually") || slices.Contains(invariant.TemporalOperators, "exists")) && !passed {
@@ -124,12 +134,53 @@ func CheckInvariant(process *Process, invariant *ast.Invariant) bool {
 	return bool(cond.Truth())
 }
 
-func CheckAssertion(process *Process, invariant *ast.Invariant, index int) bool {
+func CheckAssertion(process *Process, invariant *ast.Invariant, index int, prober NextStatesProber) bool {
 	if !slices.Contains(invariant.TemporalOperators, "always") && !slices.Contains(invariant.TemporalOperators, "exists") {
 		panic("Invariant checking supported only for always/always-eventually/eventually-always/exists invariants" + strings.Join(invariant.TemporalOperators, ","))
 	}
 	cloned := process.CloneForAssert(nil, 0)
 	cloned.Heap.state["__returns__"] = NewDictFromStringDict(cloned.Returns)
+	if prober != nil {
+		// next_states() gives assertions one-step lookahead: the list of
+		// successor transitions from the state under check, each a struct
+		// with .name (transition label) and .state (successor heap vars).
+		// Successors are computed lazily on first call and ignore
+		// exploration bounds — see probeNextStates for the semantics.
+		cloned.Heap.state["next_states"] = starlark.NewBuiltin("next_states",
+			func(t *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+				if err := starlark.UnpackArgs("next_states", args, kwargs); err != nil {
+					return nil, err
+				}
+				transitions := prober()
+				elems := make([]starlark.Value, 0, len(transitions))
+				for _, tr := range transitions {
+					var role starlark.Value = starlark.None
+					if tr.Role != "" {
+						role = starlark.String(tr.Role)
+					}
+					var roleId starlark.Value = starlark.None
+					if tr.RoleId != nil {
+						roleId = tr.RoleId
+					}
+					var action starlark.Value = starlark.None
+					if tr.Action != "" {
+						action = starlark.String(tr.Action)
+					}
+					// Field names deliberately avoid fizz grammar keywords:
+					// `action` and `role` are reserved words, so `n.action`
+					// would not parse in a spec. Hence action_name / role_ref.
+					elems = append(elems, starlarkstruct.FromStringDict(starlark.String("transition"), starlark.StringDict{
+						"name":        starlark.String(tr.Name),
+						"kind":        starlark.String(tr.Kind),
+						"role_ref":    role,
+						"role_id":     roleId,
+						"action_name": action,
+						"state":       starlarkstruct.FromStringDict(starlark.String("state"), tr.State.Heap.state),
+					}))
+				}
+				return starlark.NewList(elems), nil
+			})
+	}
 
 	return execAssertionFunction(cloned, index, invariant)
 }

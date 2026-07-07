@@ -1441,7 +1441,7 @@ func (p *Processor) InitializeNode() (*Node, *Node, error) {
 		}
 		process.Enable()
 		process.Heap.state = globals
-		failed := CheckInvariants(process)
+		failed := CheckInvariantsWithProber(process, p.makeProber(process))
 		if len(failed[0]) > 0 {
 			p.Init.Process.FailedInvariants = failed
 			if !p.config.ContinuePathOnInvariantFailures {
@@ -1810,6 +1810,223 @@ func (p *Processor) printPeakSummary() {
 		p.peakQueueLen, p.peakPendingActionStarts)
 }
 
+// makeProber wraps probeNextStates in a lazily-evaluated, memoized closure.
+// The probe runs only if some assertion actually calls next_states(), and at
+// most once per checked state even when multiple assertions call it.
+func (p *Processor) makeProber(process *Process) NextStatesProber {
+	var cache []*NextTransition
+	done := false
+	return func() []*NextTransition {
+		if !done {
+			cache = p.probeNextStates(process)
+			done = true
+		}
+		return cache
+	}
+}
+
+// NextTransition is one successor yield-state discovered by probeNextStates,
+// exposed to assertions via the next_states() builtin.
+type NextTransition struct {
+	// Name is the flat transition label: the action name ("Reset"), the
+	// role-qualified action name ("Customer#0.PlaceOrder"), a thread
+	// continuation ("thread-0"), or a channel delivery
+	// ("channel-0-message-1").
+	Name string
+	// Kind is "action", "thread", or "channel".
+	Kind string
+	// Role is the role instance label ("Customer#0") for role actions,
+	// "" otherwise.
+	Role string
+	// RoleId is the role's identity value (what specs see as __id__) for
+	// role actions, nil otherwise. Unlike Role objects — which compare by
+	// pointer and therefore never match across clones — this compares by
+	// value, so assertions can write `n.role_id == c.__id__`.
+	RoleId starlark.Value
+	// Action is the bare action name ("PlaceOrder") for kind "action",
+	// "" otherwise.
+	Action string
+	// State is the successor process at its first yield point. It is a
+	// throwaway clone: safe for assertions to inspect, never attached to
+	// the graph or the exploration queue.
+	State *Process
+}
+
+// probeNextStates computes every yield-successor of the given process for
+// the next_states() assertion builtin. It deliberately IGNORES exploration
+// bounds — MaxActions depth, MaxConcurrentActions, and per-action caps —
+// because enabledness is a property of the state, not of the exploration
+// schedule (TLA+ ENABLED semantics). Without this, assertions like "every
+// trash item is restorable" would false-fail at the depth frontier and at
+// states where in-flight non-atomic actions exhaust the concurrency cap.
+//
+// Everything created here is discarded: probe forks are never attached,
+// never enter p.queue/p.visited, and are not invariant-checked (which also
+// prevents recursion — a probed state must not re-probe). lib-level
+// allocation counters (role refs, channel ids) are snapshotted and restored
+// so the discarded execution doesn't shift ref numbering for subsequent
+// real exploration.
+//
+// Crash variants are intentionally excluded: a crash is not a witness that
+// an action is possible.
+func (p *Processor) probeNextStates(process *Process) []*NextTransition {
+	snapshot := lib.SnapshotGlobalRefs()
+	defer lib.RestoreGlobalRefs(snapshot)
+
+	// Temp wrapper node; ForkForAction/ForkForAlternatePaths only read it.
+	base := &Node{Process: process}
+
+	type probeStart struct {
+		node   *Node
+		name   string
+		kind   string
+		role   string
+		roleId starlark.Value
+		action string
+	}
+	starts := make([]*probeStart, 0)
+
+	// 1. Continuations of in-flight threads (non-atomic actions mid-way).
+	for i, thread := range process.Threads {
+		if thread == nil || thread.currentPc() == "" {
+			continue
+		}
+		name := fmt.Sprintf("thread-%d", i)
+		nn := base.ForkForAlternatePaths(thread.Process.Fork(), name)
+		nn.Current = i
+		nn.ThreadProgress = true
+		starts = append(starts, &probeStart{node: nn, name: name, kind: "thread"})
+	}
+
+	// 2. Pending channel message deliveries (mirrors scheduleChannelMessages).
+	for i, msgs := range process.ChannelMessages {
+		for j := range msgs {
+			linkName := fmt.Sprintf("channel-%d-message-%d", i, j)
+			nn := base.ForkForAlternatePaths(process.Fork(), linkName)
+			newMsg := nn.ChannelMessages[i][j]
+			nn.ChannelMessages[i] = append(nn.ChannelMessages[i][:j], nn.ChannelMessages[i][j+1:]...)
+			thread := nn.Process.NewThread()
+			thread.Stack.Pop()
+			thread.Stack.Push(newMsg.Frame())
+			starts = append(starts, &probeStart{node: nn, name: linkName, kind: "channel"})
+		}
+	}
+
+	// 3. Fresh global actions (mirrors scheduleAction, minus the cap checks).
+	for i, action := range p.Files[0].Actions {
+		if action.Name == "Init" {
+			continue
+		}
+		nn := base.ForkForAction(nil, nil, action)
+		thread := nn.Process.NewThread()
+		frame := thread.currentFrame()
+		frame.pc = fmt.Sprintf("Actions[%d]", i)
+		frame.Name = action.Name
+		starts = append(starts, &probeStart{node: nn, name: action.Name, kind: "action", action: action.Name})
+	}
+
+	// 4. Fresh role actions for every live role instance.
+	if len(process.Roles) > 0 {
+		roleMap := make(map[string]int)
+		for i, role := range p.Files[0].Roles {
+			roleMap[role.Name] = i
+		}
+		for _, role := range process.Roles {
+			if role == nil {
+				continue
+			}
+			roleIndex, ok := roleMap[role.Name]
+			if !ok {
+				continue
+			}
+			roleAst := p.Files[0].Roles[roleIndex]
+			for i, action := range roleAst.Actions {
+				if action.Name == "Init" {
+					continue
+				}
+				nn := base.ForkForAction(nil, role, action)
+				thread := nn.Process.NewThread()
+				frame := thread.currentFrame()
+				for _, r := range nn.Roles {
+					if r != nil && r.RefStringShort() == role.RefStringShort() {
+						frame.obj = r
+						break
+					}
+				}
+				if frame.obj == nil {
+					// Role no longer reachable in this state (mirrors the
+					// same filter in scheduleAction).
+					continue
+				}
+				frame.pc = fmt.Sprintf("Roles[%d].Actions[%d]", roleIndex, i)
+				frame.Name = role.Name + "." + action.Name
+				starts = append(starts, &probeStart{
+					node:   nn,
+					name:   role.RefStringShort() + "." + action.Name,
+					kind:   "action",
+					role:   role.RefStringShort(),
+					roleId: role.GetId(),
+					action: action.Name,
+				})
+			}
+		}
+	}
+
+	// Execute each start to its first yield, following every intermediate
+	// fork (oneof/for splits). Local dedup only — nothing touches p.visited.
+	// Ordering matters: dedup AFTER Execute (mirroring processNode). Choice
+	// forks share the parent's state until they execute their choice binding,
+	// so deduping at push time would collapse sibling oneof branches.
+	results := make([]*NextTransition, 0)
+	seenYield := make(map[string]bool)
+	for _, start := range starts {
+		seenIntermediate := make(map[string]bool)
+		stack := []*Node{start.node}
+		for len(stack) > 0 {
+			n := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+
+			n.CachedHashCode = ""
+			forks, yield := n.currentThread().Execute()
+			if len(forks) == 0 && !n.Enabled && !n.ThreadProgress {
+				// Disabled path: a require failed or the body was a no-op.
+				continue
+			}
+			if n.ThreadProgress {
+				n.Enable()
+			}
+			h := n.HashCode()
+			if seenIntermediate[h] {
+				continue
+			}
+			seenIntermediate[h] = true
+			if !yield {
+				for _, fork := range forks {
+					stack = append(stack, n.ForkForAlternatePaths(fork, fork.Name))
+				}
+				continue
+			}
+			// Key on (transition name, state hash): two different actions
+			// reaching the same state are distinct transitions, and name
+			// filtering in assertions must see both.
+			key := start.name + "|" + h
+			if seenYield[key] {
+				continue
+			}
+			seenYield[key] = true
+			results = append(results, &NextTransition{
+				Name:   start.name,
+				Kind:   start.kind,
+				Role:   start.role,
+				RoleId: start.roleId,
+				Action: start.action,
+				State:  n.Process,
+			})
+		}
+	}
+	return results
+}
+
 func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) {
 	if p.Init != nil {
 		panic("processor already started")
@@ -2174,7 +2391,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	}
 	var failedInvariants map[int][]int
 	if yield {
-		failedInvariants = CheckInvariants(node.Process)
+		failedInvariants = CheckInvariantsWithProber(node.Process, p.makeProber(node.Process))
 	}
 	if len(failedInvariants[0]) > 0 {
 		//panic(fmt.Sprintf("Invariant failed: %v", failedInvariants))
@@ -2310,7 +2527,7 @@ func (p *Processor) crashRole(node *Node, role *lib.Role) (*Node, *Node) {
 	p.ResetEphemeralVariables(crashNode, role)
 	crashNode.Enable()
 
-	failedInvariants := CheckInvariants(crashFork)
+	failedInvariants := CheckInvariantsWithProber(crashFork, p.makeProber(crashFork))
 	if len(failedInvariants[0]) > 0 {
 		crashNode.Process.FailedInvariants = failedInvariants
 		if !p.config.ContinuePathOnInvariantFailures {
@@ -2345,7 +2562,7 @@ func (p *Processor) crashThread(node *Node) {
 	}
 	// TODO: We could just copy the failed invariants from the parent
 	// instead of checking again
-	CheckInvariants(crashFork)
+	CheckInvariantsWithProber(crashFork, p.makeProber(crashFork))
 	if node.Process.Enabled {
 		crashNode.Enable()
 	}

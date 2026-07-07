@@ -22,6 +22,30 @@ func ClearRoleRefs() {
 	roleRefs = map[string]int64{}
 }
 
+// GlobalRefsSnapshot captures the package-level allocation counters that
+// action execution mutates as a side effect (role refs, channel ids).
+// Speculative execution that will be discarded (e.g. the next_states()
+// assertion probe) must snapshot before executing and restore after, so the
+// discarded runs don't shift the ref numbering of subsequent real
+// exploration.
+type GlobalRefsSnapshot struct {
+	roleRefs      map[string]int64
+	nextChannelId int
+}
+
+func SnapshotGlobalRefs() GlobalRefsSnapshot {
+	copied := make(map[string]int64, len(roleRefs))
+	for k, v := range roleRefs {
+		copied[k] = v
+	}
+	return GlobalRefsSnapshot{roleRefs: copied, nextChannelId: nextChannelId}
+}
+
+func RestoreGlobalRefs(s GlobalRefsSnapshot) {
+	roleRefs = s.roleRefs
+	nextChannelId = s.nextChannelId
+}
+
 type Role struct {
 	ID          starlark.Value // Can be *ModelValue or *SymmetricValue
 	Name        string

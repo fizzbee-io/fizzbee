@@ -1,0 +1,33 @@
+---
+deadlock_detection: false
+options:
+    max_actions: 6
+    max_concurrent_actions: 1
+---
+
+# Regression guard for the concurrency-cap false positive: Churn is a
+# serial (non-atomic) action. At its mid-action yield, the one in-flight
+# thread exhausts max_concurrent_actions=1, so the real explorer cannot
+# schedule Restore from that state. The next_states() probe must ignore
+# the cap (ENABLED is a property of the state, not the scheduler), so
+# TrashRestorable must PASS. If the probe respected the cap, this spec
+# would FAIL at every mid-Churn yield.
+
+action Init:
+    items = {0: "trash"}
+    counter = 0
+
+action Churn:
+    counter = counter + 1
+    counter = counter + 1
+
+atomic action Restore:
+    id = oneof [k for k in items if items[k] == "trash"]
+    items[id] = "active"
+
+always assertion TrashRestorable:
+    for k in items:
+        if items[k] == "trash":
+            if len([n for n in next_states() if n.state.items[k] == "active"]) == 0:
+                return False
+    return True

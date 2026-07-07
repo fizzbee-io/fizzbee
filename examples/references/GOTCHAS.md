@@ -334,3 +334,53 @@ spec is genuinely unbounded (find the loop and fix the spec). PASSED at
 
 See `VERIFICATION_GUIDE.md` §8 for the full pattern, more examples, and
 how to identify which variables to bound.
+
+## 14. Role Objects Compare by Pointer — Never Compare Roles Across States
+
+**Symptom**: `before.leader == after.leader` is always False in a transition
+assertion even when it's "the same" role. `n.role_id == w` never matches in
+a `next_states()` filter. `after.workers` membership checks or dict lookups
+keyed by a role from `before` silently fail.
+
+**Cause**: `Role` values compare by pointer identity, and every state
+(`before`, `after`, each `next_states()` successor, each assertion
+evaluation) is a separate clone. Within ONE state, aliasing is preserved, so
+`current_leader == workers[0]` works — but across states, the "same" role is
+a different pointer and every comparison is silently False. (Roles do hash
+by value, which makes dict lookups extra confusing: the bucket is found, the
+key still doesn't match.)
+
+**Fix**: Compare identity VALUES, not role objects:
+
+```python
+# ❌ WRONG: pointer comparison across states — always False
+transition assertion LeaderStable(before, after):
+    return before.leader == after.leader
+
+# ✅ CORRECT: compare __id__ (a value with proper equality)
+transition assertion LeaderStable(before, after):
+    return before.leader.__id__ == after.leader.__id__
+
+# ✅ CORRECT: next_states() role filtering via role_id
+witnesses = [n for n in next_states() if n.role_id == w.__id__]
+```
+
+Store `__id__` values (not role objects) in records and dicts whenever the
+data crosses state boundaries: `record(customer=self.__id__)`.
+
+Id values expose their components: `w.__id__.name` → `"Worker"`,
+`w.__id__.index` → `0`.
+
+## 15. Keywords Cannot Be Attribute Names
+
+**Symptom**: `mismatched input 'action' expecting {..., NAME}` parse error
+on something like `n.action` or `self.role`.
+
+**Cause**: fizz keywords (`action`, `role`, `func`, `oneof`, ...) are
+reserved even in attribute position after a dot.
+
+**Fix**: Pick non-keyword names for record/struct fields (`action_name`,
+`role_ref`). Built-in structs follow the same convention — `next_states()`
+transitions use `action_name` and `role_ref` for exactly this reason.
+Multi-line list comprehensions also fail to parse — keep comprehensions on
+one line.

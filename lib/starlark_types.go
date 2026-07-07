@@ -1300,8 +1300,29 @@ func (m *ModelValue) Hash() (uint32, error) {
 	return starlark.String(m.FullString()).Hash()
 }
 
+// Attr exposes the id's components to specs: for a role id or symmetric
+// value like Customer#0 / order2, .name is the role/domain name ("Customer",
+// "order") and .index is the numeric part (0, 2). This is the supported way
+// to get at the components — str(id) concatenates them ("Customer0") and
+// would need brittle parsing. SymmetricValue embeds ModelValue, so these
+// attrs are available on both.
+func (m *ModelValue) Attr(name string) (starlark.Value, error) {
+	switch name {
+	case "name":
+		return starlark.String(m.prefix), nil
+	case "index":
+		return starlark.MakeInt64(m.id), nil
+	}
+	return nil, nil
+}
+
+func (m *ModelValue) AttrNames() []string {
+	return []string{"index", "name"}
+}
+
 var _ starlark.Value = (*ModelValue)(nil)
 var _ starlark.Comparable = (*ModelValue)(nil)
+var _ starlark.HasAttrs = (*ModelValue)(nil)
 
 // NewSymmetricValue creates a new symmetric value with the default Nominal kind.
 // This maintains backward compatibility with existing code.

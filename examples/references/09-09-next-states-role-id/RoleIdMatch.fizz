@@ -1,0 +1,46 @@
+---
+deadlock_detection: false
+options:
+    max_actions: 6
+---
+
+# next_states() with symmetric roles: transitions carry structured fields
+# (kind, role_ref, role_id, action_name) alongside the flat name. role_id
+# is the role's identity value (same as the role's __id__) and compares by
+# VALUE, so `n.role_id == w.__id__` works across the assertion/probe clone
+# boundary. Comparing Role objects directly would silently be False —
+# roles compare by pointer. See GOTCHAS.
+# (The fields are named action_name/role_ref because `action` and `role`
+# are fizz keywords and cannot appear as attribute names.)
+#
+# Also exercises the id component attrs: id.name ("Worker") and id.index.
+
+NUM_WORKERS = 2
+
+symmetric role Worker:
+    action Init:
+        self.status = "idle"
+
+    atomic action Work:
+        require self.status == "idle"
+        self.status = "done"
+
+action Init:
+    workers = bag()
+    for i in range(NUM_WORKERS):
+        workers.add(Worker())
+
+always assertion EveryIdleWorkerCanWork:
+    for w in workers:
+        if w.status == "idle":
+            witnesses = [n for n in next_states() if n.kind == "action" and n.action_name == "Work" and n.role_id == w.__id__]
+            # Exactly one: each worker has exactly one Work transition of its
+            # own. If role_id failed to discriminate between instances, both
+            # workers' transitions would match and this would be 2.
+            if len(witnesses) != 1:
+                return False
+            if w.__id__.name != "Worker":
+                return False
+            if w.__id__.index < 0:
+                return False
+    return True
