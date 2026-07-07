@@ -20,6 +20,11 @@ pub trait {{ role.name }}Role: AsyncRole {
 {% endfor %}
 
 // Model trait
+// #[async_trait] is required: without it, the async fns desugar to native
+// async-fn-in-trait futures with no Send bound, and the dispatcher in the
+// generated test file (which boxes dyn Future + Send via #[async_trait])
+// cannot await them.
+#[async_trait]
 pub trait {{ model_name }}Model: Model {
     {%- for role in file.roles %}
     // R{{ loop.index0 }} is the trait for the {{ role.name }}Role
