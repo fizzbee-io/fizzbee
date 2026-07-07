@@ -48,6 +48,7 @@ pub struct {{ model_name }}ModelAdapter {
 }
 
 // Assert that {{ model_name }}ModelAdapter satisfies {{ model_name }}Model
+#[async_trait]
 impl {{ model_name }}Model for {{ model_name }}ModelAdapter {
     {% for role in file.roles -%}
     type R{{ loop.index0 }} = {{ role.name }}RoleAdapter;
