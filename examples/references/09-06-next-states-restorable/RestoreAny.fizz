@@ -1,0 +1,34 @@
+---
+deadlock_detection: false
+options:
+    max_actions: 8
+---
+
+# Soft-delete CRUDL: any trashed item can be restored directly.
+# EveryTrashItemRestorable must PASS.
+
+NUM_ITEMS = 3
+
+action Init:
+    items = {}
+    next_id = 0
+
+atomic action Create:
+    require next_id < NUM_ITEMS
+    items[next_id] = "active"
+    next_id += 1
+
+atomic action Delete:
+    id = oneof [k for k in items if items[k] == "active"]
+    items[id] = "trash"
+
+atomic action Restore:
+    id = oneof [k for k in items if items[k] == "trash"]
+    items[id] = "active"
+
+always assertion EveryTrashItemRestorable:
+    for k in items:
+        if items[k] == "trash":
+            if len([n for n in next_states() if n.state.items[k] == "active"]) == 0:
+                return False
+    return True

@@ -1,0 +1,14 @@
+Model checking examples/references/09-06-next-states-restorable/RestoreAny.json
+configFileName: examples/references/09-06-next-states-restorable/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:8  max_concurrent_actions:2}  deadlock_detection:false
+Nodes: 37, queued: 0, elapsed: 2.765625ms
+Time taken for model checking: 2.790833ms
+Writen graph dotfile: examples/references/09-06-next-states-restorable/out/run_2026-07-06_15-10-39/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/09-06-next-states-restorable/out/run_2026-07-06_15-10-39/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 37 Unique states: 15
+IsLive: true
+Time taken to check liveness: 522.667µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/09-06-next-states-restorable/out/run_2026-07-06_15-10-39

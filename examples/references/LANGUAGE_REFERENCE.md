@@ -821,6 +821,67 @@ transition assertion AlwaysIncreases(before, after):
 
 **Pattern**: Always check `before != after` before asserting a property about the change
 
+### next_states() — One-Step Lookahead (ENABLED-style properties)
+
+Inside an `always assertion`, `next_states()` returns the list of successor
+transitions from the state under check — one entry per enabled transition,
+each executed to its first yield point. This expresses TLA+ ENABLED-style
+safety properties with arbitrary quantifier nesting, e.g. "every item in the
+trash must be restorable *right now*":
+
+```python
+always assertion EveryTrashItemRestorable:
+    for k in items:
+        if items[k] == "trash":
+            if len([n for n in next_states() if n.state.items[k] == "active"]) == 0:
+                return False
+    return True
+```
+
+Each transition is a struct:
+
+| Field | Type | Example | Notes |
+|---|---|---|---|
+| `name` | string | `"Customer#0.PlaceOrder"` | Flat label; also `"thread-0"`, `"channel-0-message-1"` |
+| `kind` | string | `"action"` | `"action"`, `"thread"`, or `"channel"` |
+| `role_ref` | string / None | `"Customer#0"` | None for non-role transitions |
+| `role_id` | id value / None | `Customer0` | Same value as the role's `__id__`; compares by value |
+| `action_name` | string / None | `"PlaceOrder"` | Bare action name; None for thread/channel |
+| `state` | struct | `n.state.items` | Successor state vars — same shape as `before`/`after` in transition assertions |
+
+(`action_name`/`role_ref` — not `action`/`role` — because `action` and `role`
+are fizz keywords and cannot appear as attribute names.)
+
+To scope a check to a specific role instance, compare ids — never role
+objects (roles compare by pointer and never match across states; see
+GOTCHAS):
+
+```python
+always assertion EveryIdleWorkerCanWork:
+    for w in workers:
+        if w.status == "idle":
+            if len([n for n in next_states() if n.action_name == "Work" and n.role_id == w.__id__]) == 0:
+                return False
+    return True
+```
+
+Id values also expose their components: `w.__id__.name` → `"Worker"`,
+`w.__id__.index` → `0`.
+
+**Semantics**:
+- Successors **ignore exploration bounds** (`max_actions` depth,
+  `max_concurrent_actions`, per-action caps). Enabledness is a property of
+  the state, not the scheduler — so the check does not false-fail at the
+  depth frontier or when in-flight actions exhaust the concurrency cap.
+- Crash variants are excluded.
+- For **non-atomic (serial) actions**, the successor is the action's *first
+  yield point* — effects later in the body are not yet visible. Use
+  effect predicates (`n.state.x == ...`) with atomic witness actions; use
+  name filtering (`n.action_name == ...`) to check a serial action can start.
+- Computed lazily, once per checked state. Works in model checking (BFS/DFS),
+  simulation, and no-graph modes. Not available in composition specs.
+- Reference examples: `09-06` through `09-09`.
+
 ### Eventually Always (Liveness)
 
 Eventually reaches a stable state:

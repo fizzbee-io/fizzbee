@@ -1,0 +1,41 @@
+---
+deadlock_detection: false
+options:
+    max_actions: 8
+---
+
+# Soft-delete CRUDL where the trash is a STACK: only the most recently
+# deleted item can be restored. With two items in the trash, the bottom
+# one is not restorable in one step, so EveryTrashItemRestorable must
+# FAIL. This is the case a global-reachability (`exists`) formulation
+# cannot catch.
+
+NUM_ITEMS = 3
+
+action Init:
+    items = {}
+    trash_stack = []
+    next_id = 0
+
+atomic action Create:
+    require next_id < NUM_ITEMS
+    items[next_id] = "active"
+    next_id += 1
+
+atomic action Delete:
+    id = oneof [k for k in items if items[k] == "active"]
+    items[id] = "trash"
+    trash_stack = trash_stack + [id]
+
+atomic action Restore:
+    require len(trash_stack) > 0
+    id = trash_stack[-1]
+    trash_stack = trash_stack[:-1]
+    items[id] = "active"
+
+always assertion EveryTrashItemRestorable:
+    for k in items:
+        if items[k] == "trash":
+            if len([n for n in next_states() if n.state.items[k] == "active"]) == 0:
+                return False
+    return True
