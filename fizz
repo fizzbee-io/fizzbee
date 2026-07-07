@@ -170,6 +170,12 @@ usage() {
   echo "  $0 mbt-scaffold [options] filename"
   echo "  $0 [-x|--simulation] [--test] [--seed int64Number] [--max_runs intNumber] [--simulation_first_traces intNumber] [--exploration_strategy dfs] [--trace-file tracefile | --trace tracestring] [--preinit-hook-file hookfile | --preinit-hook hookstring] [--copy-ast] [--no-copy-ast] [--output-dir directory] [--parallel intNumber] [experimental] filename"
   echo ""
+  echo "  --no-symmetry-reduction"
+  echo "    Disable symmetry reduction. Every persisted state keeps its"
+  echo "    concrete symmetric values / role identities (no canonical"
+  echo "    renaming). Larger state space. Required when generating state"
+  echo "    graphs for MBT replay from specs using symmetric roles/values."
+  echo ""
   echo "  --parallel N"
   echo "    Run N simulation processes in parallel (only with -x and no --seed)."
   echo "    Workers split --max_runs evenly. Each worker writes to its own"
@@ -211,6 +217,7 @@ preinit_hook_string=""
 experimental_processed_queue=false
 experimental_no_graph=false
 experimental_no_state_returns=false
+no_symmetry_reduction=false
 parallel=1
 
 # Parse options
@@ -338,6 +345,10 @@ while [[ "$1" =~ ^- ]]; do
       experimental_no_state_returns=true
       shift
       ;;
+    --no-symmetry-reduction )
+      no_symmetry_reduction=true
+      shift
+      ;;
     --parallel )
       if [[ -n "$2" ]] && [[ "$2" =~ ^[0-9]+$ ]]; then
         parallel="$2"
@@ -407,6 +418,9 @@ if [ "$experimental_no_graph" = true ]; then
 fi
 if [ "$experimental_no_state_returns" = true ]; then
   args+=("--experimental_no_state_returns")
+fi
+if [ "$no_symmetry_reduction" = true ]; then
+  args+=("--no-symmetry-reduction")
 fi
 if [ "$seed" -ne 0 ]; then
   args+=("--seed" "$seed")

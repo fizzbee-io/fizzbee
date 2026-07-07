@@ -1178,6 +1178,12 @@ type Processor struct {
 	// remains intact so a failure trace can be reconstructed on demand.
 	experimentalNoGraph bool
 
+	// disableSymmetryReduction: when true, visited-set dedup uses only the
+	// plain state hash — no symmetry permutations, so no canonical renaming
+	// of symmetric values/roles in stored states. Larger state space, but
+	// every persisted state stays concrete, which MBT graph replay requires.
+	disableSymmetryReduction bool
+
 	// pendingActionStarts: NEW-mode buffer used by enqueueScheduled to
 	// collect action-starts that would have gone to p.queue in OLD mode.
 	// Drained by startProcessedQueue while expanding a popped yield-point.
@@ -1239,6 +1245,14 @@ func (p *Processor) SetExperimentalProcessedQueue(v bool) {
 // experimentalProcessedQueue and for refusing specs with liveness assertions.
 func (p *Processor) SetExperimentalNoGraph(v bool) {
 	p.experimentalNoGraph = v
+}
+
+// SetDisableSymmetryReduction turns off symmetry-permutation dedup so every
+// persisted state stays concrete. Must be called before Start. Intended for
+// generating MBT-replayable graphs from specs that use symmetric roles or
+// symmetry.nominal values.
+func (p *Processor) SetDisableSymmetryReduction(v bool) {
+	p.disableSymmetryReduction = v
 }
 
 // SetExperimentalNoStateReturns toggles whether Process.Returns is included
@@ -2611,8 +2625,14 @@ func (p *Process) minHashCode(hashes []string) string {
 // findVisitedSymmetric looks up a node in the visited map by trying all symmetry
 // permutation hashes. Returns the matching node and true if found, nil and false otherwise.
 func (p *Processor) findVisitedSymmetric(node *Node) (*Node, bool, string) {
-	// Skip symmetry reduction in simulation mode - we only check one path anyway
-	if p.simulation {
+	// Skip symmetry reduction in simulation mode (we only check one path
+	// anyway) or when explicitly disabled. Disabling keeps every persisted
+	// state concrete — no canonical renaming of symmetric values/roles —
+	// which is required for consumers that replay the graph against a real
+	// system (MBT): links reference concrete identities, and a canonically
+	// renamed destination state would not match them. Exact-duplicate
+	// states still dedup via the plain hash.
+	if p.simulation || p.disableSymmetryReduction {
 		hash := node.HashCode()
 		other, ok := p.visited[hash]
 		return other, ok, hash
