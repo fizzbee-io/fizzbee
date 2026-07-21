@@ -21,6 +21,9 @@ tokio-stream = "0.1"
 futures = "0.3.31"
 async-trait = "0.1"
 
+[dev-dependencies]
+tokio = { version = "1.48", features = ["rt-multi-thread", "macros"] }
+
 #[[bin]]
 #name = "gen_protos"
 #path = "scripts/gen_protos.rs"
