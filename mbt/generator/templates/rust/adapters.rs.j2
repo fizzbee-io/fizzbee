@@ -106,7 +106,16 @@ pub fn get_test_options() -> TestOptions {
         // The number of parallel traces to test
         max_parallel_runs: Some(1000),
 
+        // The number of dynamic (simulation-guided / fuzz) sequential traces.
+        // These are generated at test time by the model checker instead of
+        // replayed from the pre-generated graph. Model::provide_overrides is
+        // called with the fuzz seed before each run.
+        max_fuzz_seq_runs: Some(0),
+
         // The maximum number of actions/steps in any single trace
         max_actions: Some(10),
+
+        // Keeps this constructor compatible with future TestOptions fields.
+        ..Default::default()
     }
 }

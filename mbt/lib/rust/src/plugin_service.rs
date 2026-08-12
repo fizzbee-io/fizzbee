@@ -21,7 +21,7 @@ use crate::pb::{
     Interval, RoleRef, Status as ProtoStatus, StatusCode,
     ActionSequence, ActionSequenceResult, ExecOptions,
 };
-use crate::traits::{Model, DispatchModel};
+use crate::traits::{Model, DispatchModel, FuzzOptions};
 
 fn mbt_error_to_status(err: MbtError) -> Status {
     Status::internal(format!("MBT Execution Error: {}", err))
@@ -154,6 +154,25 @@ fn proto_value_to_rust_value(proto_value: ProtoValue) -> Result<RustValue, MbtEr
                 .collect();
 
             Ok(RustValue::List(list?))
+        }
+        // The Rust Value enum has no Tuple variant; represent an incoming
+        // tuple as a List (an immutable sequence maps most closely).
+        Kind::TupleValue(tuple) => {
+            let list: Result<Vec<RustValue>, MbtError> = tuple
+                .items
+                .into_iter()
+                .map(proto_value_to_rust_value)
+                .collect();
+
+            Ok(RustValue::List(list?))
+        }
+        Kind::SetValue(SetValue { items }) => {
+            let set: Result<std::collections::HashSet<RustValue>, MbtError> = items
+                .into_iter()
+                .map(proto_value_to_rust_value)
+                .collect();
+
+            Ok(RustValue::Set(set?))
         }
     }
 }
@@ -450,11 +469,28 @@ where
 {
     async fn init(
         &self,
-        _request: Request<InitRequest>,
+        request: Request<InitRequest>,
     ) -> Result<Response<InitResponse>, Status> {
+        let req = request.into_inner();
 
         // Acquire a WRITE lock for initialization (exclusive access)
         let mut dispatcher = self.dispatcher.write().await;
+
+        // Fuzzing runs ask the model for spec variable overrides BEFORE
+        // init(), mirroring the TypeScript plugin. The overrides are sent
+        // back to the model checker via InitResponse.overrides so it can
+        // apply them to the spec constants for this run.
+        let mut proto_overrides: HashMap<String, ProtoValue> = HashMap::new();
+        if req.is_fuzzing {
+            let fuzz_options = FuzzOptions { seed: req.fuzz_seed };
+            let overrides = dispatcher
+                .provide_overrides(&fuzz_options)
+                .await
+                .map_err(mbt_error_to_status)?;
+            for (key, value) in overrides {
+                proto_overrides.insert(key, rust_value_to_proto_value(value));
+            }
+        }
 
         match dispatcher.init().await {
             Ok(_) => {
@@ -464,6 +500,7 @@ where
                 let response = InitResponse {
                     status: Some(proto_status_ok()),
                     roles: proto_role_refs,
+                    overrides: proto_overrides,
                     ..Default::default()
                 };
                 Ok(Response::new(response))
@@ -570,5 +607,142 @@ where
 
         // Step 3: Serialize results
         self.serialize_sequence_results(all_bundles)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Minimal dispatcher that records whether provide_overrides ran and
+    /// echoes the fuzz seed back as an override, so the test can verify the
+    /// full path: InitRequest.is_fuzzing/fuzz_seed -> Model hook ->
+    /// InitResponse.overrides (including rust->proto value conversion).
+    struct FuzzProbeDispatcher {
+        overrides_called_with: Option<i64>,
+    }
+
+    #[async_trait::async_trait]
+    impl Model for FuzzProbeDispatcher {
+        async fn init(&mut self) -> Result<(), MbtError> {
+            Ok(())
+        }
+        async fn cleanup(&mut self) -> Result<(), MbtError> {
+            Ok(())
+        }
+        async fn provide_overrides(
+            &mut self,
+            options: &crate::traits::FuzzOptions,
+        ) -> Result<HashMap<String, RustValue>, MbtError> {
+            self.overrides_called_with = Some(options.seed);
+            let mut overrides = HashMap::new();
+            overrides.insert("SEED_ECHO".to_string(), RustValue::Int(options.seed));
+            Ok(overrides)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl DispatchModel for FuzzProbeDispatcher {
+        async fn execute(
+            &self,
+            _role_id: &RoleId,
+            _function_name: &str,
+            _args: &[RustArg],
+        ) -> Result<RustValue, MbtError> {
+            Ok(RustValue::None)
+        }
+        fn get_roles(&self) -> Result<Vec<RoleId>, MbtError> {
+            Ok(vec![])
+        }
+    }
+
+    /// A model that does NOT override provide_overrides: the default no-op
+    /// must keep it compiling (backward compatibility) and yield no
+    /// overrides even on a fuzzing init.
+    struct DefaultDispatcher;
+
+    #[async_trait::async_trait]
+    impl Model for DefaultDispatcher {
+        async fn init(&mut self) -> Result<(), MbtError> {
+            Ok(())
+        }
+        async fn cleanup(&mut self) -> Result<(), MbtError> {
+            Ok(())
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl DispatchModel for DefaultDispatcher {
+        async fn execute(
+            &self,
+            _role_id: &RoleId,
+            _function_name: &str,
+            _args: &[RustArg],
+        ) -> Result<RustValue, MbtError> {
+            Ok(RustValue::None)
+        }
+        fn get_roles(&self) -> Result<Vec<RoleId>, MbtError> {
+            Ok(vec![])
+        }
+    }
+
+    #[tokio::test]
+    async fn init_fuzzing_calls_provide_overrides_and_returns_them() {
+        let service = FizzBeeServiceImpl::new(FuzzProbeDispatcher {
+            overrides_called_with: None,
+        });
+        let request = Request::new(InitRequest {
+            is_fuzzing: true,
+            fuzz_seed: 42,
+            ..Default::default()
+        });
+
+        let response = service.init(request).await.unwrap().into_inner();
+
+        assert_eq!(
+            response.status.unwrap().code,
+            StatusCode::StatusOk as i32
+        );
+        let echoed = response.overrides.get("SEED_ECHO").unwrap();
+        assert_eq!(echoed.kind, Some(Kind::IntValue(42)));
+        assert_eq!(
+            service.dispatcher.read().await.overrides_called_with,
+            Some(42)
+        );
+    }
+
+    #[tokio::test]
+    async fn init_not_fuzzing_skips_provide_overrides() {
+        let service = FizzBeeServiceImpl::new(FuzzProbeDispatcher {
+            overrides_called_with: None,
+        });
+        let request = Request::new(InitRequest {
+            is_fuzzing: false,
+            fuzz_seed: 99,
+            ..Default::default()
+        });
+
+        let response = service.init(request).await.unwrap().into_inner();
+
+        assert!(response.overrides.is_empty());
+        assert_eq!(service.dispatcher.read().await.overrides_called_with, None);
+    }
+
+    #[tokio::test]
+    async fn init_fuzzing_with_default_model_returns_no_overrides() {
+        let service = FizzBeeServiceImpl::new(DefaultDispatcher);
+        let request = Request::new(InitRequest {
+            is_fuzzing: true,
+            fuzz_seed: 7,
+            ..Default::default()
+        });
+
+        let response = service.init(request).await.unwrap().into_inner();
+
+        assert!(response.overrides.is_empty());
+        assert_eq!(
+            response.status.unwrap().code,
+            StatusCode::StatusOk as i32
+        );
     }
 }

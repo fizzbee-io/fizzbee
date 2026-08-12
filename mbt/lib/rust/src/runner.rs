@@ -106,6 +106,10 @@ where
             args.push(format!("--max-parallel-runs={}", val));
         }
 
+        if let Some(val) = get_arg_value("MAX_FUZZ_SEQ_RUNS", options.max_fuzz_seq_runs) {
+            args.push(format!("--max-fuzz-seq-runs={}", val));
+        }
+
         // --- 2c. Optional Seed Options (Env only) ---
         if let Ok(val) = env::var("SEQ_SEED") {
             args.push(format!("--seq-seed={}", val));
@@ -113,6 +117,10 @@ where
 
         if let Ok(val) = env::var("PARALLEL_SEED") {
             args.push(format!("--parallel-seed={}", val));
+        }
+
+        if let Ok(val) = env::var("FUZZ_SEQ_SEED") {
+            args.push(format!("--fuzz-seq-seed={}", val));
         }
 
         let mut child = Command::new(&bin_path)

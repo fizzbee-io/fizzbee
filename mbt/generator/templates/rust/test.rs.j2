@@ -36,6 +36,17 @@ where
         self.model.as_mut().ok_or_else(|| MbtError::other("Model not found"))?
             .cleanup().await
     }
+
+    /// Delegates fuzz variable overrides to the inner model instance.
+    /// Without this forward, the dispatcher would inherit the default no-op
+    /// and the model's provide_overrides would never be called.
+    async fn provide_overrides(
+        &mut self,
+        options: &FuzzOptions,
+    ) -> Result<std::collections::HashMap<String, Value>, MbtError> {
+        self.model.as_mut().ok_or_else(|| MbtError::other("Model not found"))?
+            .provide_overrides(options).await
+    }
 }
 
 impl<T> {{ model_name }}ActionDispatcher<T>
