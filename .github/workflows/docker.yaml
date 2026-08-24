@@ -1,0 +1,130 @@
+name: Docker
+
+# Publishes ghcr.io/<repo> as a thin wrapper around the official release
+# tarballs. Triggers:
+# - release published: builds the image for that release version. (Not on
+#   tag push — the Release workflow is still uploading assets at that
+#   point; the `published` event fires after assets exist.)
+# - monthly cron: re-downloads the LATEST release onto a freshly pulled
+#   base image, so OS-layer CVE patches reach `latest` without a fizzbee
+#   release.
+# - manual dispatch: optional explicit version.
+#
+# Tag policy: `latest` moves on every publish (releases AND monthly
+# rebuilds — a rebuild republishes the same fizzbee code on a refreshed
+# base). Use the semver tags to pin fizzbee versions.
+on:
+  release:
+    types: [published]
+  schedule:
+    - cron: "17 8 3 * *"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag to package (e.g. v0.5.3); defaults to latest release"
+        required: false
+        default: ""
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve fizzbee version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          elif [ -n "${{ github.event.inputs.version || '' }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="$(gh release view --repo ${{ github.repository }} --json tagName --jq .tagName)"
+          fi
+          echo "version=$VERSION" | tee -a "$GITHUB_OUTPUT"
+          # strip leading v for the semver image tags
+          echo "semver=${VERSION#v}" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU (for the arm64 smoke test)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build amd64 image for smoke test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: fizzbee:smoke-amd64
+          build-args: |
+            FIZZBEE_VERSION=${{ steps.version.outputs.version }}
+
+      - name: Build arm64 image for smoke test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          load: true
+          tags: fizzbee:smoke-arm64
+          build-args: |
+            FIZZBEE_VERSION=${{ steps.version.outputs.version }}
+
+      # NOTE: exit status alone is NOT a sufficient assertion — the fizzbee
+      # binary exits 0 even when the model checker reports FAILED, so the
+      # PASSED grep is the real check. Two specs: Counter is the minimal
+      # sanity check; two-phase-commit exercises roles, functions, and much
+      # more of the parser's python dependency surface (antlr4, protobuf).
+      - name: Smoke test (amd64)
+        run: |
+          set -euo pipefail
+          for spec_dir in examples/references/01-02-atomic-action:Counter.fizz \
+                          examples/references/13-02-01-two-phase-commit:TwoPhaseCommit.fizz; do
+            dir="${spec_dir%%:*}"; spec="${spec_dir##*:}"
+            docker run --rm -v "$PWD/$dir":/workspace fizzbee:smoke-amd64 "$spec" | tee /tmp/smoke.out
+            grep -q "PASSED: Model checker completed successfully" /tmp/smoke.out
+          done
+          docker run --rm --entrypoint /opt/fizzbee/fizz fizzbee:smoke-amd64 mbt-scaffold --help > /dev/null
+
+      - name: Smoke test (arm64, via QEMU)
+        run: |
+          set -euo pipefail
+          docker run --rm --platform linux/arm64 \
+            -v "$PWD/examples/references/01-02-atomic-action":/workspace \
+            fizzbee:smoke-arm64 Counter.fizz | tee /tmp/smoke-arm64.out
+          grep -q "PASSED: Model checker completed successfully" /tmp/smoke-arm64.out
+
+      - name: Build and push (multi-arch)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            FIZZBEE_VERSION=${{ steps.version.outputs.version }}
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.semver }}
+            ghcr.io/${{ github.repository }}:latest
+
+      - name: Verify published manifest lists both architectures
+        run: |
+          set -euo pipefail
+          ref="ghcr.io/${{ github.repository }}:${{ steps.version.outputs.semver }}"
+          docker buildx imagetools inspect "$ref" | tee /tmp/manifest.out
+          grep -q "linux/amd64" /tmp/manifest.out
+          grep -q "linux/arm64" /tmp/manifest.out
