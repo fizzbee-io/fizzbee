@@ -1224,6 +1224,57 @@ type Processor struct {
 	// Used by no-graph mode to report "Unique states" without the in-memory
 	// graph traversal (markovchain's yieldsCount).
 	uniqueYieldCount int
+
+	// existsWitness accumulates the per-invariant Witness flags across every
+	// state whose invariants were evaluated (an OR over all states). An
+	// `exists` assertion needs only a single witness EVER, so this run-level
+	// accumulation makes exists checkable without the retained state graph:
+	// the basis for exists support in no_graph mode (states are discarded
+	// after expansion) and for coverage warnings in simulation mode.
+	// Indexed [fileIndex][invariantIndex]; lazily sized on first use.
+	existsWitness [][]bool
+}
+
+// accumulateExistsWitness ORs a just-checked process's Witness flags into
+// the run-level accumulator. Call after every CheckInvariants* evaluation.
+func (p *Processor) accumulateExistsWitness(process *Process) {
+	if process == nil || process.Witness == nil {
+		return
+	}
+	if p.existsWitness == nil {
+		p.existsWitness = make([][]bool, len(process.Witness))
+		for i, w := range process.Witness {
+			p.existsWitness[i] = make([]bool, len(w))
+		}
+	}
+	for i, w := range process.Witness {
+		for j, v := range w {
+			if v {
+				p.existsWitness[i][j] = true
+			}
+		}
+	}
+}
+
+// UnsatisfiedExists returns the positions of `exists` assertions for which
+// no witness state was ever seen during the run. Complements
+// CheckSimpleExistsWitness for modes without a retained graph. The result
+// is meaningful only after exploration completes; for exhaustive modes an
+// entry here proves unreachability, for simulation it indicates the runs
+// never covered a witness.
+func (p *Processor) UnsatisfiedExists() []*InvariantPosition {
+	unsatisfied := make([]*InvariantPosition, 0)
+	for i, file := range p.Files {
+		for j, invariant := range file.Invariants {
+			if invariant.Block == nil || !slices.Contains(invariant.TemporalOperators, "exists") {
+				continue
+			}
+			if p.existsWitness == nil || i >= len(p.existsWitness) || j >= len(p.existsWitness[i]) || !p.existsWitness[i][j] {
+				unsatisfied = append(unsatisfied, NewInvariantPosition(i, j))
+			}
+		}
+	}
+	return unsatisfied
 }
 
 // GetEarlyDeadlock returns the first deadlocked yield-point detected during
@@ -1456,6 +1507,7 @@ func (p *Processor) InitializeNode() (*Node, *Node, error) {
 		process.Enable()
 		process.Heap.state = globals
 		failed := CheckInvariantsWithProber(process, p.makeProber(process))
+		p.accumulateExistsWitness(process)
 		if len(failed[0]) > 0 {
 			p.Init.Process.FailedInvariants = failed
 			if !p.config.ContinuePathOnInvariantFailures {
@@ -2406,6 +2458,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	var failedInvariants map[int][]int
 	if yield {
 		failedInvariants = CheckInvariantsWithProber(node.Process, p.makeProber(node.Process))
+		p.accumulateExistsWitness(node.Process)
 	}
 	if len(failedInvariants[0]) > 0 {
 		//panic(fmt.Sprintf("Invariant failed: %v", failedInvariants))
@@ -2542,6 +2595,7 @@ func (p *Processor) crashRole(node *Node, role *lib.Role) (*Node, *Node) {
 	crashNode.Enable()
 
 	failedInvariants := CheckInvariantsWithProber(crashFork, p.makeProber(crashFork))
+	p.accumulateExistsWitness(crashFork)
 	if len(failedInvariants[0]) > 0 {
 		crashNode.Process.FailedInvariants = failedInvariants
 		if !p.config.ContinuePathOnInvariantFailures {
@@ -2577,6 +2631,7 @@ func (p *Processor) crashThread(node *Node) {
 	// TODO: We could just copy the failed invariants from the parent
 	// instead of checking again
 	CheckInvariantsWithProber(crashFork, p.makeProber(crashFork))
+	p.accumulateExistsWitness(crashFork)
 	if node.Process.Enabled {
 		crashNode.Enable()
 	}

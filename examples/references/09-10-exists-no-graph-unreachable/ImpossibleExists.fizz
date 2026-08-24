@@ -1,0 +1,24 @@
+---
+deadlock_detection: false
+options:
+    max_actions: 6
+    crash_on_yield: false
+---
+
+# Regression pin for the no_graph exists bug: an unsatisfiable `exists`
+# must FAIL under --experimental_no_graph (flags.txt) exactly as it does
+# with the full graph. Before the fix, exists assertions were silently
+# skipped in no_graph mode and this spec reported PASSED.
+
+action Init:
+    counter = 0
+
+atomic action Inc:
+    require counter < 3
+    counter = counter + 1
+
+exists assertion ImpossibleProbe:
+    return counter > 999
+
+exists assertion ReachableProbe:
+    return counter == 2
