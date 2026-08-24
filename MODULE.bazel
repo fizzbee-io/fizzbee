@@ -7,7 +7,7 @@ bazel_dep(name = "rules_java", version = "8.16.1")
 bazel_dep(name = "rules_jvm_external", version = "6.8")
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
-go_sdk.download(version = "1.23.2")
+go_sdk.download(version = "1.26.7")
 
 # External go deps
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
