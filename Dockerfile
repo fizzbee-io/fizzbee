@@ -23,7 +23,7 @@
 # `python`; the parser itself uses the tarball's bundled interpreter.
 
 # ---- Fetch ----------------------------------------------------------------
-FROM --platform=$BUILDPLATFORM python:3.12-slim-bookworm AS fetch
+FROM --platform=$BUILDPLATFORM python:3.12-slim-trixie AS fetch
 
 ARG FIZZBEE_VERSION
 ARG TARGETARCH
@@ -52,7 +52,7 @@ RUN set -e; \
     test -x /opt/fizzbee/parser/parser_bin
 
 # ---- Runtime ---------------------------------------------------------------
-FROM python:3.12-slim-bookworm
+FROM python:3.12-slim-trixie
 
 COPY --from=fetch /opt/fizzbee /opt/fizzbee
 
