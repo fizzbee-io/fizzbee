@@ -216,44 +216,87 @@ bazel build --platforms=//:linux_x86  //:fizzbee
 
 Python seems to work without platforms flag but unfortunately, passing platforms flag actually breaks the build.
 
-# Running the Fizz with Docker
+# Running Fizz with Docker
 
-This guide will walk you through the steps needed to build and run the application using Docker.
-
-## Clone the Repository 
-
-If you haven't already cloned the project, you can do so by running the following command:
+Official images are published to GitHub Container Registry for `linux/amd64`
+and `linux/arm64`:
 
 ```bash
-git clone https://github.com/fizzbee-io/fizzbee.git
-cd fizzbee
+docker pull ghcr.io/fizzbee-io/fizzbee:latest
 ```
 
-## Build the Docker Image
+## Run a Spec
 
-To build the Docker image, run the following command from the root directory of the project:
+Mount the directory containing your spec and pass the spec path relative
+to it:
 
 ```bash
-docker build -t fizzbee-app .
+docker run --rm -v "$PWD":/workspace ghcr.io/fizzbee-io/fizzbee:latest path/to/Spec.fizz
 ```
 
-## Run the Docker Container
+Output (state graphs, traces) is written to `out/` next to your spec via
+the mount.
 
-Once the image is built, you can run the container using:
-```bash
-docker run --rm -it fizzbee-app
-```
+## Using a Shell Alias for Easier CLI Access
 
-## Using Shell Alias for Easier CLI Access
-
-To make running CLI commands from Docker easier, you can create a shell alias. Add the following to your `.bashrc` or `.zshrc`:
+Add the following to your `.bashrc` or `.zshrc`:
 
 ```bash
-alias fizz='docker run -it --rm -v $(pwd):/spec -w /spec fizzbee-app'
+alias fizz='docker run --rm -v "$PWD":/workspace ghcr.io/fizzbee-io/fizzbee:latest'
 ```
 
-After adding the alias, you will need to either restart your terminal or use the source command to apply the changes immediately:
+Then run specs as if fizz were installed locally: `fizz Spec.fizz`.
+
+## Image Tags
+
+- `ghcr.io/fizzbee-io/fizzbee:<version>` (e.g. `0.5.3`) — pinned to a
+  FizzBee release. The FizzBee code in a version tag never changes: it
+  is always installed from that release's published assets. The image
+  digest may still change if the tag is republished on a refreshed
+  base image.
+- `ghcr.io/fizzbee-io/fizzbee:latest` — the latest release, **rebuilt
+  monthly** on a freshly patched base image even when there is no new
+  FizzBee release.
+- `ghcr.io/fizzbee-io/fizzbee@sha256:...` — an exact immutable image.
+
+Use `latest` in CI to automatically receive OS-level security fixes; a
+version tag for a stable FizzBee release; a digest for bit-for-bit
+reproducibility.
+
+## Security / CVE Policy
+
+The image is a thin wrapper around the official release tarball — the
+exact artifact the pre-built binary installation uses — on a
+`python:3.12-slim-trixie` (Debian stable) base. The FizzBee payload is
+designed to add **no scanner findings** beyond the base image; verify
+the current state yourself:
 
 ```bash
-source ~/.bashrc # or ~/.zshrc
+docker scout quickview ghcr.io/fizzbee-io/fizzbee:latest
+# the Target and Base image rows should show identical counts
 ```
+
+If a scan attributes findings to the FizzBee payload itself, please
+[file an issue](https://github.com/fizzbee-io/fizzbee/issues) so we can
+investigate — the policy is to fix or explicitly document any
+payload-attributed finding.
+
+Findings inherited from the Debian base are present in every image on
+that base. Their status is tracked by the
+[Debian Security Tracker](https://security-tracker.debian.org/tracker/)
+(see the per-package pages, e.g.
+[perl](https://security-tracker.debian.org/tracker/source-package/perl)).
+The monthly rebuild re-pulls the latest base image, so Debian fixes are
+picked up automatically once they become available in the base image.
+
+## Building the Image Yourself
+
+The Dockerfile packages a published release (it does not build from the
+source checkout), so a release version is required:
+
+```bash
+docker build --build-arg FIZZBEE_VERSION=v0.5.3 -t fizzbee .
+```
+
+To model-check with unreleased code, build from source directly instead
+(see [Build from Source](#build-from-source)).
