@@ -36,18 +36,28 @@ fn get_arg_value(env_var: &str, option_value: Option<u32>) -> Option<String> {
     }
 }
 
-// UDS Socket Path Constant
-const UDS_PATH: &str = "/tmp/fizzbee_mbt.sock";
+// UDS Socket Path
+//
+// Default is unique per process so multiple cargo-test invocations can
+// run in parallel without colliding on /tmp/fizzbee_mbt.sock. Override
+// with FIZZBEE_MBT_UDS if you need a fixed path (e.g. for debugging).
+fn uds_path() -> String {
+    if let Ok(p) = env::var("FIZZBEE_MBT_UDS") {
+        return p;
+    }
+    format!("/tmp/fizzbee_mbt-{}.sock", std::process::id())
+}
 
 // --- Private Helper to start the Server Future ---
 /// Binds to the UDS socket and returns the Server future.
 fn serve_uds_socket<D>(
     dispatcher: D,
+    socket_path: &str,
 ) -> Result<impl std::future::Future<Output = Result<(), tonic::transport::Error>>, MbtError>
 where
     D: Model + DispatchModel + Send + Sync + 'static,
 {
-    let path = Path::new(UDS_PATH);
+    let path = Path::new(socket_path);
 
     // Clean up the old socket file if it exists.
     if path.exists() {
@@ -82,16 +92,19 @@ where
         .map_err(MbtError::from_err)?;
 
     rt.block_on(async {
+        // Resolve the socket path once and pass it to both the server
+        // bind and the spawned child so they agree.
+        let socket = uds_path();
+
         // 1. Get the server future
-        let server_future = serve_uds_socket(dispatcher)?;
+        let server_future = serve_uds_socket(dispatcher, &socket)?;
 
         // 2. Launch the child process after the server has successfully bound.
         let bin_path = get_mbt_bin_path();
         let mut args: Vec<String> = Vec::new();
 
         // --- 2a. Mandatory Plugin Address ---
-        // NOTE: Uses 'unix://' prefix, common for MBT runners to identify UDS
-        args.push(format!("--plugin-addr={}", UDS_PATH));
+        args.push(format!("--plugin-addr={}", socket));
 
         // --- 2b. Optional Config Options (Env > Options) ---
         if let Some(val) = get_arg_value("MAX_ACTIONS", options.max_actions) {
