@@ -1,0 +1,20 @@
+---
+deadlock_detection: false
+options:
+    max_actions: 6
+    crash_on_yield: false
+---
+
+# Companion to 09-10: a satisfiable `exists` must PASS under
+# --experimental_no_graph (flags.txt) — the witness accumulator must
+# actually detect witnesses, not just fail everything.
+
+action Init:
+    counter = 0
+
+atomic action Inc:
+    require counter < 3
+    counter = counter + 1
+
+exists assertion ReachableProbe:
+    return counter == 2

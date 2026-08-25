@@ -1,0 +1,10 @@
+Model checking examples/references/09-11-exists-no-graph-reachable/ReachableExists.json
+Note: --experimental_no_graph auto-enables --experimental_processed_queue.
+configFileName: examples/references/09-11-exists-no-graph-reachable/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:6 max_concurrent_actions:2 crash_on_yield:false} deadlock_detection:false
+Nodes: 4, queued: 0, elapsed: 596.875µs
+Peak (new): queue=1 pendingActionStarts=1
+Time taken for model checking: 609.041µs
+Visited entries: 4  Unique states: 4
+PASSED: Model checker completed successfully

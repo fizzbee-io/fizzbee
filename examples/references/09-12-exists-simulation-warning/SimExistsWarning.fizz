@@ -1,0 +1,21 @@
+---
+deadlock_detection: false
+options:
+    max_actions: 6
+---
+
+# Simulation-mode exists coverage warning: with a fixed seed (flags.txt,
+# forces a single deterministic run), the unsatisfiable exists must
+# produce a named WARNING — not a failure, since simulation is not
+# exhaustive. The reachable probe must not be warned about if this
+# seed's trace witnesses it; the impossible one always warns.
+
+action Init:
+    counter = 0
+
+atomic action Inc:
+    require counter < 3
+    counter = counter + 1
+
+exists assertion ImpossibleProbe:
+    return counter > 999

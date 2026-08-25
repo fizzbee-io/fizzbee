@@ -663,6 +663,12 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 	}
 	stopped := false
 	runs := 0
+	// Aggregates exists-assertion witnesses across simulation runs (each
+	// run uses a fresh Processor). Simulation is not exhaustive, so a
+	// never-witnessed exists at the end is a coverage WARNING, not a
+	// failure.
+	var simUnsatisfiedExists []*modelchecker.InvariantPosition
+	simExistsTracked := false
 	var p1 *modelchecker.Processor
 	var holder atomic.Pointer[modelchecker.Processor]
 	var lastRootNode *modelchecker.Node
@@ -703,6 +709,27 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		rootNode, failedNode, endTime, err := startModelChecker(p1)
 		runs++
 		lastRootNode = rootNode
+
+		if simulation && guidedTrace == nil {
+			// Keep only the exists positions that NO run so far has
+			// witnessed: intersect with this run's unsatisfied set.
+			if !simExistsTracked {
+				simUnsatisfiedExists = p1.UnsatisfiedExists()
+				simExistsTracked = true
+			} else if len(simUnsatisfiedExists) > 0 {
+				cur := make(map[modelchecker.InvariantPosition]bool)
+				for _, pos := range p1.UnsatisfiedExists() {
+					cur[*pos] = true
+				}
+				remaining := simUnsatisfiedExists[:0]
+				for _, pos := range simUnsatisfiedExists {
+					if cur[*pos] {
+						remaining = append(remaining, pos)
+					}
+				}
+				simUnsatisfiedExists = remaining
+			}
+		}
 
 		if simProgressOnTty && runs%100 == 0 {
 			// \033[K clears any leftover characters from a prior longer
@@ -779,6 +806,22 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			if p1.Stopped() {
 				fmt.Println("Model checker stopped")
 				return nil
+			}
+			// exists assertions: no retained graph to walk, but the
+			// processor accumulated witness flags across every explored
+			// state. Exploration here is exhaustive, so a missing witness
+			// is proof of unreachability — same verdict and format as the
+			// full-graph CheckSimpleExistsWitness path. Skipped in trace
+			// mode for the same reason as the full-graph path: a guided
+			// trace only explores a slice of the state space.
+			if guidedTrace == nil {
+				if unsatisfied := p1.UnsatisfiedExists(); len(unsatisfied) > 0 {
+					fmt.Println("\nFAILED: Expected states never reached")
+					for i2, invariant := range unsatisfied {
+						fmt.Printf("Invariant %d: %s\n", i2, f.Invariants[invariant.InvariantIndex].Name)
+					}
+					return nil
+				}
 			}
 			fmt.Println("PASSED: Model checker completed successfully")
 			return rootNode
@@ -902,6 +945,13 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 	}
 	clearProgressLine()
 	fmt.Println("Stopped after", runs, "runs at ", time.Now())
+	if simulation && len(simUnsatisfiedExists) > 0 {
+		fmt.Printf("WARNING: %d exists assertion(s) never satisfied in %d simulation run(s):\n", len(simUnsatisfiedExists), runs)
+		for _, pos := range simUnsatisfiedExists {
+			fmt.Printf("  exists assertion %s\n", f.Invariants[pos.InvariantIndex].Name)
+		}
+		fmt.Println("Simulation is not exhaustive: this may be a coverage gap rather than unreachability. Model check to verify.")
+	}
 	if simulation && p1 != nil {
 		if runs-simFirstTraces > 1 {
 			fmt.Println("Not printing intermediate traces (only the last trace is shown)")

@@ -91,9 +91,25 @@ def find_fizz_file(d: Path) -> Path | None:
     return files[0] if files else None
 
 
+def read_flags(d: Path) -> list[str]:
+    """Optional per-example flags: a `flags.txt` next to the spec, one flag
+    (or flag+value) per line. Lets reference examples pin behavior of modes
+    the default invocation doesn't cover (e.g. --experimental_no_graph)."""
+    flags_file = d / "flags.txt"
+    if not flags_file.exists():
+        return []
+    flags = []
+    for line in flags_file.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            flags.extend(line.split())
+    return flags
+
+
 def run_spec(fizz_file: Path) -> tuple[str, str, float]:
     t0 = time.monotonic()
-    r = subprocess.run([FIZZ, str(fizz_file)], capture_output=True, text=True)
+    cmd = [FIZZ] + read_flags(fizz_file.parent) + [str(fizz_file)]
+    r = subprocess.run(cmd, capture_output=True, text=True)
     elapsed = time.monotonic() - t0
     return r.stdout, r.stderr, elapsed
 

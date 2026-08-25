@@ -1,0 +1,13 @@
+Simulation mode is enabled
+Model checking examples/references/09-12-exists-simulation-warning/SimExistsWarning.json
+configFileName: examples/references/09-12-exists-simulation-warning/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:6 max_concurrent_actions:2} deadlock_detection:false
+Seed: 42
+Stopped after 1 runs at  2026-08-24 15:26:34.946278 -0700 PDT m=+0.002759501
+WARNING: 1 exists assertion(s) never satisfied in 1 simulation run(s):
+  exists assertion ImpossibleProbe
+Simulation is not exhaustive: this may be a coverage gap rather than unreachability. Model check to verify.
+Writen graph dotfile: examples/references/09-12-exists-simulation-warning/out/run_2026-08-24_15-26-34/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/09-12-exists-simulation-warning/out/run_2026-08-24_15-26-34/graph.dot -o graph.svg && open graph.svg
