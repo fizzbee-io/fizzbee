@@ -1,0 +1,34 @@
+# Example: require with Parallel Blocks
+# require cannot be a DIRECT statement of a parallel block (the model
+# checker reports a clean error): parallel statements are unordered, so
+# there is no defined point at which the condition would be checked.
+# The two supported patterns, both exercised here:
+#   1. require above the parallel block - guards the whole action
+#   2. require wrapped with its dependent statements in an atomic/serial
+#      branch - guards just that branch
+
+action Init:
+    a = 0
+    b = 0
+    ready = False
+
+atomic action MakeReady:
+    ready = True
+
+action NoOp:
+    pass
+
+# Pattern 1: guard the whole action
+action GuardedAction:
+    require ready and a < 2
+    parallel:
+        a = a + 1
+        b = (b + 1) % 3
+
+# Pattern 2: guard one branch
+parallel action BranchGuard:
+    atomic:
+        require b > 0
+        a = (a + 1) % 3
+    serial:
+        b = (b + 1) % 3

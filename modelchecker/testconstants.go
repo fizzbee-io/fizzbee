@@ -190,4 +190,41 @@ const (
   ]
 }
 `
+	RequireInParallelBlock = `
+{
+  "states": {
+    "code": "ready=False\na=0"
+  },
+  "actions": [
+    {
+      "name": "Both",
+      "flow": "FLOW_PARALLEL",
+      "block": {
+        "flow": "FLOW_PARALLEL",
+        "stmts": [
+          {
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 9,
+                  "column": 5
+                }
+              },
+              "condition": "ready",
+              "conditionExpr": {
+                "pyExpr": "ready"
+              }
+            }
+          },
+          {
+            "pyStmt": {
+              "code": "a = a + 1"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+`
 )

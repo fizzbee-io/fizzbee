@@ -1,0 +1,6 @@
+# The branch guard (require b > 0) has await semantics after a yield:
+# when b cycles back to 0, in-flight threads hold until it becomes true
+# again, and two held threads fill max_concurrent_actions - a genuine
+# await-starvation deadlock, orthogonal to the require-placement patterns
+# this example demonstrates.
+deadlock_detection: false

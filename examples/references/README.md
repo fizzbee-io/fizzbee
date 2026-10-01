@@ -103,6 +103,12 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: `oneof` block modifier, nondeterminism, branching
 - **Status**: ✅ PASSED
 
+### 02-05-parallel-failure-trace: Failure Trace through a Parallel Block
+- **State space**: fails by design (NoOverflow invariant)
+- **Purpose**: Counterexample traces through parallel blocks render correctly
+- **Key concepts**: threads parked at a parallel join have no program counter; the failure renderer must handle them
+- **Status**: ❌ FAILED (expected — the baseline locks in the rendered failure output)
+
 ### 03-01-if-else: If-Else Statement
 - **State space**: 4 nodes, 4 unique states
 - **Purpose**: Basic conditional branching
@@ -248,6 +254,12 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Purpose**: Comparing guard clause patterns
 - **Key concepts**: if-return vs require, enabling behavior
 - **Status**: ✅ PASSED
+
+### 07-04-require-with-parallel: require with Parallel Blocks
+- **State space**: 656 nodes, 497 unique states
+- **Purpose**: The two supported require placements around parallel blocks
+- **Key concepts**: require above the block guards the action; require in a nested atomic/serial branch guards that branch; a require directly in a parallel block is a model error
+- **Status**: ✅ PASSED (deadlock detection off — branch guards have await semantics and can strand threads when the condition cycles)
 
 ### 08-01-lists: Lists
 - **State space**: 9 nodes, 9 unique states
