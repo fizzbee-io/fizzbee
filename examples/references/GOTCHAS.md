@@ -267,30 +267,59 @@ x = any items            # deprecated (emits DeprecationWarning)
 
 ---
 
-## 12. Function Calls Only from Atomic Context or Roles
+## 12. Fizz Function Calls Have Restricted Syntax
 
-**Symptom**: `fizz functions can be called only in the following ways` error.
+**Symptom**: `fizz functions can be called only in the following ways`
+error, or `undefined: my_function`.
 
-**Cause**: Functions (`func`) can only be called from:
-1. Inside an `atomic` block or `atomic action`
-2. Inside a role's action
-3. From another function
-
-They cannot be called from a top-level serial (non-atomic) action.
+**Cause**: A `func` call must be a standalone statement of the form
+`[var =] [role.]fn(args)`. Used inside a larger expression (a condition,
+an index expression, a call argument), the statement is evaluated as
+plain Starlark, which cannot see fizz functions.
 
 ```python
-# FAILS: serial action calling a function
-action Process:
-    result = compute()  # Error!
+# FAILS: call embedded in an expression
+if replica.get_state() == "active":
+    pass
 
-# WORKS: atomic action
-atomic action Process:
-    result = compute()
+# WORKS: extract to a variable first
+state = replica.get_state()
+if state == "active":
+    pass
+```
 
-# WORKS: role action (implicitly has a frame)
-role Worker:
-    action Process:
-        result = compute()
+The call contexts themselves are unrestricted: calls work in atomic,
+serial, parallel, and oneof blocks, at the top level or within roles.
+
+## 12b. `require` Cannot Be a Direct Statement of a Parallel Block
+
+**Symptom**: `require cannot be a direct statement of a parallel block` error.
+
+**Cause**: Parallel statements are unordered, so there is no defined
+point at which the condition would be checked relative to the other
+statements' effects.
+
+```python
+# FAILS: require as one of the unordered parallel statements
+parallel action Both:
+    require ready
+    a = a + 1
+    b = b + 1
+
+# WORKS: guard the whole action - place it before the parallel block
+action Both:
+    require ready
+    parallel:
+        a = a + 1
+        b = b + 1
+
+# WORKS: guard one branch - wrap it with its dependent statements
+parallel action Both:
+    atomic:
+        require ready
+        a = a + 1
+    serial:
+        b = b + 1
 ```
 
 ## 13. `max_actions` Can Mask Unbounded Specs
