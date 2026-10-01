@@ -1,0 +1,23 @@
+# Example: Top-level Function Called from a Serial Action
+# Top-level (non-role) functions can be called from serial actions.
+# The function body yields between statements like any serial code,
+# so other actions (and crashes) interleave with it.
+# NOTE: Function calls inside parallel blocks are not supported yet.
+
+MAX = 2
+
+action Init:
+    counter = 0
+    last = 0
+
+func Incr(amount):
+    counter = counter + amount
+    return counter
+
+atomic action Reset:
+    counter = 0
+    last = 0
+
+serial action Add:
+    require counter < MAX
+    last = Incr(1)

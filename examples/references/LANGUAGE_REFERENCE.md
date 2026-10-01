@@ -349,7 +349,7 @@ serial func process_items():
 1. **Parameters**: Functions can take parameters
 2. **Return values**: Can return values
 3. **Flow modifiers**: Can be `atomic` or `serial` (default)
-4. **Call restrictions**: Must be called from atomic context or roles
+4. **Call restrictions**: Can be called from atomic or serial context (top level or roles), but not from within parallel blocks
 5. **Top-level or role-scoped**: Can be global or part of a role
 
 ### Atomic vs Serial Functions
@@ -363,23 +363,28 @@ serial func process_items():
 - Yield between statements
 - Allows interleaving with other actions
 - More realistic for modeling sequential operations
-- Must be called from atomic context or roles
 
 ### Calling Restrictions
 
 ```python
-# ❌ WRONG: Calling function from non-atomic action
-action BadExample:
-    result = some_function()  # ERROR!
-
 # ✅ CORRECT: Calling from atomic action
 atomic action GoodExample:
     result = some_function()  # OK
+
+# ✅ CORRECT: Calling from serial action (default flow)
+action AlsoGood:
+    result = some_function()  # OK - function body yields between statements
 
 # ✅ CORRECT: Calling from role
 role MyRole:
     action DoWork:
         result = some_function()  # OK in roles
+
+# ❌ WRONG: Calling function inside a parallel block
+action BadExample:
+    parallel:
+        some_function()  # ERROR! Not supported yet
+        other_function()
 ```
 
 ### Function Call Syntax Limitations

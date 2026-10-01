@@ -918,8 +918,8 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			t.Process.updateAllVariablesInScope(vars)
 			t.Process.Enable()
 		} else {
-			if frame.obj == nil && parentScope != nil && parentScope.flow != ast.Flow_FLOW_ATOMIC {
-				msg := fmt.Sprintf("Call stmts can be made only in atomic context or from within roles. %s",
+			if frame.obj == nil && parentScope != nil && parentScope.flow == ast.Flow_FLOW_PARALLEL {
+				msg := fmt.Sprintf("Call stmts are not supported in parallel blocks yet. %s",
 					stmt.CallStmt.Name)
 				panic(msg)
 			}

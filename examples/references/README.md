@@ -199,7 +199,13 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Purpose**: Functions with serial behavior internally
 - **Key concepts**: `serial` within atomic func, function call restrictions
 - **Status**: ✅ PASSED
-- **Note**: Functions must be called from atomic context or roles
+- **Note**: Functions can be called from atomic or serial context (top level or roles), but not from within parallel blocks
+
+### 06-06-function-from-serial-action: Function Called from Serial Action
+- **State space**: 15 nodes, 12 unique states
+- **Purpose**: Top-level function called from a serial action
+- **Key concepts**: function body yields between statements; crashes and other actions interleave with the call
+- **Status**: ✅ PASSED
 
 ### 07-01-require-statement: Require Statement
 - **State space**: 2 nodes, 2 unique states
