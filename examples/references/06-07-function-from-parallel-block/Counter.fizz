@@ -1,0 +1,27 @@
+# Example: Functions Called from a Parallel Block
+# Function calls are supported inside parallel blocks. Each call is one
+# parallel statement; the function body executes with its own flow
+# (serial by default) and interleaves with the other parallel statements.
+# The reachable states are identical to writing the function bodies inline.
+# MOD keeps the counters bounded without require (a `require` directly
+# inside a parallel block is a separate known issue).
+
+MOD = 3
+
+action Init:
+    a = 0
+    b = 0
+
+action NoOp:
+    pass
+
+func IncrTwiceA():
+    a = (a + 1) % MOD
+    a = (a + 1) % MOD
+
+func IncrB():
+    b = (b + 1) % MOD
+
+parallel action Both:
+    IncrTwiceA()
+    IncrB()

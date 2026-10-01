@@ -199,12 +199,36 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Purpose**: Functions with serial behavior internally
 - **Key concepts**: `serial` within atomic func, function call restrictions
 - **Status**: ✅ PASSED
-- **Note**: Functions can be called from atomic or serial context (top level or roles), but not from within parallel blocks
+- **Note**: Functions can be called from any flow context (atomic, serial, parallel, oneof), at the top level or within roles
 
 ### 06-06-function-from-serial-action: Function Called from Serial Action
 - **State space**: 15 nodes, 12 unique states
 - **Purpose**: Top-level function called from a serial action
 - **Key concepts**: function body yields between statements; crashes and other actions interleave with the call
+- **Status**: ✅ PASSED
+
+### 06-07-function-from-parallel-block: Functions Called from a Parallel Block
+- **State space**: 252 nodes, 207 unique states
+- **Purpose**: Top-level functions called as parallel statements
+- **Key concepts**: function bodies interleave with the other parallel statements; reachable states identical to inlining the bodies
+- **Status**: ✅ PASSED
+
+### 06-08-role-function-from-parallel-block: Role Functions Called from a Parallel Block
+- **State space**: 108 nodes, 81 unique states
+- **Purpose**: Role methods called as parallel statements
+- **Key concepts**: `self.fn()` calls inside `parallel action`
+- **Status**: ✅ PASSED
+
+### 06-09-function-in-nested-block-parallel: Calls in Nested Blocks inside Parallel
+- **State space**: 108 nodes, 81 unique states
+- **Purpose**: Function calls wrapped in `atomic:`/`serial:` blocks within a parallel block
+- **Key concepts**: function return advances through nested block ends into the parallel scope
+- **Status**: ✅ PASSED
+
+### 06-10-function-in-nested-parallel: Calls inside Nested Parallel Blocks
+- **State space**: 560 nodes, 392 unique states
+- **Purpose**: Parallel block nested in a parallel block, with function calls at both levels
+- **Key concepts**: recursive scope climbing; inner-block forks and outer-block forks both propagate
 - **Status**: ✅ PASSED
 
 ### 07-01-require-statement: Require Statement

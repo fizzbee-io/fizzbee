@@ -1,8 +1,8 @@
 # Example 0025: Function with Serial For Loop
 # Functions can contain serial blocks/loops that yield
 # Demonstrates: atomic function with serial for loop inside
-# NOTE: Functions can be called from atomic or serial context (top level or roles),
-#       but not from within parallel blocks yet
+# NOTE: Functions can be called from any flow context (atomic, serial,
+#       parallel, oneof), at the top level or within roles
 
 MAX = 2
 

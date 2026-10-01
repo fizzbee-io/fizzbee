@@ -1,0 +1,14 @@
+Model checking examples/references/06-09-function-in-nested-block-parallel/Counter.json
+configFileName: examples/references/06-09-function-in-nested-block-parallel/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 108, queued: 0, elapsed: 4.548875ms
+Time taken for model checking: 4.602875ms
+Writen graph dotfile: examples/references/06-09-function-in-nested-block-parallel/out/run_2026-10-01_11-19-07/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/06-09-function-in-nested-block-parallel/out/run_2026-10-01_11-19-07/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 108 Unique states: 81
+IsLive: true
+Time taken to check liveness: 2.373667ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/06-09-function-in-nested-block-parallel/out/run_2026-10-01_11-19-07

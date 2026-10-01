@@ -1,0 +1,12 @@
+Model checking examples/references/06-10-function-in-nested-parallel/Counter.json
+configFileName: examples/references/06-10-function-in-nested-parallel/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 560, queued: 0, elapsed: 22.418667ms
+Time taken for model checking: 22.44625ms
+Skipping dotfile generation. Too many Nodes: 560
+Valid Nodes: 560 Unique states: 392
+IsLive: true
+Time taken to check liveness: 458.708µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/06-10-function-in-nested-parallel/out/run_2026-10-01_11-19-07
