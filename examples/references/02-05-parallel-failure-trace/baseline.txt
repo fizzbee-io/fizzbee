@@ -1,0 +1,38 @@
+Model checking examples/references/02-05-parallel-failure-trace/Counter.json
+configFileName: examples/references/02-05-parallel-failure-trace/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 10, queued: 12, elapsed: 279.667µs
+Time taken for model checking: 287.5µs
+Writen graph dotfile: examples/references/02-05-parallel-failure-trace/out/run_2026-10-01_11-51-34/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/02-05-parallel-failure-trace/out/run_2026-10-01_11-51-34/graph.dot -o graph.svg && open graph.svg
+FAILED: Model checker failed. Invariant:  NoOverflow
+------
+Init
+--
+state: {"a":0,"b":0}
+------
+Both
+--
+state: {"a":0,"b":0}
+------
+Stmt:0
+--
+state: {"a":1,"b":0}
+------
+Both
+--
+state: {"a":1,"b":0}
+------
+Stmt:0
+--
+state: {"a":2,"b":0}
+------
+Writen graph json: examples/references/02-05-parallel-failure-trace/out/run_2026-10-01_11-51-34/error-graph.json
+Writen graph dotfile: examples/references/02-05-parallel-failure-trace/out/run_2026-10-01_11-51-34/error-graph.dot
+To generate an image file, run: 
+dot -Tsvg examples/references/02-05-parallel-failure-trace/out/run_2026-10-01_11-51-34/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: examples/references/02-05-parallel-failure-trace/out/run_2026-10-01_11-51-34/error-states.html
+To open: 
+open examples/references/02-05-parallel-failure-trace/out/run_2026-10-01_11-51-34/error-states.html
