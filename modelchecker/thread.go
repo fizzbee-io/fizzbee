@@ -796,6 +796,16 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		currentFrame.pc = currentFrame.pc + ".Block.$"
 		return nil, false
 	} else if stmt.RequireStmt != nil {
+		if currentFrame.scope.flow == ast.Flow_FLOW_PARALLEL {
+			// Parallel statements are unordered, so there is no defined point
+			// at which a require as a direct parallel statement would be
+			// checked - it could be scheduled before, between, or after the
+			// other statements' effects.
+			panic(t.Process.NewModelError(stmt.RequireStmt.GetSourceInfo(),
+				"require cannot be a direct statement of a parallel block. "+
+					"Move it above the parallel block to guard the whole action, "+
+					"or wrap it with its dependent statements in an atomic/serial block to guard that branch.", nil))
+		}
 		t.Process.ThreadProgress = false
 		vars := t.Process.GetAllVariablesNocopy()
 		symCtx := t.Process.createSymmetryContext()
