@@ -1,0 +1,27 @@
+# Example: Role Functions Called from a Parallel Block
+# Role methods can be called from parallel blocks too. (Before the
+# executeEndOfBlock fork-propagation fix this crashed the model checker
+# even though role calls passed the old call-site guard.)
+
+MOD = 3
+
+role Node:
+    action Init:
+        self.a = 0
+        self.b = 0
+
+    func IncrA():
+        self.a = (self.a + 1) % MOD
+
+    func IncrB():
+        self.b = (self.b + 1) % MOD
+
+    parallel action Both:
+        self.IncrA()
+        self.IncrB()
+
+action Init:
+    n = Node()
+
+action NoOp:
+    pass

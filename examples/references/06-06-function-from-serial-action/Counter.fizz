@@ -2,7 +2,6 @@
 # Top-level (non-role) functions can be called from serial actions.
 # The function body yields between statements like any serial code,
 # so other actions (and crashes) interleave with it.
-# NOTE: Function calls inside parallel blocks are not supported yet.
 
 MAX = 2
 

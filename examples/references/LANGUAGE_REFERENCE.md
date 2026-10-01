@@ -349,7 +349,7 @@ serial func process_items():
 1. **Parameters**: Functions can take parameters
 2. **Return values**: Can return values
 3. **Flow modifiers**: Can be `atomic` or `serial` (default)
-4. **Call restrictions**: Can be called from atomic or serial context (top level or roles), but not from within parallel blocks
+4. **Call contexts**: Can be called from atomic, serial, parallel, or oneof blocks, at the top level or within roles
 5. **Top-level or role-scoped**: Can be global or part of a role
 
 ### Atomic vs Serial Functions
@@ -364,27 +364,36 @@ serial func process_items():
 - Allows interleaving with other actions
 - More realistic for modeling sequential operations
 
-### Calling Restrictions
+### Calling Contexts
+
+Functions can be called from atomic, serial, parallel, and oneof blocks:
 
 ```python
-# ✅ CORRECT: Calling from atomic action
-atomic action GoodExample:
-    result = some_function()  # OK
+# ✅ Calling from atomic action
+atomic action FromAtomic:
+    result = some_function()
 
-# ✅ CORRECT: Calling from serial action (default flow)
-action AlsoGood:
-    result = some_function()  # OK - function body yields between statements
+# ✅ Calling from serial action (default flow)
+action FromSerial:
+    result = some_function()  # function body yields between statements
 
-# ✅ CORRECT: Calling from role
+# ✅ Calling from a parallel block — each call is one parallel statement;
+# the function bodies interleave with the other parallel statements
+action FromParallel:
+    parallel:
+        some_function()
+        other_function()
+
+# ✅ Calling from a oneof block
+action FromOneof:
+    oneof:
+        some_function()
+        other_function()
+
+# ✅ Calling from role actions
 role MyRole:
     action DoWork:
-        result = some_function()  # OK in roles
-
-# ❌ WRONG: Calling function inside a parallel block
-action BadExample:
-    parallel:
-        some_function()  # ERROR! Not supported yet
-        other_function()
+        result = some_function()
 ```
 
 ### Function Call Syntax Limitations

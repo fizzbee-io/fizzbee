@@ -1,0 +1,32 @@
+# Example: Function Calls inside Nested Parallel Blocks
+# A parallel block nested within a parallel block, with function calls
+# at both levels. A function return inside the inner block must fork the
+# inner block's remaining statements; the inner block's end must advance
+# through the outer parallel scope (recursive executeEndOfBlock climbing).
+# MOD keeps the counters bounded without require (a `require` directly
+# inside a parallel block is a separate known issue).
+
+MOD = 2
+
+action Init:
+    a = 0
+    b = 0
+    c = 0
+
+action NoOp:
+    pass
+
+func IncrA():
+    a = (a + 1) % MOD
+
+func IncrB():
+    b = (b + 1) % MOD
+
+func IncrC():
+    c = (c + 1) % MOD
+
+parallel action Trio:
+    IncrA()
+    parallel:
+        IncrB()
+        IncrC()

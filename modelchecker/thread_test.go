@@ -346,9 +346,10 @@ func TestThread_ExecuteEndOfBlock(t *testing.T) {
 		assert.Equal(t, "Actions[0].Block.Stmts[0]", thread.currentPc())
 		assert.Len(t, forks, 0)
 		thread.currentFrame().pc = "Actions[0].Block.$"
-		yield := thread.executeEndOfBlock()
+		eobForks, yield := thread.executeEndOfBlock()
 		assert.Len(t, process.GetThreads(), 0)
 		assert.Equal(t, thread.Stack.Len(), 0)
+		assert.Len(t, eobForks, 0)
 		assert.True(t, yield)
 	})
 
@@ -371,9 +372,10 @@ func TestThread_ExecuteEndOfBlock(t *testing.T) {
 		assert.Len(t, forks, 0)
 
 		thread.currentFrame().pc = "Actions[0].Block.Stmts[2].Block.$"
-		yield := thread.executeEndOfBlock()
+		eobForks, yield := thread.executeEndOfBlock()
 		assert.Len(t, process.GetThreads(), 1)
 		assert.Equal(t, 1, thread.Stack.Len())
+		assert.Len(t, eobForks, 0)
 		assert.False(t, yield)
 	})
 
@@ -396,8 +398,9 @@ func TestThread_ExecuteEndOfBlock(t *testing.T) {
 		assert.Len(t, forks, 0)
 
 		thread.currentFrame().pc = "Actions[2].Block.Stmts[2].Block.$"
-		yield := thread.executeEndOfBlock()
+		eobForks, yield := thread.executeEndOfBlock()
 		assert.Equal(t, thread.Stack.Len(), 1)
+		assert.Len(t, eobForks, 0)
 		assert.False(t, yield)
 	})
 }

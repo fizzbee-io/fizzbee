@@ -1,0 +1,28 @@
+# Example: Function Calls Wrapped in Nested Blocks inside a Parallel Block
+# A function call nested inside an atomic: or serial: block within a
+# parallel block works: when the call returns, the block ends advance
+# through the parallel scope and fork the remaining parallel statements
+# (the executeEndOfBlock scope-climbing path).
+# MOD keeps the counters bounded without require (a `require` directly
+# inside a parallel block is a separate known issue).
+
+MOD = 3
+
+action Init:
+    a = 0
+    b = 0
+
+action NoOp:
+    pass
+
+func IncrA():
+    a = (a + 1) % MOD
+
+func IncrB():
+    b = (b + 1) % MOD
+
+parallel action Both:
+    atomic:
+        IncrA()
+    serial:
+        IncrB()

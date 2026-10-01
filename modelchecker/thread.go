@@ -470,12 +470,15 @@ func (t *Thread) Execute() ([]*Process, bool) {
 	defer t.Process.propagateEnabled()
 	for t.Stack.Len() > 0 {
 		for t.currentFrame().pc == "" || strings.HasSuffix(t.currentFrame().pc, ".Block.$") {
-			yield = t.executeEndOfBlock()
+			forks, yield = t.executeEndOfBlock()
 			if yield {
 				if !hasNonEndOfBlockStmts && t.Process.GetThreadsCount() < initialThreads && t.Process.Parent != nil && t.Process.Parent.Enabled {
 					t.Process.Fairness = t.Fairness
 					t.Process.Enable()
 				}
+				return forks, yield
+			}
+			if len(forks) > 0 {
 				return forks, yield
 			}
 		}
@@ -521,7 +524,11 @@ func (t *Thread) Execute() ([]*Process, bool) {
 				return forks, true
 			}
 			for t.Stack.Len() > 0 && (t.currentFrame().pc == "" || strings.HasSuffix(t.currentFrame().pc, ".Block.$")) {
-				t.executeEndOfBlock()
+				moreForks, _ := t.executeEndOfBlock()
+				if len(moreForks) > 0 {
+					forks = append(forks, moreForks...)
+					break
+				}
 			}
 
 			return forks, true
@@ -918,11 +925,6 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			t.Process.updateAllVariablesInScope(vars)
 			t.Process.Enable()
 		} else {
-			if frame.obj == nil && parentScope != nil && parentScope.flow == ast.Flow_FLOW_PARALLEL {
-				msg := fmt.Sprintf("Call stmts are not supported in parallel blocks yet. %s",
-					stmt.CallStmt.Name)
-				panic(msg)
-			}
 			// Handle function calls
 			newFrame := &CallFrame{FileIndex: def.fileIndex, pc: def.path + ".Block", Name: stmt.CallStmt.Name}
 			newFrame.vars = starlark.StringDict{}
@@ -1216,10 +1218,14 @@ func (t *Thread) executeEndOfStatement() ([]*Process, bool) {
 	}
 }
 
-func (t *Thread) executeEndOfBlock() bool {
+// executeEndOfBlock walks up finished blocks/frames. It returns the forks
+// produced while advancing (a function return or inner block end that lands
+// in a parallel scope forks the remaining parallel statements) and whether
+// the thread yields. Callers must propagate the forks to the processor.
+func (t *Thread) executeEndOfBlock() ([]*Process, bool) {
 	frame := t.currentFrame()
 	if frame == nil {
-		return false
+		return nil, false
 	}
 	for {
 
@@ -1255,7 +1261,7 @@ func (t *Thread) executeEndOfBlock() bool {
 
 			if t.Stack.Len() == 0 {
 				t.Process.removeCurrentThread()
-				return true
+				return nil, true
 			} else {
 				frame = t.currentFrame()
 				// if protobuf is of type Function then it is a function call.
@@ -1284,8 +1290,7 @@ func (t *Thread) executeEndOfBlock() bool {
 					}
 					t.Process.updateAllVariablesInScope(returnedVars)
 					t.Process.RecordReturn(t.currentFrame(), oldFrame, starlark.None, oldScope.flow)
-					_, yield := t.executeEndOfStatement()
-					return yield
+					return t.executeEndOfStatement()
 				}
 
 			}
@@ -1293,7 +1298,7 @@ func (t *Thread) executeEndOfBlock() bool {
 		frame.pc = RemoveLastBlock(t.currentPc())
 		forks, yield := t.executeEndOfStatement()
 		if len(forks) > 0 || yield {
-			return yield
+			return forks, yield
 		}
 
 		if t.currentPc() != "" {
@@ -1303,9 +1308,9 @@ func (t *Thread) executeEndOfBlock() bool {
 	if frame.scope.flow == ast.Flow_FLOW_SERIAL ||
 		frame.scope.flow == ast.Flow_FLOW_PARALLEL {
 		// Only yield if there was at least one executable statement
-		return t.Process.Enabled
+		return nil, t.Process.Enabled
 	}
-	return false
+	return nil, false
 }
 
 func (t *Thread) CopyInitValuesForEphemeralFields(oldFrame *CallFrame) {
