@@ -1,0 +1,20 @@
+# Example: Failure Trace through a Parallel Block
+# When an assertion fails on a state reached mid-parallel, the
+# counterexample trace includes threads parked at the parallel join
+# (frames with no program counter). The failure-path renderer must
+# handle those frames. (Regression: this used to panic in
+# CurrentPcSourceInfo instead of printing the trace.)
+
+action Init:
+    a = 0
+    b = 0
+
+action NoOp:
+    pass
+
+always assertion NoOverflow:
+    return a < 2
+
+parallel action Both:
+    a = a + 1
+    b = (b + 1) % 3

@@ -405,6 +405,24 @@ func TestThread_ExecuteEndOfBlock(t *testing.T) {
 	})
 }
 
+func TestThread_CurrentPcSourceInfo_EmptyPc(t *testing.T) {
+	file, err := parseAstFromString(ActionsWithMultipleBlocks)
+	require.Nil(t, err)
+	files := []*ast.File{file}
+
+	process := NewProcess("", files, nil)
+	process.NewThread()
+	thread := process.currentThread()
+
+	// A frame parked at a parallel join has pc == "". CurrentPcSourceInfo
+	// must return empty source info for it instead of resolving the empty
+	// path (which panics in reflection).
+	thread.currentFrame().pc = ""
+	info := thread.CurrentPcSourceInfo()
+	assert.NotNil(t, info)
+	assert.Equal(t, int32(0), info.GetStart().GetLine())
+}
+
 func TestThread_Execute(t *testing.T) {
 	file, err := parseAstFromString(ActionsWithMultipleBlocks)
 	require.Nil(t, err)

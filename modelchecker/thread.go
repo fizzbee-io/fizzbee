@@ -1351,6 +1351,12 @@ type CodeSnippet interface {
 }
 
 func (t *Thread) CurrentPcSourceInfo() *ast.SourceInfo {
+	// A thread parked at a parallel join has no program counter (pc == ""):
+	// the remaining parallel statements live on forked processes, not this
+	// frame. There is no statement to point at, so return empty source info.
+	if t.currentPc() == "" {
+		return &ast.SourceInfo{}
+	}
 	protoMsg := GetProtoFieldByPath(t.currentFileAst(), t.currentPc())
 	if protoMsg == nil {
 		return &ast.SourceInfo{}
