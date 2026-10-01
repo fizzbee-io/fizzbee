@@ -28,15 +28,17 @@ async function startServer() {
     const server = http.createServer((req, res) => {
         console.log("req.url", req.url)
         let filePath;
+        // Route on the pathname so query strings (?errors=1) do not 404.
+        const pathname = new URL(req.url, 'http://localhost').pathname;
 
-        if (req.url.startsWith('/data/')) {
-            filePath = path.join(dataDir, req.url.replace('/data', ''));
-        } else if (req.url === '/graph.proto') {
+        if (pathname.startsWith('/data/')) {
+            filePath = path.join(dataDir, pathname.replace('/data', ''));
+        } else if (pathname === '/graph.proto') {
             filePath = path.join(protoDir, 'graph.proto');
-        } else if (req.url === '/' || req.url === '/explorer.html') {
+        } else if (pathname === '/' || pathname === '/explorer.html') {
             filePath = path.join(publicDir, 'explorer.html');
         } else {
-            filePath = path.join(publicDir, req.url);
+            filePath = path.join(publicDir, pathname);
         }
 
         fs.readFile(filePath, (err, content) => {
@@ -50,8 +52,13 @@ async function startServer() {
         });
     });
 
+    // A FAILED run writes nodes_errors.pb / adjacency_lists_errors.pb instead of
+    // nodes_000000_of_000000.pb; tell the page which set to load.
+    const isErrorRun = fs.existsSync(path.join(dataDir, 'nodes_errors.pb'))
+        && !fs.existsSync(path.join(dataDir, 'nodes_000000_of_000000.pb'));
+
     server.listen(port, () => {
-        const url = `http://localhost:${port}/explorer.html`;
+        const url = `http://localhost:${port}/explorer.html${isErrorRun ? '?errors=1' : ''}`;
         console.log(`Serving:`);
         console.log(`  ${url}`);
         console.log(`  http://localhost:${port}/data/ -> ${dataDir}`);

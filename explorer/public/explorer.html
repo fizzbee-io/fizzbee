@@ -234,6 +234,12 @@
   const protoUrl = '/graph.proto';
   let nodesUrl = `/data/nodes_000000_of_000000.pb`;
   let linksUrl = `/data/adjacency_lists_000000_of_000000.pb`;
+  // A FAILED run writes nodes_errors.pb / adjacency_lists_errors.pb; serve.js
+  // opens this page with ?errors=1 for such a run.
+  if (new URLSearchParams(window.location.search).get('errors') === '1') {
+    nodesUrl = `/data/nodes_errors.pb`;
+    linksUrl = `/data/adjacency_lists_errors.pb`;
+  }
 
 
   // // URLs of the serialized protobuf files
