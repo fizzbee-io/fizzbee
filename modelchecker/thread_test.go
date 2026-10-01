@@ -423,6 +423,35 @@ func TestThread_CurrentPcSourceInfo_EmptyPc(t *testing.T) {
 	assert.Equal(t, int32(0), info.GetStart().GetLine())
 }
 
+func TestThread_RequireInParallelBlockRejected(t *testing.T) {
+	file, err := parseAstFromString(RequireInParallelBlock)
+	require.Nil(t, err)
+	files := []*ast.File{file}
+
+	process := NewProcess("", files, nil)
+	process.NewThread()
+	thread := process.Fork().currentThread()
+	thread.currentFrame().pc = "Actions[0].Block"
+	forks := thread.executeBlock()
+	require.Len(t, forks, 2)
+	require.Equal(t, ast.Flow_FLOW_PARALLEL, thread.currentFrame().scope.flow)
+
+	// The fork executing the require statement runs with a parallel scope
+	// flow, so it must be rejected with a model error naming the construct.
+	requireThread := forks[0].currentThread()
+	require.Equal(t, "Actions[0].Block.Stmts[0]", requireThread.currentPc())
+	defer func() {
+		r := recover()
+		require.NotNil(t, r, "expected a model error panic")
+		modelErr, ok := r.(*ModelError)
+		require.True(t, ok, "expected *ModelError, got %T", r)
+		assert.Contains(t, modelErr.Error(), "require cannot be a direct statement of a parallel block")
+		assert.Contains(t, modelErr.Error(), "Line 9")
+	}()
+	requireThread.executeStatement()
+	t.Fatal("expected executeStatement to panic")
+}
+
 func TestThread_Execute(t *testing.T) {
 	file, err := parseAstFromString(ActionsWithMultipleBlocks)
 	require.Nil(t, err)

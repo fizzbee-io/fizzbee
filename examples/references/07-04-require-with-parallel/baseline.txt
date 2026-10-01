@@ -1,0 +1,11 @@
+Model checking examples/references/07-04-require-with-parallel/Counter.json
+configFileName: examples/references/07-04-require-with-parallel/fizz.yaml
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2} deadlock_detection:false
+Nodes: 656, queued: 0, elapsed: 24.98525ms
+Time taken for model checking: 25.021791ms
+Skipping dotfile generation. Too many Nodes: 656
+Valid Nodes: 656 Unique states: 497
+IsLive: true
+Time taken to check liveness: 729.084µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/07-04-require-with-parallel/out/run_2026-10-01_12-24-07
