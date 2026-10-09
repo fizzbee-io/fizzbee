@@ -1,0 +1,17 @@
+# Example: Unsupported Channel Configuration
+# Only the (unordered, exactly_once, fire_and_forget) channel is supported.
+# Any other Channel(...) at the top level fails with a FAILED line naming the
+# statement and the reason, instead of crashing the checker with a stack trace.
+# Demonstrates: Channel builtin, top-level statement error, clean failure
+
+NonBlockingFifo = Channel(ordering='ordered', delivery='atleast_once', blocking='fire_and_forget')
+
+role Server:
+    action Init:
+        self.count = 0
+
+action Init:
+    server = Server()
+
+atomic action Noop:
+    pass

@@ -850,10 +850,6 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			writeDotFileIfNeeded(p1, rootNode, outDir, fmt.Sprintf("graph_run_%d.dot", i))
 		}
 
-		if err != nil {
-			printTraceAndExit(err)
-		}
-
 		// In no-graph mode there's no in-memory state graph to walk for
 		// dot generation, exists-witness checking, liveness, or deadlock
 		// detection via traverseBFS. Print a minimal summary and return.
@@ -1076,8 +1072,10 @@ func writeCommunicationFileIfNeeded(messages []string, outDir string) bool {
 func printTraceAndExit(err error) {
 	var modelErr *modelchecker.ModelError
 	if errors.As(err, &modelErr) {
-		fmt.Println("Stack Trace:")
-		fmt.Println(modelErr.SprintStackTrace())
+		fmt.Println("FAILED:", modelErr.Error())
+		if modelErr.NestedError != nil {
+			fmt.Println("Caused by:", modelErr.NestedError)
+		}
 	} else {
 		fmt.Println("Error:", err)
 	}
@@ -1272,8 +1270,8 @@ func isFlagSet(name string) bool {
 
 func startModelChecker(p1 *modelchecker.Processor) (*modelchecker.Node, *modelchecker.Node, time.Time, error) {
 	if simulation {
-		rootNode, failedNode, _ := p1.Start()
-		return rootNode, failedNode, time.Now(), nil
+		rootNode, failedNode, err := p1.Start()
+		return rootNode, failedNode, time.Now(), err
 	}
 	if internalProfile {
 		startCpuProfile()
@@ -1282,6 +1280,9 @@ func startModelChecker(p1 *modelchecker.Processor) (*modelchecker.Node, *modelch
 	startTime := time.Now()
 	rootNode, failedNode, err := p1.Start()
 	endTime := time.Now()
+	if err != nil {
+		return rootNode, failedNode, endTime, err
+	}
 	if !isTest {
 		fmt.Printf("Time taken for model checking: %v\n", endTime.Sub(startTime))
 	}

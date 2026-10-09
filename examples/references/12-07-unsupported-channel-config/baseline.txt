@@ -1,0 +1,7 @@
+Model checking examples/references/12-07-unsupported-channel-config/UnsupportedChannel.json
+configFileName: examples/references/12-07-unsupported-channel-config/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
+E1009 23:18:56.737877   67968 starlark.go:78] Error executing stmt: unsupported channel configuration: ordering="ordered", delivery="atleast_once", blocking="fire_and_forget". Only (unordered, exactly_once, fire_and_forget) channel is supported at this moment
+FAILED: Line 7: Error executing statement: NonBlockingFifo = Channel(ordering='ordered', delivery='atleast_once', blocking='fire_and_forget', )
+Caused by: unsupported channel configuration: ordering="ordered", delivery="atleast_once", blocking="fire_and_forget". Only (unordered, exactly_once, fire_and_forget) channel is supported at this moment
