@@ -25,7 +25,7 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **06**: Functions (5) - Function definitions and modifiers
 - **07**: Guards (3) - require/pass statements
 - **08**: Data Types (9) - Collections, enums, records
-- **09**: Assertions (5) - Safety and liveness properties
+- **09**: Assertions (13) - Safety and liveness properties
 - **10**: Fairness (3) - Unfair, weak fair, strong fair
 - **11**: Roles (8) - Role basics and management
 - **12**: Advanced (6) - Nesting, config, best practices
@@ -345,6 +345,12 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Purpose**: System always makes progress
 - **Key concepts**: `always eventually`, strong fairness, progress
 - **Status**: ✅ PASSED
+
+### 09-14-simulation-liveness-stutter: Liveness Failure by Stuttering in Simulation
+- **State space**: one simulation run (fixed seed via `flags.txt`)
+- **Purpose**: `Generate` is unfair, so once `Process` drains the history only an unfair action remains: the run can stutter forever and `always eventually` never holds. Simulation names the failing assertion instead of a bare "Deadlock/stuttering detected"
+- **Key concepts**: simulation mode, stuttering, `always eventually`, strong fairness (issue 214)
+- **Status**: FAILED (expected)
 
 ### 10-01-unfair-action: Unfair Action (Default)
 - **State space**: 108 nodes, 46 unique states
