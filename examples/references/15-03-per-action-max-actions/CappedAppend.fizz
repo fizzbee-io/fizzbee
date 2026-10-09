@@ -1,0 +1,17 @@
+---
+# Example: Per-Action max_actions Is a Bound, Not a Deadlock
+# Append may run twice. After that no action is enabled, but the state space
+# was cut by a configured limit, so this is bound pruning rather than a
+# deadlock, the same as reaching the global max_actions.
+# Demonstrates: action_options max_actions, deadlock detection at a bound
+
+action_options:
+    Append:
+        max_actions: 2
+---
+
+action Init:
+    history = []
+
+action Append:
+    history.append("A")
