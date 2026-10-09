@@ -38,7 +38,7 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
   - **13-06**: Resilience (2) - Circuit breaker, rate limiting
   - **13-07**: Data/Events (2) - WAL, event sourcing
 - **14**: Fault Injection (4) - Crash and message loss
-- **15**: Configuration (2) - Action-level config, coordination
+- **15**: Configuration (3) - Action-level config, coordination
 - **16**: Symmetry Reduction (13) - State space optimization (old API + symmetry module)
 - **99**: Miscellaneous (1) - Checkpoints and other utilities
 
@@ -599,6 +599,12 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Purpose**: Using `require` mid-action for coordination between actions
 - **Key concepts**: Yield points, action coordination, require in middle of action
 - **Status**: ✅ PASSED
+
+### 15-03-per-action-max-actions: Per-Action max_actions Is a Bound, Not a Deadlock
+- **State space**: 3 nodes, 3 unique states
+- **Purpose**: After `Append` reaches its per-action `max_actions` nothing is enabled, but the state space was cut by configuration, so the checker treats it as bound pruning (like the global `max_actions`) rather than reporting a deadlock
+- **Key concepts**: `action_options` with `max_actions`, deadlock detection at a bound (issue 91)
+- **Status**: PASSED
 
 ### 16-01-symmetric-values: Symmetric Values for IDs
 - **State space**: Significantly reduced compared to regular values
