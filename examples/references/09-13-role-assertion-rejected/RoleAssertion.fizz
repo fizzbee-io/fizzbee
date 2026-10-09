@@ -1,0 +1,17 @@
+# Example: Role Assertion Rejected at Load
+# An assertion declared inside a role is never evaluated, so the spec is
+# rejected at load instead of passing vacuously.
+# Demonstrates: role-scoped assertion, load-time FAILED, top-level workaround
+
+role Server:
+    action Init:
+        self.value = -1
+
+    always assertion ValuePositive:
+        return self.value >= 0
+
+action Init:
+    servers = [Server()]
+
+atomic action Noop:
+    pass
