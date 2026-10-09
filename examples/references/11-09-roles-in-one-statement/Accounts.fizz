@@ -1,0 +1,23 @@
+---
+# Example: Roles Created in One Statement
+# A single statement can create several role instances, for example a list
+# literal of Role() calls or a comprehension. Each new instance's Init action
+# runs, in creation order, before the creating statement completes.
+# Demonstrates: multiple Role() calls per statement, role Init, bounded deposits
+
+deadlock_detection: false
+---
+
+role Account:
+    action Init:
+        self.balance = 0
+
+    atomic action Deposit:
+        require self.balance < 2
+        self.balance += 1
+
+action Init:
+    accounts = [Account(name="Alice"), Account(name="Bob")]
+
+always assertion NonNegative:
+    return all([a.balance >= 0 for a in accounts])
