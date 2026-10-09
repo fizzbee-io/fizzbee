@@ -77,6 +77,9 @@ func RunSimulation(specData []byte, config *SimulationConfig) *SimulationResult 
 	if err != nil {
 		return &SimulationResult{Error: err}
 	}
+	if err := modelchecker.RejectRoleInvariants(file); err != nil {
+		return &SimulationResult{Error: err}
+	}
 
 	// Use default options if not provided
 	options := config.Options
@@ -114,5 +117,8 @@ func RunSimulation(specData []byte, config *SimulationConfig) *SimulationResult 
 func LoadSpecFromJSON(data []byte) (*ast.File, error) {
 	file := &ast.File{}
 	err := protojson.Unmarshal(data, file)
-	return file, err
+	if err != nil {
+		return file, err
+	}
+	return file, modelchecker.RejectRoleInvariants(file)
 }

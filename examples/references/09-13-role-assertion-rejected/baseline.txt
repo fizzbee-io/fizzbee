@@ -1,0 +1,2 @@
+Model checking examples/references/09-13-role-assertion-rejected/RoleAssertion.json
+FAILED: RoleAssertion.fizz: assertions inside roles are not supported: assertion 'ValuePositive' in role 'Server' (line 10). Declare them at the top level and loop over the role instances instead (see https://github.com/fizzbee-io/fizzbee/issues/179)
