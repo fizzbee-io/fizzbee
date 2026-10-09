@@ -1,0 +1,25 @@
+---
+# Example: Liveness Failure by Stuttering in Simulation
+# Generate is unfair, so once Process has drained the history nothing fair
+# is left to run: the run can stutter forever and the always-eventually
+# property never holds. Simulation reports the failing assertion by name.
+# Demonstrates: simulation mode, stuttering, always eventually, strong fairness
+
+options:
+    max_actions: 2
+deadlock_detection: false
+---
+
+action Init:
+    history = []
+
+action Generate:
+    history.append("A")
+
+atomic fair<strong> action Process:
+    require len(history) > 0
+    event = fair oneof history
+    history.pop()
+
+always eventually assertion LotsOfElements:
+    return len(history) > 1000
