@@ -37,13 +37,13 @@ def json_to_proto(json_filename, proto_msg):
 
 
 def load_adj_lists_from_proto_files(path_prefix):
-    pattern = os.path.join(f"{path_prefix}*adjacency_lists_*.pb")
+    pattern = os.path.join(path_prefix, "adjacency_lists_*.pb")
     links = graph.Links()
     return load_proto_files(pattern, links)
 
 
 def load_nodes_from_proto_files(path_prefix):
-    pattern = os.path.join(f"{path_prefix}*nodes_*.pb")
+    pattern = os.path.join(path_prefix, "nodes_*.pb")
     pb = graph.Nodes()
     return load_proto_files(pattern, pb)
 
