@@ -1,0 +1,3 @@
+# Fixed seed (from issue 214): the run drains the history, then only the
+# unfair Generate action remains, so the run stutters.
+--simulation --max_runs 1000 --seed 1748536617242639
