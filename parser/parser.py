@@ -15,9 +15,11 @@ def parse_file(filename, content):
     print(content_without_frontmatter)
     if initial_spaces == '' and yaml_frontmatter == '':
         print("No YAML frontmatter found")
-        num_lines = 0
-    else:
-        num_lines = len(initial_spaces.splitlines()) + len(yaml_frontmatter.splitlines()) + 2
+    # Count every line consumed before the code starts. The regex's leading
+    # group only captures whitespace, so anything else above the frontmatter
+    # (e.g. header comments) is dropped from all three parts and must still
+    # be counted here or reported line numbers shift.
+    num_lines = len(content.splitlines()) - len(content_without_frontmatter.splitlines())
     # prefix content_without_frontmatter with the empty new lines so the line numbers match
     content_without_frontmatter = "\n" * num_lines + content_without_frontmatter
     yaml_frontmatter = "\n" * len(initial_spaces.splitlines()) + yaml_frontmatter
