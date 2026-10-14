@@ -22,7 +22,11 @@ def parse_file(filename, content):
     num_lines = len(content.splitlines()) - len(content_without_frontmatter.splitlines())
     # prefix content_without_frontmatter with the empty new lines so the line numbers match
     content_without_frontmatter = "\n" * num_lines + content_without_frontmatter
-    yaml_frontmatter = "\n" * len(initial_spaces.splitlines()) + yaml_frontmatter
+    # Pad the YAML the same way: its body starts right after the opening
+    # '---', i.e. num_lines minus the YAML body and the closing '---' line,
+    # so YAML parse errors ("yaml: line N: ...") also point at the file line.
+    if yaml_frontmatter:
+        yaml_frontmatter = "\n" * (num_lines - len(yaml_frontmatter.splitlines()) - 1) + yaml_frontmatter
     # Continue with ANTLR parsing
     stream = InputStream(content_without_frontmatter)
     lexer = FizzLexer(stream)
@@ -70,6 +74,15 @@ def extract_yaml_frontmatter(text):
 
     match = yaml_frontmatter_pattern.search(text)
     if match:
+        # Frontmatter is only recognized at the top of the file: nothing but
+        # comments and whitespace may precede the opening '---'. Any other
+        # preceding line means this '---' pair is ordinary spec content (for
+        # example inside a string), so extract nothing and let the Fizz
+        # parser report the stray '---' with a correct line number.
+        preceding = text[:match.start()]
+        if any(line.strip() and not line.lstrip().startswith('#')
+               for line in preceding.splitlines()):
+            return '', '', text
         initial_text = match.group(1)
         yaml_frontmatter = match.group(2)  # Add newline to preserve format
         remaining_text = text[match.end():]  # Keep the remaining text after the frontmatter
