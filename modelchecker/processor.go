@@ -1495,7 +1495,9 @@ func (p *Processor) InitializeNode() (*Node, *Node, error) {
 	p.Init = NewNode(process)
 
 	if len(p.Files[0].Stmts) > 0 {
-		processPreInit(p.Init, p.Files[0].Stmts, p.preinitHookContent)
+		if err := processPreInit(p.Init, p.Files[0].Stmts, p.preinitHookContent); err != nil {
+			return p.Init, nil, err
+		}
 	}
 
 	if p.Files[0].Actions[0].Name != "Init" {
@@ -2292,7 +2294,19 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 	return p.Init, failedNode, err
 }
 
-func processPreInit(init *Node, stmts []*ast.Statement, preinitHookContent string) {
+// processPreInit runs the top-level statements. A failing statement panics
+// with a *ModelError deep inside the thread; it is recovered here and
+// returned so the caller reports it instead of dying with a Go stack trace.
+func processPreInit(init *Node, stmts []*ast.Statement, preinitHookContent string) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			modelErr, ok := r.(*ModelError)
+			if !ok {
+				panic(r)
+			}
+			err = modelErr
+		}
+	}()
 	thread := init.NewThread()
 	thread.currentFrame().pc = fmt.Sprintf("Stmts[%d]", 0)
 	thread.currentFrame().Name = "toplevel"
@@ -2346,6 +2360,7 @@ func processPreInit(init *Node, stmts []*ast.Statement, preinitHookContent strin
 	globals.Freeze()
 	init.Process.Heap.globals = globals
 	init.removeCurrentThread()
+	return nil
 }
 
 func (p *Processor) processNode(node *Node) (bool, bool) {

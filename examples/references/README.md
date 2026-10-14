@@ -28,7 +28,7 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **09**: Assertions (5) - Safety and liveness properties
 - **10**: Fairness (3) - Unfair, weak fair, strong fair
 - **11**: Roles (8) - Role basics and management
-- **12**: Advanced (6) - Nesting, config, best practices
+- **12**: Advanced (7) - Nesting, config, best practices
 - **13**: Patterns (19) - Distributed systems patterns
   - **13-01**: Locking (4) - Mutex, RW lock, distributed lock
   - **13-02**: Transactions (3) - 2PC, saga, snapshot isolation
@@ -448,6 +448,12 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Purpose**: State variables and top-level constants
 - **Key concepts**: Automatic global state, top-level constants, no `global` keyword needed
 - **Status**: ✅ PASSED
+
+### 12-07-unsupported-channel-config: Unsupported Channel Configuration
+- **State space**: not explored, the top-level statement fails
+- **Purpose**: A `Channel(...)` configuration other than (unordered, exactly_once, fire_and_forget) fails with a `FAILED:` line naming the statement and the reason, instead of a Go stack trace
+- **Key concepts**: `Channel` builtin, top-level statement errors, clean failure (issue 95)
+- **Status**: FAILED (expected)
 
 ### 13-01-01-mutex: Mutex Pattern
 - **State space**: 199 nodes, 199 unique states
