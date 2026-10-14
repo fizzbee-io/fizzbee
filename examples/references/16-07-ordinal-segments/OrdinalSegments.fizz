@@ -1,3 +1,7 @@
+# Example 0107: Ordinal Segments
+# Insert values between existing ordinal values using segments() and gap fresh()
+# Demonstrates: segments(), gap insertion, after and before filtering
+
 # Ordinal Segments: Inserting values between existing ordinal values.
 # segments() returns gap objects between active values. Each gap
 # has a fresh() method to allocate a value within that gap.

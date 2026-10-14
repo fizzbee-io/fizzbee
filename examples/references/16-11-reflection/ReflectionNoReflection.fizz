@@ -1,3 +1,7 @@
+# Example 0112: Interval Without Reflection
+# Baseline interval domain without reflection, for comparing state counts with the reflected version
+# Demonstrates: interval symmetry, reflection comparison
+
 # Interval WITHOUT reflection (for comparison with ReflectionInterval.fizz).
 # Run both and compare state/node counts to see the reduction.
 

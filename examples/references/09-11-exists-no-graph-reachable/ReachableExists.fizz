@@ -1,3 +1,7 @@
+# Example 0101: Exists Assertion in No Graph Mode (Satisfiable)
+# A satisfiable exists assertion passes under --experimental_no_graph by detecting a witness
+# Demonstrates: exists assertion, --experimental_no_graph, witness detection
+
 ---
 deadlock_detection: false
 options:

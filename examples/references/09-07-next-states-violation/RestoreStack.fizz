@@ -1,3 +1,7 @@
+# Example 0097: Detecting Unrestorable States with next_states()
+# A stack based trash means only the most recent item is restorable, so the next_states() assertion fails with a counterexample
+# Demonstrates: next_states(), assertion failure, counterexample
+
 ---
 deadlock_detection: false
 options:

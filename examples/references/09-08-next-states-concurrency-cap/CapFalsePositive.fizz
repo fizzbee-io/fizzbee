@@ -1,3 +1,7 @@
+# Example 0098: next_states() Ignores the Concurrency Cap
+# The next_states() probe sees enabled transitions even when max_concurrent_actions is exhausted
+# Demonstrates: next_states(), max_concurrent_actions, serial actions
+
 ---
 deadlock_detection: false
 options:

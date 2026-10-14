@@ -1,4 +1,7 @@
-# Example: Role Functions Called from a Parallel Block
+# Example 0092: Role Functions Called from a Parallel Block
+# Role methods called as parallel statements inside a parallel action
+# Demonstrates: roles, role functions, parallel block
+
 # Role methods can be called from parallel blocks too. (Before the
 # executeEndOfBlock fork-propagation fix this crashed the model checker
 # even though role calls passed the old call-site guard.)

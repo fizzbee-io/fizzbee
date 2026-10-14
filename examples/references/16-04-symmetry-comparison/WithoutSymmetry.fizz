@@ -1,6 +1,6 @@
-# Example 0087a: State Space WITHOUT Symmetry Reduction
-# Run this to see baseline state space
-# Then compare with WithSymmetry.fizz to see the reduction
+# Example 0104: State Space Without Symmetry Reduction
+# Baseline state space using a regular role, for comparison with the symmetric version
+# Demonstrates: roles, state space, symmetry comparison
 
 ---
 options:

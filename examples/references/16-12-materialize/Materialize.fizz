@@ -1,3 +1,7 @@
+# Example 0114: Materialized Symmetry Domains
+# Pre-populate all domain values at declaration with materialize=True for fixed known sets
+# Demonstrates: materialize=True, values(), fixed domains
+
 # Materialize: Pre-populate all domain values at declaration.
 #
 # With materialize=True, all `limit` values exist from the start.
