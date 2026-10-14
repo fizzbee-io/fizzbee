@@ -1111,6 +1111,10 @@ func loadInputJSON(jsonFilename string) *ast.File {
 		fmt.Println("Error unmarshalling JSON:", err)
 		os.Exit(1)
 	}
+	if err := modelchecker.RejectRoleInvariants(f); err != nil {
+		fmt.Printf("FAILED: %s: %v\n", f.GetSourceInfo().GetFileName(), err)
+		os.Exit(1)
+	}
 	return f
 }
 
