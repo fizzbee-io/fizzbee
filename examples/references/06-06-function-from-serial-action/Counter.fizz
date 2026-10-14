@@ -1,5 +1,5 @@
 # Example 0090: Function Called from a Serial Action
-# A top level function called from a serial action yields between statements and interleaves with other actions
+# A top-level function called from a serial action yields between statements and interleaves with other actions
 # Demonstrates: functions, serial actions, yield points, interleaving
 
 # Top-level (non-role) functions can be called from serial actions.

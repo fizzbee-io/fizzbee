@@ -1,6 +1,6 @@
-# Example 0096: One Step Reachability with next_states()
+# Example 0096: One-Step Reachability with next_states()
 # Assert that every trashed item can be restored in one step using next_states()
-# Demonstrates: next_states(), one step reachability, always assertion
+# Demonstrates: next_states(), one-step reachability, always assertion
 
 ---
 deadlock_detection: false

@@ -1,5 +1,5 @@
-# Example 0100: Exists Assertion in No Graph Mode (Unsatisfiable)
-# An unsatisfiable exists assertion must fail under --experimental_no_graph, matching full graph mode
+# Example 0100: Exists Assertion in No-Graph Mode (Unsatisfiable)
+# An unsatisfiable exists assertion must fail under --experimental_no_graph, matching full-graph mode
 # Demonstrates: exists assertion, --experimental_no_graph
 
 ---
