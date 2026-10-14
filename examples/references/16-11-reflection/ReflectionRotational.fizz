@@ -1,3 +1,7 @@
+# Example 0113: Rotational Reflection Symmetry
+# Clockwise and counterclockwise orientations collapse to one state with reflection=True
+# Demonstrates: reflection=True, rotational symmetry, undirected rings
+
 # Reflection Symmetry (Rotational): Clockwise = counterclockwise.
 #
 # With reflection=True on a rotational domain, the model checker

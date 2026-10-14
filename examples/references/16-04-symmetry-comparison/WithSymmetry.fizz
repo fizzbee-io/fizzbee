@@ -1,6 +1,6 @@
-# Example 0087b: State Space WITH Symmetry Reduction
-# Run this to see reduced state space
-# Compare state count with WithoutSymmetry.fizz
+# Example 0103: Symmetry Reduction State Space Comparison
+# The same spec with and without symmetric roles, comparing state space sizes side by side
+# Demonstrates: symmetric roles, state space reduction, comparison
 
 ---
 options:

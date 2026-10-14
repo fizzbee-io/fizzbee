@@ -1,3 +1,7 @@
+# Example 0099: Matching next_states() Transitions to Roles
+# Use role_id and action_name to match next_states() transitions to a specific role instance
+# Demonstrates: next_states(), role_id, symmetric roles
+
 ---
 deadlock_detection: false
 options:

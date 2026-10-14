@@ -1,3 +1,7 @@
+# Example 0110: Rotational Symmetry
+# Ring positions with wrapping modular arithmetic for ring topologies, hash rings and clocks
+# Demonstrates: symmetry.rotational(), modular arithmetic, ring topologies
+
 # Rotational Symmetry: Integers mod N (ring positions).
 # Operations: ==, !=, +int, -int, val-val (all mod limit).
 # No ordering (<, >, etc.) since the domain wraps around.

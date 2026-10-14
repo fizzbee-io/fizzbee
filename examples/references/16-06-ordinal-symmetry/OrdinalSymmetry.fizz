@@ -1,3 +1,7 @@
+# Example 0106: Ordinal Symmetry
+# Ordered values where only relative rank matters, like logical timestamps and priority levels
+# Demonstrates: symmetry.ordinal(), fresh(), min(), max(), ordering
+
 # Ordinal Symmetry: Ordered values where only relative rank matters.
 # Operations: ==, !=, <, <=, >, >=. No arithmetic.
 # Reduction: values are squeezed to dense ranks (0,1,2,...).

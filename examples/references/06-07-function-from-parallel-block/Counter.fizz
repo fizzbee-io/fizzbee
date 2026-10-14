@@ -1,4 +1,7 @@
-# Example: Functions Called from a Parallel Block
+# Example 0091: Functions Called from a Parallel Block
+# Function calls as parallel statements interleave with the other branches of the parallel block
+# Demonstrates: functions, parallel block, interleaving
+
 # Function calls are supported inside parallel blocks. Each call is one
 # parallel statement; the function body executes with its own flow
 # (serial by default) and interleaves with the other parallel statements.

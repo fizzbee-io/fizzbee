@@ -1,3 +1,7 @@
+# Example 0108: Interval Symmetry
+# Ordered values with meaningful distance and arithmetic, like sequence numbers and log indices
+# Demonstrates: symmetry.interval(), arithmetic, zero shifting
+
 # Interval Symmetry: Ordered values where distance is meaningful.
 # Operations: ==, !=, <, <=, >, >=, +int, -int, val-val.
 # Reduction: zero-shifting (subtract minimum to normalize).

@@ -1,3 +1,7 @@
+# Example 0109: Interval Divergence
+# Bound the spread of interval values with the divergence parameter to keep the state space finite
+# Demonstrates: divergence, interval symmetry, state space bounding
+
 # Interval Divergence: Bounding the spread of interval values.
 #
 # The `divergence` parameter limits (max - min) across all active

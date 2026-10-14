@@ -1,4 +1,7 @@
-# Example: Failure Trace through a Parallel Block
+# Example 0089: Failure Trace Through a Parallel Block
+# Counterexample traces render correctly when an assertion fails inside a parallel block
+# Demonstrates: parallel block, counterexample trace, failure rendering
+
 # When an assertion fails on a state reached mid-parallel, the
 # counterexample trace includes threads parked at the parallel join
 # (frames with no program counter). The failure-path renderer must

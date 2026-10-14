@@ -1,3 +1,7 @@
+# Example 0105: Nominal Symmetry
+# Interchangeable identifiers with symmetry.nominal() for user IDs, session tokens and cache keys
+# Demonstrates: symmetry.nominal(), fresh(), values(), choices(), choose()
+
 # Nominal Symmetry: Unordered, interchangeable identifiers.
 # Operations: == and != only. No ordering, no arithmetic.
 # Reduction: permutations of active set are equivalent.

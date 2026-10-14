@@ -1,4 +1,7 @@
-# Example: require with Parallel Blocks
+# Example 0095: Require with Parallel Blocks
+# Where require can and cannot appear around a parallel block, and the clean model error for the unsupported form
+# Demonstrates: require, parallel block, guards, model error
+
 # require cannot be a DIRECT statement of a parallel block (the model
 # checker reports a clean error): parallel statements are unordered, so
 # there is no defined point at which the condition would be checked.

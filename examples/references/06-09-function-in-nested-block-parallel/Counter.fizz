@@ -1,4 +1,7 @@
-# Example: Function Calls Wrapped in Nested Blocks inside a Parallel Block
+# Example 0093: Function Calls in Nested Blocks Inside a Parallel Block
+# Function calls wrapped in atomic or serial blocks within a parallel block
+# Demonstrates: functions, nested blocks, atomic, serial, parallel block
+
 # A function call nested inside an atomic: or serial: block within a
 # parallel block works: when the call returns, the block ends advance
 # through the parallel scope and fork the remaining parallel statements

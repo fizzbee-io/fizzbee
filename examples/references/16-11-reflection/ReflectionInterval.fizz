@@ -1,3 +1,7 @@
+# Example 0111: Reflection Symmetry
+# Mirror states are equivalent with reflection=True, shown for interval and rotational domains
+# Demonstrates: reflection=True, interval symmetry, rotational symmetry
+
 # Reflection Symmetry (Interval): Mirror states are equivalent.
 #
 # With reflection=True, the model checker also considers the

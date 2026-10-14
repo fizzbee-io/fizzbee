@@ -1,4 +1,7 @@
-# Example: Function Calls inside Nested Parallel Blocks
+# Example 0094: Function Calls Inside Nested Parallel Blocks
+# A parallel block nested within a parallel block, with function calls at both levels
+# Demonstrates: functions, nested parallel blocks
+
 # A parallel block nested within a parallel block, with function calls
 # at both levels. A function return inside the inner block must fork the
 # inner block's remaining statements; the inner block's end must advance
