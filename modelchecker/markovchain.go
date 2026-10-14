@@ -611,7 +611,7 @@ func traverseBFS(rootNode *Node, maxActions int64) ([]*Node, []string, *Node, in
 	var deadlock *Node
 	for _, node := range result {
 		entry := visited[node]
-		if entry.deadNode != nil && entry.livePaths == 0 && (node.Process == nil || (node.Stats != nil && node.Stats.TotalActions < int(maxActions))) {
+		if entry.deadNode != nil && entry.livePaths == 0 && !node.actionLimitHit && (node.Process == nil || (node.Stats != nil && node.Stats.TotalActions < int(maxActions))) {
 			// Return the yield node itself (not the dead non-yield node) so the
 			// deadlock trace stops at the meaningful stuck state rather than
 			// pointing into a dead nondeterministic branch.
