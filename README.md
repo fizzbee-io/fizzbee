@@ -4,9 +4,18 @@ A formal specification language and model checker to specify distributed systems
 
 Try out now at [Fizzbee Online Playground](https://fizzbee.io/). No installation needed.
 
-# Docs
-If you are familiar with [TLA+](https://lamport.azurewebsites.net/tla/tla.html), this would be a quick start:
-[From TLA+ to Fizz](https://github.com/fizzbee-io/fizzbee/blob/main/docs/fizzbee-quick-start-for-tlaplus-users.md)
+# Documentation
+
+- **[Tutorials](https://fizzbee.io/design/tutorials/)** — start with
+  [Getting Started](https://fizzbee.io/design/tutorials/getting-started/)
+- **[Language Reference](https://fizzbee.io/reference/language/)** — source:
+  [`examples/references/LANGUAGE_REFERENCE.md`](examples/references/LANGUAGE_REFERENCE.md)
+- **[Examples](https://fizzbee.io/design/examples/)** and the
+  [pattern library](https://fizzbee.io/design/patterns/) (two-phase commit, saga,
+  leader election, ...) — source specs: [`examples/references/`](examples/references/)
+- **Guides**: [Verification](https://fizzbee.io/reference/verification/),
+  [Performance](https://fizzbee.io/reference/performance/),
+  [Gotchas](https://fizzbee.io/reference/language/gotchas/)
 
 # Installation
 
@@ -22,7 +31,7 @@ You can try without installation at https://fizzbee.io/play
 
 ## Online Playground
 
-You can try without installation at https://fizzbee.io/play.
+You can try without installation at [fizzbee.io/play](https://fizzbee.io/play).
 
 ## Pre-built Binary
 

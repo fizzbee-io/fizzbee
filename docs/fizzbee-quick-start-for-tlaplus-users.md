@@ -1,3 +1,8 @@
+> **⚠️ Outdated.** This document predates the current FizzBee language and is kept
+> for historical reference. For current documentation see the
+> [Language Reference](https://fizzbee.io/reference/language/) and
+> [Tutorials](https://fizzbee.io/design/tutorials/).
+
 # FizzBee Quick Start for TLA+ Users
 
 ## Introduction
