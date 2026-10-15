@@ -36,3 +36,7 @@ jobs:
       - name: Test Releases
         run: |
           ./fizzbee-test-linux_x86/fizz examples/tutorials/00-no-op/Counter.fizz
+
+      - name: Reference example baselines
+        run: |
+          FIZZ=./fizzbee-test-linux_x86/fizz python3 test_references.py
