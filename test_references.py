@@ -14,6 +14,7 @@ Phase 2 (after replacing `any` with `oneof`):
     Same command — expects same metrics, zero DeprecationWarnings.
 """
 
+import os
 import re
 import subprocess
 import sys
@@ -22,7 +23,9 @@ from pathlib import Path
 
 REFS_DIR = Path("examples/references")
 LOVABLE_DIR = Path("examples/requirements/lovable")
-FIZZ = "./fizz"
+# Override to test a specific build, e.g. the CI release artifact:
+#   FIZZ=./fizzbee-test-linux_x86/fizz python3 test_references.py
+FIZZ = os.environ.get("FIZZ", "./fizz")
 
 # Patterns to KEEP in normalized output for comparison
 KEEP_PREFIXES = (
