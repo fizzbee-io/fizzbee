@@ -2281,6 +2281,7 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 				if hasEventually {
 					if !livenessNode.Inbound[0].Node.Process.Witness[i][j] {
 						failedNode = livenessNode.Inbound[0].Node
+						failedNode.FailedInvariants = map[int][]int{i: {j}}
 						break
 					}
 
