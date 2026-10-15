@@ -26,6 +26,10 @@ LOVABLE_DIR = Path("examples/requirements/lovable")
 # Override to test a specific build, e.g. the CI release artifact:
 #   FIZZ=./fizzbee-test-linux_x86/fizz python3 test_references.py
 FIZZ = os.environ.get("FIZZ", "./fizz")
+# Per-spec wall clock limit: a hung spec fails fast instead of stalling the
+# whole run (CI would otherwise wait for the 6h job kill). Worst known spec
+# is lovable Kanban at ~170s on CI. FIZZ_TIMEOUT overrides for testing.
+TIMEOUT_SECONDS = int(os.environ.get("FIZZ_TIMEOUT", "600"))
 
 # Patterns to KEEP in normalized output for comparison
 KEEP_PREFIXES = (
@@ -37,6 +41,7 @@ KEEP_PREFIXES = (
     "PASSED:",
     "FAILED:",
     "Skipping dotfile",    # "Skipping dotfile generation. Too many Nodes: N"
+    "TIMEOUT:",            # synthesized by run_spec; cannot appear in real output
 )
 
 # Patterns to explicitly SKIP (before the keep check)
@@ -112,9 +117,15 @@ def read_flags(d: Path) -> list[str]:
 def run_spec(fizz_file: Path) -> tuple[str, str, float]:
     t0 = time.monotonic()
     cmd = [FIZZ] + read_flags(fizz_file.parent) + [str(fizz_file)]
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUT_SECONDS)
+        stdout, stderr = r.stdout, r.stderr
+    except subprocess.TimeoutExpired:
+        # The TIMEOUT: line is kept by normalize(), so the mismatch diff
+        # names the cause instead of just showing missing baseline lines.
+        stdout, stderr = "", f"TIMEOUT: {fizz_file} exceeded {TIMEOUT_SECONDS}s"
     elapsed = time.monotonic() - t0
-    return r.stdout, r.stderr, elapsed
+    return stdout, stderr, elapsed
 
 
 def diff_lines(expected: list[str], actual: list[str]) -> list[str]:
@@ -184,8 +195,10 @@ def main() -> int:
                 print(f"       {line}")
             print()
 
-    # Lovable specs (no baseline — just run and report status)
-    lovable_specs = sorted(LOVABLE_DIR.rglob("*.fizz")) if LOVABLE_DIR.exists() else []
+    # Lovable specs (no baseline — just run and report status). They check
+    # nothing (failures are not counted), so CI skips them to save ~4 min.
+    skip_lovable = "--skip-lovable" in sys.argv
+    lovable_specs = sorted(LOVABLE_DIR.rglob("*.fizz")) if LOVABLE_DIR.exists() and not skip_lovable else []
     if lovable_specs:
         print(f"\n{'='*60}")
         print(f"Lovable specs ({len(lovable_specs)} files, no baseline — status only)")
