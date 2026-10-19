@@ -68,6 +68,7 @@ type Graph struct {
 
 	// Accept[n] is a bitmask of the acceptance sets node n belongs to. An
 	// accepting loop visits a node of every one of the NumAcceptSets sets.
+	// Bits at or above NumAcceptSets are ignored.
 	Accept        []uint64
 	NumAcceptSets int
 
@@ -133,6 +134,11 @@ func (g *Graph) validate() error {
 	if g.NumAcceptSets < 0 || g.NumAcceptSets > 64 {
 		return fmt.Errorf("acceptance set count %d out of range 0..64", g.NumAcceptSets)
 	}
+	for a, f := range g.Actions {
+		if f > Crash {
+			return fmt.Errorf("action %d has unknown fairness %d", a, f)
+		}
+	}
 	for _, n := range g.Init {
 		if n < 0 || n >= g.NumNodes {
 			return fmt.Errorf("init node %d out of range", n)
@@ -190,7 +196,12 @@ func (g *Graph) accept(n int) uint64 {
 	if g.Accept == nil {
 		return 0
 	}
-	return g.Accept[n]
+	return g.Accept[n] & g.acceptMask()
+}
+
+// acceptMask has one bit set for each acceptance set.
+func (g *Graph) acceptMask() uint64 {
+	return uint64(1)<<uint(g.NumAcceptSets) - 1
 }
 
 func (g *Graph) enabled(n int) []int {

@@ -199,7 +199,7 @@ func ValidateLasso(g *Graph, l *Lasso) error {
 		}
 		accept |= g.accept(n)
 	}
-	if want := uint64(1)<<uint(g.NumAcceptSets) - 1; accept != want {
+	if want := g.acceptMask(); accept != want {
 		return fmt.Errorf("loop visits acceptance sets %b, want %b", accept, want)
 	}
 	return fairLoop(g, nodes, l.Loop)

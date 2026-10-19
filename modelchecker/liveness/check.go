@@ -34,7 +34,7 @@ func Check(g *Graph) (*Lasso, error) {
 		nodes := work[len(work)-1]
 		work = work[:len(work)-1]
 		comp := c.analyze(nodes)
-		if len(comp.edges) == 0 || comp.accept != c.fullAccept() {
+		if len(comp.edges) == 0 || comp.accept != g.acceptMask() {
 			continue
 		}
 		if remove := c.unfairNodes(comp); remove != nil {
@@ -143,10 +143,6 @@ func (c *checker) stutterNode() int {
 		}
 	}
 	return best
-}
-
-func (c *checker) fullAccept() uint64 {
-	return uint64(1)<<uint(c.g.NumAcceptSets) - 1
 }
 
 func (c *checker) analyze(nodes []int) *component {

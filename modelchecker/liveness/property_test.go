@@ -83,7 +83,8 @@ func randomGraph(r source) *liveness.Graph {
 		if g.NumAcceptSets > 0 {
 			g.Accept = make([]uint64, n)
 			for v := range g.Accept {
-				g.Accept[v] = uint64(r.Intn(1 << uint(g.NumAcceptSets)))
+				// Bit 2 lies outside the sets and must be ignored.
+				g.Accept[v] = uint64(r.Intn(1 << uint(g.NumAcceptSets+1)))
 			}
 		}
 		if r.Intn(2) == 0 {

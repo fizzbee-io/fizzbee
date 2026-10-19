@@ -240,6 +240,23 @@ func TestGeneralizedAcceptance(t *testing.T) {
 	}
 }
 
+// Bits beyond NumAcceptSets carry no meaning and must not stop a loop from
+// being accepting.
+func TestExtraAcceptanceBitsIgnored(t *testing.T) {
+	g := &liveness.Graph{
+		NumNodes:      1,
+		Init:          []int{0},
+		Actions:       []liveness.Fairness{liveness.Weak},
+		Edges:         []liveness.Edge{{From: 0, To: 0}},
+		Accept:        []uint64{0b111},
+		NumAcceptSets: 2,
+	}
+	g.EnabledFromEdges()
+	if l := mustCheck(t, g); l == nil {
+		t.Fatal("no counterexample")
+	}
+}
+
 // The component check is iterative, so long chains must not exhaust the
 // stack, and the engine must stay linear-ish on them.
 func TestLongCycle(t *testing.T) {
@@ -271,6 +288,7 @@ func TestInvalidGraph(t *testing.T) {
 		{NumNodes: 1, Edges: []liveness.Edge{{From: 0, To: 0, Action: 0}}},
 		{NumNodes: 2, Accept: []uint64{0}},
 		{NumNodes: 1, NumAcceptSets: 65},
+		{NumNodes: 1, Actions: []liveness.Fairness{liveness.Crash + 1}},
 	} {
 		if _, err := liveness.Check(g); err == nil {
 			t.Errorf("no error for %+v", *g)
