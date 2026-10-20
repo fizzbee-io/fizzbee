@@ -11,6 +11,7 @@ go_library(
         "error.go",
         "graph.go",
         "invariants.go",
+        "liveness_scc.go",
         "markovchain.go",
         "options.go",
         "perf_checker.go",
@@ -28,6 +29,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//lib",
+        "//modelchecker/liveness",
         "//proto:proto_go_proto",
         "@com_github_golang_glog//:glog",
         "@net_starlark_go//starlark",
@@ -43,6 +45,7 @@ go_test(
         "checker_test.go",
         "graph_test.go",
         "invariants_test.go",
+        "liveness_scc_test.go",
         "markovchain_test.go",
         "processor_test.go",
         "protopath_test.go",
@@ -52,7 +55,7 @@ go_test(
     data = [
         "//examples/comparisons",
         "//examples/tutorials",
-    ],
+    ] + glob(["testdata/**"]),
     embed = [":modelchecker"],
     deps = [
         "//lib",

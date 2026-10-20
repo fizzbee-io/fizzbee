@@ -72,8 +72,10 @@ type component struct {
 	nodes   []int
 	edges   []int // non-crash edges with both ends in the component
 	taken   []bool
-	readers []int
-	accept  uint64
+	readers []int // nodes observing strong actions' enabledness
+	// weakReaders are the readers that also observe weak actions.
+	weakReaders []int
+	accept      uint64
 }
 
 func (c *checker) bfs() {
@@ -117,15 +119,12 @@ func (c *checker) prefix(n int) []int {
 	return path
 }
 
-// stuckIsFair reports whether a run may stay at n forever. When enabledness
-// is not observed at n nothing forces it to move; otherwise any enabled weak
-// or strong action is continuously enabled and never taken.
+// stuckIsFair reports whether a run may stay at n forever: no weak or strong
+// action whose enabledness n observes is enabled there, since such an action
+// would be continuously enabled and never taken.
 func (g *Graph) stuckIsFair(n int) bool {
-	if !g.readsEnabled(n) {
-		return true
-	}
 	for _, a := range g.enabled(n) {
-		if g.isFair(a) {
+		if g.isFair(a) && g.reads(n, a) {
 			return false
 		}
 	}
@@ -156,6 +155,9 @@ func (c *checker) analyze(nodes []int) *component {
 		comp.accept |= g.accept(n)
 		if g.readsEnabled(n) {
 			comp.readers = append(comp.readers, n)
+			if g.WeakUnobserved == nil || !g.WeakUnobserved[n] {
+				comp.weakReaders = append(comp.weakReaders, n)
+			}
 		}
 		for _, e := range g.out[n] {
 			edge := g.Edges[e]
@@ -171,25 +173,25 @@ func (c *checker) analyze(nodes []int) *component {
 // unfairNodes returns the nodes no fair loop inside comp can visit, or nil
 // when the loop through every edge of comp is already fair.
 //
-// Weak: an action never taken in comp but enabled at all of its readers rules
-// out every loop that visits a reader, so only reader-free loops remain.
+// Weak: an action never taken in comp but enabled at all of its weak readers
+// rules out every loop that visits one, so only loops avoiding them remain.
 // Strong: an action never taken in comp rules out every loop through a reader
 // where it is enabled.
 func (c *checker) unfairNodes(comp *component) []int {
 	g := c.g
 	for a, f := range g.Actions {
-		if f != Weak || comp.taken[a] || len(comp.readers) == 0 {
+		if f != Weak || comp.taken[a] || len(comp.weakReaders) == 0 {
 			continue
 		}
 		all := true
-		for _, n := range comp.readers {
+		for _, n := range comp.weakReaders {
 			if !containsInt(g.enabled(n), a) {
 				all = false
 				break
 			}
 		}
 		if all {
-			return comp.readers
+			return comp.weakReaders
 		}
 	}
 	var remove []int
