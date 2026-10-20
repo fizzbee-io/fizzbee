@@ -1,0 +1,14 @@
+func helper():
+    oneof:
+        return 1
+        return 2
+
+action Init:
+    x = 0
+
+atomic action Inc:
+    require x < 1
+    x = x + 1
+
+always assertion Check:
+    return helper() > 0

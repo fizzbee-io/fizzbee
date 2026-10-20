@@ -127,7 +127,11 @@ func CheckInvariant(process *Process, invariant *ast.Invariant) bool {
 	}
 	cloned := process.CloneForAssert(nil, 0)
 	cloned.enablePredicateCalls()
-	vars := maps.Clone(cloned.Heap.state)
+	// Builtins and constants first, so state variables shadow them, as in
+	// assertion bodies (see GetAllVariables).
+	vars := maps.Clone(lib.Builtins)
+	maps.Copy(vars, cloned.Heap.globals)
+	maps.Copy(vars, cloned.Heap.state)
 	vars["__returns__"] = NewDictFromStringDict(cloned.Returns)
 	cloned.addPredicateFuncs(vars)
 	symCtx := cloned.createSymmetryContext()
@@ -208,6 +212,9 @@ func execFunctionBlock(cloned *Process, name string, pc string) starlark.Value {
 	assertThread.currentFrame().Name = name
 	for {
 		forks, _ := assertThread.Execute()
+		if assertThread.Aborted {
+			panic(fmt.Sprintf("%s: a require statement failed; an assertion can't disable a transition", name))
+		}
 		if cloned.GetThreadsCount() <= numThreads {
 			return cloned.Returns[name]
 		}

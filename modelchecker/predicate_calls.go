@@ -4,8 +4,6 @@ import (
 	ast "fizz/proto"
 	"fmt"
 	"maps"
-	"os"
-	"runtime/debug"
 
 	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
@@ -16,7 +14,8 @@ const maxFizzCallDepth = 64
 
 // maxPredicateSteps bounds the statements one predicate evaluation may run,
 // including the funcs it calls, so an endless loop fails instead of hanging.
-const maxPredicateSteps = 1_000_000
+// A var so tests can lower it.
+var maxPredicateSteps = 1_000_000
 
 // enablePredicateCalls lets fizz funcs be called inside expressions evaluated
 // on p, for example `not c.is_zero()` or `total() == MAX` in an assertion.
@@ -142,14 +141,7 @@ func (p *Process) callFizzFunc(_ *starlark.Thread, recv *lib.Role, name string, 
 
 	defer func() {
 		if r := recover(); r != nil {
-			if os.Getenv("FIZZ_DEBUG_CALLS") != "" {
-				fmt.Fprintf(os.Stderr, "%v\n%s", r, debug.Stack())
-			}
-			if me, ok := r.(*ModelError); ok && me.NestedError != nil {
-				result, err = nil, fmt.Errorf("%s: %s: %w", key, me.Error(), me.NestedError)
-			} else {
-				result, err = nil, fmt.Errorf("%s: %v", key, r)
-			}
+			result, err = nil, fmt.Errorf("%s: %v", key, r)
 		}
 	}()
 	for _, param := range def.params {
@@ -179,6 +171,9 @@ func (p *Process) callFizzFunc(_ *starlark.Thread, recv *lib.Role, name string, 
 	numThreads := clone.GetThreadsCount() - 1
 	for {
 		forks, _ := thread.Execute()
+		if thread.Aborted {
+			return nil, fmt.Errorf("%s: a require statement failed; a fizz func called in an expression can't disable a transition", key)
+		}
 		if len(forks) > 0 {
 			return nil, fmt.Errorf("%s: a fizz func called in an expression must be deterministic (no oneof, any or non-atomic interleaving)", key)
 		}

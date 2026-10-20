@@ -1,0 +1,50 @@
+---
+deadlock_detection: false
+---
+
+# Func calls in assertions
+# Inside an assertion, fizz funcs can be called anywhere in an expression:
+# in a return, in a condition, in a list comprehension, or on an
+# invariants line. Each call runs on its own copy of the state, so a func
+# can't change the model. It must be deterministic: no oneof, any or
+# parallel blocks.
+# Demonstrates: role funcs and top-level funcs called inside expressions
+
+MAX_MESSAGES = 2
+
+role Consumer:
+    action Init:
+        self.received = 0
+
+    atomic fair action Receive:
+        require self.received < MAX_MESSAGES
+        self.received = self.received + 1
+
+    func done():
+        return self.received == MAX_MESSAGES
+
+func total_received():
+    total = 0
+    for c in consumers:
+        total = total + c.received
+    return total
+
+func all_done():
+    return all([c.done() for c in consumers])
+
+action Init:
+    consumers = []
+    for i in range(2):
+        consumers.append(Consumer())
+
+invariants:
+    always total_received() <= MAX_MESSAGES * len(consumers)
+
+always assertion DoneMeansAllReceived:
+    return not all_done() or total_received() == MAX_MESSAGES * len(consumers)
+
+always assertion SomeDoneCount:
+    return len([c for c in consumers if c.done()]) <= len(consumers)
+
+eventually always assertion AllDone:
+    return all_done()

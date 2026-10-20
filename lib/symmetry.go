@@ -107,7 +107,6 @@ type FizzCallFunc func(thread *starlark.Thread, recv *Role, name string, args st
 // FizzCallKey is the starlark Thread local holding a FizzCallFunc.
 const FizzCallKey = "fizz_call"
 
-
 // NewSymmetryContext creates a new symmetry context with the given scanner function
 func NewSymmetryContext(scanner func() map[string][]int64) *SymmetryContext {
 	return &SymmetryContext{

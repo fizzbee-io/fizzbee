@@ -1,0 +1,84 @@
+---
+deadlock_detection: false
+---
+
+# Func calls inside assertion expressions, checked by predicate_calls_test.go.
+
+role Counter:
+    action Init:
+        self.value = 0
+
+    atomic action Add:
+        require self.value < 2
+        self.value = self.value + 1
+
+    func is_zero():
+        return self.value == 0
+
+    func plus(n, m=0):
+        return self.value + n + m
+
+func ident(i):
+    return i
+
+func two_level(i):
+    return ident(i) + ident(1)
+
+func all_zero():
+    for c in counters:
+        if not c.is_zero():
+            return False
+    return True
+
+func boom():
+    return 1 / 0
+
+func bump():
+    x = x + 1
+    counters[0].value = 99
+    return x
+
+serial func ser():
+    a = 1
+    b = 2
+    return a + b
+
+action Init:
+    x = 0
+    counters = []
+    for i in range(2):
+        counters.append(Counter())
+
+invariants:
+    always all_zero() or counters[0].value + counters[1].value > 0
+
+always assertion RoleMethod:
+    return (not counters[0].is_zero()) or counters[0].value == 0
+
+always assertion TopLevel:
+    return all_zero() == (counters[0].value == 0 and counters[1].value == 0)
+
+always assertion ArgsAndDefaults:
+    return counters[1].plus(1) == counters[1].value + 1 and counters[1].plus(1, m=2) == counters[1].value + 3
+
+always assertion Nested:
+    return two_level(2) == 3
+
+always assertion ShortCircuit:
+    return (True or boom()) and not (False and boom())
+
+always assertion NoLeak:
+    return bump() == 1 and bump() == 1 and x == 0 and counters[0].value != 99
+
+always assertion Comprehension:
+    return [ident(i) for i in range(3)] == [0, 1, 2] and len([c for c in counters if c.is_zero()]) <= 2
+
+always assertion SerialFunc:
+    return ser() == 3
+
+always assertion StatementForm:
+    r = all_zero()
+    return r == all_zero()
+
+transition assertion Transition(before, after):
+    return all_zero() in [True, False]

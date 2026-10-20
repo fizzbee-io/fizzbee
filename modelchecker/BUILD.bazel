@@ -48,6 +48,7 @@ go_test(
         "invariants_test.go",
         "liveness_scc_test.go",
         "markovchain_test.go",
+        "predicate_calls_test.go",
         "processor_test.go",
         "protopath_test.go",
         "starlark_test.go",

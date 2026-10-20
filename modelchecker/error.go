@@ -31,6 +31,9 @@ func (e *ModelError) Error() string {
             prefix = fmt.Sprintf("Line %d: ", e.SourceInfo.GetStart().GetLine())
         }
     }
+    if e.NestedError != nil {
+        return prefix + e.Msg + ": " + e.NestedError.Error()
+    }
     return prefix + e.Msg
 }
 
