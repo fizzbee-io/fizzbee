@@ -1,0 +1,23 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "liveness",
+    srcs = [
+        "check.go",
+        "graph.go",
+        "lasso.go",
+        "tarjan.go",
+    ],
+    importpath = "github.com/fizzbee-io/fizzbee/modelchecker/liveness",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "liveness_test",
+    srcs = [
+        "check_test.go",
+        "oracle_test.go",
+        "property_test.go",
+    ],
+    embed = [":liveness"],
+)
