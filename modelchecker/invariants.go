@@ -125,11 +125,13 @@ func CheckInvariant(process *Process, invariant *ast.Invariant) bool {
 	if eventuallyAlways && invariant.Nested != nil {
 		pyExpr = invariant.Nested.PyExpr
 	}
-	ref := make(map[starlark.Value]starlark.Value)
-	vars := CloneDict(process.Heap.state, ref, nil, 0)
-	vars["__returns__"] = NewDictFromStringDict(process.Returns)
-	symCtx := process.createSymmetryContext()
-	cond, err := process.Evaluator.EvalPyExprWithContext(process.Files[0].GetSourceInfo().GetFileName(), pyExpr, vars, symCtx)
+	cloned := process.CloneForAssert(nil, 0)
+	cloned.enablePredicateCalls()
+	vars := maps.Clone(cloned.Heap.state)
+	vars["__returns__"] = NewDictFromStringDict(cloned.Returns)
+	cloned.addPredicateFuncs(vars)
+	symCtx := cloned.createSymmetryContext()
+	cond, err := cloned.Evaluator.EvalPyExprWithContext(process.Files[0].GetSourceInfo().GetFileName(), pyExpr, vars, symCtx)
 	PanicOnError(err)
 	return bool(cond.Truth())
 }
@@ -139,6 +141,7 @@ func CheckAssertion(process *Process, invariant *ast.Invariant, index int, probe
 		panic("Invariant checking supported only for always/always-eventually/eventually-always/exists invariants" + strings.Join(invariant.TemporalOperators, ","))
 	}
 	cloned := process.CloneForAssert(nil, 0)
+	cloned.enablePredicateCalls()
 	cloned.Heap.state["__returns__"] = NewDictFromStringDict(cloned.Returns)
 	if prober != nil {
 		// next_states() gives assertions one-step lookahead: the list of
@@ -226,6 +229,7 @@ func CheckTransitionAssertion(process *Process, invariant *ast.Invariant, index 
 		panic("Invariant should not have params or exactly 2 params")
 	}
 	cloned := process.CloneForAssert(nil, 0)
+	cloned.enablePredicateCalls()
 	cloned.Heap.state[afterParam] = starlarkstruct.FromStringDict(starlark.String(afterParam), cloned.Heap.state)
 	cloned.Heap.state[beforeParam] = starlarkstruct.FromStringDict(starlark.String(beforeParam), process.Parent.Heap.state)
 

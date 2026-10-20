@@ -15,6 +15,7 @@ go_library(
         "markovchain.go",
         "options.go",
         "perf_checker.go",
+        "predicate_calls.go",
         "processor.go",
         "protopath.go",
         "starlark.go",
