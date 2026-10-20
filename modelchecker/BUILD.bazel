@@ -55,7 +55,7 @@ go_test(
     data = [
         "//examples/comparisons",
         "//examples/tutorials",
-    ],
+    ] + glob(["testdata/**"]),
     embed = [":modelchecker"],
     deps = [
         "//lib",

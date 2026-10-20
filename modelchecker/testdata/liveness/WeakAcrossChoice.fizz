@@ -1,0 +1,17 @@
+# Finish is weakly fair and enabled at every state, so running Spin forever
+# is unfair and Done holds. Spin's fair choice point sits inside the action;
+# Finish is not enabled there, but that must not count as Finish being
+# disabled, or the weak fairness obligation would be lost.
+
+action Init:
+    done = False
+    x = 0
+
+atomic action Spin:
+    x = fair oneof [0, 1]
+
+atomic fair action Finish:
+    done = True
+
+always eventually assertion Done:
+    return done

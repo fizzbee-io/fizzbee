@@ -33,12 +33,18 @@ func TestSccLivenessMatchesCycleFinder(t *testing.T) {
 		"examples/tutorials/40-simple-hour-clock-init-action/HourClock.json",
 		"examples/comparisons/ewd426-token-ring/TokenRing.json",
 		"examples/comparisons/gossa-v1/gossa.json",
+		// A weak action enabled everywhere, skipped by a loop through
+		// another action's fair choice point.
+		"modelchecker/testdata/liveness/WeakAcrossChoice.json",
 	} {
 		t.Run(spec, func(t *testing.T) {
 			file, err := readAstFromFile(filepath.Join(base, spec))
 			require.Nil(t, err)
-			stateConfig, err := ReadOptionsFromYaml(filepath.Join(base, filepath.Dir(spec), "fizz.yaml"))
-			require.Nil(t, err)
+			stateConfig := &ast.StateSpaceOptions{Options: &ast.Options{MaxActions: 100}}
+			if yaml := filepath.Join(base, filepath.Dir(spec), "fizz.yaml"); fileExists(yaml) {
+				stateConfig, err = ReadOptionsFromYaml(yaml)
+				require.Nil(t, err)
+			}
 			p := NewProcessor([]*ast.File{file}, stateConfig, false, 0, "", "", false, nil, nil, "")
 			root, _, err := p.Start()
 			require.Nil(t, err)
@@ -56,6 +62,12 @@ func TestSccLivenessMatchesCycleFinder(t *testing.T) {
 				}
 				l, err := s.toLasso(path)
 				require.Nil(t, err, name)
+				// Rebuilding a loop the cycle finder accepted must keep it fair
+				// by the cycle finder's own check, which shadow mode relies on.
+				if name == "cycle finder" && !l.Stutter {
+					fair, _ := isFairCycle(s.cycleFinderLoop(l), false)
+					assert.True(t, fair, "rebuilt cycle finder loop")
+				}
 				if oldInv != nil && newInv != nil && *oldInv == *newInv {
 					inv := root.Process.Files[newInv.FileIndex].Invariants[newInv.InvariantIndex]
 					_, eventuallyAlways := livenessOperators(inv)
@@ -65,4 +77,9 @@ func TestSccLivenessMatchesCycleFinder(t *testing.T) {
 			}
 		})
 	}
+}
+
+func fileExists(name string) bool {
+	_, err := os.Stat(name)
+	return err == nil
 }

@@ -888,8 +888,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 						var err error
 						failurePath, failedInvariant, err = modelchecker.CheckStrictLivenessScc(rootNode, nodes)
 						if err != nil {
-							fmt.Println("Error checking liveness:", err)
-							return nil
+							printTraceAndExit(fmt.Errorf("liveness check: %w", err))
 						}
 					}
 				} else if stateConfig.GetLiveness() == "eventual" || stateConfig.GetLiveness() == "nondeterministic" {
