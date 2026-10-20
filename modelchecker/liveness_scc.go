@@ -259,6 +259,19 @@ func (s *sccGraph) toLasso(path []*Link) (*liveness.Lasso, error) {
 	return l, nil
 }
 
+// cycleFinderLoop returns l's loop in the form the cycle finder passes to
+// isFairCycle: a link into the loop's start node, then the loop's links,
+// the last of which returns to that node. The cycle finder's first link is
+// the one it arrived by; any link into the start node serves, since
+// isFairCycle reads only its target there.
+func (s *sccGraph) cycleFinderLoop(l *liveness.Lasso) []*Link {
+	loop := []*Link{s.links[l.Loop[len(l.Loop)-1]]}
+	for _, e := range l.Loop {
+		loop = append(loop, s.links[e])
+	}
+	return loop
+}
+
 // CheckStrictLivenessShadow runs the cycle finder and the SCC engine on
 // every liveness property, prints how they compare, and returns the cycle
 // finder's result. Each counterexample either one reports is checked against
@@ -288,11 +301,7 @@ func CheckStrictLivenessShadow(root *Node, nodes []*Node) ([]*Link, *InvariantPo
 		}
 		// Also judge the loop by the cycle finder's own fairness check, so a
 		// disagreement separates a search miss from a definition mismatch.
-		loop := []*Link{s.links[l.Loop[len(l.Loop)-1]]}
-		for _, e := range l.Loop {
-			loop = append(loop, s.links[e])
-		}
-		if fair, _ := isFairCycle(loop, false); !fair {
+		if fair, _ := isFairCycle(s.cycleFinderLoop(l), false); !fair {
 			return "FAIL (counterexample valid, but unfair by the cycle finder's check)"
 		}
 		return "FAIL (counterexample valid)"
