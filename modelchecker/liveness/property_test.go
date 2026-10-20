@@ -50,6 +50,9 @@ func randomGraph(r source) *liveness.Graph {
 	if r.Intn(4) != 0 {
 		g.ReadsEnabled = randomBools(r, n)
 	}
+	if r.Intn(3) == 0 {
+		g.WeakUnobserved = randomBools(r, n)
+	}
 
 	switch r.Intn(6) {
 	case 0:
@@ -167,6 +170,7 @@ func permute(g *liveness.Graph, r *rand.Rand) *liveness.Graph {
 		return out
 	}
 	h.ReadsEnabled = permBools(g.ReadsEnabled)
+	h.WeakUnobserved = permBools(g.WeakUnobserved)
 	h.LoopAllowed = permBools(g.LoopAllowed)
 	h.FailsIfStuck = permBools(g.FailsIfStuck)
 	if g.Accept != nil {
@@ -205,6 +209,7 @@ func addUnreachable(g *liveness.Graph, r *rand.Rand) *liveness.Graph {
 		return append(append([]bool(nil), s...), randomBools(r, extra)...)
 	}
 	h.ReadsEnabled = growBools(g.ReadsEnabled)
+	h.WeakUnobserved = growBools(g.WeakUnobserved)
 	h.LoopAllowed = growBools(g.LoopAllowed)
 	h.FailsIfStuck = growBools(g.FailsIfStuck)
 	if g.Enabled != nil {

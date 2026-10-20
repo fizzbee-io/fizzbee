@@ -59,8 +59,12 @@ func (c *checker) stitch(comp *component, entry int) ([]int, bool) {
 		if f != Weak && f != Strong {
 			continue
 		}
+		readers := comp.readers
+		if f == Weak {
+			readers = comp.weakReaders
+		}
 		enabledAtReader := false
-		for _, n := range comp.readers {
+		for _, n := range readers {
 			if containsInt(g.enabled(n), a) {
 				enabledAtReader = true
 				break
@@ -78,7 +82,7 @@ func (c *checker) stitch(comp *component, entry int) ([]int, bool) {
 		// Only a weak action can get here untaken: unfairNodes removed every
 		// reader enabling an untaken strong action. Visiting a reader where
 		// it is disabled breaks its continuous enabledness.
-		disabled := func(n int) bool { return g.readsEnabled(n) && !containsInt(g.enabled(n), a) }
+		disabled := func(n int) bool { return g.reads(n, a) && !containsInt(g.enabled(n), a) }
 		if !visitedAny(disabled) && !follow(c.pathToNode(cur, disabled)) {
 			return nil, false
 		}
@@ -225,34 +229,35 @@ func walk(g *Graph, path []int, from int) (int, error) {
 }
 
 // fairLoop applies the fairness definitions to a loop visiting nodes and
-// taking edges forever. Enabledness is only observed at readers. Weak: an
-// action enabled at every reader the loop visits must be taken. Strong: an
-// action enabled at any reader the loop visits must be taken.
+// taking edges forever. An action's enabledness is only observed at the
+// nodes that read it. Weak: an action enabled at every node of the loop that
+// observes it must be taken. Strong: an action enabled at any node of the
+// loop that observes it must be taken.
 func fairLoop(g *Graph, nodes, edges []int) error {
 	taken := map[int]bool{}
 	for _, e := range edges {
 		taken[g.Edges[e].Action] = true
 	}
-	var readers []int
-	for _, n := range nodes {
-		if g.readsEnabled(n) && !containsInt(readers, n) {
-			readers = append(readers, n)
-		}
-	}
 	for a, f := range g.Actions {
-		if taken[a] || len(readers) == 0 {
+		if taken[a] {
 			continue
 		}
-		count := 0
-		for _, n := range readers {
+		observed, enabled := 0, 0
+		seen := map[int]bool{}
+		for _, n := range nodes {
+			if seen[n] || !g.reads(n, a) {
+				continue
+			}
+			seen[n] = true
+			observed++
 			if containsInt(g.enabled(n), a) {
-				count++
+				enabled++
 			}
 		}
 		switch {
-		case f == Weak && count == len(readers):
-			return fmt.Errorf("weak action %d is enabled at every reader of the loop but never taken", a)
-		case f == Strong && count > 0:
+		case f == Weak && observed > 0 && enabled == observed:
+			return fmt.Errorf("weak action %d is enabled wherever the loop observes it but never taken", a)
+		case f == Strong && enabled > 0:
 			return fmt.Errorf("strong action %d is enabled in the loop but never taken", a)
 		}
 	}

@@ -31,7 +31,13 @@ func oracle(g *liveness.Graph) bool {
 		}
 	}
 
-	reads := func(n int) bool { return g.ReadsEnabled == nil || g.ReadsEnabled[n] }
+	reads := func(n, a int) bool {
+		if g.ReadsEnabled != nil && !g.ReadsEnabled[n] {
+			return false
+		}
+		weakHidden := g.WeakUnobserved != nil && g.WeakUnobserved[n]
+		return !(g.Actions[a] == liveness.Weak && weakHidden)
+	}
 	enables := func(n, a int) bool {
 		if g.Enabled == nil {
 			return false
@@ -48,17 +54,16 @@ func oracle(g *liveness.Graph) bool {
 	}
 
 	// Staying forever at n: weak and strong actions enabled at n are
-	// continuously enabled and never taken, which only counts if n reads.
+	// continuously enabled and never taken, which only counts where n
+	// observes them.
 	for n := 0; n < g.NumNodes; n++ {
 		if !reach[n] || g.FailsIfStuck == nil || !g.FailsIfStuck[n] {
 			continue
 		}
 		stuckFair := true
-		if reads(n) {
-			for a := range g.Actions {
-				if fair(a) && enables(n, a) {
-					stuckFair = false
-				}
+		for a := range g.Actions {
+			if fair(a) && enables(n, a) && reads(n, a) {
+				stuckFair = false
 			}
 		}
 		if stuckFair {
@@ -125,7 +130,7 @@ func oracle(g *liveness.Graph) bool {
 			}
 			enabledSomewhere, disabledSomewhere := false, false
 			for _, n := range nodes {
-				if !reads(n) {
+				if !reads(n, a) {
 					continue
 				}
 				if enables(n, a) {

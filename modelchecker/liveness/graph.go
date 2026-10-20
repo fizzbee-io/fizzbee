@@ -66,6 +66,11 @@ type Graph struct {
 	// Weak and strong fairness only look at these nodes. Nil means every node.
 	ReadsEnabled []bool
 
+	// WeakUnobserved[n] hides weak actions' enabledness at a node that
+	// otherwise reads it, such as a fair choice point inside an action, where
+	// only the choice's own strong options are observed. Nil means never.
+	WeakUnobserved []bool
+
 	// Accept[n] is a bitmask of the acceptance sets node n belongs to. An
 	// accepting loop visits a node of every one of the NumAcceptSets sets.
 	// Bits at or above NumAcceptSets are ignored.
@@ -153,11 +158,12 @@ func (g *Graph) validate() error {
 		}
 	}
 	for name, s := range map[string]int{
-		"Enabled":      len(g.Enabled),
-		"ReadsEnabled": len(g.ReadsEnabled),
-		"Accept":       len(g.Accept),
-		"LoopAllowed":  len(g.LoopAllowed),
-		"FailsIfStuck": len(g.FailsIfStuck),
+		"Enabled":        len(g.Enabled),
+		"ReadsEnabled":   len(g.ReadsEnabled),
+		"WeakUnobserved": len(g.WeakUnobserved),
+		"Accept":         len(g.Accept),
+		"LoopAllowed":    len(g.LoopAllowed),
+		"FailsIfStuck":   len(g.FailsIfStuck),
 	} {
 		if s != 0 && s != g.NumNodes {
 			return fmt.Errorf("%s has %d entries, want %d", name, s, g.NumNodes)
@@ -182,6 +188,14 @@ func (g *Graph) buildOut() {
 
 func (g *Graph) readsEnabled(n int) bool {
 	return g.ReadsEnabled == nil || g.ReadsEnabled[n]
+}
+
+// reads reports whether action a's enabledness is observed at node n.
+func (g *Graph) reads(n, a int) bool {
+	if !g.readsEnabled(n) {
+		return false
+	}
+	return g.Actions[a] != Weak || g.WeakUnobserved == nil || !g.WeakUnobserved[n]
 }
 
 func (g *Graph) loopAllowed(n int) bool {

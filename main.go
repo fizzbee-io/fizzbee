@@ -877,7 +877,21 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			}
 			if !simulation && !p1.Stopped() && guidedTrace == nil {
 				if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "enabled" || stateConfig.GetLiveness() == "true" || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
-					failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode, nodes)
+					// FIZZ_LIVENESS_ENGINE picks the checker while the SCC engine is
+					// being validated: "scc" uses it, "shadow" runs both and reports.
+					switch os.Getenv("FIZZ_LIVENESS_ENGINE") {
+					case "scc":
+						var err error
+						failurePath, failedInvariant, err = modelchecker.CheckStrictLivenessScc(rootNode, nodes)
+						if err != nil {
+							fmt.Println("Error checking liveness:", err)
+							return nil
+						}
+					case "shadow":
+						failurePath, failedInvariant = modelchecker.CheckStrictLivenessShadow(rootNode, nodes)
+					default:
+						failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode, nodes)
+					}
 				} else if stateConfig.GetLiveness() == "eventual" || stateConfig.GetLiveness() == "nondeterministic" {
 					failurePath, failedInvariant = modelchecker.CheckFastLiveness(nodes)
 				}
