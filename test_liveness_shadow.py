@@ -11,8 +11,8 @@ fairness definition and against the cycle finder's own fairness check.
 
     python3 test_liveness_shadow.py
 
-Exits non-zero on a disagreement not listed in KNOWN_DIFFERENCES, or on a
-counterexample that fails validation. Variants are written to a temporary
+Exits non-zero on a disagreement not listed in KNOWN_DIFFERENCES, on a
+counterexample that fails validation, or on a spec that times out. Variants are written to a temporary
 directory; the examples themselves are not modified.
 """
 
@@ -115,6 +115,7 @@ def main():
                 (d / spec.name).write_text(text)
                 lines = run(d / spec.name)
                 if lines is None:
+                    failures += 1
                     print(f"TIMEOUT  {spec} [{name}]")
                     continue
                 for line in lines:
@@ -127,7 +128,7 @@ def main():
                     print(f"{tag:8} {spec} [{name}] {line[len('Liveness shadow '):]}")
     finally:
         shutil.rmtree(work, ignore_errors=True)
-    print(f"\n{checks} property checks, {failures} unexplained")
+    print(f"\n{checks} property checks, {failures} unexplained or timed out")
     return 1 if failures else 0
 
 
