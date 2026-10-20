@@ -585,6 +585,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 	currentFrame := t.currentFrame()
 	protobuf := GetProtoFieldByPath(t.currentFileAst(), currentFrame.pc)
 	stmt := convertToStatement(protobuf)
+	t.Process.countPredicateStep(stmt)
 	if stmt.Label != "" {
 		t.Process.Labels = append(t.Process.Labels, currentFrame.Name+"."+stmt.Label)
 	}
@@ -847,6 +848,11 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 					t.Process.Returns[convertToFunction(function).Name] = val
 				} else if _, ok := action.(*ast.Role); ok {
 					actionPath = pathComp[0] + "." + pathComp[1]
+					if function, ok := GetProtoFieldByPath(fileAst, actionPath).(*ast.Function); ok {
+						// A role func run on its own, by a predicate call.
+						t.Process.Returns[convertToFunction(function).Name] = val
+						return nil, true
+					}
 					action1 = GetProtoFieldByPath(fileAst, actionPath).(*ast.Action)
 					t.Process.Returns[oldFrame.obj.RefStringShort()+"."+convertToAction(action1).Name] = val
 					t.Process.Enable()

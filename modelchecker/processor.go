@@ -198,6 +198,14 @@ type Process struct {
 	Roles    []*lib.Role          `json:"roles"`
 	Channels map[int]*lib.Channel `json:"channels"`
 
+	// fizzCall is set only on clones made for predicate evaluation. It makes
+	// fizz funcs callable inside expressions. Not copied by clones.
+	fizzCall      lib.FizzCallFunc
+	fizzCallDepth int
+	// predicateSteps, when set, is the statement budget left for the
+	// predicate being evaluated, shared with the clones of nested calls.
+	predicateSteps *int
+
 	// RotationalLastAllocated tracks the last allocated ID per rotational domain.
 	// This is persisted across transitions so fresh() can find the next unused value.
 	RotationalLastAllocated map[string]int64 `json:"-"`
@@ -727,6 +735,7 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 		}
 	}
 	dict["Channel"] = lib.CreateChannelBuiltin(p.Channels)
+	p.addPredicateFuncs(dict)
 	return dict
 }
 
@@ -757,6 +766,7 @@ func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
 		}
 	}
 	dict["Channel"] = lib.CreateChannelBuiltin(p.Channels)
+	p.addPredicateFuncs(dict)
 	return dict
 }
 
@@ -769,10 +779,14 @@ func (p *Process) createSymmetryContext() *lib.SymmetryContext {
 		p.AcceptVisitor(collector)
 		return collector.GetAllUsedIDs()
 	}
+	var ctx *lib.SymmetryContext
 	if p.RotationalLastAllocated != nil {
-		return lib.NewSymmetryContextWithLastAllocated(scanner, p.RotationalLastAllocated)
+		ctx = lib.NewSymmetryContextWithLastAllocated(scanner, p.RotationalLastAllocated)
+	} else {
+		ctx = lib.NewSymmetryContext(scanner)
 	}
-	return lib.NewSymmetryContext(scanner)
+	ctx.FizzCall = p.fizzCall
+	return ctx
 }
 
 // saveRotationalLastAllocated persists the LastAllocated state from a SymmetryContext back to the Process.

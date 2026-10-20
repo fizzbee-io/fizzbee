@@ -94,7 +94,19 @@ type SymmetryContext struct {
 
 	// initialized tracks if we have loaded the state from Scanner yet.
 	initialized bool
+
+	// FizzCall, when set, lets fizz funcs be called inside expressions.
+	// Only predicate contexts (assertions) set it; see FizzCallKey.
+	FizzCall FizzCallFunc
 }
+
+// FizzCallFunc runs fizz func name synchronously. recv is the role for a role
+// method, nil for a top-level func.
+type FizzCallFunc func(thread *starlark.Thread, recv *Role, name string, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)
+
+// FizzCallKey is the starlark Thread local holding a FizzCallFunc.
+const FizzCallKey = "fizz_call"
+
 
 // NewSymmetryContext creates a new symmetry context with the given scanner function
 func NewSymmetryContext(scanner func() map[string][]int64) *SymmetryContext {
