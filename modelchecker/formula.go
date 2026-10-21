@@ -59,7 +59,7 @@ func classicFormula(invariant *ast.Invariant) *liveness.Formula {
 // state. The assertion's block runs once and returns every atom's value.
 func CheckFormulaAtoms(process *Process, invariant *ast.Invariant, index int, prober NextStatesProber) uint64 {
 	cloned := assertionClone(process, prober)
-	result := execFunctionBlock(cloned, invariant.Name, fmt.Sprintf("Invariants[%d]", index))
+	result := execFunctionBlock(cloned, invariant.Name, fmt.Sprintf("Invariants[%d]", index), cloned.assertionBindings[invariant.Name])
 	list, ok := result.(*starlark.List)
 	if !ok {
 		panic(fmt.Sprintf("assertion %s: expected the list of atom values, got %v", invariant.Name, result))
@@ -77,14 +77,12 @@ func CheckFormulaAtoms(process *Process, invariant *ast.Invariant, index int, pr
 }
 
 // ExpandAssertionHeaders replaces every assertion with `for` clauses on its
-// header by one instance per binding, named like Base[v1, v2]. Each instance
-// binds the clause variables at the top of its body. Iterables and filters
-// are evaluated once, over builtins and constants, so the set of instances
-// is fixed before Init. The values bound are the ones found here: each is
-// returned under a hidden name for the caller to add to the constants, and
-// the instance's binding statement reads it from there. Expanding twice is
-// a no-op.
-func ExpandAssertionHeaders(file *ast.File, globals starlark.StringDict, evaluator *Evaluator) (starlark.StringDict, error) {
+// header by one instance per binding, named like Base[v1, v2]. Iterables and
+// filters are evaluated once, over builtins and constants, so the set of
+// instances is fixed before Init. It returns, by instance name, the values
+// the clause names are bound to, which the instance's body sees as locals.
+// Expanding twice is a no-op.
+func ExpandAssertionHeaders(file *ast.File, globals starlark.StringDict, evaluator *Evaluator) (map[string]starlark.StringDict, error) {
 	expanded := false
 	for _, inv := range file.Invariants {
 		if len(inv.ForClauses) > 0 {
@@ -103,14 +101,14 @@ func ExpandAssertionHeaders(file *ast.File, globals starlark.StringDict, evaluat
 	env := maps.Clone(lib.Builtins)
 	maps.Copy(env, globals)
 
-	values := starlark.StringDict{}
+	bound := map[string]starlark.StringDict{}
 	var out []*ast.Invariant
 	for _, inv := range file.Invariants {
 		if len(inv.ForClauses) == 0 {
 			out = append(out, inv)
 			continue
 		}
-		bindings, err := expandForClauses(file.GetSourceInfo().GetFileName(), inv, env, evaluator, values)
+		bindings, err := expandForClauses(file.GetSourceInfo().GetFileName(), inv, env, evaluator)
 		if err != nil {
 			return nil, err
 		}
@@ -125,20 +123,20 @@ func ExpandAssertionHeaders(file *ast.File, globals starlark.StringDict, evaluat
 				return nil, fmt.Errorf("assertion %s: instance name %s is used twice; make the values' str() distinct", inv.Name, instance.Name)
 			}
 			names[instance.Name] = true
-			instance.Block.Stmts = append(b.stmts, instance.Block.Stmts...)
+			bound[instance.Name] = b.vars
 			out = append(out, instance)
 		}
 	}
 	file.Invariants = out
-	return values, nil
+	return bound, nil
 }
 
 type forBinding struct {
-	stmts  []*ast.Statement
+	vars   starlark.StringDict
 	labels []string
 }
 
-func expandForClauses(fileName string, inv *ast.Invariant, env starlark.StringDict, evaluator *Evaluator, values starlark.StringDict) ([]forBinding, error) {
+func expandForClauses(fileName string, inv *ast.Invariant, env starlark.StringDict, evaluator *Evaluator) ([]forBinding, error) {
 	var results []forBinding
 	var expand func(k int, vars starlark.StringDict, b forBinding) error
 	expand = func(k int, vars starlark.StringDict, b forBinding) error {
@@ -196,11 +194,12 @@ func expandForClauses(fileName string, inv *ast.Invariant, env starlark.StringDi
 			if !keep {
 				continue
 			}
-			hidden := fmt.Sprintf("__for_%d__", len(values))
-			values[hidden] = v
 			nb := forBinding{
-				stmts:  append(append([]*ast.Statement{}, b.stmts...), bindingStmt(clause, hidden)),
+				vars:   maps.Clone(b.vars),
 				labels: append(append([]string{}, b.labels...), labelOf(unpacked)...),
+			}
+			for j, t := range clause.Targets {
+				nb.vars[t] = unpacked[j]
 			}
 			if err := expand(k+1, next, nb); err != nil {
 				return err
@@ -208,20 +207,10 @@ func expandForClauses(fileName string, inv *ast.Invariant, env starlark.StringDi
 		}
 		return nil
 	}
-	if err := expand(0, env, forBinding{}); err != nil {
+	if err := expand(0, env, forBinding{vars: starlark.StringDict{}}); err != nil {
 		return nil, err
 	}
 	return results, nil
-}
-
-// bindingStmt assigns the value stored under a hidden constant name to the
-// clause's targets.
-func bindingStmt(clause *ast.ForClause, hidden string) *ast.Statement {
-	code := fmt.Sprintf("%s = %s", strings.Join(clause.Targets, ", "), hidden)
-	return &ast.Statement{
-		SourceInfo: clause.SourceInfo,
-		PyStmt:     &ast.PyStmt{SourceInfo: clause.SourceInfo, Code: code},
-	}
 }
 
 func labelOf(values []starlark.Value) []string {

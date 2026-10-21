@@ -6,6 +6,8 @@ deadlock_detection: false
 
 VALUES = [1, 2, 3]
 TARGETS = [record(at=1), record(at=2)]
+# Header values must not land in the constants, whatever their names.
+__for_0__ = "kept"
 
 action Init:
     x = 0
@@ -59,6 +61,9 @@ assertion PassNested for a in range(3) for b in range(a):
 # Values without a literal form are bound as they are.
 assertion PassRecords for t in TARGETS:
     return eventually x == t.at
+
+always assertion PassConstantKept for v in VALUES:
+    return __for_0__ == "kept" and v in VALUES
 
 assertion FailFor for v in VALUES:
     return eventually x == v

@@ -40,7 +40,7 @@ func TestFormulaAssertions(t *testing.T) {
 	}
 	// The header for clauses expand in place, one instance per binding.
 	for _, want := range []string{"PassFor[1]", "PassFor[2]", "PassPairs[0, 1]", "PassPairs[1, 2]", "FailFor[1]", "FailFor[3]",
-		"PassNested[1, 0]", "PassNested[2, 1]", "PassRecords[record(at = 2)]"} {
+		"PassNested[1, 0]", "PassNested[2, 1]", "PassRecords[record(at = 2)]", "PassConstantKept[3]"} {
 		assert.Contains(t, names, want)
 	}
 	assert.NotContains(t, names, "PassFor[3]")

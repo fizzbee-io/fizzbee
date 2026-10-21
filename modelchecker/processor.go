@@ -226,6 +226,10 @@ type Process struct {
 	guidedTrace      GuidedTrace
 
 	topLevelVars []string
+
+	// assertionBindings holds, for each assertion instance a `for` header
+	// expanded to, the values its clause names are bound to.
+	assertionBindings map[string]starlark.StringDict
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
@@ -374,6 +378,8 @@ func (p *Process) Fork() *Process {
 		Labels:      make([]string, 0),
 		Messages:    make([]*ast.Message, 0),
 		Stats:       p.Stats.Clone(),
+
+		assertionBindings: p.assertionBindings,
 	}
 
 	if p.Stats.TotalActions <= 1 {
@@ -447,6 +453,8 @@ func (p *Process) CloneWithRefs(permutations map[*lib.SymmetricValue][]*lib.Symm
 		Labels:      make([]string, 0),
 		Messages:    make([]*ast.Message, 0),
 		Stats:       p.Stats.Clone(),
+
+		assertionBindings: p.assertionBindings,
 	}
 	p2.Witness = make([][]bool, len(p.Files))
 	for i, file := range p.Files {
@@ -1515,16 +1523,11 @@ func (p *Processor) InitializeNode() (*Node, *Node, error) {
 	if len(p.Files[0].Stmts) > 0 {
 		processPreInit(p.Init, p.Files[0].Stmts, p.preinitHookContent)
 	}
-	bound, err := ExpandAssertionHeaders(p.Files[0], process.Heap.globals, process.Evaluator)
+	bindings, err := ExpandAssertionHeaders(p.Files[0], process.Heap.globals, process.Evaluator)
 	if err != nil {
 		return nil, nil, err
 	}
-	if len(bound) > 0 {
-		if process.Heap.globals == nil {
-			process.Heap.globals = starlark.StringDict{}
-		}
-		maps.Copy(process.Heap.globals, bound)
-	}
+	process.assertionBindings = bindings
 	for i, file := range process.Files {
 		process.Witness[i] = make([]bool, len(file.Invariants))
 	}

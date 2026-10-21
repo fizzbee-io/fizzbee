@@ -210,20 +210,25 @@ func assertionClone(process *Process, prober NextStatesProber) *Process {
 }
 
 func execAssertionFunction(cloned *Process, index int, invariant *ast.Invariant) bool {
-	returnVal := execFunctionBlock(cloned, invariant.Name, fmt.Sprintf("Invariants[%d]", index))
+	returnVal := execFunctionBlock(cloned, invariant.Name, fmt.Sprintf("Invariants[%d]", index), cloned.assertionBindings[invariant.Name])
 	return bool(returnVal.Truth())
 }
 
 func ExecFunction(process *Process, name string) starlark.Value {
 	def := process.SymbolTable[name]
 
-	returnVal := execFunctionBlock(process, name, def.path+".Block")
+	returnVal := execFunctionBlock(process, name, def.path+".Block", nil)
 	return returnVal
 }
 
-func execFunctionBlock(cloned *Process, name string, pc string) starlark.Value {
+// execFunctionBlock runs the block at pc on a new thread, with vars (if any)
+// bound in its frame, and returns what it returns.
+func execFunctionBlock(cloned *Process, name string, pc string, vars starlark.StringDict) starlark.Value {
 	numThreads := cloned.GetThreadsCount()
 	assertThread := cloned.NewThread()
+	if vars != nil {
+		assertThread.currentFrame().vars = maps.Clone(vars)
+	}
 
 	assertThread.currentFrame().pc = pc
 	assertThread.currentFrame().Name = name
