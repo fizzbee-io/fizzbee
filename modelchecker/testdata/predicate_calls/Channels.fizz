@@ -1,0 +1,22 @@
+---
+deadlock_detection: false
+---
+
+# Assertions whose funcs create channels must not shift the ids that real
+# actions allocate. Checked by predicate_calls_test.go.
+
+func make_channel():
+    return Channel(ordering="unordered", delivery="exactly_once", blocking="fire_and_forget")
+
+action Init:
+    channels = [Channel(ordering="unordered", delivery="exactly_once", blocking="fire_and_forget")]
+
+atomic action Spawn:
+    require len(channels) < 2
+    channels.append(Channel(ordering="unordered", delivery="exactly_once", blocking="fire_and_forget"))
+
+always assertion MakesChannels:
+    return make_channel() != None and make_channel() != None
+
+transition assertion MakesChannelsToo(before, after):
+    return make_channel() != None

@@ -173,3 +173,23 @@ func TestPredicateCallsDontShiftRoleIds(t *testing.T) {
 	assert.Contains(t, msg, "division by zero")
 	assert.Equal(t, before, lib.SnapshotGlobalRefs())
 }
+
+// The same holds for channels.
+func TestPredicateCallsDontShiftChannelIds(t *testing.T) {
+	p := predicateCallsSpec(t, "Channels")
+	root, failed, err := p.Start()
+	require.Nil(t, err)
+	require.Nil(t, failed)
+	nodes, _, _, _ := GetAllNodes(root, 10)
+	spawned := 0
+	for _, n := range nodes {
+		channels := n.Process.Heap.state["channels"].(*starlark.List)
+		for i := 0; i < channels.Len(); i++ {
+			assert.Equal(t, i, channels.Index(i).(*lib.Channel).Id)
+		}
+		if channels.Len() == 2 {
+			spawned++
+		}
+	}
+	assert.Greater(t, spawned, 0, "Spawn never ran")
+}
