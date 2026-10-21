@@ -965,8 +965,10 @@ an error; write `always (x >= 0 and y >= 0)`. The same holds for
 
 **One formula per value.** A `for` clause on the header checks one instance
 per value, named like `Answered[0]`. Iterables and filters may use only
-constants and builtins, and are evaluated once, before `Init`. Several
-clauses nest in order:
+constants and builtins, and are evaluated once, before `Init`. The targets
+are names; with several, like `for a, b in PAIRS`, each value must be a
+tuple or list of that length. Several clauses nest in order, and a later
+clause can use an earlier one's names:
 
 ```python
 assertion Answered for c in range(NUM_CLIENTS):

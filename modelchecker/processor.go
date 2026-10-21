@@ -1515,8 +1515,15 @@ func (p *Processor) InitializeNode() (*Node, *Node, error) {
 	if len(p.Files[0].Stmts) > 0 {
 		processPreInit(p.Init, p.Files[0].Stmts, p.preinitHookContent)
 	}
-	if err := ExpandAssertionHeaders(p.Files[0], process.Heap.globals, process.Evaluator); err != nil {
+	bound, err := ExpandAssertionHeaders(p.Files[0], process.Heap.globals, process.Evaluator)
+	if err != nil {
 		return nil, nil, err
+	}
+	if len(bound) > 0 {
+		if process.Heap.globals == nil {
+			process.Heap.globals = starlark.StringDict{}
+		}
+		maps.Copy(process.Heap.globals, bound)
 	}
 	for i, file := range process.Files {
 		process.Witness[i] = make([]bool, len(file.Invariants))

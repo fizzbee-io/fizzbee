@@ -6,18 +6,18 @@
       "column": 1
     },
     "end": {
-      "line": 71
+      "line": 80
     }
   },
   "invariants": [
     {
       "sourceInfo": {
         "start": {
-          "line": 23,
+          "line": 24,
           "column": 1
         },
         "end": {
-          "line": 26
+          "line": 27
         }
       },
       "name": "PassAlways",
@@ -27,11 +27,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 24,
+            "line": 25,
             "column": 5
           },
           "end": {
-            "line": 26
+            "line": 27
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -39,21 +39,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 24,
+                "line": 25,
                 "column": 5
               },
               "end": {
-                "line": 26
+                "line": 27
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 24,
+                  "line": 25,
                   "column": 5
                 },
                 "end": {
-                  "line": 24,
+                  "line": 25,
                   "column": 37
                 }
               },
@@ -61,11 +61,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 24,
+                    "line": 25,
                     "column": 5
                   },
                   "end": {
-                    "line": 24,
+                    "line": 25,
                     "column": 37
                   }
                 },
@@ -80,11 +80,11 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 26,
+          "line": 27,
           "column": 1
         },
         "end": {
-          "line": 30
+          "line": 31
         }
       },
       "name": "PassLocals",
@@ -95,11 +95,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 27,
+            "line": 28,
             "column": 5
           },
           "end": {
-            "line": 30
+            "line": 31
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -107,22 +107,22 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 27,
+                "line": 28,
                 "column": 5
               },
               "end": {
-                "line": 28,
+                "line": 29,
                 "column": 4
               }
             },
             "pyStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 27,
+                  "line": 28,
                   "column": 5
                 },
                 "end": {
-                  "line": 27,
+                  "line": 28,
                   "column": 17
                 }
               },
@@ -132,21 +132,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 28,
+                "line": 29,
                 "column": 5
               },
               "end": {
-                "line": 30
+                "line": 31
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 28,
+                  "line": 29,
                   "column": 5
                 },
                 "end": {
-                  "line": 28,
+                  "line": 29,
                   "column": 39
                 }
               },
@@ -154,11 +154,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 28,
+                    "line": 29,
                     "column": 5
                   },
                   "end": {
-                    "line": 28,
+                    "line": 29,
                     "column": 39
                   }
                 },
@@ -173,22 +173,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 30,
+          "line": 31,
           "column": 1
         },
         "end": {
-          "line": 33
+          "line": 34
         }
       },
       "name": "PassLeadsTo",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 31,
+            "line": 32,
             "column": 5
           },
           "end": {
-            "line": 33
+            "line": 34
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -196,21 +196,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 31,
+                "line": 32,
                 "column": 5
               },
               "end": {
-                "line": 33
+                "line": 34
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 31,
+                  "line": 32,
                   "column": 5
                 },
                 "end": {
-                  "line": 31,
+                  "line": 32,
                   "column": 32
                 }
               },
@@ -218,11 +218,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 31,
+                    "line": 32,
                     "column": 5
                   },
                   "end": {
-                    "line": 31,
+                    "line": 32,
                     "column": 32
                   }
                 },
@@ -236,11 +236,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 31,
+            "line": 32,
             "column": 12
           },
           "end": {
-            "line": 31,
+            "line": 32,
             "column": 32
           }
         },
@@ -249,11 +249,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 31,
+                "line": 32,
                 "column": 12
               },
               "end": {
-                "line": 31,
+                "line": 32,
                 "column": 17
               }
             },
@@ -263,11 +263,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 31,
+                "line": 32,
                 "column": 27
               },
               "end": {
-                "line": 31,
+                "line": 32,
                 "column": 32
               }
             },
@@ -282,22 +282,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 33,
+          "line": 34,
           "column": 1
         },
         "end": {
-          "line": 36
+          "line": 37
         }
       },
       "name": "PassImplies",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 34,
+            "line": 35,
             "column": 5
           },
           "end": {
-            "line": 36
+            "line": 37
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -305,21 +305,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 34,
+                "line": 35,
                 "column": 5
               },
               "end": {
-                "line": 36
+                "line": 37
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 34,
+                  "line": 35,
                   "column": 5
                 },
                 "end": {
-                  "line": 34,
+                  "line": 35,
                   "column": 52
                 }
               },
@@ -327,11 +327,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 34,
+                    "line": 35,
                     "column": 5
                   },
                   "end": {
-                    "line": 34,
+                    "line": 35,
                     "column": 52
                   }
                 },
@@ -345,11 +345,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 34,
+            "line": 35,
             "column": 12
           },
           "end": {
-            "line": 34,
+            "line": 35,
             "column": 52
           }
         },
@@ -358,11 +358,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 34,
+                "line": 35,
                 "column": 20
               },
               "end": {
-                "line": 34,
+                "line": 35,
                 "column": 51
               }
             },
@@ -371,11 +371,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 34,
+                    "line": 35,
                     "column": 20
                   },
                   "end": {
-                    "line": 34,
+                    "line": 35,
                     "column": 25
                   }
                 },
@@ -385,11 +385,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 34,
+                    "line": 35,
                     "column": 35
                   },
                   "end": {
-                    "line": 34,
+                    "line": 35,
                     "column": 51
                   }
                 },
@@ -398,11 +398,11 @@
                   {
                     "sourceInfo": {
                       "start": {
-                        "line": 34,
+                        "line": 35,
                         "column": 46
                       },
                       "end": {
-                        "line": 34,
+                        "line": 35,
                         "column": 51
                       }
                     },
@@ -423,22 +423,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 36,
+          "line": 37,
           "column": 1
         },
         "end": {
-          "line": 39
+          "line": 40
         }
       },
       "name": "PassStaysDone",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 37,
+            "line": 38,
             "column": 5
           },
           "end": {
-            "line": 39
+            "line": 40
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -446,21 +446,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 37,
+                "line": 38,
                 "column": 5
               },
               "end": {
-                "line": 39
+                "line": 40
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 37,
+                  "line": 38,
                   "column": 5
                 },
                 "end": {
-                  "line": 37,
+                  "line": 38,
                   "column": 48
                 }
               },
@@ -468,11 +468,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 37,
+                    "line": 38,
                     "column": 5
                   },
                   "end": {
-                    "line": 37,
+                    "line": 38,
                     "column": 48
                   }
                 },
@@ -486,11 +486,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 37,
+            "line": 38,
             "column": 12
           },
           "end": {
-            "line": 37,
+            "line": 38,
             "column": 48
           }
         },
@@ -499,11 +499,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 37,
+                "line": 38,
                 "column": 20
               },
               "end": {
-                "line": 37,
+                "line": 38,
                 "column": 47
               }
             },
@@ -512,11 +512,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 37,
+                    "line": 38,
                     "column": 20
                   },
                   "end": {
-                    "line": 37,
+                    "line": 38,
                     "column": 25
                   }
                 },
@@ -526,11 +526,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 37,
+                    "line": 38,
                     "column": 35
                   },
                   "end": {
-                    "line": 37,
+                    "line": 38,
                     "column": 47
                   }
                 },
@@ -539,11 +539,11 @@
                   {
                     "sourceInfo": {
                       "start": {
-                        "line": 37,
+                        "line": 38,
                         "column": 42
                       },
                       "end": {
-                        "line": 37,
+                        "line": 38,
                         "column": 47
                       }
                     },
@@ -563,22 +563,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 39,
+          "line": 40,
           "column": 1
         },
         "end": {
-          "line": 42
+          "line": 43
         }
       },
       "name": "PassUntil",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 40,
+            "line": 41,
             "column": 5
           },
           "end": {
-            "line": 42
+            "line": 43
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -586,21 +586,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 40,
+                "line": 41,
                 "column": 5
               },
               "end": {
-                "line": 42
+                "line": 43
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 40,
+                  "line": 41,
                   "column": 5
                 },
                 "end": {
-                  "line": 40,
+                  "line": 41,
                   "column": 30
                 }
               },
@@ -608,11 +608,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 40,
+                    "line": 41,
                     "column": 5
                   },
                   "end": {
-                    "line": 40,
+                    "line": 41,
                     "column": 30
                   }
                 },
@@ -626,11 +626,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 40,
+            "line": 41,
             "column": 12
           },
           "end": {
-            "line": 40,
+            "line": 41,
             "column": 30
           }
         },
@@ -639,11 +639,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 40,
+                "line": 41,
                 "column": 12
               },
               "end": {
-                "line": 40,
+                "line": 41,
                 "column": 17
               }
             },
@@ -653,11 +653,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 40,
+                "line": 41,
                 "column": 25
               },
               "end": {
-                "line": 40,
+                "line": 41,
                 "column": 30
               }
             },
@@ -672,22 +672,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 42,
+          "line": 43,
           "column": 1
         },
         "end": {
-          "line": 45
+          "line": 46
         }
       },
       "name": "PassNested",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 43,
+            "line": 44,
             "column": 5
           },
           "end": {
-            "line": 45
+            "line": 46
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -695,21 +695,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 43,
+                "line": 44,
                 "column": 5
               },
               "end": {
-                "line": 45
+                "line": 46
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 43,
+                  "line": 44,
                   "column": 5
                 },
                 "end": {
-                  "line": 43,
+                  "line": 44,
                   "column": 52
                 }
               },
@@ -717,11 +717,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 43,
+                    "line": 44,
                     "column": 5
                   },
                   "end": {
-                    "line": 43,
+                    "line": 44,
                     "column": 52
                   }
                 },
@@ -735,11 +735,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 43,
+            "line": 44,
             "column": 12
           },
           "end": {
-            "line": 43,
+            "line": 44,
             "column": 52
           }
         },
@@ -748,11 +748,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 43,
+                "line": 44,
                 "column": 24
               },
               "end": {
-                "line": 43,
+                "line": 44,
                 "column": 51
               }
             },
@@ -761,11 +761,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 43,
+                    "line": 44,
                     "column": 24
                   },
                   "end": {
-                    "line": 43,
+                    "line": 44,
                     "column": 29
                   }
                 },
@@ -775,11 +775,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 43,
+                    "line": 44,
                     "column": 35
                   },
                   "end": {
-                    "line": 43,
+                    "line": 44,
                     "column": 51
                   }
                 },
@@ -788,11 +788,11 @@
                   {
                     "sourceInfo": {
                       "start": {
-                        "line": 43,
+                        "line": 44,
                         "column": 46
                       },
                       "end": {
-                        "line": 43,
+                        "line": 44,
                         "column": 51
                       }
                     },
@@ -813,22 +813,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 45,
+          "line": 46,
           "column": 1
         },
         "end": {
-          "line": 48
+          "line": 49
         }
       },
       "name": "PassNotAlways",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 46,
+            "line": 47,
             "column": 5
           },
           "end": {
-            "line": 48
+            "line": 49
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -836,21 +836,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 46,
+                "line": 47,
                 "column": 5
               },
               "end": {
-                "line": 48
+                "line": 49
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 46,
+                  "line": 47,
                   "column": 5
                 },
                 "end": {
-                  "line": 46,
+                  "line": 47,
                   "column": 27
                 }
               },
@@ -858,11 +858,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 46,
+                    "line": 47,
                     "column": 5
                   },
                   "end": {
-                    "line": 46,
+                    "line": 47,
                     "column": 27
                   }
                 },
@@ -876,11 +876,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 46,
+            "line": 47,
             "column": 12
           },
           "end": {
-            "line": 46,
+            "line": 47,
             "column": 27
           }
         },
@@ -889,11 +889,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 46,
+                "line": 47,
                 "column": 16
               },
               "end": {
-                "line": 46,
+                "line": 47,
                 "column": 27
               }
             },
@@ -902,11 +902,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 46,
+                    "line": 47,
                     "column": 23
                   },
                   "end": {
-                    "line": 46,
+                    "line": 47,
                     "column": 27
                   }
                 },
@@ -923,22 +923,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 48,
+          "line": 49,
           "column": 1
         },
         "end": {
-          "line": 51
+          "line": 52
         }
       },
       "name": "PassFor",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 49,
+            "line": 50,
             "column": 5
           },
           "end": {
-            "line": 51
+            "line": 52
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -946,21 +946,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 49,
+                "line": 50,
                 "column": 5
               },
               "end": {
-                "line": 51
+                "line": 52
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 49,
+                  "line": 50,
                   "column": 5
                 },
                 "end": {
-                  "line": 49,
+                  "line": 50,
                   "column": 28
                 }
               },
@@ -968,11 +968,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 49,
+                    "line": 50,
                     "column": 5
                   },
                   "end": {
-                    "line": 49,
+                    "line": 50,
                     "column": 28
                   }
                 },
@@ -986,11 +986,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 49,
+            "line": 50,
             "column": 12
           },
           "end": {
-            "line": 49,
+            "line": 50,
             "column": 28
           }
         },
@@ -999,11 +999,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 49,
+                "line": 50,
                 "column": 23
               },
               "end": {
-                "line": 49,
+                "line": 50,
                 "column": 28
               }
             },
@@ -1017,11 +1017,11 @@
         {
           "sourceInfo": {
             "start": {
-              "line": 48,
+              "line": 49,
               "column": 19
             },
             "end": {
-              "line": 48,
+              "line": 49,
               "column": 42
             }
           },
@@ -1038,22 +1038,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 51,
+          "line": 52,
           "column": 1
         },
         "end": {
-          "line": 54
+          "line": 56
         }
       },
       "name": "PassPairs",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 52,
+            "line": 53,
             "column": 5
           },
           "end": {
-            "line": 54
+            "line": 56
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -1061,21 +1061,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 52,
+                "line": 53,
                 "column": 5
               },
               "end": {
-                "line": 54
+                "line": 56
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 52,
+                  "line": 53,
                   "column": 5
                 },
                 "end": {
-                  "line": 52,
+                  "line": 53,
                   "column": 32
                 }
               },
@@ -1083,11 +1083,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 52,
+                    "line": 53,
                     "column": 5
                   },
                   "end": {
-                    "line": 52,
+                    "line": 53,
                     "column": 32
                   }
                 },
@@ -1097,15 +1097,15 @@
           }
         ]
       },
-      "pyCode": "def PassPairs():\n    return x == a leadsto x == b\n\n",
+      "pyCode": "def PassPairs():\n    return x == a leadsto x == b\n\n# The inner iterable uses the outer value.\n",
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 52,
+            "line": 53,
             "column": 12
           },
           "end": {
-            "line": 52,
+            "line": 53,
             "column": 32
           }
         },
@@ -1114,11 +1114,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 52,
+                "line": 53,
                 "column": 12
               },
               "end": {
-                "line": 52,
+                "line": 53,
                 "column": 17
               }
             },
@@ -1128,11 +1128,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 52,
+                "line": 53,
                 "column": 27
               },
               "end": {
-                "line": 52,
+                "line": 53,
                 "column": 32
               }
             },
@@ -1147,11 +1147,11 @@
         {
           "sourceInfo": {
             "start": {
-              "line": 51,
+              "line": 52,
               "column": 21
             },
             "end": {
-              "line": 51,
+              "line": 52,
               "column": 48
             }
           },
@@ -1166,134 +1166,18 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 54,
-          "column": 1
-        },
-        "end": {
-          "line": 57
-        }
-      },
-      "name": "FailFor",
-      "block": {
-        "sourceInfo": {
-          "start": {
-            "line": 55,
-            "column": 5
-          },
-          "end": {
-            "line": 57
-          }
-        },
-        "flow": "FLOW_ATOMIC",
-        "stmts": [
-          {
-            "sourceInfo": {
-              "start": {
-                "line": 55,
-                "column": 5
-              },
-              "end": {
-                "line": 57
-              }
-            },
-            "returnStmt": {
-              "sourceInfo": {
-                "start": {
-                  "line": 55,
-                  "column": 5
-                },
-                "end": {
-                  "line": 55,
-                  "column": 28
-                }
-              },
-              "pyExpr": "[bool(x == v)]",
-              "expr": {
-                "sourceInfo": {
-                  "start": {
-                    "line": 55,
-                    "column": 5
-                  },
-                  "end": {
-                    "line": 55,
-                    "column": 28
-                  }
-                },
-                "pyExpr": "[bool(x == v)]"
-              }
-            }
-          }
-        ]
-      },
-      "pyCode": "def FailFor():\n    return eventually x == v\n\n",
-      "formula": {
-        "sourceInfo": {
-          "start": {
-            "line": 55,
-            "column": 12
-          },
-          "end": {
-            "line": 55,
-            "column": 28
-          }
-        },
-        "op": "EVENTUALLY",
-        "args": [
-          {
-            "sourceInfo": {
-              "start": {
-                "line": 55,
-                "column": 23
-              },
-              "end": {
-                "line": 55,
-                "column": 28
-              }
-            },
-            "op": "ATOM",
-            "text": "x == v"
-          }
-        ],
-        "text": "eventually x == v"
-      },
-      "forClauses": [
-        {
-          "sourceInfo": {
-            "start": {
-              "line": 54,
-              "column": 19
-            },
-            "end": {
-              "line": 54,
-              "column": 33
-            }
-          },
-          "targets": [
-            "v"
-          ],
-          "iterablePyExpr": "VALUES"
-        }
-      ]
-    },
-    {
-      "sourceInfo": {
-        "start": {
-          "line": 57,
+          "line": 56,
           "column": 1
         },
         "end": {
           "line": 60
         }
       },
-      "name": "FailEventuallyAlways",
-      "temporalOperators": [
-        "eventually",
-        "always"
-      ],
+      "name": "PassNested",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 58,
+            "line": 57,
             "column": 5
           },
           "end": {
@@ -1305,7 +1189,7 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 58,
+                "line": 57,
                 "column": 5
               },
               "end": {
@@ -1315,33 +1199,112 @@
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 58,
+                  "line": 57,
                   "column": 5
                 },
                 "end": {
-                  "line": 58,
-                  "column": 35
+                  "line": 57,
+                  "column": 32
                 }
               },
-              "pyExpr": "y == 0",
+              "pyExpr": "[bool(x == b), bool(x == a)]",
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 58,
+                    "line": 57,
                     "column": 5
                   },
                   "end": {
-                    "line": 58,
-                    "column": 35
+                    "line": 57,
+                    "column": 32
                   }
                 },
-                "pyExpr": "y == 0"
+                "pyExpr": "[bool(x == b), bool(x == a)]"
               }
             }
           }
         ]
       },
-      "pyCode": "def FailEventuallyAlways():\n    return eventually always y == 0\n\n"
+      "pyCode": "def PassNested():\n    return x == b leadsto x == a\n\n# Values without a literal form are bound as they are.\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 57,
+            "column": 12
+          },
+          "end": {
+            "line": 57,
+            "column": 32
+          }
+        },
+        "op": "LEADSTO",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 57,
+                "column": 12
+              },
+              "end": {
+                "line": 57,
+                "column": 17
+              }
+            },
+            "op": "ATOM",
+            "text": "x == b"
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 57,
+                "column": 27
+              },
+              "end": {
+                "line": 57,
+                "column": 32
+              }
+            },
+            "op": "ATOM",
+            "atom": 1,
+            "text": "x == a"
+          }
+        ],
+        "text": "x == b leadsto x == a"
+      },
+      "forClauses": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 56,
+              "column": 22
+            },
+            "end": {
+              "line": 56,
+              "column": 38
+            }
+          },
+          "targets": [
+            "a"
+          ],
+          "iterablePyExpr": "range(3)"
+        },
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 56,
+              "column": 40
+            },
+            "end": {
+              "line": 56,
+              "column": 56
+            }
+          },
+          "targets": [
+            "b"
+          ],
+          "iterablePyExpr": "range(a)"
+        }
+      ]
     },
     {
       "sourceInfo": {
@@ -1353,7 +1316,7 @@
           "line": 63
         }
       },
-      "name": "FailUntil",
+      "name": "PassRecords",
       "block": {
         "sourceInfo": {
           "start": {
@@ -1384,10 +1347,10 @@
                 },
                 "end": {
                   "line": 61,
-                  "column": 30
+                  "column": 31
                 }
               },
-              "pyExpr": "[bool(x == 1), bool(x == 2)]",
+              "pyExpr": "[bool(x == t.at)]",
               "expr": {
                 "sourceInfo": {
                   "start": {
@@ -1396,16 +1359,16 @@
                   },
                   "end": {
                     "line": 61,
-                    "column": 30
+                    "column": 31
                   }
                 },
-                "pyExpr": "[bool(x == 1), bool(x == 2)]"
+                "pyExpr": "[bool(x == t.at)]"
               }
             }
           }
         ]
       },
-      "pyCode": "def FailUntil():\n    return x == 1 until x == 2\n\n",
+      "pyCode": "def PassRecords():\n    return eventually x == t.at\n\n",
       "formula": {
         "sourceInfo": {
           "start": {
@@ -1414,43 +1377,46 @@
           },
           "end": {
             "line": 61,
-            "column": 30
+            "column": 31
           }
         },
-        "op": "UNTIL",
+        "op": "EVENTUALLY",
         "args": [
           {
             "sourceInfo": {
               "start": {
                 "line": 61,
-                "column": 12
+                "column": 23
               },
               "end": {
                 "line": 61,
-                "column": 17
+                "column": 31
               }
             },
             "op": "ATOM",
-            "text": "x == 1"
-          },
-          {
-            "sourceInfo": {
-              "start": {
-                "line": 61,
-                "column": 25
-              },
-              "end": {
-                "line": 61,
-                "column": 30
-              }
-            },
-            "op": "ATOM",
-            "atom": 1,
-            "text": "x == 2"
+            "text": "x == t.at"
           }
         ],
-        "text": "x == 1 until x == 2"
-      }
+        "text": "eventually x == t.at"
+      },
+      "forClauses": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 60,
+              "column": 23
+            },
+            "end": {
+              "line": 60,
+              "column": 38
+            }
+          },
+          "targets": [
+            "t"
+          ],
+          "iterablePyExpr": "TARGETS"
+        }
+      ]
     },
     {
       "sourceInfo": {
@@ -1462,7 +1428,7 @@
           "line": 66
         }
       },
-      "name": "FailYStays",
+      "name": "FailFor",
       "block": {
         "sourceInfo": {
           "start": {
@@ -1493,10 +1459,10 @@
                 },
                 "end": {
                   "line": 64,
-                  "column": 56
+                  "column": 28
                 }
               },
-              "pyExpr": "[bool(y == 1), bool(x == 2)]",
+              "pyExpr": "[bool(x == v)]",
               "expr": {
                 "sourceInfo": {
                   "start": {
@@ -1505,16 +1471,16 @@
                   },
                   "end": {
                     "line": 64,
-                    "column": 56
+                    "column": 28
                   }
                 },
-                "pyExpr": "[bool(y == 1), bool(x == 2)]"
+                "pyExpr": "[bool(x == v)]"
               }
             }
           }
         ]
       },
-      "pyCode": "def FailYStays():\n    return always (y == 1 implies (y == 1 until x == 2))\n\n",
+      "pyCode": "def FailFor():\n    return eventually x == v\n\n",
       "formula": {
         "sourceInfo": {
           "start": {
@@ -1523,89 +1489,46 @@
           },
           "end": {
             "line": 64,
-            "column": 56
+            "column": 28
           }
         },
-        "op": "ALWAYS",
+        "op": "EVENTUALLY",
         "args": [
           {
             "sourceInfo": {
               "start": {
                 "line": 64,
-                "column": 20
+                "column": 23
               },
               "end": {
                 "line": 64,
-                "column": 55
+                "column": 28
               }
             },
-            "op": "IMPLIES",
-            "args": [
-              {
-                "sourceInfo": {
-                  "start": {
-                    "line": 64,
-                    "column": 20
-                  },
-                  "end": {
-                    "line": 64,
-                    "column": 25
-                  }
-                },
-                "op": "ATOM",
-                "text": "y == 1"
-              },
-              {
-                "sourceInfo": {
-                  "start": {
-                    "line": 64,
-                    "column": 36
-                  },
-                  "end": {
-                    "line": 64,
-                    "column": 54
-                  }
-                },
-                "op": "UNTIL",
-                "args": [
-                  {
-                    "sourceInfo": {
-                      "start": {
-                        "line": 64,
-                        "column": 36
-                      },
-                      "end": {
-                        "line": 64,
-                        "column": 41
-                      }
-                    },
-                    "op": "ATOM",
-                    "text": "y == 1"
-                  },
-                  {
-                    "sourceInfo": {
-                      "start": {
-                        "line": 64,
-                        "column": 49
-                      },
-                      "end": {
-                        "line": 64,
-                        "column": 54
-                      }
-                    },
-                    "op": "ATOM",
-                    "atom": 1,
-                    "text": "x == 2"
-                  }
-                ],
-                "text": "y == 1 until x == 2"
-              }
-            ],
-            "text": "y == 1 implies (y == 1 until x == 2)"
+            "op": "ATOM",
+            "text": "x == v"
           }
         ],
-        "text": "always (y == 1 implies (y == 1 until x == 2))"
-      }
+        "text": "eventually x == v"
+      },
+      "forClauses": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 63,
+              "column": 19
+            },
+            "end": {
+              "line": 63,
+              "column": 33
+            }
+          },
+          "targets": [
+            "v"
+          ],
+          "iterablePyExpr": "VALUES"
+        }
+      ]
     },
     {
       "sourceInfo": {
@@ -1617,7 +1540,11 @@
           "line": 69
         }
       },
-      "name": "FailBack",
+      "name": "FailEventuallyAlways",
+      "temporalOperators": [
+        "eventually",
+        "always"
+      ],
       "block": {
         "sourceInfo": {
           "start": {
@@ -1648,10 +1575,10 @@
                 },
                 "end": {
                   "line": 67,
-                  "column": 52
+                  "column": 35
                 }
               },
-              "pyExpr": "[bool(x == 1), bool(x == 0)]",
+              "pyExpr": "y == 0",
               "expr": {
                 "sourceInfo": {
                   "start": {
@@ -1660,6 +1587,334 @@
                   },
                   "end": {
                     "line": 67,
+                    "column": 35
+                  }
+                },
+                "pyExpr": "y == 0"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailEventuallyAlways():\n    return eventually always y == 0\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 69,
+          "column": 1
+        },
+        "end": {
+          "line": 72
+        }
+      },
+      "name": "FailUntil",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 70,
+            "column": 5
+          },
+          "end": {
+            "line": 72
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 70,
+                "column": 5
+              },
+              "end": {
+                "line": 72
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 70,
+                  "column": 5
+                },
+                "end": {
+                  "line": 70,
+                  "column": 30
+                }
+              },
+              "pyExpr": "[bool(x == 1), bool(x == 2)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 70,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 70,
+                    "column": 30
+                  }
+                },
+                "pyExpr": "[bool(x == 1), bool(x == 2)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailUntil():\n    return x == 1 until x == 2\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 70,
+            "column": 12
+          },
+          "end": {
+            "line": 70,
+            "column": 30
+          }
+        },
+        "op": "UNTIL",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 70,
+                "column": 12
+              },
+              "end": {
+                "line": 70,
+                "column": 17
+              }
+            },
+            "op": "ATOM",
+            "text": "x == 1"
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 70,
+                "column": 25
+              },
+              "end": {
+                "line": 70,
+                "column": 30
+              }
+            },
+            "op": "ATOM",
+            "atom": 1,
+            "text": "x == 2"
+          }
+        ],
+        "text": "x == 1 until x == 2"
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 72,
+          "column": 1
+        },
+        "end": {
+          "line": 75
+        }
+      },
+      "name": "FailYStays",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 73,
+            "column": 5
+          },
+          "end": {
+            "line": 75
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 73,
+                "column": 5
+              },
+              "end": {
+                "line": 75
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 73,
+                  "column": 5
+                },
+                "end": {
+                  "line": 73,
+                  "column": 56
+                }
+              },
+              "pyExpr": "[bool(y == 1), bool(x == 2)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 73,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 73,
+                    "column": 56
+                  }
+                },
+                "pyExpr": "[bool(y == 1), bool(x == 2)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailYStays():\n    return always (y == 1 implies (y == 1 until x == 2))\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 73,
+            "column": 12
+          },
+          "end": {
+            "line": 73,
+            "column": 56
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 73,
+                "column": 20
+              },
+              "end": {
+                "line": 73,
+                "column": 55
+              }
+            },
+            "op": "IMPLIES",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 73,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 73,
+                    "column": 25
+                  }
+                },
+                "op": "ATOM",
+                "text": "y == 1"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 73,
+                    "column": 36
+                  },
+                  "end": {
+                    "line": 73,
+                    "column": 54
+                  }
+                },
+                "op": "UNTIL",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 73,
+                        "column": 36
+                      },
+                      "end": {
+                        "line": 73,
+                        "column": 41
+                      }
+                    },
+                    "op": "ATOM",
+                    "text": "y == 1"
+                  },
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 73,
+                        "column": 49
+                      },
+                      "end": {
+                        "line": 73,
+                        "column": 54
+                      }
+                    },
+                    "op": "ATOM",
+                    "atom": 1,
+                    "text": "x == 2"
+                  }
+                ],
+                "text": "y == 1 until x == 2"
+              }
+            ],
+            "text": "y == 1 implies (y == 1 until x == 2)"
+          }
+        ],
+        "text": "always (y == 1 implies (y == 1 until x == 2))"
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 75,
+          "column": 1
+        },
+        "end": {
+          "line": 78
+        }
+      },
+      "name": "FailBack",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 76,
+            "column": 5
+          },
+          "end": {
+            "line": 78
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 76,
+                "column": 5
+              },
+              "end": {
+                "line": 78
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 76,
+                  "column": 5
+                },
+                "end": {
+                  "line": 76,
+                  "column": 52
+                }
+              },
+              "pyExpr": "[bool(x == 1), bool(x == 0)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 76,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 76,
                     "column": 52
                   }
                 },
@@ -1673,11 +1928,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 67,
+            "line": 76,
             "column": 12
           },
           "end": {
-            "line": 67,
+            "line": 76,
             "column": 52
           }
         },
@@ -1686,11 +1941,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 67,
+                "line": 76,
                 "column": 24
               },
               "end": {
-                "line": 67,
+                "line": 76,
                 "column": 51
               }
             },
@@ -1699,11 +1954,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 67,
+                    "line": 76,
                     "column": 24
                   },
                   "end": {
-                    "line": 67,
+                    "line": 76,
                     "column": 29
                   }
                 },
@@ -1713,11 +1968,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 67,
+                    "line": 76,
                     "column": 35
                   },
                   "end": {
-                    "line": 67,
+                    "line": 76,
                     "column": 51
                   }
                 },
@@ -1726,11 +1981,11 @@
                   {
                     "sourceInfo": {
                       "start": {
-                        "line": 67,
+                        "line": 76,
                         "column": 46
                       },
                       "end": {
-                        "line": 67,
+                        "line": 76,
                         "column": 51
                       }
                     },
@@ -1751,22 +2006,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 69,
+          "line": 78,
           "column": 1
         },
         "end": {
-          "line": 71
+          "line": 80
         }
       },
       "name": "FailToggleLeadsTo",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 70,
+            "line": 79,
             "column": 5
           },
           "end": {
-            "line": 71
+            "line": 80
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -1774,21 +2029,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 70,
+                "line": 79,
                 "column": 5
               },
               "end": {
-                "line": 71
+                "line": 80
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 70,
+                  "line": 79,
                   "column": 5
                 },
                 "end": {
-                  "line": 70,
+                  "line": 79,
                   "column": 32
                 }
               },
@@ -1796,11 +2051,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 70,
+                    "line": 79,
                     "column": 5
                   },
                   "end": {
-                    "line": 70,
+                    "line": 79,
                     "column": 32
                   }
                 },
@@ -1814,11 +2069,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 70,
+            "line": 79,
             "column": 12
           },
           "end": {
-            "line": 70,
+            "line": 79,
             "column": 32
           }
         },
@@ -1827,11 +2082,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 70,
+                "line": 79,
                 "column": 12
               },
               "end": {
-                "line": 70,
+                "line": 79,
                 "column": 17
               }
             },
@@ -1841,11 +2096,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 70,
+                "line": 79,
                 "column": 27
               },
               "end": {
-                "line": 70,
+                "line": 79,
                 "column": 32
               }
             },
@@ -1862,11 +2117,11 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 9,
+          "line": 10,
           "column": 1
         },
         "end": {
-          "line": 13
+          "line": 14
         }
       },
       "name": "Init",
@@ -1877,11 +2132,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 10,
+            "line": 11,
             "column": 5
           },
           "end": {
-            "line": 13
+            "line": 14
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -1889,22 +2144,22 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 10,
+                "line": 11,
                 "column": 5
               },
               "end": {
-                "line": 11,
+                "line": 12,
                 "column": 4
               }
             },
             "pyStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 10,
+                  "line": 11,
                   "column": 5
                 },
                 "end": {
-                  "line": 10,
+                  "line": 11,
                   "column": 9
                 }
               },
@@ -1914,21 +2169,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 11,
+                "line": 12,
                 "column": 5
               },
               "end": {
-                "line": 13
+                "line": 14
               }
             },
             "pyStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 11,
+                  "line": 12,
                   "column": 5
                 },
                 "end": {
-                  "line": 11,
+                  "line": 12,
                   "column": 9
                 }
               },
@@ -1941,11 +2196,11 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 13,
+          "line": 14,
           "column": 1
         },
         "end": {
-          "line": 17
+          "line": 18
         }
       },
       "name": "Inc",
@@ -1953,11 +2208,11 @@
       "fairness": {
         "sourceInfo": {
           "start": {
-            "line": 13,
+            "line": 14,
             "column": 8
           },
           "end": {
-            "line": 13,
+            "line": 14,
             "column": 11
           }
         },
@@ -1966,11 +2221,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 14,
+            "line": 15,
             "column": 5
           },
           "end": {
-            "line": 17
+            "line": 18
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -1978,64 +2233,64 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 14,
+                "line": 15,
                 "column": 5
               },
               "end": {
-                "line": 17
+                "line": 18
               }
             },
             "ifStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 14,
+                  "line": 15,
                   "column": 5
                 },
                 "end": {
-                  "line": 17
+                  "line": 18
                 }
               },
               "branches": [
                 {
                   "sourceInfo": {
                     "start": {
-                      "line": 14,
+                      "line": 15,
                       "column": 8
                     },
                     "end": {
-                      "line": 17
+                      "line": 18
                     }
                   },
                   "condition": "x < 2",
                   "block": {
                     "sourceInfo": {
                       "start": {
-                        "line": 15,
+                        "line": 16,
                         "column": 9
                       },
                       "end": {
-                        "line": 17
+                        "line": 18
                       }
                     },
                     "stmts": [
                       {
                         "sourceInfo": {
                           "start": {
-                            "line": 15,
+                            "line": 16,
                             "column": 9
                           },
                           "end": {
-                            "line": 17
+                            "line": 18
                           }
                         },
                         "pyStmt": {
                           "sourceInfo": {
                             "start": {
-                              "line": 15,
+                              "line": 16,
                               "column": 9
                             },
                             "end": {
-                              "line": 15,
+                              "line": 16,
                               "column": 17
                             }
                           },
@@ -2047,11 +2302,11 @@
                   "conditionExpr": {
                     "sourceInfo": {
                       "start": {
-                        "line": 14,
+                        "line": 15,
                         "column": 8
                       },
                       "end": {
-                        "line": 14,
+                        "line": 15,
                         "column": 12
                       }
                     },
@@ -2067,11 +2322,11 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 17,
+          "line": 18,
           "column": 1
         },
         "end": {
-          "line": 20
+          "line": 21
         }
       },
       "name": "Toggle",
@@ -2082,11 +2337,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 18,
+            "line": 19,
             "column": 5
           },
           "end": {
-            "line": 20
+            "line": 21
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -2094,21 +2349,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 18,
+                "line": 19,
                 "column": 5
               },
               "end": {
-                "line": 20
+                "line": 21
               }
             },
             "pyStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 18,
+                  "line": 19,
                   "column": 5
                 },
                 "end": {
-                  "line": 18,
+                  "line": 19,
                   "column": 13
                 }
               },
@@ -2123,11 +2378,11 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 20,
+          "line": 21,
           "column": 1
         },
         "end": {
-          "line": 23
+          "line": 24
         }
       },
       "name": "done",
@@ -2135,11 +2390,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 21,
+            "line": 22,
             "column": 5
           },
           "end": {
-            "line": 23
+            "line": 24
           }
         },
         "flow": "FLOW_SERIAL",
@@ -2147,21 +2402,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 21,
+                "line": 22,
                 "column": 5
               },
               "end": {
-                "line": 23
+                "line": 24
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 21,
+                  "line": 22,
                   "column": 5
                 },
                 "end": {
-                  "line": 21,
+                  "line": 22,
                   "column": 17
                 }
               },
@@ -2169,11 +2424,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 21,
+                    "line": 22,
                     "column": 12
                   },
                   "end": {
-                    "line": 21,
+                    "line": 22,
                     "column": 17
                   }
                 },
@@ -2193,7 +2448,7 @@
           "column": 1
         },
         "end": {
-          "line": 9
+          "line": 8
         }
       },
       "pyStmt": {
@@ -2208,6 +2463,30 @@
           }
         },
         "code": "VALUES = [1, 2, 3]"
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 8,
+          "column": 1
+        },
+        "end": {
+          "line": 10
+        }
+      },
+      "pyStmt": {
+        "sourceInfo": {
+          "start": {
+            "line": 8,
+            "column": 1
+          },
+          "end": {
+            "line": 8,
+            "column": 38
+          }
+        },
+        "code": "TARGETS = [record(at=1), record(at=2)]"
       }
     }
   ],

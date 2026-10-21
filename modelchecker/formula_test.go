@@ -39,10 +39,12 @@ func TestFormulaAssertions(t *testing.T) {
 		names = append(names, inv.Name)
 	}
 	// The header for clauses expand in place, one instance per binding.
-	for _, want := range []string{"PassFor[1]", "PassFor[2]", "PassPairs[0, 1]", "PassPairs[1, 2]", "FailFor[1]", "FailFor[3]"} {
+	for _, want := range []string{"PassFor[1]", "PassFor[2]", "PassPairs[0, 1]", "PassPairs[1, 2]", "FailFor[1]", "FailFor[3]",
+		"PassNested[1, 0]", "PassNested[2, 1]", "PassRecords[record(at = 2)]"} {
 		assert.Contains(t, names, want)
 	}
 	assert.NotContains(t, names, "PassFor[3]")
+	assert.NotContains(t, names, "PassNested[0, 0]")
 	assert.NotContains(t, names, "PassFor")
 
 	s := newSccGraph(root, nodes)
@@ -96,7 +98,7 @@ func TestExpandAssertionHeaderErrors(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			file := &ast.File{Invariants: tc.invariants}
-			err := ExpandAssertionHeaders(file, globals, NewModelChecker("test"))
+			_, err := ExpandAssertionHeaders(file, globals, NewModelChecker("test"))
 			if tc.want == "" {
 				require.Nil(t, err)
 				require.Len(t, file.Invariants, 1)

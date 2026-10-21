@@ -283,3 +283,53 @@ func TestProductMapsToGraph(t *testing.T) {
 		}
 	}
 }
+
+// Fairness is judged on the state graph's actions, even where the product
+// drops an action's edges. Here A leads to p, so the product with
+// always !p has no A edges, yet A stays enabled. Node 0 loops through node 2,
+// where A isn't enabled, so only strong fairness forces A.
+func TestProductFairnessOnDroppedEdges(t *testing.T) {
+	const b, a = 0, 1
+	for _, tc := range []struct {
+		fairness liveness.Fairness
+		loop     bool // whether 0 loops through 2 rather than on itself
+		want     bool // whether there's a fair run where p never holds
+	}{
+		{liveness.Unfair, false, true},
+		{liveness.Weak, false, false},
+		{liveness.Strong, false, false},
+		{liveness.Unfair, true, true},
+		{liveness.Weak, true, true},
+		{liveness.Strong, true, false},
+	} {
+		g := &liveness.Graph{NumNodes: 3, Init: []int{0}, Actions: []liveness.Fairness{liveness.Unfair, tc.fairness}}
+		g.Edges = []liveness.Edge{{From: 0, To: 1, Action: a}, {From: 1, To: 1, Action: b}}
+		if tc.loop {
+			g.Edges = append(g.Edges, liveness.Edge{From: 0, To: 2, Action: b}, liveness.Edge{From: 2, To: 0, Action: b})
+		} else {
+			g.Edges = append(g.Edges, liveness.Edge{From: 0, To: 0, Action: b})
+		}
+		g.EnabledFromEdges()
+		labeled := []bool{true, true, true}
+		letter := []uint64{0, 1, 0}
+		p, err := liveness.NewProduct(g, liveness.Not(liveness.Eventually(liveness.Atom(0))), labeled, letter, make([]bool, 3))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, e := range p.Graph.Edges {
+			if e.Action == a {
+				t.Fatalf("%+v: the product kept an edge of A", tc)
+			}
+		}
+		l, err := liveness.Check(p.Graph)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if (l != nil) != tc.want {
+			t.Errorf("fairness %v, loop %v: found a run %v, want %v", tc.fairness, tc.loop, l != nil, tc.want)
+		}
+		if got := checkAgainstOracle(t, p.Graph); got != tc.want {
+			t.Errorf("fairness %v, loop %v: oracle says %v, want %v", tc.fairness, tc.loop, got, tc.want)
+		}
+	}
+}

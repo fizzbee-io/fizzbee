@@ -5,6 +5,7 @@ deadlock_detection: false
 # Assertions named Pass... hold, Fail... don't (see formula_test.go).
 
 VALUES = [1, 2, 3]
+TARGETS = [record(at=1), record(at=2)]
 
 action Init:
     x = 0
@@ -50,6 +51,14 @@ assertion PassFor for v in VALUES if v < 3:
 
 assertion PassPairs for a, b in [(0, 1), (1, 2)]:
     return x == a leadsto x == b
+
+# The inner iterable uses the outer value.
+assertion PassNested for a in range(3) for b in range(a):
+    return x == b leadsto x == a
+
+# Values without a literal form are bound as they are.
+assertion PassRecords for t in TARGETS:
+    return eventually x == t.at
 
 assertion FailFor for v in VALUES:
     return eventually x == v

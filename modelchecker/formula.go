@@ -62,7 +62,7 @@ func CheckFormulaAtoms(process *Process, invariant *ast.Invariant, index int, pr
 	result := execFunctionBlock(cloned, invariant.Name, fmt.Sprintf("Invariants[%d]", index))
 	list, ok := result.(*starlark.List)
 	if !ok {
-		panic(fmt.Sprintf("assertion %s: expected the list of atom values, got %s", invariant.Name, result.Type()))
+		panic(fmt.Sprintf("assertion %s: expected the list of atom values, got %v", invariant.Name, result))
 	}
 	if list.Len() > 64 {
 		panic(fmt.Sprintf("assertion %s has %d atoms; at most 64 are supported", invariant.Name, list.Len()))
@@ -80,8 +80,11 @@ func CheckFormulaAtoms(process *Process, invariant *ast.Invariant, index int, pr
 // header by one instance per binding, named like Base[v1, v2]. Each instance
 // binds the clause variables at the top of its body. Iterables and filters
 // are evaluated once, over builtins and constants, so the set of instances
-// is fixed before Init. Expanding twice is a no-op.
-func ExpandAssertionHeaders(file *ast.File, globals starlark.StringDict, evaluator *Evaluator) error {
+// is fixed before Init. The values bound are the ones found here: each is
+// returned under a hidden name for the caller to add to the constants, and
+// the instance's binding statement reads it from there. Expanding twice is
+// a no-op.
+func ExpandAssertionHeaders(file *ast.File, globals starlark.StringDict, evaluator *Evaluator) (starlark.StringDict, error) {
 	expanded := false
 	for _, inv := range file.Invariants {
 		if len(inv.ForClauses) > 0 {
@@ -89,7 +92,7 @@ func ExpandAssertionHeaders(file *ast.File, globals starlark.StringDict, evaluat
 		}
 	}
 	if !expanded {
-		return nil
+		return nil, nil
 	}
 	names := map[string]bool{}
 	for _, inv := range file.Invariants {
@@ -100,15 +103,16 @@ func ExpandAssertionHeaders(file *ast.File, globals starlark.StringDict, evaluat
 	env := maps.Clone(lib.Builtins)
 	maps.Copy(env, globals)
 
+	values := starlark.StringDict{}
 	var out []*ast.Invariant
 	for _, inv := range file.Invariants {
 		if len(inv.ForClauses) == 0 {
 			out = append(out, inv)
 			continue
 		}
-		bindings, err := expandForClauses(file.GetSourceInfo().GetFileName(), inv, env, evaluator)
+		bindings, err := expandForClauses(file.GetSourceInfo().GetFileName(), inv, env, evaluator, values)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if len(bindings) == 0 {
 			fmt.Printf("WARNING: assertion %s has no instances: its for clauses produce no values\n", inv.Name)
@@ -118,7 +122,7 @@ func ExpandAssertionHeaders(file *ast.File, globals starlark.StringDict, evaluat
 			instance.ForClauses = nil
 			instance.Name = fmt.Sprintf("%s[%s]", inv.Name, strings.Join(b.labels, ", "))
 			if names[instance.Name] {
-				return fmt.Errorf("assertion %s: instance name %s is used twice; make the values' str() distinct", inv.Name, instance.Name)
+				return nil, fmt.Errorf("assertion %s: instance name %s is used twice; make the values' str() distinct", inv.Name, instance.Name)
 			}
 			names[instance.Name] = true
 			instance.Block.Stmts = append(b.stmts, instance.Block.Stmts...)
@@ -126,7 +130,7 @@ func ExpandAssertionHeaders(file *ast.File, globals starlark.StringDict, evaluat
 		}
 	}
 	file.Invariants = out
-	return nil
+	return values, nil
 }
 
 type forBinding struct {
@@ -134,7 +138,7 @@ type forBinding struct {
 	labels []string
 }
 
-func expandForClauses(fileName string, inv *ast.Invariant, env starlark.StringDict, evaluator *Evaluator) ([]forBinding, error) {
+func expandForClauses(fileName string, inv *ast.Invariant, env starlark.StringDict, evaluator *Evaluator, values starlark.StringDict) ([]forBinding, error) {
 	var results []forBinding
 	var expand func(k int, vars starlark.StringDict, b forBinding) error
 	expand = func(k int, vars starlark.StringDict, b forBinding) error {
@@ -159,24 +163,24 @@ func expandForClauses(fileName string, inv *ast.Invariant, env starlark.StringDi
 		}
 		defer iter.Done()
 		var v starlark.Value
-		for i := 0; iter.Next(&v); i++ {
+		for iter.Next(&v) {
 			if _, ok := v.(*lib.SymmetricValue); ok {
 				return fail("can't iterate over symmetric values (%s) on an assertion header yet", v)
 			}
-			values := []starlark.Value{v}
+			unpacked := []starlark.Value{v}
 			if len(clause.Targets) > 1 {
 				seq, ok := v.(starlark.Indexable)
 				if !ok || seq.Len() != len(clause.Targets) {
 					return fail("can't unpack %s into %s", v, strings.Join(clause.Targets, ", "))
 				}
-				values = make([]starlark.Value, seq.Len())
-				for j := range values {
-					values[j] = seq.Index(j)
+				unpacked = make([]starlark.Value, seq.Len())
+				for j := range unpacked {
+					unpacked[j] = seq.Index(j)
 				}
 			}
 			next := maps.Clone(vars)
 			for j, t := range clause.Targets {
-				next[t] = values[j]
+				next[t] = unpacked[j]
 			}
 			keep := true
 			for _, filter := range clause.FilterPyExprs {
@@ -192,9 +196,11 @@ func expandForClauses(fileName string, inv *ast.Invariant, env starlark.StringDi
 			if !keep {
 				continue
 			}
+			hidden := fmt.Sprintf("__for_%d__", len(values))
+			values[hidden] = v
 			nb := forBinding{
-				stmts:  append(append([]*ast.Statement{}, b.stmts...), bindingStmt(clause, v, i)),
-				labels: append(append([]string{}, b.labels...), labelOf(values)...),
+				stmts:  append(append([]*ast.Statement{}, b.stmts...), bindingStmt(clause, hidden)),
+				labels: append(append([]string{}, b.labels...), labelOf(unpacked)...),
 			}
 			if err := expand(k+1, next, nb); err != nil {
 				return err
@@ -208,34 +214,14 @@ func expandForClauses(fileName string, inv *ast.Invariant, env starlark.StringDi
 	return results, nil
 }
 
-// bindingStmt assigns the i-th element v of the clause's iterable to its
-// targets. A value with a literal form is written out; anything else is
-// looked up by position in the iterable.
-func bindingStmt(clause *ast.ForClause, v starlark.Value, i int) *ast.Statement {
-	expr := fmt.Sprintf("list(%s)[%d]", clause.IterablePyExpr, i)
-	if isLiteral(v) {
-		expr = v.String()
-	}
-	code := fmt.Sprintf("%s = %s", strings.Join(clause.Targets, ", "), expr)
+// bindingStmt assigns the value stored under a hidden constant name to the
+// clause's targets.
+func bindingStmt(clause *ast.ForClause, hidden string) *ast.Statement {
+	code := fmt.Sprintf("%s = %s", strings.Join(clause.Targets, ", "), hidden)
 	return &ast.Statement{
 		SourceInfo: clause.SourceInfo,
 		PyStmt:     &ast.PyStmt{SourceInfo: clause.SourceInfo, Code: code},
 	}
-}
-
-func isLiteral(v starlark.Value) bool {
-	switch v := v.(type) {
-	case starlark.String, starlark.Int, starlark.Bool, starlark.NoneType:
-		return true
-	case starlark.Tuple:
-		for _, e := range v {
-			if !isLiteral(e) {
-				return false
-			}
-		}
-		return true
-	}
-	return false
 }
 
 func labelOf(values []starlark.Value) []string {

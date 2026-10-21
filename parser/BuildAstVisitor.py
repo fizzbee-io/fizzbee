@@ -1369,7 +1369,11 @@ class BuildAstVisitor(FizzParserVisitor):
         tests = []
         for child in ctx.getChildren():
             if isinstance(child, FizzParser.ExprlistContext):
-                clause.targets.extend(self.visit(child))
+                targets = [t.strip() for t in self.visit(child)]
+                for t in targets:
+                    if not t.isidentifier():
+                        raise formula_error(child, f"for {t} in ...: the targets on an assertion header must be names, like `for a, b in PAIRS`")
+                clause.targets.extend(targets)
             elif isinstance(child, FizzParser.Logical_testContext):
                 tests.append(self.get_py_str(child))
         clause.iterable_py_expr = tests[0]
