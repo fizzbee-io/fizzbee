@@ -57,6 +57,7 @@ func CheckTransitionInvariants(process *Process) map[int][]int {
 	if process.Heap.CachedHashCode == process.Parent.Heap.CachedHashCode && process.Parent.Heap.CachedHashCode != "" {
 		return nil
 	}
+	defer lib.RestoreGlobalRefs(lib.SnapshotGlobalRefs())
 	results := make(map[int][]int)
 	for i, file := range process.Files {
 		results[i] = make([]int, 0)
@@ -85,6 +86,10 @@ func CheckInvariantsWithProber(process *Process, prober NextStatesProber) map[in
 	if len(process.Files) > 1 {
 		panic("Invariant checking not supported for multiple files")
 	}
+	// Roles and channels an assertion creates, directly or in a func it
+	// calls, are thrown away with it; don't let them shift the ids that
+	// real exploration allocates next. Restored even if an assertion fails.
+	defer lib.RestoreGlobalRefs(lib.SnapshotGlobalRefs())
 	results := make(map[int][]int)
 	for i, file := range process.Files {
 		results[i] = make([]int, 0)
