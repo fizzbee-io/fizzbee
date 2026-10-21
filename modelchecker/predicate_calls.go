@@ -77,21 +77,8 @@ func (p *Process) callFizzFunc(_ *starlark.Thread, recv *lib.Role, name string, 
 		return nil, fmt.Errorf("%s: fizz func calls nested deeper than %d", key, maxFizzCallDepth)
 	}
 
-	// Builtins installed in the heap (next_states) can't be deep-cloned;
-	// set them aside and share them with the clone.
-	builtins := starlark.StringDict{}
-	for k, v := range p.Heap.state {
-		if _, ok := v.(*starlark.Builtin); ok {
-			builtins[k] = v
-			delete(p.Heap.state, k)
-		}
-	}
 	refs := make(map[starlark.Value]starlark.Value)
-	clone := p.CloneWithRefs(nil, 0, refs)
-	for k, v := range builtins {
-		p.Heap.state[k] = v
-		clone.Heap.state[k] = v
-	}
+	clone := p.cloneSharingBuiltins(refs)
 	clone.predicateSteps = p.predicateSteps
 	clone.enablePredicateCalls()
 	clone.fizzCallDepth = p.fizzCallDepth + 1
@@ -185,6 +172,24 @@ func (p *Process) callFizzFunc(_ *starlark.Thread, recv *lib.Role, name string, 
 		return v, nil
 	}
 	return starlark.None, nil
+}
+
+// cloneSharingBuiltins clones p for a call. Builtins installed in the heap
+// (next_states) can't be deep-cloned, so they are set aside during the clone
+// and shared with it. They are put back even if cloning panics, so p is
+// unchanged on every path.
+func (p *Process) cloneSharingBuiltins(refs map[starlark.Value]starlark.Value) *Process {
+	builtins := starlark.StringDict{}
+	for k, v := range p.Heap.state {
+		if _, ok := v.(*starlark.Builtin); ok {
+			builtins[k] = v
+			delete(p.Heap.state, k)
+		}
+	}
+	defer maps.Copy(p.Heap.state, builtins)
+	clone := p.CloneWithRefs(nil, 0, refs)
+	maps.Copy(clone.Heap.state, builtins)
+	return clone
 }
 
 func hasParam(def *Definition, name string) bool {
