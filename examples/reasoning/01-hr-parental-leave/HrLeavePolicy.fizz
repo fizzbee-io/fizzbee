@@ -1,0 +1,52 @@
+---
+deadlock_detection: false
+options:
+    max_actions: 1
+---
+
+# HR Leave Policy — FizzBee reproduction of the AWS Bedrock
+# Automated Reasoning checks "MyHrPolicy" example.
+#
+# Source rules (AWS docs, automated-reasoning-checks-concepts):
+#   R1 (SMT-LIB): (=> (and isFullTime (> tenureMonths 12)) eligibleForParentalLeave)
+#   R2 (from the AWS test-case example "only full-time employees are
+#       eligible for leave of absence"): eligibleForLeaveOfAbsence => isFullTime
+#
+# How this maps to SMT: an SMT policy is a set of variables plus a set of
+# assertions; every assignment that satisfies all assertions is a "world"
+# the policy allows. Here the Scenario action picks every variable
+# nondeterministically and `require`s each rule, so the reachable states
+# after Scenario are exactly the worlds the policy allows (within the
+# bounds below). Claims are then checked as assertions over those states;
+# see check_claims.py and README.md.
+#
+# Note: the rules live in an action rather than in Init because a
+# `require` that prunes a branch of Init currently discards every Init
+# state (see README.md, "Known issues").
+
+# SMT integers are unbounded; FizzBee enumerates, so tenure is bounded.
+# 120 months (10 years) covers every claim in claims.json.
+MAX_TENURE_MONTHS = 120
+
+action Init:
+    known = False
+    isFullTime = False
+    tenureMonths = 0
+    eligibleForParentalLeave = False
+    eligibleForLeaveOfAbsence = False
+
+atomic action Scenario:
+    require not known
+    isFullTime = oneof [True, False]
+    tenureMonths = oneof range(0, MAX_TENURE_MONTHS + 1)
+    eligibleForParentalLeave = oneof [True, False]
+    eligibleForLeaveOfAbsence = oneof [True, False]
+
+    # R1: full-time employees with more than 12 months of tenure are
+    # eligible for parental leave.
+    require (not (isFullTime and tenureMonths > 12)) or eligibleForParentalLeave
+
+    # R2: only full-time employees are eligible for leave of absence.
+    require (not eligibleForLeaveOfAbsence) or isFullTime
+
+    known = True
