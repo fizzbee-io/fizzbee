@@ -1,3 +1,7 @@
+# Example 0117: Temporal Formula Violation
+# A temporal formula that fails, with a counterexample run that violates it
+# Demonstrates: temporal formulas, assertion failure, counterexample
+
 ---
 deadlock_detection: false
 ---

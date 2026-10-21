@@ -1,11 +1,14 @@
+# Example 0116: Temporal Formulas
+# An assertion without a prefix returns a temporal formula built from always, eventually, until, leadsto and implies
+# Demonstrates: temporal formulas, until, leadsto, for clauses on an assertion header
+
 ---
 deadlock_detection: false
 ---
-# Temporal formulas: an assertion without a prefix returns a formula built
-# from always, eventually, until, leadsto, implies, and, or and not. Each
-# maximal non-temporal part of the formula (an atom) is an ordinary
-# expression, evaluated in every state. Locals before the return are
-# recomputed in every state too.
+# An assertion can return a formula built from always, eventually, until,
+# leadsto, implies, and, or and not. Each maximal non-temporal part of the
+# formula (an atom) is an ordinary expression, evaluated in every state.
+# Locals before the return are recomputed in every state too.
 #
 # A server starts, then answers its clients' requests. Each client sends at
 # most two requests. Start and Respond are fair, so every request is answered.
