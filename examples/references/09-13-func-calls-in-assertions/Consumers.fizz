@@ -1,14 +1,16 @@
+# Example 0115: Func Calls in Assertions
+# Fizz funcs can be called anywhere in an assertion expression, each on its own copy of the state
+# Demonstrates: role funcs and top-level funcs called inside expressions
+
 ---
 deadlock_detection: false
 ---
 
-# Func calls in assertions
 # Inside an assertion, fizz funcs can be called anywhere in an expression:
 # in a return, in a condition, in a list comprehension, or on an
 # invariants line. Each call runs on its own copy of the state, so a func
 # can't change the model. It must be deterministic: no oneof, any or
 # parallel blocks.
-# Demonstrates: role funcs and top-level funcs called inside expressions
 
 MAX_MESSAGES = 2
 
