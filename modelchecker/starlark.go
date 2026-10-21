@@ -21,6 +21,9 @@ func (e *Evaluator) EvalPyExprWithContext(filename string, src interface{}, prev
 	// Inject symmetry context if provided
 	if symCtx != nil {
 		thread.SetLocal(lib.SymmetryContextKey, symCtx)
+		if symCtx.FizzCall != nil {
+			thread.SetLocal(lib.FizzCallKey, symCtx.FizzCall)
+		}
 	}
 	value, err := starlark.EvalOptions(e.options, thread, filename, src, prevState)
 	if err != nil {
@@ -69,6 +72,9 @@ func (e *Evaluator) ExecPyStmtWithContext(filename string, stmt *ast.PyStmt, pre
 	// Inject symmetry context if provided
 	if symCtx != nil {
 		thread.SetLocal(lib.SymmetryContextKey, symCtx)
+		if symCtx.FizzCall != nil {
+			thread.SetLocal(lib.FizzCallKey, symCtx.FizzCall)
+		}
 	}
 	err = starlark.ExecREPLChunk(f, thread, prevState)
 	globals := prevState

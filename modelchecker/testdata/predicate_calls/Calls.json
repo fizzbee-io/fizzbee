@@ -1,0 +1,1961 @@
+{
+  "sourceInfo": {
+    "fileName": "Calls.fizz",
+    "start": {
+      "line": 7,
+      "column": 1
+    },
+    "end": {
+      "line": 85
+    }
+  },
+  "invariants": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 53,
+          "column": 5
+        },
+        "end": {
+          "line": 55
+        }
+      },
+      "always": true,
+      "pyExpr": "all_zero() or counters[0].value + counters[1].value > 0"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 55,
+          "column": 1
+        },
+        "end": {
+          "line": 58
+        }
+      },
+      "name": "RoleMethod",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 56,
+            "column": 5
+          },
+          "end": {
+            "line": 58
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 56,
+                "column": 5
+              },
+              "end": {
+                "line": 58
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 56,
+                  "column": 5
+                },
+                "end": {
+                  "line": 56,
+                  "column": 64
+                }
+              },
+              "pyExpr": "(not counters[0].is_zero()) or counters[0].value == 0",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 56,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 56,
+                    "column": 64
+                  }
+                },
+                "pyExpr": "(not counters[0].is_zero()) or counters[0].value == 0"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def RoleMethod():\n    return (not counters[0].is_zero()) or counters[0].value == 0\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 58,
+          "column": 1
+        },
+        "end": {
+          "line": 61
+        }
+      },
+      "name": "TopLevel",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 59,
+            "column": 5
+          },
+          "end": {
+            "line": 61
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 59,
+                "column": 5
+              },
+              "end": {
+                "line": 61
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 59,
+                  "column": 5
+                },
+                "end": {
+                  "line": 59,
+                  "column": 76
+                }
+              },
+              "pyExpr": "all_zero() == (counters[0].value == 0 and counters[1].value == 0)",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 59,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 59,
+                    "column": 76
+                  }
+                },
+                "pyExpr": "all_zero() == (counters[0].value == 0 and counters[1].value == 0)"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def TopLevel():\n    return all_zero() == (counters[0].value == 0 and counters[1].value == 0)\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 61,
+          "column": 1
+        },
+        "end": {
+          "line": 64
+        }
+      },
+      "name": "ArgsAndDefaults",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 62,
+            "column": 5
+          },
+          "end": {
+            "line": 64
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 62,
+                "column": 5
+              },
+              "end": {
+                "line": 64
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 62,
+                  "column": 5
+                },
+                "end": {
+                  "line": 62,
+                  "column": 109
+                }
+              },
+              "pyExpr": "counters[1].plus(1) == counters[1].value + 1 and counters[1].plus(1, m=2) == counters[1].value + 3",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 62,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 62,
+                    "column": 109
+                  }
+                },
+                "pyExpr": "counters[1].plus(1) == counters[1].value + 1 and counters[1].plus(1, m=2) == counters[1].value + 3"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def ArgsAndDefaults():\n    return counters[1].plus(1) == counters[1].value + 1 and counters[1].plus(1, m=2) == counters[1].value + 3\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 64,
+          "column": 1
+        },
+        "end": {
+          "line": 67
+        }
+      },
+      "name": "Nested",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 65,
+            "column": 5
+          },
+          "end": {
+            "line": 67
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 65,
+                "column": 5
+              },
+              "end": {
+                "line": 67
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 65,
+                  "column": 5
+                },
+                "end": {
+                  "line": 65,
+                  "column": 28
+                }
+              },
+              "pyExpr": "two_level(2) == 3",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 65,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 65,
+                    "column": 28
+                  }
+                },
+                "pyExpr": "two_level(2) == 3"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def Nested():\n    return two_level(2) == 3\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 67,
+          "column": 1
+        },
+        "end": {
+          "line": 70
+        }
+      },
+      "name": "ShortCircuit",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 68,
+            "column": 5
+          },
+          "end": {
+            "line": 70
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 68,
+                "column": 5
+              },
+              "end": {
+                "line": 70
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 68,
+                  "column": 5
+                },
+                "end": {
+                  "line": 68,
+                  "column": 54
+                }
+              },
+              "pyExpr": "(True or boom()) and not (False and boom())",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 68,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 68,
+                    "column": 54
+                  }
+                },
+                "pyExpr": "(True or boom()) and not (False and boom())"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def ShortCircuit():\n    return (True or boom()) and not (False and boom())\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 70,
+          "column": 1
+        },
+        "end": {
+          "line": 73
+        }
+      },
+      "name": "NoLeak",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 71,
+            "column": 5
+          },
+          "end": {
+            "line": 73
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 71,
+                "column": 5
+              },
+              "end": {
+                "line": 73
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 71,
+                  "column": 5
+                },
+                "end": {
+                  "line": 71,
+                  "column": 77
+                }
+              },
+              "pyExpr": "bump() == 1 and bump() == 1 and x == 0 and counters[0].value != 99",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 71,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 71,
+                    "column": 77
+                  }
+                },
+                "pyExpr": "bump() == 1 and bump() == 1 and x == 0 and counters[0].value != 99"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def NoLeak():\n    return bump() == 1 and bump() == 1 and x == 0 and counters[0].value != 99\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 73,
+          "column": 1
+        },
+        "end": {
+          "line": 76
+        }
+      },
+      "name": "Comprehension",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 74,
+            "column": 5
+          },
+          "end": {
+            "line": 76
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 74,
+                "column": 5
+              },
+              "end": {
+                "line": 76
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 74,
+                  "column": 5
+                },
+                "end": {
+                  "line": 74,
+                  "column": 103
+                }
+              },
+              "pyExpr": "[ident(i) for i in range(3)] == [0, 1, 2] and len([c for c in counters if c.is_zero()]) <= 2",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 74,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 74,
+                    "column": 103
+                  }
+                },
+                "pyExpr": "[ident(i) for i in range(3)] == [0, 1, 2] and len([c for c in counters if c.is_zero()]) <= 2"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def Comprehension():\n    return [ident(i) for i in range(3)] == [0, 1, 2] and len([c for c in counters if c.is_zero()]) <= 2\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 76,
+          "column": 1
+        },
+        "end": {
+          "line": 79
+        }
+      },
+      "name": "SerialFunc",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 77,
+            "column": 5
+          },
+          "end": {
+            "line": 79
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 77,
+                "column": 5
+              },
+              "end": {
+                "line": 79
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 77,
+                  "column": 5
+                },
+                "end": {
+                  "line": 77,
+                  "column": 21
+                }
+              },
+              "pyExpr": "ser() == 3",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 77,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 77,
+                    "column": 21
+                  }
+                },
+                "pyExpr": "ser() == 3"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def SerialFunc():\n    return ser() == 3\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 79,
+          "column": 1
+        },
+        "end": {
+          "line": 83
+        }
+      },
+      "name": "StatementForm",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 80,
+            "column": 5
+          },
+          "end": {
+            "line": 83
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 80,
+                "column": 5
+              },
+              "end": {
+                "line": 81,
+                "column": 4
+              }
+            },
+            "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 80,
+                  "column": 5
+                },
+                "end": {
+                  "line": 80,
+                  "column": 18
+                }
+              },
+              "vars": [
+                "r"
+              ],
+              "name": "all_zero"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 81,
+                "column": 5
+              },
+              "end": {
+                "line": 83
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 81,
+                  "column": 5
+                },
+                "end": {
+                  "line": 81,
+                  "column": 26
+                }
+              },
+              "pyExpr": "r == all_zero()",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 81,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 81,
+                    "column": 26
+                  }
+                },
+                "pyExpr": "r == all_zero()"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def StatementForm():\n    r = all_zero()\n    return r == all_zero()\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 83,
+          "column": 1
+        },
+        "end": {
+          "line": 85
+        }
+      },
+      "name": "Transition",
+      "temporalOperators": [
+        "transition"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 84,
+            "column": 5
+          },
+          "end": {
+            "line": 85
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 84,
+                "column": 5
+              },
+              "end": {
+                "line": 85
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 84,
+                  "column": 5
+                },
+                "end": {
+                  "line": 84,
+                  "column": 38
+                }
+              },
+              "pyExpr": "all_zero() in [True, False]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 84,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 84,
+                    "column": 38
+                  }
+                },
+                "pyExpr": "all_zero() in [True, False]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def Transition():\n    return all_zero() in [True, False]\n",
+      "params": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 83,
+              "column": 33
+            },
+            "end": {
+              "line": 83,
+              "column": 38
+            }
+          },
+          "name": "before"
+        },
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 83,
+              "column": 41
+            },
+            "end": {
+              "line": 83,
+              "column": 45
+            }
+          },
+          "name": "after"
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 46,
+          "column": 1
+        },
+        "end": {
+          "line": 52
+        }
+      },
+      "name": "Init",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 47,
+            "column": 5
+          },
+          "end": {
+            "line": 52
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 47,
+                "column": 5
+              },
+              "end": {
+                "line": 48,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 47,
+                  "column": 5
+                },
+                "end": {
+                  "line": 47,
+                  "column": 9
+                }
+              },
+              "code": "x = 0"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 48,
+                "column": 5
+              },
+              "end": {
+                "line": 49,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 48,
+                  "column": 5
+                },
+                "end": {
+                  "line": 48,
+                  "column": 17
+                }
+              },
+              "code": "counters = []"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 49,
+                "column": 5
+              },
+              "end": {
+                "line": 52
+              }
+            },
+            "forStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 49,
+                  "column": 5
+                },
+                "end": {
+                  "line": 52
+                }
+              },
+              "loopVars": [
+                "i"
+              ],
+              "pyExpr": "range(2)",
+              "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 50,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 52
+                  }
+                },
+                "stmts": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 50,
+                        "column": 9
+                      },
+                      "end": {
+                        "line": 52
+                      }
+                    },
+                    "callStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 50,
+                          "column": 9
+                        },
+                        "end": {
+                          "line": 50,
+                          "column": 34
+                        }
+                      },
+                      "name": "append",
+                      "args": [
+                        {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 50,
+                              "column": 25
+                            },
+                            "end": {
+                              "line": 50,
+                              "column": 33
+                            }
+                          },
+                          "pyExpr": "Counter()",
+                          "expr": {
+                            "sourceInfo": {
+                              "start": {
+                                "line": 50,
+                                "column": 25
+                              },
+                              "end": {
+                                "line": 50,
+                                "column": 33
+                              }
+                            },
+                            "pyExpr": "Counter()"
+                          }
+                        }
+                      ],
+                      "receiver": "counters"
+                    }
+                  }
+                ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 49,
+                    "column": 14
+                  },
+                  "end": {
+                    "line": 49,
+                    "column": 21
+                  }
+                },
+                "pyExpr": "range(2)"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "functions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 21,
+          "column": 1
+        },
+        "end": {
+          "line": 24
+        }
+      },
+      "name": "ident",
+      "flow": "FLOW_SERIAL",
+      "params": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 21,
+              "column": 12
+            },
+            "end": {
+              "line": 21,
+              "column": 12
+            }
+          },
+          "name": "i"
+        }
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 22,
+            "column": 5
+          },
+          "end": {
+            "line": 24
+          }
+        },
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 22,
+                "column": 5
+              },
+              "end": {
+                "line": 24
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 22,
+                  "column": 5
+                },
+                "end": {
+                  "line": 22,
+                  "column": 12
+                }
+              },
+              "pyExpr": "i",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 22,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 22,
+                    "column": 12
+                  }
+                },
+                "pyExpr": "i"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 24,
+          "column": 1
+        },
+        "end": {
+          "line": 27
+        }
+      },
+      "name": "two_level",
+      "flow": "FLOW_SERIAL",
+      "params": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 24,
+              "column": 16
+            },
+            "end": {
+              "line": 24,
+              "column": 16
+            }
+          },
+          "name": "i"
+        }
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 25,
+            "column": 5
+          },
+          "end": {
+            "line": 27
+          }
+        },
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 25,
+                "column": 5
+              },
+              "end": {
+                "line": 27
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 25,
+                  "column": 5
+                },
+                "end": {
+                  "line": 25,
+                  "column": 30
+                }
+              },
+              "pyExpr": "ident(i) + ident(1)",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 25,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 25,
+                    "column": 30
+                  }
+                },
+                "pyExpr": "ident(i) + ident(1)"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 27,
+          "column": 1
+        },
+        "end": {
+          "line": 33
+        }
+      },
+      "name": "all_zero",
+      "flow": "FLOW_SERIAL",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 28,
+            "column": 5
+          },
+          "end": {
+            "line": 33
+          }
+        },
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 28,
+                "column": 5
+              },
+              "end": {
+                "line": 31,
+                "column": 4
+              }
+            },
+            "forStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 28,
+                  "column": 5
+                },
+                "end": {
+                  "line": 31,
+                  "column": 4
+                }
+              },
+              "loopVars": [
+                "c"
+              ],
+              "pyExpr": "counters",
+              "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 29,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 31,
+                    "column": 4
+                  }
+                },
+                "stmts": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 29,
+                        "column": 9
+                      },
+                      "end": {
+                        "line": 31,
+                        "column": 4
+                      }
+                    },
+                    "ifStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 29,
+                          "column": 9
+                        },
+                        "end": {
+                          "line": 31,
+                          "column": 4
+                        }
+                      },
+                      "branches": [
+                        {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 29,
+                              "column": 12
+                            },
+                            "end": {
+                              "line": 31,
+                              "column": 4
+                            }
+                          },
+                          "condition": "not c.is_zero()",
+                          "block": {
+                            "sourceInfo": {
+                              "start": {
+                                "line": 30,
+                                "column": 13
+                              },
+                              "end": {
+                                "line": 31,
+                                "column": 4
+                              }
+                            },
+                            "stmts": [
+                              {
+                                "sourceInfo": {
+                                  "start": {
+                                    "line": 30,
+                                    "column": 13
+                                  },
+                                  "end": {
+                                    "line": 31,
+                                    "column": 4
+                                  }
+                                },
+                                "returnStmt": {
+                                  "sourceInfo": {
+                                    "start": {
+                                      "line": 30,
+                                      "column": 13
+                                    },
+                                    "end": {
+                                      "line": 30,
+                                      "column": 24
+                                    }
+                                  },
+                                  "pyExpr": "False",
+                                  "expr": {
+                                    "sourceInfo": {
+                                      "start": {
+                                        "line": 30,
+                                        "column": 20
+                                      },
+                                      "end": {
+                                        "line": 30,
+                                        "column": 24
+                                      }
+                                    },
+                                    "pyExpr": "False"
+                                  }
+                                }
+                              }
+                            ]
+                          },
+                          "conditionExpr": {
+                            "sourceInfo": {
+                              "start": {
+                                "line": 29,
+                                "column": 12
+                              },
+                              "end": {
+                                "line": 29,
+                                "column": 26
+                              }
+                            },
+                            "pyExpr": "not c.is_zero()"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 28,
+                    "column": 14
+                  },
+                  "end": {
+                    "line": 28,
+                    "column": 21
+                  }
+                },
+                "pyExpr": "counters"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 31,
+                "column": 5
+              },
+              "end": {
+                "line": 33
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 31,
+                  "column": 5
+                },
+                "end": {
+                  "line": 31,
+                  "column": 15
+                }
+              },
+              "pyExpr": "True",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 31,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 31,
+                    "column": 15
+                  }
+                },
+                "pyExpr": "True"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 33,
+          "column": 1
+        },
+        "end": {
+          "line": 36
+        }
+      },
+      "name": "boom",
+      "flow": "FLOW_SERIAL",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 34,
+            "column": 5
+          },
+          "end": {
+            "line": 36
+          }
+        },
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 34,
+                "column": 5
+              },
+              "end": {
+                "line": 36
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 34,
+                  "column": 5
+                },
+                "end": {
+                  "line": 34,
+                  "column": 16
+                }
+              },
+              "pyExpr": "1 / 0",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 34,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 34,
+                    "column": 16
+                  }
+                },
+                "pyExpr": "1 / 0"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 36,
+          "column": 1
+        },
+        "end": {
+          "line": 41
+        }
+      },
+      "name": "bump",
+      "flow": "FLOW_SERIAL",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 37,
+            "column": 5
+          },
+          "end": {
+            "line": 41
+          }
+        },
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 37,
+                "column": 5
+              },
+              "end": {
+                "line": 38,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 37,
+                  "column": 5
+                },
+                "end": {
+                  "line": 37,
+                  "column": 13
+                }
+              },
+              "code": "x = x + 1"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 38,
+                "column": 5
+              },
+              "end": {
+                "line": 39,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 38,
+                  "column": 5
+                },
+                "end": {
+                  "line": 38,
+                  "column": 26
+                }
+              },
+              "code": "counters[0].value = 99"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 39,
+                "column": 5
+              },
+              "end": {
+                "line": 41
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 39,
+                  "column": 5
+                },
+                "end": {
+                  "line": 39,
+                  "column": 12
+                }
+              },
+              "pyExpr": "x",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 39,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 39,
+                    "column": 12
+                  }
+                },
+                "pyExpr": "x"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 41,
+          "column": 1
+        },
+        "end": {
+          "line": 46
+        }
+      },
+      "name": "ser",
+      "flow": "FLOW_SERIAL",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 42,
+            "column": 5
+          },
+          "end": {
+            "line": 46
+          }
+        },
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 42,
+                "column": 5
+              },
+              "end": {
+                "line": 43,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 42,
+                  "column": 5
+                },
+                "end": {
+                  "line": 42,
+                  "column": 9
+                }
+              },
+              "code": "a = 1"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 43,
+                "column": 5
+              },
+              "end": {
+                "line": 44,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 43,
+                  "column": 5
+                },
+                "end": {
+                  "line": 43,
+                  "column": 9
+                }
+              },
+              "code": "b = 2"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 44,
+                "column": 5
+              },
+              "end": {
+                "line": 46
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 44,
+                  "column": 5
+                },
+                "end": {
+                  "line": 44,
+                  "column": 16
+                }
+              },
+              "pyExpr": "a + b",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 44,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 44,
+                    "column": 16
+                  }
+                },
+                "pyExpr": "a + b"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "roles": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 7,
+          "column": 1
+        },
+        "end": {
+          "line": 21
+        }
+      },
+      "name": "Counter",
+      "actions": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 8,
+              "column": 5
+            },
+            "end": {
+              "line": 11,
+              "column": 4
+            }
+          },
+          "name": "Init",
+          "flow": "FLOW_ATOMIC",
+          "fairness": {
+            "level": "FAIRNESS_LEVEL_STRONG"
+          },
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 9,
+                "column": 9
+              },
+              "end": {
+                "line": 11,
+                "column": 4
+              }
+            },
+            "flow": "FLOW_ATOMIC",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 9,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 11,
+                    "column": 4
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 9,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 9,
+                      "column": 22
+                    }
+                  },
+                  "code": "self.value = 0"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 11,
+              "column": 5
+            },
+            "end": {
+              "line": 15,
+              "column": 4
+            }
+          },
+          "name": "Add",
+          "flow": "FLOW_ATOMIC",
+          "fairness": {
+            "level": "FAIRNESS_LEVEL_UNFAIR"
+          },
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 12,
+                "column": 9
+              },
+              "end": {
+                "line": 15,
+                "column": 4
+              }
+            },
+            "flow": "FLOW_ATOMIC",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 12,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 13,
+                    "column": 8
+                  }
+                },
+                "requireStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 12,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 12,
+                      "column": 30
+                    }
+                  },
+                  "condition": "self.value < 2",
+                  "conditionExpr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 12,
+                        "column": 17
+                      },
+                      "end": {
+                        "line": 12,
+                        "column": 30
+                      }
+                    },
+                    "pyExpr": "self.value < 2"
+                  }
+                }
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 13,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 15,
+                    "column": 4
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 13,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 13,
+                      "column": 35
+                    }
+                  },
+                  "code": "self.value = self.value + 1"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "functions": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 15,
+              "column": 5
+            },
+            "end": {
+              "line": 18,
+              "column": 4
+            }
+          },
+          "name": "is_zero",
+          "flow": "FLOW_SERIAL",
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 16,
+                "column": 9
+              },
+              "end": {
+                "line": 18,
+                "column": 4
+              }
+            },
+            "flow": "FLOW_SERIAL",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 16,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 18,
+                    "column": 4
+                  }
+                },
+                "returnStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 16,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 16,
+                      "column": 30
+                    }
+                  },
+                  "pyExpr": "self.value == 0",
+                  "expr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 16,
+                        "column": 16
+                      },
+                      "end": {
+                        "line": 16,
+                        "column": 30
+                      }
+                    },
+                    "pyExpr": "self.value == 0"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 18,
+              "column": 5
+            },
+            "end": {
+              "line": 21
+            }
+          },
+          "name": "plus",
+          "flow": "FLOW_SERIAL",
+          "params": [
+            {
+              "sourceInfo": {
+                "start": {
+                  "line": 18,
+                  "column": 15
+                },
+                "end": {
+                  "line": 18,
+                  "column": 15
+                }
+              },
+              "name": "n"
+            },
+            {
+              "sourceInfo": {
+                "start": {
+                  "line": 18,
+                  "column": 18
+                },
+                "end": {
+                  "line": 18,
+                  "column": 18
+                }
+              },
+              "name": "m",
+              "defaultPyExpr": "0",
+              "defaultExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 18,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 18,
+                    "column": 20
+                  }
+                },
+                "pyExpr": "0"
+              }
+            }
+          ],
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 19,
+                "column": 9
+              },
+              "end": {
+                "line": 21
+              }
+            },
+            "flow": "FLOW_SERIAL",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 19,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 21
+                  }
+                },
+                "returnStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 19,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 19,
+                      "column": 33
+                    }
+                  },
+                  "pyExpr": "self.value + n + m",
+                  "expr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 19,
+                        "column": 16
+                      },
+                      "end": {
+                        "line": 19,
+                        "column": 33
+                      }
+                    },
+                    "pyExpr": "self.value + n + m"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "frontMatter": {
+    "yaml": "\ndeadlock_detection: false\n"
+  }
+}

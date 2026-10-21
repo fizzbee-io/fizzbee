@@ -1,0 +1,46 @@
+---
+deadlock_detection: false
+---
+
+# Funcs called in assertions that return roles, or collections of roles,
+# from the state. Checked by predicate_calls_test.go; every assertion holds.
+
+role Counter:
+    action Init:
+        self.value = 0
+
+    atomic action Add:
+        require self.value < 2
+        self.value = self.value + 1
+
+    func is_zero():
+        return self.value == 0
+
+func first_counter():
+    return counters[0]
+
+func get_counters():
+    return counters
+
+func by_name():
+    return {"first": counters[0], "pair": (counters[0], counters[1])}
+
+action Init:
+    counters = []
+    for i in range(2):
+        counters.append(Counter())
+
+always assertion SameCounter:
+    return first_counter() == counters[0] and first_counter() != counters[1]
+
+always assertion SameList:
+    return get_counters() == counters and get_counters()[1] == counters[1]
+
+always assertion MethodOnReturnedRoles:
+    return all([c.is_zero() == (c.value == 0) for c in get_counters()])
+
+always assertion InContainers:
+    return by_name()["first"] == counters[0] and by_name()["pair"][1] == counters[1] and by_name()["pair"][0].is_zero() == (counters[0].value == 0)
+
+always assertion ReturnedListIsACopy:
+    return get_counters().append(counters[0]) == None and len(counters) == 2

@@ -1,0 +1,15 @@
+func helper():
+    i = 0
+    while True:
+        i = i + 1
+    return i
+
+action Init:
+    x = 0
+
+atomic action Inc:
+    require x < 1
+    x = x + 1
+
+always assertion Check:
+    return helper() > 0

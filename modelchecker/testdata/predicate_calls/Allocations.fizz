@@ -1,0 +1,26 @@
+---
+deadlock_detection: false
+---
+
+# Assertions whose funcs create roles must not shift the ids that real
+# actions allocate. Checked by predicate_calls_test.go.
+
+role Counter:
+    action Init:
+        self.value = 0
+
+func make_counter():
+    return Counter()
+
+action Init:
+    counters = [Counter()]
+
+atomic action Spawn:
+    require len(counters) < 2
+    counters.append(Counter())
+
+always assertion MakesCounters:
+    return make_counter() != None and make_counter() != None
+
+transition assertion MakesCountersToo(before, after):
+    return make_counter() != None

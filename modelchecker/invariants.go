@@ -57,6 +57,7 @@ func CheckTransitionInvariants(process *Process) map[int][]int {
 	if process.Heap.CachedHashCode == process.Parent.Heap.CachedHashCode && process.Parent.Heap.CachedHashCode != "" {
 		return nil
 	}
+	defer lib.RestoreGlobalRefs(lib.SnapshotGlobalRefs())
 	results := make(map[int][]int)
 	for i, file := range process.Files {
 		results[i] = make([]int, 0)
@@ -85,6 +86,10 @@ func CheckInvariantsWithProber(process *Process, prober NextStatesProber) map[in
 	if len(process.Files) > 1 {
 		panic("Invariant checking not supported for multiple files")
 	}
+	// Roles and channels an assertion creates, directly or in a func it
+	// calls, are thrown away with it; don't let them shift the ids that
+	// real exploration allocates next. Restored even if an assertion fails.
+	defer lib.RestoreGlobalRefs(lib.SnapshotGlobalRefs())
 	results := make(map[int][]int)
 	for i, file := range process.Files {
 		results[i] = make([]int, 0)
@@ -125,11 +130,17 @@ func CheckInvariant(process *Process, invariant *ast.Invariant) bool {
 	if eventuallyAlways && invariant.Nested != nil {
 		pyExpr = invariant.Nested.PyExpr
 	}
-	ref := make(map[starlark.Value]starlark.Value)
-	vars := CloneDict(process.Heap.state, ref, nil, 0)
-	vars["__returns__"] = NewDictFromStringDict(process.Returns)
-	symCtx := process.createSymmetryContext()
-	cond, err := process.Evaluator.EvalPyExprWithContext(process.Files[0].GetSourceInfo().GetFileName(), pyExpr, vars, symCtx)
+	cloned := process.CloneForAssert(nil, 0)
+	cloned.enablePredicateCalls()
+	// Builtins and constants first, so state variables shadow them, as in
+	// assertion bodies (see GetAllVariables).
+	vars := maps.Clone(lib.Builtins)
+	maps.Copy(vars, cloned.Heap.globals)
+	maps.Copy(vars, cloned.Heap.state)
+	vars["__returns__"] = NewDictFromStringDict(cloned.Returns)
+	cloned.addPredicateFuncs(vars)
+	symCtx := cloned.createSymmetryContext()
+	cond, err := cloned.Evaluator.EvalPyExprWithContext(process.Files[0].GetSourceInfo().GetFileName(), pyExpr, vars, symCtx)
 	PanicOnError(err)
 	return bool(cond.Truth())
 }
@@ -139,6 +150,7 @@ func CheckAssertion(process *Process, invariant *ast.Invariant, index int, probe
 		panic("Invariant checking supported only for always/always-eventually/eventually-always/exists invariants" + strings.Join(invariant.TemporalOperators, ","))
 	}
 	cloned := process.CloneForAssert(nil, 0)
+	cloned.enablePredicateCalls()
 	cloned.Heap.state["__returns__"] = NewDictFromStringDict(cloned.Returns)
 	if prober != nil {
 		// next_states() gives assertions one-step lookahead: the list of
@@ -205,6 +217,9 @@ func execFunctionBlock(cloned *Process, name string, pc string) starlark.Value {
 	assertThread.currentFrame().Name = name
 	for {
 		forks, _ := assertThread.Execute()
+		if assertThread.Aborted {
+			panic(fmt.Sprintf("%s: a require statement failed; an assertion can't disable a transition", name))
+		}
 		if cloned.GetThreadsCount() <= numThreads {
 			return cloned.Returns[name]
 		}
@@ -226,6 +241,7 @@ func CheckTransitionAssertion(process *Process, invariant *ast.Invariant, index 
 		panic("Invariant should not have params or exactly 2 params")
 	}
 	cloned := process.CloneForAssert(nil, 0)
+	cloned.enablePredicateCalls()
 	cloned.Heap.state[afterParam] = starlarkstruct.FromStringDict(starlark.String(afterParam), cloned.Heap.state)
 	cloned.Heap.state[beforeParam] = starlarkstruct.FromStringDict(starlark.String(beforeParam), process.Parent.Heap.state)
 

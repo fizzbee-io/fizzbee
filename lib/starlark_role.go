@@ -230,7 +230,11 @@ func CreateRoleBuiltin(astRole *ast.Role, symmetric bool, roles *[]*Role) *starl
 	})
 }
 
-func fizz_func_always_error(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func fizz_func_always_error(t *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if call, ok := t.Local(FizzCallKey).(FizzCallFunc); ok && call != nil {
+		recv, _ := b.Receiver().(*Role)
+		return call(t, recv, b.Name(), args, kwargs)
+	}
 
 	return starlark.None, fmt.Errorf("%s: %v", b.Name(), "Currently, fizz functions can be called only in the following ways. \n See https://fizzbee.io/tutorials/limitations/#fizz-functions-can-be-called-only-in-a-limited-ways for more details and workaround.")
 }
