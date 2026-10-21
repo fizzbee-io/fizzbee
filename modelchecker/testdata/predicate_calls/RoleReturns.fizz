@@ -40,8 +40,7 @@ always assertion MethodOnReturnedRoles:
     return all([c.is_zero() == (c.value == 0) for c in get_counters()])
 
 always assertion InContainers:
-    d = by_name()
-    return d["first"] == counters[0] and d["pair"][1] == counters[1] and d["pair"][0].is_zero() == (counters[0].value == 0)
+    return by_name()["first"] == counters[0] and by_name()["pair"][1] == counters[1] and by_name()["pair"][0].is_zero() == (counters[0].value == 0)
 
 always assertion ReturnedListIsACopy:
     return get_counters().append(counters[0]) == None and len(counters) == 2

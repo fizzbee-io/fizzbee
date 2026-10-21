@@ -1,0 +1,492 @@
+{
+  "sourceInfo": {
+    "fileName": "Allocations.fizz",
+    "start": {
+      "line": 8,
+      "column": 1
+    },
+    "end": {
+      "line": 27
+    }
+  },
+  "invariants": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 22,
+          "column": 1
+        },
+        "end": {
+          "line": 25
+        }
+      },
+      "name": "MakesCounters",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 23,
+            "column": 5
+          },
+          "end": {
+            "line": 25
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 23,
+                "column": 5
+              },
+              "end": {
+                "line": 25
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 23,
+                  "column": 5
+                },
+                "end": {
+                  "line": 23,
+                  "column": 60
+                }
+              },
+              "pyExpr": "make_counter() != None and make_counter() != None",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 23,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 23,
+                    "column": 60
+                  }
+                },
+                "pyExpr": "make_counter() != None and make_counter() != None"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def MakesCounters():\n    return make_counter() != None and make_counter() != None\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 25,
+          "column": 1
+        },
+        "end": {
+          "line": 27
+        }
+      },
+      "name": "MakesCountersToo",
+      "temporalOperators": [
+        "transition"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 26,
+            "column": 5
+          },
+          "end": {
+            "line": 27
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 26,
+                "column": 5
+              },
+              "end": {
+                "line": 27
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 26,
+                  "column": 5
+                },
+                "end": {
+                  "line": 26,
+                  "column": 33
+                }
+              },
+              "pyExpr": "make_counter() != None",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 26,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 26,
+                    "column": 33
+                  }
+                },
+                "pyExpr": "make_counter() != None"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def MakesCountersToo():\n    return make_counter() != None\n",
+      "params": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 25,
+              "column": 39
+            },
+            "end": {
+              "line": 25,
+              "column": 44
+            }
+          },
+          "name": "before"
+        },
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 25,
+              "column": 47
+            },
+            "end": {
+              "line": 25,
+              "column": 51
+            }
+          },
+          "name": "after"
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 15,
+          "column": 1
+        },
+        "end": {
+          "line": 18
+        }
+      },
+      "name": "Init",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 16,
+            "column": 5
+          },
+          "end": {
+            "line": 18
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 16,
+                "column": 5
+              },
+              "end": {
+                "line": 18
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 16,
+                  "column": 5
+                },
+                "end": {
+                  "line": 16,
+                  "column": 26
+                }
+              },
+              "code": "counters = [Counter()]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 18,
+          "column": 1
+        },
+        "end": {
+          "line": 22
+        }
+      },
+      "name": "Spawn",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 19,
+            "column": 5
+          },
+          "end": {
+            "line": 22
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 19,
+                "column": 5
+              },
+              "end": {
+                "line": 20,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 19,
+                  "column": 5
+                },
+                "end": {
+                  "line": 19,
+                  "column": 29
+                }
+              },
+              "condition": "len(counters) < 2",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 19,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 19,
+                    "column": 29
+                  }
+                },
+                "pyExpr": "len(counters) < 2"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 20,
+                "column": 5
+              },
+              "end": {
+                "line": 22
+              }
+            },
+            "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 20,
+                  "column": 5
+                },
+                "end": {
+                  "line": 20,
+                  "column": 30
+                }
+              },
+              "name": "append",
+              "args": [
+                {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 20,
+                      "column": 21
+                    },
+                    "end": {
+                      "line": 20,
+                      "column": 29
+                    }
+                  },
+                  "pyExpr": "Counter()",
+                  "expr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 20,
+                        "column": 21
+                      },
+                      "end": {
+                        "line": 20,
+                        "column": 29
+                      }
+                    },
+                    "pyExpr": "Counter()"
+                  }
+                }
+              ],
+              "receiver": "counters"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "functions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 12,
+          "column": 1
+        },
+        "end": {
+          "line": 15
+        }
+      },
+      "name": "make_counter",
+      "flow": "FLOW_SERIAL",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 13,
+            "column": 5
+          },
+          "end": {
+            "line": 15
+          }
+        },
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 13,
+                "column": 5
+              },
+              "end": {
+                "line": 15
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 13,
+                  "column": 5
+                },
+                "end": {
+                  "line": 13,
+                  "column": 20
+                }
+              },
+              "pyExpr": "Counter()",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 13,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 13,
+                    "column": 20
+                  }
+                },
+                "pyExpr": "Counter()"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "roles": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 8,
+          "column": 1
+        },
+        "end": {
+          "line": 12
+        }
+      },
+      "name": "Counter",
+      "actions": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 9,
+              "column": 5
+            },
+            "end": {
+              "line": 12
+            }
+          },
+          "name": "Init",
+          "flow": "FLOW_ATOMIC",
+          "fairness": {
+            "level": "FAIRNESS_LEVEL_STRONG"
+          },
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 10,
+                "column": 9
+              },
+              "end": {
+                "line": 12
+              }
+            },
+            "flow": "FLOW_ATOMIC",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 10,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 12
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 10,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 10,
+                      "column": 22
+                    }
+                  },
+                  "code": "self.value = 0"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "frontMatter": {
+    "yaml": "\ndeadlock_detection: false\n"
+  }
+}

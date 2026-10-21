@@ -137,3 +137,39 @@ func TestPredicateCallBinding(t *testing.T) {
 		})
 	}
 }
+
+// Roles created while evaluating an assertion, in a func it calls, don't
+// shift the ids real actions allocate, whether the assertion succeeds or
+// fails.
+func TestPredicateCallsDontShiftRoleIds(t *testing.T) {
+	p := predicateCallsSpec(t, "Allocations")
+	root, failed, err := p.Start()
+	require.Nil(t, err)
+	require.Nil(t, failed)
+	nodes, _, _, _ := GetAllNodes(root, 10)
+	spawned := 0
+	for _, n := range nodes {
+		counters := n.Process.Heap.state["counters"].(*starlark.List)
+		for i := 0; i < counters.Len(); i++ {
+			assert.Equal(t, fmt.Sprintf("Counter#%d", i), counters.Index(i).(*lib.Role).RefStringShort())
+		}
+		if counters.Len() == 2 {
+			spawned++
+		}
+	}
+	assert.Greater(t, spawned, 0, "Spawn never ran")
+
+	p = predicateCallsSpec(t, "AllocThenFail")
+	before := lib.SnapshotGlobalRefs()
+	msg := func() (msg string) {
+		defer func() {
+			if r := recover(); r != nil {
+				msg = fmt.Sprint(r)
+			}
+		}()
+		p.Start()
+		return ""
+	}()
+	assert.Contains(t, msg, "division by zero")
+	assert.Equal(t, before, lib.SnapshotGlobalRefs())
+}

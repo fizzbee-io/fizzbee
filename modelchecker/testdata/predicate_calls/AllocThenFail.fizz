@@ -1,0 +1,25 @@
+---
+deadlock_detection: false
+---
+
+# An assertion's func creates a role and then fails. Checked by
+# predicate_calls_test.go: the failed evaluation must not leave the role id
+# counter advanced.
+
+role Counter:
+    action Init:
+        self.value = 0
+
+func make_then_fail():
+    c = Counter()
+    return 1 / 0
+
+action Init:
+    x = 0
+
+atomic action Set:
+    require x == 0
+    x = 1
+
+always assertion FailsAfterCreating:
+    return x == 0 or make_then_fail()
