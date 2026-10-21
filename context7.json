@@ -1,0 +1,28 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "FizzBee",
+  "description": "The easiest formal specification language and model checker for the full development cycle: requirements analysis, design verification, and model-based testing.",
+  "folders": [
+    "examples/references"
+  ],
+  "excludeFolders": [
+    "docs",
+    "examples/tutorials",
+    "examples/comparisons",
+    "examples/requirements",
+    "explorer",
+    "pkg",
+    "mbt",
+    ".claude"
+  ],
+  "excludeFiles": [
+    "CLAUDE.md"
+  ],
+  "rules": [
+    "FizzBee specs are Python-like but live in .fizz files; label code fences with `fizz`, not `python`.",
+    "Use `oneof` for nondeterministic choice; `any` is a deprecated alias that emits a DeprecationWarning.",
+    "Current documentation is at https://fizzbee.io/reference/language/ — prefer it over any pre-release docs."
+  ],
+  "url": "https://context7.com/fizzbee-io/fizzbee",
+  "public_key": "pk_EHyOqMWJjHGPvQVMPIvi9"
+}
