@@ -39,10 +39,11 @@ func (e *ModelError) Error() string {
 
 func (e *ModelError) SprintStackTrace() string {
     builder := strings.Builder{}
-    builder.WriteString(fmt.Sprintf("Error: %s\n", e.Msg))
-    //if e.NestedError != nil {
-    //    builder.WriteString(fmt.Sprintf("nested: %s\n", e.NestedError.Error()))
-    //}
+    if e.NestedError != nil {
+        builder.WriteString(fmt.Sprintf("Error: %s: %s\n", e.Msg, e.NestedError.Error()))
+    } else {
+        builder.WriteString(fmt.Sprintf("Error: %s\n", e.Msg))
+    }
     if e.Process.GetThreadsCount() == 0 {
         return builder.String()
     }

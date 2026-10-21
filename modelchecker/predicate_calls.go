@@ -168,10 +168,24 @@ func (p *Process) callFizzFunc(_ *starlark.Thread, recv *lib.Role, name string, 
 			break
 		}
 	}
-	if v, ok := clone.Returns[name]; ok && v != nil {
-		return v, nil
+	v, ok := clone.Returns[name]
+	if !ok || v == nil {
+		return starlark.None, nil
 	}
-	return starlark.None, nil
+	// The result may hold roles of the clone's state. Map them back to the
+	// caller's roles, so they compare equal and their methods can be called;
+	// containers are copied, so changing them can't reach the caller's state.
+	back := make(map[starlark.Value]starlark.Value)
+	for orig, cloned := range refs {
+		if _, isRole := orig.(*lib.Role); isRole {
+			back[cloned] = orig
+		}
+	}
+	result, err = deepCloneStarlarkValue(v, back)
+	if err != nil {
+		return nil, fmt.Errorf("%s: return value: %w", key, err)
+	}
+	return result, nil
 }
 
 // cloneSharingBuiltins clones p for a call. Builtins installed in the heap
