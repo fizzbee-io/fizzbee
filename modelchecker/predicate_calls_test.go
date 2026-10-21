@@ -32,12 +32,26 @@ func predicateCallsSpec(t *testing.T, name string) *Processor {
 // TestPredicateCalls checks fizz funcs called inside assertion expressions:
 // role methods, top-level funcs, defaults, nesting, short-circuiting,
 // comprehensions and isolation between calls. Every assertion holds.
+//
+// RoleReturns checks funcs that return roles of the state, alone or in
+// containers: they compare equal to the caller's roles, their methods can be
+// called, and the returned containers are copies.
 func TestPredicateCalls(t *testing.T) {
-	p := predicateCallsSpec(t, "Calls")
-	root, failed, err := p.Start()
-	require.Nil(t, err)
-	require.NotNil(t, root)
-	assert.Nil(t, failed)
+	for _, spec := range []string{"Calls", "RoleReturns"} {
+		t.Run(spec, func(t *testing.T) {
+			p := predicateCallsSpec(t, spec)
+			root, failed, err := p.Start()
+			require.Nil(t, err)
+			require.NotNil(t, root)
+			assert.Nil(t, failed)
+		})
+	}
+}
+
+// The cause of an error in a called func shows in the CLI's stack trace.
+func TestModelErrorStackTraceShowsCause(t *testing.T) {
+	err := NewModelError(nil, "Error evaluating expr: total() == 1", nil, fmt.Errorf("helper: division by zero"))
+	assert.Contains(t, err.SprintStackTrace(), "Error evaluating expr: total() == 1: helper: division by zero")
 }
 
 // TestPredicateCallErrors checks that a func that can't run as a predicate

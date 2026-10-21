@@ -1,0 +1,970 @@
+{
+  "sourceInfo": {
+    "fileName": "RoleReturns.fizz",
+    "start": {
+      "line": 8,
+      "column": 1
+    },
+    "end": {
+      "line": 48
+    }
+  },
+  "invariants": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 33,
+          "column": 1
+        },
+        "end": {
+          "line": 36
+        }
+      },
+      "name": "SameCounter",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 34,
+            "column": 5
+          },
+          "end": {
+            "line": 36
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 34,
+                "column": 5
+              },
+              "end": {
+                "line": 36
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 34,
+                  "column": 5
+                },
+                "end": {
+                  "line": 34,
+                  "column": 76
+                }
+              },
+              "pyExpr": "first_counter() == counters[0] and first_counter() != counters[1]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 34,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 34,
+                    "column": 76
+                  }
+                },
+                "pyExpr": "first_counter() == counters[0] and first_counter() != counters[1]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def SameCounter():\n    return first_counter() == counters[0] and first_counter() != counters[1]\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 36,
+          "column": 1
+        },
+        "end": {
+          "line": 39
+        }
+      },
+      "name": "SameList",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 37,
+            "column": 5
+          },
+          "end": {
+            "line": 39
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 37,
+                "column": 5
+              },
+              "end": {
+                "line": 39
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 37,
+                  "column": 5
+                },
+                "end": {
+                  "line": 37,
+                  "column": 74
+                }
+              },
+              "pyExpr": "get_counters() == counters and get_counters()[1] == counters[1]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 37,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 37,
+                    "column": 74
+                  }
+                },
+                "pyExpr": "get_counters() == counters and get_counters()[1] == counters[1]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def SameList():\n    return get_counters() == counters and get_counters()[1] == counters[1]\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 39,
+          "column": 1
+        },
+        "end": {
+          "line": 42
+        }
+      },
+      "name": "MethodOnReturnedRoles",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 40,
+            "column": 5
+          },
+          "end": {
+            "line": 42
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 40,
+                "column": 5
+              },
+              "end": {
+                "line": 42
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 40,
+                  "column": 5
+                },
+                "end": {
+                  "line": 40,
+                  "column": 71
+                }
+              },
+              "pyExpr": "all([c.is_zero() == (c.value == 0) for c in get_counters()])",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 40,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 40,
+                    "column": 71
+                  }
+                },
+                "pyExpr": "all([c.is_zero() == (c.value == 0) for c in get_counters()])"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def MethodOnReturnedRoles():\n    return all([c.is_zero() == (c.value == 0) for c in get_counters()])\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 42,
+          "column": 1
+        },
+        "end": {
+          "line": 46
+        }
+      },
+      "name": "InContainers",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 43,
+            "column": 5
+          },
+          "end": {
+            "line": 46
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 43,
+                "column": 5
+              },
+              "end": {
+                "line": 44,
+                "column": 4
+              }
+            },
+            "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 43,
+                  "column": 5
+                },
+                "end": {
+                  "line": 43,
+                  "column": 17
+                }
+              },
+              "vars": [
+                "d"
+              ],
+              "name": "by_name"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 44,
+                "column": 5
+              },
+              "end": {
+                "line": 46
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 44,
+                  "column": 5
+                },
+                "end": {
+                  "line": 44,
+                  "column": 123
+                }
+              },
+              "pyExpr": "d[\"first\"] == counters[0] and d[\"pair\"][1] == counters[1] and d[\"pair\"][0].is_zero() == (counters[0].value == 0)",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 44,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 44,
+                    "column": 123
+                  }
+                },
+                "pyExpr": "d[\"first\"] == counters[0] and d[\"pair\"][1] == counters[1] and d[\"pair\"][0].is_zero() == (counters[0].value == 0)"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def InContainers():\n    d = by_name()\n    return d[\"first\"] == counters[0] and d[\"pair\"][1] == counters[1] and d[\"pair\"][0].is_zero() == (counters[0].value == 0)\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 46,
+          "column": 1
+        },
+        "end": {
+          "line": 48
+        }
+      },
+      "name": "ReturnedListIsACopy",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 47,
+            "column": 5
+          },
+          "end": {
+            "line": 48
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 47,
+                "column": 5
+              },
+              "end": {
+                "line": 48
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 47,
+                  "column": 5
+                },
+                "end": {
+                  "line": 47,
+                  "column": 76
+                }
+              },
+              "pyExpr": "get_counters().append(counters[0]) == None and len(counters) == 2",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 47,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 47,
+                    "column": 76
+                  }
+                },
+                "pyExpr": "get_counters().append(counters[0]) == None and len(counters) == 2"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def ReturnedListIsACopy():\n    return get_counters().append(counters[0]) == None and len(counters) == 2\n"
+    }
+  ],
+  "actions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 28,
+          "column": 1
+        },
+        "end": {
+          "line": 33
+        }
+      },
+      "name": "Init",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 29,
+            "column": 5
+          },
+          "end": {
+            "line": 33
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 29,
+                "column": 5
+              },
+              "end": {
+                "line": 30,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 29,
+                  "column": 5
+                },
+                "end": {
+                  "line": 29,
+                  "column": 17
+                }
+              },
+              "code": "counters = []"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 30,
+                "column": 5
+              },
+              "end": {
+                "line": 33
+              }
+            },
+            "forStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 30,
+                  "column": 5
+                },
+                "end": {
+                  "line": 33
+                }
+              },
+              "loopVars": [
+                "i"
+              ],
+              "pyExpr": "range(2)",
+              "block": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 31,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 33
+                  }
+                },
+                "stmts": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 31,
+                        "column": 9
+                      },
+                      "end": {
+                        "line": 33
+                      }
+                    },
+                    "callStmt": {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 31,
+                          "column": 9
+                        },
+                        "end": {
+                          "line": 31,
+                          "column": 34
+                        }
+                      },
+                      "name": "append",
+                      "args": [
+                        {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 31,
+                              "column": 25
+                            },
+                            "end": {
+                              "line": 31,
+                              "column": 33
+                            }
+                          },
+                          "pyExpr": "Counter()",
+                          "expr": {
+                            "sourceInfo": {
+                              "start": {
+                                "line": 31,
+                                "column": 25
+                              },
+                              "end": {
+                                "line": 31,
+                                "column": 33
+                              }
+                            },
+                            "pyExpr": "Counter()"
+                          }
+                        }
+                      ],
+                      "receiver": "counters"
+                    }
+                  }
+                ]
+              },
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 30,
+                    "column": 14
+                  },
+                  "end": {
+                    "line": 30,
+                    "column": 21
+                  }
+                },
+                "pyExpr": "range(2)"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "functions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 19,
+          "column": 1
+        },
+        "end": {
+          "line": 22
+        }
+      },
+      "name": "first_counter",
+      "flow": "FLOW_SERIAL",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 20,
+            "column": 5
+          },
+          "end": {
+            "line": 22
+          }
+        },
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 20,
+                "column": 5
+              },
+              "end": {
+                "line": 22
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 20,
+                  "column": 5
+                },
+                "end": {
+                  "line": 20,
+                  "column": 22
+                }
+              },
+              "pyExpr": "counters[0]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 20,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 22
+                  }
+                },
+                "pyExpr": "counters[0]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 22,
+          "column": 1
+        },
+        "end": {
+          "line": 25
+        }
+      },
+      "name": "get_counters",
+      "flow": "FLOW_SERIAL",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 23,
+            "column": 5
+          },
+          "end": {
+            "line": 25
+          }
+        },
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 23,
+                "column": 5
+              },
+              "end": {
+                "line": 25
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 23,
+                  "column": 5
+                },
+                "end": {
+                  "line": 23,
+                  "column": 19
+                }
+              },
+              "pyExpr": "counters",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 23,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 23,
+                    "column": 19
+                  }
+                },
+                "pyExpr": "counters"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 25,
+          "column": 1
+        },
+        "end": {
+          "line": 28
+        }
+      },
+      "name": "by_name",
+      "flow": "FLOW_SERIAL",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 26,
+            "column": 5
+          },
+          "end": {
+            "line": 28
+          }
+        },
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 26,
+                "column": 5
+              },
+              "end": {
+                "line": 28
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 26,
+                  "column": 5
+                },
+                "end": {
+                  "line": 26,
+                  "column": 69
+                }
+              },
+              "pyExpr": "{\"first\": counters[0], \"pair\": (counters[0], counters[1])}",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 26,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 26,
+                    "column": 69
+                  }
+                },
+                "pyExpr": "{\"first\": counters[0], \"pair\": (counters[0], counters[1])}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "roles": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 8,
+          "column": 1
+        },
+        "end": {
+          "line": 19
+        }
+      },
+      "name": "Counter",
+      "actions": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 9,
+              "column": 5
+            },
+            "end": {
+              "line": 12,
+              "column": 4
+            }
+          },
+          "name": "Init",
+          "flow": "FLOW_ATOMIC",
+          "fairness": {
+            "level": "FAIRNESS_LEVEL_STRONG"
+          },
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 10,
+                "column": 9
+              },
+              "end": {
+                "line": 12,
+                "column": 4
+              }
+            },
+            "flow": "FLOW_ATOMIC",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 10,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 12,
+                    "column": 4
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 10,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 10,
+                      "column": 22
+                    }
+                  },
+                  "code": "self.value = 0"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 12,
+              "column": 5
+            },
+            "end": {
+              "line": 16,
+              "column": 4
+            }
+          },
+          "name": "Add",
+          "flow": "FLOW_ATOMIC",
+          "fairness": {
+            "level": "FAIRNESS_LEVEL_UNFAIR"
+          },
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 13,
+                "column": 9
+              },
+              "end": {
+                "line": 16,
+                "column": 4
+              }
+            },
+            "flow": "FLOW_ATOMIC",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 13,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 14,
+                    "column": 8
+                  }
+                },
+                "requireStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 13,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 13,
+                      "column": 30
+                    }
+                  },
+                  "condition": "self.value < 2",
+                  "conditionExpr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 13,
+                        "column": 17
+                      },
+                      "end": {
+                        "line": 13,
+                        "column": 30
+                      }
+                    },
+                    "pyExpr": "self.value < 2"
+                  }
+                }
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 14,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 16,
+                    "column": 4
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 14,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 14,
+                      "column": 35
+                    }
+                  },
+                  "code": "self.value = self.value + 1"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "functions": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 16,
+              "column": 5
+            },
+            "end": {
+              "line": 19
+            }
+          },
+          "name": "is_zero",
+          "flow": "FLOW_SERIAL",
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 17,
+                "column": 9
+              },
+              "end": {
+                "line": 19
+              }
+            },
+            "flow": "FLOW_SERIAL",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 17,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 19
+                  }
+                },
+                "returnStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 17,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 17,
+                      "column": 30
+                    }
+                  },
+                  "pyExpr": "self.value == 0",
+                  "expr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 17,
+                        "column": 16
+                      },
+                      "end": {
+                        "line": 17,
+                        "column": 30
+                      }
+                    },
+                    "pyExpr": "self.value == 0"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "frontMatter": {
+    "yaml": "\ndeadlock_detection: false\n"
+  }
+}
