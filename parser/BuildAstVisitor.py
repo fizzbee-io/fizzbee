@@ -14,6 +14,9 @@ class BuildAstVisitor(FizzParserVisitor):
         self.file_path = file_path
         self.file_name = os.path.basename(file_path)
         self.input_stream = input_stream
+        # Formula returns seen while visiting the current assertion's body.
+        self.formula_returns = []
+        self.in_assertion = False
 
     def aggregateResult(self, aggregate, nextResult):
         if nextResult and aggregate:
@@ -349,9 +352,14 @@ class BuildAstVisitor(FizzParserVisitor):
 
         invariant = ast.Invariant(source_info=get_source_info(ctx))
         py_code = "def "
+        outer = (self.in_assertion, self.formula_returns)
+        self.in_assertion, self.formula_returns = True, []
         for i, child in enumerate(ctx.getChildren()):
             print()
             print("visitAssertiondef child index",i,child.getText())
+            if isinstance(child, FizzParser.Assertion_for_clauseContext):
+                invariant.for_clauses.append(self.build_for_clause(child))
+                continue
             if hasattr(child, 'start'):
                 print("visitAssertiondef child start,stop",child.start,child.stop)
 
@@ -383,6 +391,10 @@ class BuildAstVisitor(FizzParserVisitor):
             else:
                 print("visitAssertiondef child (unknown) type",child.__class__.__name__, dir(child))
                 raise Exception("visitAssertiondef child (unknown) type")
+
+        formula_returns = self.formula_returns
+        self.in_assertion, self.formula_returns = outer
+        self.finish_formula_assertion(ctx, invariant, formula_returns)
 
         block_str = self.get_py_str(ctx)
         py_code += '\n'.join(block_str.split('\n')[1:])
@@ -1352,6 +1364,107 @@ class BuildAstVisitor(FizzParserVisitor):
         print("visitInvariant_stmt invariant", rootInvariant)
         return rootInvariant
 
+    def build_for_clause(self, ctx):
+        clause = ast.ForClause(source_info=get_source_info(ctx))
+        tests = []
+        for child in ctx.getChildren():
+            if isinstance(child, FizzParser.ExprlistContext):
+                clause.targets.extend(self.visit(child))
+            elif isinstance(child, FizzParser.Logical_testContext):
+                tests.append(self.get_py_str(child))
+        clause.iterable_py_expr = tests[0]
+        clause.filter_py_exprs.extend(tests[1:])
+        return clause
+
+    # A formula return: `return <formula>` (FizzParser.g4 `formula`). The
+    # formula is kept for visitAssertiondef, which decides what the assertion
+    # compiles to; the ReturnStmt returned here is a placeholder it replaces.
+    def visitFormula_return_stmt(self, ctx:FizzParser.Formula_return_stmtContext):
+        f = self.build_formula(ctx.formula())
+        if not self.in_assertion:
+            word = "a temporal operator" if f.temporal else "implies"
+            raise formula_error(ctx, f"{word} can only be used in the return of an assertion")
+        return_stmt = ast.ReturnStmt(source_info=get_source_info(ctx))
+        if not f.temporal:
+            # Just an expression, e.g. `return a implies b`.
+            return_stmt.py_expr = f.text
+            return_stmt.expr.py_expr = f.text
+            return_stmt.expr.source_info.CopyFrom(get_source_info(ctx.formula()))
+            return return_stmt
+        self.formula_returns.append((f, ctx))
+        return return_stmt
+
+    def build_formula(self, ctx):
+        if isinstance(ctx, FizzParser.FormulaContext):
+            operands = [self.build_formula(c) for c in ctx.formula_or()]
+            ops = [c.getText() for c in ctx.formula_binop()]
+            if len(ops) > 1:
+                raise formula_error(ctx, f"use parentheses to combine {ops[0]} and {ops[1]}; they don't chain")
+            if not ops:
+                return operands[0]
+            check_left_operand(operands[0], ops[0], self.input_stream)
+            return Formula.combine(ops[0], operands, ctx)
+        if isinstance(ctx, FizzParser.Formula_orContext) or isinstance(ctx, FizzParser.Formula_andContext):
+            children = ctx.formula_and() if isinstance(ctx, FizzParser.Formula_orContext) else ctx.formula_unary()
+            operands = [self.build_formula(c) for c in children]
+            if len(operands) == 1:
+                return operands[0]
+            op = "or" if isinstance(ctx, FizzParser.Formula_orContext) else "and"
+            for operand in operands[:-1]:
+                check_left_operand(operand, op, self.input_stream)
+            return Formula.combine(op, operands, ctx)
+        if isinstance(ctx, FizzParser.Formula_unaryContext):
+            if ctx.comparison() is not None:
+                return Formula.atom(BuildAstVisitor.transform_code(self.get_py_str(ctx.comparison())), ctx)
+            if ctx.formula() is not None:
+                inner = self.build_formula(ctx.formula())
+                return inner.parenthesized()
+            if ctx.formula_possibly() is not None:
+                raise formula_error(ctx, "possibly is not supported yet")
+            op = ctx.getChild(0).getText()
+            return Formula.combine(op, [self.build_formula(ctx.formula_unary())], ctx)
+        raise Exception("build_formula: unexpected node", ctx.__class__.__name__)
+
+    def finish_formula_assertion(self, ctx, invariant, formula_returns):
+        """Checks the formula rules for an assertion and compiles its formula.
+
+        An assertion without a prefix must end with `return <formula>`, and
+        that must be its only return. The formulas `always P`,
+        `always eventually P` and `eventually always P` compile to today's
+        prefixed assertions, so they are checked exactly as before. Any other
+        formula keeps its tree in invariant.formula, and the final return
+        gives the list of its atoms' values.
+        """
+        if invariant.temporal_operators:
+            if formula_returns:
+                raise formula_error(formula_returns[0][1], f"assertion {invariant.name} already has temporal operators "
+                                    "before `assertion`; remove them to return a temporal formula")
+            return
+        stmts = invariant.block.stmts
+        if len(formula_returns) != 1 or not stmts or not stmts[-1].HasField("return_stmt") \
+                or stmts[-1].return_stmt.source_info != get_source_info(formula_returns[0][1]):
+            if formula_returns:
+                raise formula_error(formula_returns[-1][1], f"assertion {invariant.name} must have a single return, "
+                                    "as its last statement; compute a local and use it in the formula")
+            raise formula_error(ctx, f"assertion {invariant.name} must end with `return` and a temporal formula, "
+                                "such as `return always P` or `return P leadsto Q`")
+        if count_returns(invariant.block) != 1:
+            raise formula_error(formula_returns[0][1], f"assertion {invariant.name} must have a single return, "
+                                "as its last statement; compute a local and use it in the formula")
+        f = formula_returns[0][0]
+        ret = stmts[-1].return_stmt
+        classic = f.classic_operators()
+        if classic is not None:
+            ops, body = classic
+            invariant.temporal_operators.extend(ops)
+            ret.py_expr = body.text
+        else:
+            atoms = []
+            invariant.formula.CopyFrom(f.to_proto(atoms, self.input_stream))
+            ret.py_expr = "[" + ", ".join(f"bool({a})" for a in atoms) + "]"
+        ret.expr.py_expr = ret.py_expr
+        ret.expr.source_info.CopyFrom(get_source_info(formula_returns[0][1]))
+
     def get_py_str(self, child):
         return self.input_stream.getText(child.start.start, child.stop.stop)
 
@@ -1399,3 +1512,128 @@ def get_source_info(ctx):
     end = ast.Position(line=ctx.stop.line, column=endTokenEnd)
     source_info = ast.SourceInfo(start=start, end=end)
     return source_info
+
+
+def formula_error(ctx, message):
+    return SyntaxError(f"line {ctx.start.line}:{ctx.start.column + 1}: {message}")
+
+
+def count_returns(block):
+    count = 0
+    for stmt in block.stmts:
+        if stmt.HasField("return_stmt"):
+            count += 1
+        for field in ("block",):
+            if stmt.HasField(field):
+                count += count_returns(getattr(stmt, field))
+        if stmt.HasField("if_stmt"):
+            for branch in stmt.if_stmt.branches:
+                count += count_returns(branch.block)
+        if stmt.HasField("for_stmt"):
+            count += count_returns(stmt.for_stmt.block)
+        if stmt.HasField("while_stmt"):
+            count += count_returns(stmt.while_stmt.block)
+    return count
+
+
+def check_left_operand(f, op, input_stream):
+    """A prefix temporal operator binds tighter than any binary, so in
+    `always a implies b` it applies to `a` alone. Require parentheses there,
+    since it rarely means what it reads as."""
+    n = f
+    while not n.paren:
+        if n.kind in ("always", "eventually"):
+            arg = n.args[0]
+            arg_text = input_stream.getText(arg.start.start.start, arg.stop.stop.stop)
+            raise formula_error(n.ctx, f"`{n.kind}` here applies only to `{arg_text}`, not to the `{op}` after it; "
+                                f"add parentheses to say which you mean")
+        if n.kind == "not" or (n.kind in Formula.BINARY and n.args):
+            n = n.args[-1]
+            continue
+        break
+
+
+class Formula:
+    """A temporal formula while it is being built. Subtrees without a
+    temporal operator collapse into atoms: Starlark expressions, evaluated
+    in each state, with `implies` written out."""
+    TEMPORAL = ("always", "eventually", "until", "leadsto")
+    BINARY = ("and", "or", "implies", "until", "leadsto")
+    OPS = {
+        "not": ast.Formula.NOT, "and": ast.Formula.AND, "or": ast.Formula.OR,
+        "implies": ast.Formula.IMPLIES, "always": ast.Formula.ALWAYS,
+        "eventually": ast.Formula.EVENTUALLY, "until": ast.Formula.UNTIL,
+        "leadsto": ast.Formula.LEADSTO,
+    }
+
+    def __init__(self, kind, args, ctx, text=""):
+        self.kind = kind
+        self.args = args
+        # ctx is a parse tree node, or a (first, last) pair of them for an
+        # atom merged from adjacent operands.
+        self.start, self.stop = ctx if isinstance(ctx, tuple) else (ctx, ctx)
+        self.ctx = self.start
+        self.text = text  # Starlark text, for atoms
+        self.paren = False
+        self.temporal = kind in Formula.TEMPORAL or any(a.temporal for a in args)
+
+    @staticmethod
+    def atom(text, ctx):
+        return Formula("atom", [], ctx, text)
+
+    def parenthesized(self):
+        f = Formula(self.kind, self.args, (self.start, self.stop), self.text)
+        if f.kind == "atom":
+            f.text = f"({self.text})"
+        f.paren = True
+        return f
+
+    @staticmethod
+    def combine(op, operands, ctx):
+        if op in Formula.TEMPORAL:
+            return Formula(op, operands, ctx)
+        if op == "not":
+            if not operands[0].temporal:
+                return Formula.atom(f"not ({operands[0].text})", ctx)
+            return Formula(op, operands, ctx)
+        if op == "implies":
+            if not any(o.temporal for o in operands):
+                return Formula.atom(f"(not ({operands[0].text})) or ({operands[1].text})", ctx)
+            return Formula(op, operands, ctx)
+        # and / or: merge each run of adjacent atoms into one atom, keeping
+        # their order so short-circuiting inside the atom is unchanged.
+        merged = []
+        for o in operands:
+            if not o.temporal and merged and not merged[-1].temporal:
+                merged[-1] = Formula.atom(f"({merged[-1].text}) {op} ({o.text})", (merged[-1].start, o.stop))
+            else:
+                merged.append(o)
+        if len(merged) == 1:
+            return merged[0]
+        return Formula(op, merged, ctx)
+
+    def classic_operators(self):
+        """The prefix operators and body when this formula is one of the
+        forms prefixed assertions already support, else None."""
+        if self.kind == "always" and self.args[0].kind == "atom":
+            return ["always"], self.args[0]
+        if self.kind in ("always", "eventually") and self.args[0].kind in ("always", "eventually") \
+                and self.args[0].kind != self.kind and self.args[0].args[0].kind == "atom":
+            return [self.kind, self.args[0].kind], self.args[0].args[0]
+        return None
+
+    def to_proto(self, atoms, input_stream):
+        source_info = get_source_info(self.start)
+        source_info.end.CopyFrom(get_source_info(self.stop).end)
+        p = ast.Formula(source_info=source_info,
+                        text=input_stream.getText(self.start.start.start, self.stop.stop.stop))
+        if self.kind == "atom":
+            p.op = ast.Formula.ATOM
+            if self.text not in atoms:
+                atoms.append(self.text)
+            p.atom = atoms.index(self.text)
+            return p
+        p.op = Formula.OPS[self.kind]
+        for a in self.args:
+            p.args.append(a.to_proto(atoms, input_stream))
+        return p

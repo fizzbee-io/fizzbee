@@ -1,0 +1,70 @@
+---
+deadlock_detection: false
+---
+# x counts up to 2 under a fair action, while y toggles under an unfair one.
+# Assertions named Pass... hold, Fail... don't (see formula_test.go).
+
+VALUES = [1, 2, 3]
+
+action Init:
+    x = 0
+    y = 0
+
+atomic fair action Inc:
+    if x < 2:
+        x = x + 1
+
+atomic action Toggle:
+    y = 1 - y
+
+func done():
+    return x == 2
+
+assertion PassAlways:
+    return always (x >= 0 and x <= 2)
+
+assertion PassLocals:
+    total = x + y
+    return always eventually total >= 2
+
+assertion PassLeadsTo:
+    return x == 0 leadsto done()
+
+assertion PassImplies:
+    return always (x == 1 implies eventually x == 2)
+
+assertion PassStaysDone:
+    return always (done() implies always done())
+
+assertion PassUntil:
+    return x == 0 until x == 1
+
+assertion PassNested:
+    return eventually (x == 1 and eventually x == 2)
+
+assertion PassNotAlways:
+    return not always x < 2
+
+assertion PassFor for v in VALUES if v < 3:
+    return eventually x == v
+
+assertion PassPairs for a, b in [(0, 1), (1, 2)]:
+    return x == a leadsto x == b
+
+assertion FailFor for v in VALUES:
+    return eventually x == v
+
+assertion FailEventuallyAlways:
+    return eventually always y == 0
+
+assertion FailUntil:
+    return x == 1 until x == 2
+
+assertion FailYStays:
+    return always (y == 1 implies (y == 1 until x == 2))
+
+assertion FailBack:
+    return eventually (x == 1 and eventually x == 0)
+
+assertion FailToggleLeadsTo:
+    return y == 0 leadsto y == 1

@@ -1,0 +1,19 @@
+Model checking examples/references/09-14-temporal-formulas/Server.json
+configFileName: examples/references/09-14-temporal-formulas/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}  deadlock_detection:false
+Nodes: 58, queued: 0, elapsed: 18.354228ms
+Time taken for model checking: 18.545936ms
+Writen graph dotfile: examples/references/09-14-temporal-formulas/out/run_2026-10-21_06-32-26/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/09-14-temporal-formulas/out/run_2026-10-21_06-32-26/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 58 Unique states: 26
+Checking formula NoRequestsBeforeStart
+Checking formula Answered[0]
+Checking formula Answered[1]
+Checking formula StaysStarted
+Checking always eventually EventuallyIdle
+IsLive: true
+Time taken to check liveness: 9.290011ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/09-14-temporal-formulas/out/run_2026-10-21_06-32-26

@@ -171,7 +171,44 @@ compose_entry
     ;
 
 assertiondef
-    : (EXISTS | ALWAYS | EVENTUALLY | TRANSITION)+ ASSERTION name (OPEN_PAREN typedargslist? CLOSE_PAREN)? COLON suite
+    : (EXISTS | ALWAYS | EVENTUALLY | TRANSITION)* ASSERTION name (OPEN_PAREN typedargslist? CLOSE_PAREN)? assertion_for_clause* COLON suite
+    ;
+
+// `for v in VALUES if v != 0` on an assertion header, one instance per binding.
+assertion_for_clause
+    : FOR exprlist IN logical_test (IF logical_test)*
+    ;
+
+// A temporal formula, allowed only as the final return of an assertion.
+// Prefix operators bind tighter than `and`, which binds tighter than `or`,
+// which binds tighter than `implies`, `until` and `leadsto`. Those three are
+// soft keywords: they lex as NAME, and chaining them needs parentheses.
+formula
+    : formula_or (formula_binop formula_or)*
+    ;
+
+formula_binop
+    : {self.IsSoftKeyword("implies")}? NAME
+    | {self.IsSoftKeyword("until")}? NAME
+    | {self.IsSoftKeyword("leadsto")}? NAME
+    ;
+
+formula_or
+    : formula_and (OR formula_and)*
+    ;
+
+formula_and
+    : formula_unary (AND formula_unary)*
+    ;
+
+formula_unary
+    : (NOT | ALWAYS | EVENTUALLY | formula_possibly) formula_unary
+    | OPEN_PAREN formula CLOSE_PAREN
+    | comparison
+    ;
+
+formula_possibly
+    : {self.IsSoftKeyword("possibly")}? NAME
     ;
 
 // python 3 paramters
@@ -225,6 +262,7 @@ small_stmt
     | BREAK                                                  # break_stmt
     | CONTINUE                                               # continue_stmt
     | RETURN testlist?                                       # return_stmt
+    | RETURN formula                                         # formula_return_stmt
     | RAISE (test (COMMA test (COMMA test)?)?)? (FROM test)? # raise_stmt
     | yield_expr                                             # yield_stmt
     | IMPORT dotted_as_names                                 # import_stmt

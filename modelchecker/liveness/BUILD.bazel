@@ -6,6 +6,7 @@ go_library(
         "check.go",
         "graph.go",
         "lasso.go",
+        "ltl.go",
         "tarjan.go",
     ],
     importpath = "github.com/fizzbee-io/fizzbee/modelchecker/liveness",
@@ -16,6 +17,7 @@ go_test(
     name = "liveness_test",
     srcs = [
         "check_test.go",
+        "ltl_test.go",
         "oracle_test.go",
         "property_test.go",
     ],

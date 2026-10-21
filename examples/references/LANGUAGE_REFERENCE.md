@@ -918,6 +918,79 @@ always eventually assertion AlwaysProgresses:
 
 **Requires**: Strong fairness typically
 
+### Temporal Formulas
+
+An assertion without a prefix returns a temporal formula. The body may
+compute locals first, as any assertion can, and must end with a single
+`return`:
+
+```python
+assertion Answered:
+    waiting = [c for c in range(NUM_CLIENTS) if pending[c]]
+    return len(waiting) > 0 leadsto len(waiting) == 0
+
+assertion NoRequestsBeforeStart:
+    return no_requests() until started
+
+assertion StaysStarted:
+    return always (started implies always started)
+```
+
+Operators, from tightest to loosest binding:
+
+| Level | Operators | Meaning |
+|---|---|---|
+| 1 | any expression | evaluated in a state |
+| 2 | `not P`, `always P`, `eventually P` | prefix |
+| 3 | `P and Q` | |
+| 4 | `P or Q` | |
+| 5 | `P implies Q`, `P until Q`, `P leadsto Q` | need parentheses to combine |
+
+- `P until Q`: Q eventually holds, and P holds in every state before it
+  (strong until).
+- `P leadsto Q`: `always (P implies eventually Q)`.
+- `implies`, `until` and `leadsto` are keywords only in an assertion's
+  return, so they can still be used as names elsewhere.
+
+**Atoms.** Each largest part of the formula with no temporal operator is an
+ordinary expression (it may call funcs), evaluated in every state.
+**Locals are recomputed in every state**: they are definitions, not
+snapshots. So `v = x` then `return eventually x > v` compares `x` with
+itself and is always false.
+
+**Parentheses.** Prefix operators bind tightest, so
+`always x >= 0 and y >= 0` would mean `(always x >= 0) and y >= 0`. That is
+an error; write `always (x >= 0 and y >= 0)`. The same holds for
+`eventually` and for `not always` on the left of any binary operator.
+
+**One formula per value.** A `for` clause on the header checks one instance
+per value, named like `Answered[0]`. Iterables and filters may use only
+constants and builtins, and are evaluated once, before `Init`. Several
+clauses nest in order:
+
+```python
+assertion Answered for c in range(NUM_CLIENTS):
+    return pending[c] leadsto not pending[c]
+
+assertion Replicated for k in KEYS for r in REPLICAS if r != PRIMARY:
+    return written[k] leadsto r in copies[k]
+```
+
+`return always P`, `return always eventually P` and
+`return eventually always P` (with P free of temporal operators) are the
+same checks as the prefixed `always`, `always eventually` and
+`eventually always` assertions.
+
+**Limitations.**
+- Formulas are checked by the default (strict) liveness checker only, not
+  with `liveness: eventual`, simulation or `--experimental_no_graph`.
+- `possibly` (branching time) is reserved but not supported yet.
+- Only one `return`, at the end. A conditional formula can be written with
+  connectives, such as `(mode == 1 and F) or (mode != 1 and G)`.
+- Temporal operators and `implies` can't be stored in locals.
+- `for` clauses can't iterate over symmetric domains yet.
+- Reference examples: `09-14` (passing) and `09-15` (a violation).
+
 ---
 
 ## Data Structures

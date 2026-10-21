@@ -1,0 +1,54 @@
+---
+deadlock_detection: false
+---
+# Temporal formulas: an assertion without a prefix returns a formula built
+# from always, eventually, until, leadsto, implies, and, or and not. Each
+# maximal non-temporal part of the formula (an atom) is an ordinary
+# expression, evaluated in every state. Locals before the return are
+# recomputed in every state too.
+#
+# A server starts, then answers its clients' requests. Each client sends at
+# most two requests. Start and Respond are fair, so every request is answered.
+
+NUM_CLIENTS = 2
+
+action Init:
+    started = False
+    pending = [False] * NUM_CLIENTS
+    answered = [0] * NUM_CLIENTS
+
+atomic fair action Start:
+    require not started
+    started = True
+
+atomic action Request:
+    require started
+    c = oneof [i for i in range(NUM_CLIENTS) if not pending[i] and answered[i] < 2]
+    pending[c] = True
+
+atomic fair action Respond:
+    c = oneof [i for i in range(NUM_CLIENTS) if pending[i]]
+    pending[c] = False
+    answered[c] += 1
+
+func no_requests():
+    return True not in pending
+
+# No request arrives before the server starts, and it does start (strong until).
+assertion NoRequestsBeforeStart:
+    return no_requests() until started
+
+# A `for` clause on the header checks one formula per client: Answered[0]
+# and Answered[1]. The iterable may use only constants.
+assertion Answered for c in range(NUM_CLIENTS):
+    return pending[c] leadsto not pending[c]
+
+# Once started, the server stays started.
+assertion StaysStarted:
+    return always (started implies always started)
+
+# `return always eventually P` is the same check as the prefixed
+# `always eventually assertion`, with the local recomputed in each state.
+assertion EventuallyIdle:
+    busy = len([c for c in range(NUM_CLIENTS) if pending[c]])
+    return always eventually busy == 0

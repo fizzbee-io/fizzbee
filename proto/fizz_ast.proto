@@ -232,6 +232,44 @@ message Invariant {
   string py_code = 9;
 
   repeated Parameter params = 10;
+
+  // A temporal formula assertion: `assertion Name:` whose body ends with
+  // `return <formula>`. The block's last statement returns the list of the
+  // formula's atoms, so one run of the block gives every atom's value in a
+  // state. temporal_operators is empty for these.
+  Formula formula = 11;
+  // `for x in XS if cond` clauses on the header. The checker expands the
+  // assertion into one instance per binding before model checking.
+  repeated ForClause for_clauses = 12;
+}
+
+// A node of a temporal formula. Atoms are the maximal non-temporal
+// subexpressions; each is an index into the list the assertion's block returns.
+message Formula {
+  enum Op {
+    OP_UNKNOWN = 0;
+    ATOM = 1;
+    NOT = 2;
+    AND = 3;  // n-ary
+    OR = 4;   // n-ary
+    IMPLIES = 5;
+    ALWAYS = 6;
+    EVENTUALLY = 7;
+    UNTIL = 8;    // strong until
+    LEADSTO = 9;  // always (a implies eventually b)
+  }
+  SourceInfo source_info = 1;
+  Op op = 2;
+  repeated Formula args = 3;
+  int32 atom = 4;
+  string text = 5;  // source text, for messages
+}
+
+message ForClause {
+  SourceInfo source_info = 1;
+  repeated string targets = 2;
+  string iterable_py_expr = 3;
+  repeated string filter_py_exprs = 4;
 }
 
 // Deprecated, to be removed. Use action Init at the global level instead.

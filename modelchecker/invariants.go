@@ -101,6 +101,13 @@ func CheckInvariantsWithProber(process *Process, prober NextStatesProber) map[in
 				if slices.Contains(invariant.TemporalOperators, "transition") {
 					continue
 				}
+				if invariant.Formula != nil {
+					if process.Atoms == nil {
+						process.Atoms = make([]uint64, len(file.Invariants))
+					}
+					process.Atoms[j] = CheckFormulaAtoms(process, invariant, j, prober)
+					continue
+				}
 				passed = CheckAssertion(process, invariant, j, prober)
 				if (slices.Contains(invariant.TemporalOperators, "eventually") || slices.Contains(invariant.TemporalOperators, "exists")) && passed /*&& (len(process.Threads) == 0 || process.Name == "yield")*/ {
 					process.Witness[i][j] = true
@@ -144,6 +151,12 @@ func CheckAssertion(process *Process, invariant *ast.Invariant, index int, probe
 	if !slices.Contains(invariant.TemporalOperators, "always") && !slices.Contains(invariant.TemporalOperators, "exists") {
 		panic("Invariant checking supported only for always/always-eventually/eventually-always/exists invariants" + strings.Join(invariant.TemporalOperators, ","))
 	}
+	return execAssertionFunction(assertionClone(process, prober), index, invariant)
+}
+
+// assertionClone is the process an assertion body runs on: a clone of
+// process that can call fizz funcs, and see next_states() when prober is set.
+func assertionClone(process *Process, prober NextStatesProber) *Process {
 	cloned := process.CloneForAssert(nil, 0)
 	cloned.enablePredicateCalls()
 	cloned.Heap.state["__returns__"] = NewDictFromStringDict(cloned.Returns)
@@ -188,8 +201,7 @@ func CheckAssertion(process *Process, invariant *ast.Invariant, index int, probe
 				return starlark.NewList(elems), nil
 			})
 	}
-
-	return execAssertionFunction(cloned, index, invariant)
+	return cloned
 }
 
 func execAssertionFunction(cloned *Process, index int, invariant *ast.Invariant) bool {
