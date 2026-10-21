@@ -18,9 +18,9 @@ func predicateCallsSpec(t *testing.T, name string) *Processor {
 	}
 	file, err := readAstFromFile(filepath.Join(base, "testdata", "predicate_calls", name+".json"))
 	require.Nil(t, err)
-	noDeadlock := false
+	noDeadlock, noCrash := false, false
 	stateConfig := &ast.StateSpaceOptions{
-		Options:           &ast.Options{MaxActions: 10},
+		Options:           &ast.Options{MaxActions: 10, MaxConcurrentActions: 1, CrashOnYield: &noCrash},
 		DeadlockDetection: &noDeadlock,
 	}
 	return NewProcessor([]*ast.File{file}, stateConfig, false, 0, "", "", false, nil, nil, "")
