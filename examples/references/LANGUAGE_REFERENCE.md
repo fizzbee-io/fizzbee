@@ -938,8 +938,8 @@ assertion StaysStarted:
 
 | FizzBee | LTL | TLA+ | Holds on a run when |
 |---|---|---|---|
-| `always P` | □P (G P) | `[]P` | P holds in every state |
-| `eventually P` | ◇P (F P) | `<>P` | P holds in some state, now or later |
+| `always P` | □P or G P | `[]P` | P holds in every state |
+| `eventually P` | ◇P or F P | `<>P` | P holds in some state, now or later |
 | `P until Q` | P U Q | none built in | Q holds in some state, and P in every state before it |
 | `P leadsto Q` | □(P → ◇Q) | `P ~> Q` | every state where P holds is followed, now or later, by one where Q holds |
 | `P implies Q` | P → Q | `P => Q` | P is false or Q holds |
