@@ -936,7 +936,7 @@ assertion StaysStarted:
     return always (started implies always started)
 ```
 
-Operators, from tightest to loosest binding:
+Operator precedence, from tightest to loosest binding:
 
 | Level | Operators | Meaning |
 |---|---|---|
@@ -945,6 +945,10 @@ Operators, from tightest to loosest binding:
 | 3 | `P and Q` | |
 | 4 | `P or Q` | |
 | 5 | `P implies Q`, `P until Q`, `P leadsto Q` | need parentheses to combine |
+
+`and` and `or` chain (`P and Q and R`). The level 5 operators don't: write
+`(P until Q) until R` or `P until (Q until R)`; `P until Q until R` is an
+error, and so is mixing two of them without parentheses.
 
 - `P until Q`: Q eventually holds, and P holds in every state before it
   (strong until).
@@ -985,12 +989,42 @@ assertion Replicated for k in KEYS for r in REPLICAS if r != PRIMARY:
 same checks as the prefixed `always`, `always eventually` and
 `eventually always` assertions.
 
+**One return.** The body computes locals, then returns one formula. A
+formula can't be chosen with `if`:
+
+```python
+assertion Progress:
+    if MODE == 1:                 # error: a single return, as the last statement
+        return always x >= 0
+    return eventually x == 2
+```
+
+Instead, use one of these:
+
+```python
+# Separate assertions, when the cases are separate properties.
+assertion Bounded:
+    return always x >= 0
+
+assertion Reaches:
+    return eventually x == 2
+
+# A local for the non-temporal part.
+assertion Progress:
+    ready = MODE == 1 and x >= 0
+    return ready leadsto x == 2
+
+# Connectives. An atom outside every temporal operator, such as MODE == 1
+# here, is evaluated in the first state only.
+assertion ByMode:
+    return (MODE == 1 and always x >= 0) or (MODE != 1 and eventually x == 2)
+```
+
 **Limitations.**
 - Formulas are checked by the default (strict) liveness checker only, not
   with `liveness: eventual`, simulation or `--experimental_no_graph`.
 - `possibly` (branching time) is reserved but not supported yet.
-- Only one `return`, at the end. A conditional formula can be written with
-  connectives, such as `(mode == 1 and F) or (mode != 1 and G)`.
+- Only one `return`, at the end (see below).
 - Temporal operators and `implies` can't be stored in locals.
 - `for` clauses can't iterate over symmetric domains yet.
 - Reference examples: `09-14` (passing) and `09-15` (a violation).
