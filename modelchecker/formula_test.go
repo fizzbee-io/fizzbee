@@ -16,7 +16,8 @@ import (
 // checkFormulaSpec checks each assertion of testdata/formulas/<name> on its
 // own: the ones named Pass... hold, the ones named Fail... don't, except
 // those in holds, and every failure comes with a counterexample that starts
-// at Init. It returns the file, with its for headers expanded.
+// at Init. For the classic shapes, the direct check must agree. It returns
+// the file, with its for headers expanded.
 func checkFormulaSpec(t *testing.T, name string, holds ...string) *ast.File {
 	base := "."
 	if dir := os.Getenv("RUNFILES_DIR"); dir != "" {
@@ -43,6 +44,14 @@ func checkFormulaSpec(t *testing.T, name string, holds ...string) *ast.File {
 				var err error
 				_, path, err = s.checkFormulaAssertion(inv, j, true)
 				require.Nil(t, err)
+				if inv.Formula == nil {
+					// A classic shape: the engine's direct check, which the
+					// default engine runs, must agree with the product.
+					_, eventuallyAlways := livenessOperators(inv)
+					direct, err := s.check(strictLivenessPredicate(nodes, 0, j, eventuallyAlways), eventuallyAlways)
+					require.Nil(t, err)
+					assert.Equal(t, path == nil, direct == nil, "the product and the direct check disagree")
+				}
 			} else {
 				// Plain `always P` compiles to a safety assertion, which the
 				// exploration already checked.

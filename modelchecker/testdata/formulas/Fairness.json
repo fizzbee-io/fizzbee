@@ -6,7 +6,7 @@
       "column": 1
     },
     "end": {
-      "line": 42
+      "line": 49
     }
   },
   "invariants": [
@@ -215,7 +215,7 @@
           "column": 1
         },
         "end": {
-          "line": 37
+          "line": 38
         }
       },
       "name": "PassStepsInOrder",
@@ -226,7 +226,7 @@
             "column": 5
           },
           "end": {
-            "line": 37
+            "line": 38
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -238,7 +238,7 @@
                 "column": 5
               },
               "end": {
-                "line": 37
+                "line": 38
               }
             },
             "returnStmt": {
@@ -270,7 +270,7 @@
           }
         ]
       },
-      "pyCode": "def PassStepsInOrder():\n    return always (taken_strong == 1 implies eventually taken_strong == 2)\n\n",
+      "pyCode": "def PassStepsInOrder():\n    return always (taken_strong == 1 implies eventually taken_strong == 2)\n\n# The gate opens infinitely often but never stays open.\n",
       "formula": {
         "sourceInfo": {
           "start": {
@@ -347,22 +347,26 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 37,
+          "line": 38,
           "column": 1
         },
         "end": {
-          "line": 40
+          "line": 41
         }
       },
-      "name": "FailWeak",
+      "name": "PassOpensForever",
+      "temporalOperators": [
+        "always",
+        "eventually"
+      ],
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 38,
+            "line": 39,
             "column": 5
           },
           "end": {
-            "line": 40
+            "line": 41
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -370,21 +374,153 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 38,
+                "line": 39,
                 "column": 5
               },
               "end": {
-                "line": 40
+                "line": 41
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 38,
+                  "line": 39,
                   "column": 5
                 },
                 "end": {
-                  "line": 38,
+                  "line": 39,
+                  "column": 33
+                }
+              },
+              "pyExpr": "open",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 39,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 39,
+                    "column": 33
+                  }
+                },
+                "pyExpr": "open"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassOpensForever():\n    return always eventually open\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 41,
+          "column": 1
+        },
+        "end": {
+          "line": 44
+        }
+      },
+      "name": "FailOpenSettles",
+      "temporalOperators": [
+        "eventually",
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 42,
+            "column": 5
+          },
+          "end": {
+            "line": 44
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 42,
+                "column": 5
+              },
+              "end": {
+                "line": 44
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 42,
+                  "column": 5
+                },
+                "end": {
+                  "line": 42,
+                  "column": 33
+                }
+              },
+              "pyExpr": "open",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 42,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 42,
+                    "column": 33
+                  }
+                },
+                "pyExpr": "open"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailOpenSettles():\n    return eventually always open\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 44,
+          "column": 1
+        },
+        "end": {
+          "line": 47
+        }
+      },
+      "name": "FailWeak",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 45,
+            "column": 5
+          },
+          "end": {
+            "line": 47
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 45,
+                "column": 5
+              },
+              "end": {
+                "line": 47
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 45,
+                  "column": 5
+                },
+                "end": {
+                  "line": 45,
                   "column": 32
                 }
               },
@@ -392,11 +528,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 38,
+                    "line": 45,
                     "column": 5
                   },
                   "end": {
-                    "line": 38,
+                    "line": 45,
                     "column": 32
                   }
                 },
@@ -410,11 +546,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 38,
+            "line": 45,
             "column": 12
           },
           "end": {
-            "line": 38,
+            "line": 45,
             "column": 32
           }
         },
@@ -423,11 +559,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 38,
+                "line": 45,
                 "column": 23
               },
               "end": {
-                "line": 38,
+                "line": 45,
                 "column": 32
               }
             },
@@ -439,22 +575,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 40,
+          "line": 47,
           "column": 1
         },
         "end": {
-          "line": 42
+          "line": 49
         }
       },
       "name": "PassWeakStays",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 41,
+            "line": 48,
             "column": 5
           },
           "end": {
-            "line": 42
+            "line": 49
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -462,21 +598,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 41,
+                "line": 48,
                 "column": 5
               },
               "end": {
-                "line": 42
+                "line": 49
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 41,
+                  "line": 48,
                   "column": 5
                 },
                 "end": {
-                  "line": 41,
+                  "line": 48,
                   "column": 56
                 }
               },
@@ -484,11 +620,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 41,
+                    "line": 48,
                     "column": 5
                   },
                   "end": {
-                    "line": 41,
+                    "line": 48,
                     "column": 56
                   }
                 },
@@ -502,11 +638,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 41,
+            "line": 48,
             "column": 12
           },
           "end": {
-            "line": 41,
+            "line": 48,
             "column": 56
           }
         },
@@ -515,11 +651,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 41,
+                "line": 48,
                 "column": 20
               },
               "end": {
-                "line": 41,
+                "line": 48,
                 "column": 55
               }
             },
@@ -528,11 +664,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 41,
+                    "line": 48,
                     "column": 20
                   },
                   "end": {
-                    "line": 41,
+                    "line": 48,
                     "column": 29
                   }
                 },
@@ -541,11 +677,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 41,
+                    "line": 48,
                     "column": 39
                   },
                   "end": {
-                    "line": 41,
+                    "line": 48,
                     "column": 55
                   }
                 },
@@ -554,11 +690,11 @@
                   {
                     "sourceInfo": {
                       "start": {
-                        "line": 41,
+                        "line": 48,
                         "column": 46
                       },
                       "end": {
-                        "line": 41,
+                        "line": 48,
                         "column": 55
                       }
                     },

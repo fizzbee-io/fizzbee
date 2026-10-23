@@ -34,6 +34,13 @@ assertion PassStrongUntil:
 assertion PassStepsInOrder:
     return always (taken_strong == 1 implies eventually taken_strong == 2)
 
+# The gate opens infinitely often but never stays open.
+assertion PassOpensForever:
+    return always eventually open
+
+assertion FailOpenSettles:
+    return eventually always open
+
 assertion FailWeak:
     return eventually taken_weak
 
