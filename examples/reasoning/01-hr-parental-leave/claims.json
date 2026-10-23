@@ -1,0 +1,101 @@
+[
+  {
+    "id": "T1",
+    "source": "AWS docs, findings walkthrough",
+    "question": "I'm a full-time employee and I've been here for 18 months. Can I take parental leave?",
+    "answer": "Yes, you are eligible for parental leave.",
+    "premises": "isFullTime and tenureMonths == 18",
+    "claim": "eligibleForParentalLeave",
+    "expected": "VALID"
+  },
+  {
+    "id": "T2",
+    "source": "AWS docs, QnA test example",
+    "question": "I've been working here for 2 years full-time. Can I take parental leave?",
+    "answer": "Yes, you are eligible for parental leave.",
+    "premises": "isFullTime and tenureMonths == 24",
+    "claim": "eligibleForParentalLeave",
+    "expected": "VALID"
+  },
+  {
+    "id": "T3",
+    "source": "AWS docs, create-automated-reasoning-policy-test-case CLI example",
+    "question": "Can I take a leave of absence if I'm a part-time employee?",
+    "answer": "No, only full-time employees are eligible for leave of absence.",
+    "premises": "not isFullTime",
+    "claim": "not eligibleForLeaveOfAbsence",
+    "expected": "VALID"
+  },
+  {
+    "id": "T4",
+    "source": "Hallucinated answer to T1",
+    "question": "I'm a full-time employee and I've been here for 18 months. Can I take parental leave?",
+    "answer": "No, you are not eligible for parental leave yet.",
+    "premises": "isFullTime and tenureMonths == 18",
+    "claim": "not eligibleForParentalLeave",
+    "expected": "INVALID"
+  },
+  {
+    "id": "T5",
+    "source": "Hallucinated answer to T3",
+    "question": "I'm part-time. Can I take a leave of absence?",
+    "answer": "Yes, part-time employees can take a leave of absence.",
+    "premises": "not isFullTime",
+    "claim": "eligibleForLeaveOfAbsence",
+    "expected": "INVALID"
+  },
+  {
+    "id": "T6",
+    "source": "Incomplete answer (missing the tenure condition)",
+    "question": "I'm full-time. Can I take parental leave?",
+    "answer": "Yes, full-time employees are eligible for parental leave.",
+    "premises": "isFullTime",
+    "claim": "eligibleForParentalLeave",
+    "expected": "SATISFIABLE"
+  },
+  {
+    "id": "T7",
+    "source": "Policy gap: R1 only says who IS eligible",
+    "question": "I'm part-time with 3 years of tenure. Can I take parental leave?",
+    "answer": "No, part-time employees are not eligible for parental leave.",
+    "premises": "not isFullTime and tenureMonths == 36",
+    "claim": "not eligibleForParentalLeave",
+    "expected": "SATISFIABLE"
+  },
+  {
+    "id": "T8",
+    "source": "Boundary: the AWS prose says '12+ months', the AWS SMT rule says '> 12'",
+    "question": "I'm full-time and I've been here exactly 12 months. Can I take parental leave?",
+    "answer": "Yes, you are eligible for parental leave.",
+    "premises": "isFullTime and tenureMonths == 12",
+    "claim": "eligibleForParentalLeave",
+    "expected": "SATISFIABLE"
+  },
+  {
+    "id": "T9",
+    "source": "AWS docs, contradictory input example",
+    "question": "I'm full-time and also part-time. Can I take parental leave?",
+    "answer": "Yes, you are eligible for parental leave.",
+    "premises": "isFullTime and not isFullTime",
+    "claim": "eligibleForParentalLeave",
+    "expected": "IMPOSSIBLE"
+  },
+  {
+    "id": "T10",
+    "source": "Premise contradicts R2",
+    "question": "I'm part-time and I've been approved for a leave of absence. Can I also take parental leave?",
+    "answer": "Yes, you can take parental leave too.",
+    "premises": "not isFullTime and eligibleForLeaveOfAbsence",
+    "claim": "eligibleForParentalLeave",
+    "expected": "IMPOSSIBLE"
+  },
+  {
+    "id": "T11",
+    "source": "Off-topic question",
+    "question": "What's on the cafeteria menu today?",
+    "answer": "Today's special is lasagna.",
+    "premises": "True",
+    "claim": "cafeteriaSpecial == 'lasagna'",
+    "expected": "NO_TRANSLATIONS"
+  }
+]
