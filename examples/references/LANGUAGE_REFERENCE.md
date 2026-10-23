@@ -1032,21 +1032,21 @@ assertion ByMode:
     return (MODE == 1 and always x >= 0) or (MODE != 1 and eventually x == 2)
 ```
 
-**Common patterns.** For a request that is sent and then served:
+**Common patterns.** For a request that is made and then served:
 
 | Pattern | Formula | Meaning |
 |---|---|---|
-| Invariance | `always (served implies sent)` | never served without being sent |
-| Absence | `always not (served and not sent)` | the bad state never occurs |
+| Invariance | `always (served implies requested)` | never served without being requested |
+| Absence | `always not (served and not requested)` | the bad state never occurs |
 | Existence | `eventually served` | served at some point |
-| Response | `sent leadsto served` | every send is eventually served |
-| Precedence | `((not served) until sent) or always (not served)` | not served before it's sent (weak until) |
-| Strict precedence | `(not served) until sent` | sent at some point, and not served before then |
+| Response | `requested leadsto served` | every request is eventually served |
+| Precedence | `((not served) until requested) or always (not served)` | not served before it's requested (weak until) |
+| Strict precedence | `(not served) until requested` | requested at some point, and not served before then |
 | Stays true | `always (served implies always served)` | once served, served forever |
 | Stability | `eventually always served` | eventually settles with served true |
 | Recurrence | `always eventually served` | served infinitely often |
-| Constrained response | `always (sent implies (sent until served))` | once sent, stays sent until served |
-| Conditional | `(always eventually sent) implies (always eventually served)` | if sent infinitely often, served infinitely often |
+| Constrained response | `always (requested implies (requested until served))` | once requested, stays requested until served |
+| Conditional | `(always eventually requested) implies (always eventually served)` | if requested infinitely often, served infinitely often |
 
 `until` is strong. For weak until (P holds until Q, or forever if Q never
 does), write `(P until Q) or always P`, as in the precedence pattern.
