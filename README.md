@@ -65,7 +65,7 @@ Run:
 ```
 Example:
 ```
-./fizz examples/tutorials/19-for-stmt-serial-check-again/ForLoop.fizz 
+./fizz examples/references/04-02-for-loop-serial/Loop.fizz 
 ```
 
 Note: Generally, you won't need to rebuild the binary, but most likely will be required after each `git pull`.
