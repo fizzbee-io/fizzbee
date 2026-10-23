@@ -377,6 +377,69 @@ class FizzParserListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by FizzParser#assertion_for_clause.
+    def enterAssertion_for_clause(self, ctx:FizzParser.Assertion_for_clauseContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#assertion_for_clause.
+    def exitAssertion_for_clause(self, ctx:FizzParser.Assertion_for_clauseContext):
+        pass
+
+
+    # Enter a parse tree produced by FizzParser#formula.
+    def enterFormula(self, ctx:FizzParser.FormulaContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#formula.
+    def exitFormula(self, ctx:FizzParser.FormulaContext):
+        pass
+
+
+    # Enter a parse tree produced by FizzParser#formula_binop.
+    def enterFormula_binop(self, ctx:FizzParser.Formula_binopContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#formula_binop.
+    def exitFormula_binop(self, ctx:FizzParser.Formula_binopContext):
+        pass
+
+
+    # Enter a parse tree produced by FizzParser#formula_or.
+    def enterFormula_or(self, ctx:FizzParser.Formula_orContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#formula_or.
+    def exitFormula_or(self, ctx:FizzParser.Formula_orContext):
+        pass
+
+
+    # Enter a parse tree produced by FizzParser#formula_and.
+    def enterFormula_and(self, ctx:FizzParser.Formula_andContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#formula_and.
+    def exitFormula_and(self, ctx:FizzParser.Formula_andContext):
+        pass
+
+
+    # Enter a parse tree produced by FizzParser#formula_unary.
+    def enterFormula_unary(self, ctx:FizzParser.Formula_unaryContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#formula_unary.
+    def exitFormula_unary(self, ctx:FizzParser.Formula_unaryContext):
+        pass
+
+
+    # Enter a parse tree produced by FizzParser#formula_possibly.
+    def enterFormula_possibly(self, ctx:FizzParser.Formula_possiblyContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#formula_possibly.
+    def exitFormula_possibly(self, ctx:FizzParser.Formula_possiblyContext):
+        pass
+
+
     # Enter a parse tree produced by FizzParser#typedargslist.
     def enterTypedargslist(self, ctx:FizzParser.TypedargslistContext):
         pass
@@ -527,6 +590,15 @@ class FizzParserListener(ParseTreeListener):
 
     # Exit a parse tree produced by FizzParser#return_stmt.
     def exitReturn_stmt(self, ctx:FizzParser.Return_stmtContext):
+        pass
+
+
+    # Enter a parse tree produced by FizzParser#formula_return_stmt.
+    def enterFormula_return_stmt(self, ctx:FizzParser.Formula_return_stmtContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#formula_return_stmt.
+    def exitFormula_return_stmt(self, ctx:FizzParser.Formula_return_stmtContext):
         pass
 
 

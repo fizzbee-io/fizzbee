@@ -1,0 +1,48 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+---
+# Flip opens and closes a gate forever. Each Take can run only while the
+# gate is open, so it's enabled infinitely often but never continuously:
+# strong fairness makes it run, weak fairness doesn't. TakeStrong takes
+# two steps (see formula_test.go).
+
+action Init:
+    open = False
+    taken_weak = False
+    taken_strong = 0
+
+atomic fair action Flip:
+    open = not open
+
+atomic fair action TakeWeak:
+    require open and not taken_weak
+    taken_weak = True
+
+serial fair<strong> action TakeStrong:
+    require open and taken_strong == 0
+    taken_strong = 1
+    taken_strong = 2
+
+assertion PassStrong:
+    return eventually taken_strong == 2
+
+assertion PassStrongUntil:
+    return taken_strong == 0 until taken_strong == 1
+
+assertion PassStepsInOrder:
+    return always (taken_strong == 1 implies eventually taken_strong == 2)
+
+# The gate opens infinitely often but never stays open.
+assertion PassOpensForever:
+    return always eventually open
+
+assertion FailOpenSettles:
+    return eventually always open
+
+assertion FailWeak:
+    return eventually taken_weak
+
+assertion PassWeakStays:
+    return always (taken_weak implies always taken_weak)

@@ -179,6 +179,102 @@ func strictLivenessPredicate(nodes []*Node, i, j int, eventuallyAlways bool) []b
 	return q
 }
 
+// checkFormula checks formula f on the state graph through the product with
+// its negation's automaton. The letter of a node is labels(node) at the
+// nodes where invariants were evaluated; other nodes, the steps inside an
+// action, repeat the letter before them.
+func (s *sccGraph) checkFormula(f *liveness.Formula, labeled func(*Node) bool, letter func(*Node) uint64) ([]*Link, error) {
+	n := len(s.nodes)
+	isLabeled, letters, canStop := make([]bool, n), make([]uint64, n), make([]bool, n)
+	for i, node := range s.nodes {
+		isLabeled[i] = labeled(node)
+		if isLabeled[i] {
+			letters[i] = letter(node)
+		}
+		canStop[i] = isObservationNode(node)
+	}
+	p, err := liveness.NewProduct(s.g, liveness.Not(f), isLabeled, letters, canStop)
+	if err != nil {
+		return nil, err
+	}
+	l, err := liveness.Check(p.Graph)
+	if err != nil || l == nil {
+		return nil, err
+	}
+	path := []*Link{InitNodeToLink(s.nodes[s.root])}
+	for _, e := range l.Prefix {
+		path = append(path, s.links[p.Edge[e]])
+	}
+	for _, e := range l.Loop {
+		path = append(path, s.links[p.Edge[e]])
+	}
+	if l.Stutter {
+		path = append(path, &Link{Node: s.nodes[p.Node[l.Start]], Name: "stutter"})
+	}
+	return path, nil
+}
+
+// checkFormulaAssertion checks formula assertion j of the first file. With
+// classic set, a prefixed always-eventually or eventually-always assertion
+// is checked through the product too, with its witness as the only atom.
+// It reports whether invariant j was checked.
+func (s *sccGraph) checkFormulaAssertion(invariant *ast.Invariant, j int, classic bool) (bool, []*Link, error) {
+	if invariant.Formula != nil {
+		fmt.Println("Checking formula", invariant.Name)
+		path, err := s.checkFormula(toLivenessFormula(invariant.Formula),
+			func(n *Node) bool { return n.Process.Atoms != nil },
+			func(n *Node) uint64 { return n.Process.Atoms[j] })
+		return true, path, err
+	}
+	if f := classicFormula(invariant); classic && f != nil {
+		if _, eventuallyAlways := livenessOperators(invariant); eventuallyAlways {
+			fmt.Println("Checking eventually always", invariant.Name)
+		} else {
+			fmt.Println("Checking always eventually", invariant.Name)
+		}
+		// The same nodes strictLivenessPredicate counts.
+		relevant := func(n *Node) bool { return n.Process.GetThreadsCount() == 0 || n.Name == "yield" }
+		path, err := s.checkFormula(f, relevant, func(n *Node) uint64 {
+			if n.Process.Witness[0][j] {
+				return 1
+			}
+			return 0
+		})
+		return true, path, err
+	}
+	return false, nil, nil
+}
+
+// CheckFormulaAssertions checks every formula assertion. With classic set,
+// prefixed liveness assertions go through the formula product as well.
+func CheckFormulaAssertions(root *Node, nodes []*Node, classic bool) ([]*Link, *InvariantPosition, error) {
+	process := root.Process
+	if len(process.Files) > 1 {
+		panic("Invariant checking not supported for multiple files yet")
+	}
+	s := newSccGraph(root, nodes)
+	for j, invariant := range process.Files[0].Invariants {
+		checked, path, err := s.checkFormulaAssertion(invariant, j, classic)
+		if err != nil {
+			return nil, nil, fmt.Errorf("assertion %s: %w", invariant.Name, err)
+		}
+		if checked && path != nil {
+			return path, NewInvariantPosition(0, j), nil
+		}
+	}
+	return nil, nil, nil
+}
+
+// HasFormulaAssertions reports whether file has a temporal formula assertion.
+func HasFormulaAssertions(file *ast.File) bool {
+	for _, invariant := range file.Invariants {
+		if invariant.Formula != nil {
+			return true
+		}
+	}
+	return false
+}
+
 // CheckStrictLivenessScc is CheckStrictLiveness on the SCC-based engine.
 func CheckStrictLivenessScc(root *Node, nodes []*Node) ([]*Link, *InvariantPosition, error) {
 	process := root.Process
@@ -188,6 +284,15 @@ func CheckStrictLivenessScc(root *Node, nodes []*Node) ([]*Link, *InvariantPosit
 	s := newSccGraph(root, nodes)
 	for i, file := range process.Files {
 		for j, invariant := range file.Invariants {
+			if checked, path, err := s.checkFormulaAssertion(invariant, j, false); checked {
+				if err != nil {
+					return nil, nil, fmt.Errorf("assertion %s: %w", invariant.Name, err)
+				}
+				if path != nil {
+					return path, NewInvariantPosition(i, j), nil
+				}
+				continue
+			}
 			alwaysEventually, eventuallyAlways := livenessOperators(invariant)
 			if !alwaysEventually && !eventuallyAlways {
 				continue

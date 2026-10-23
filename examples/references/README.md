@@ -346,6 +346,18 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: `always eventually`, strong fairness, progress
 - **Status**: ✅ PASSED
 
+### 09-14-temporal-formulas: Temporal Formulas
+- **State space**: 58 nodes, 26 unique states
+- **Purpose**: LTL formulas in assertion returns
+- **Key concepts**: `until`, `leadsto`, `implies`, nested `always`, `for` on the assertion header, locals recomputed per state
+- **Status**: ✅ PASSED
+
+### 09-15-temporal-formula-violation: Temporal Formula Violation
+- **State space**: 58 nodes, 26 unique states
+- **Purpose**: A `leadsto` property that fails because the responder isn't fair
+- **Key concepts**: counterexample for a formula, per-instance names (`Answered[0]`)
+- **Status**: ❌ FAILED (expected)
+
 ### 10-01-unfair-action: Unfair Action (Default)
 - **State space**: 108 nodes, 46 unique states
 - **Purpose**: Unfair actions have no fairness guarantees

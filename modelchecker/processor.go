@@ -169,7 +169,11 @@ type Process struct {
 	// Witness indicates the successful liveness checks
 	// For liveness checks, not all nodes will pass the condition, witness indicates
 	// which invariants this node passed.
-	Witness     [][]bool               `json:"witness"`
+	Witness [][]bool `json:"witness"`
+	// Atoms holds, for each formula assertion of the first file, the
+	// bitmask of its atoms that hold here. Nil where invariants weren't
+	// evaluated, such as steps inside an action.
+	Atoms       []uint64               `json:"-"`
 	Returns     starlark.StringDict    `json:"returns"`
 	SymbolTable map[string]*Definition `json:"-"`
 	Labels      []string               `json:"-"`
@@ -222,6 +226,10 @@ type Process struct {
 	guidedTrace      GuidedTrace
 
 	topLevelVars []string
+
+	// assertionBindings holds, for each assertion instance a `for` header
+	// expanded to, the values its clause names are bound to.
+	assertionBindings map[string]starlark.StringDict
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
@@ -370,6 +378,8 @@ func (p *Process) Fork() *Process {
 		Labels:      make([]string, 0),
 		Messages:    make([]*ast.Message, 0),
 		Stats:       p.Stats.Clone(),
+
+		assertionBindings: p.assertionBindings,
 	}
 
 	if p.Stats.TotalActions <= 1 {
@@ -443,6 +453,8 @@ func (p *Process) CloneWithRefs(permutations map[*lib.SymmetricValue][]*lib.Symm
 		Labels:      make([]string, 0),
 		Messages:    make([]*ast.Message, 0),
 		Stats:       p.Stats.Clone(),
+
+		assertionBindings: p.assertionBindings,
 	}
 	p2.Witness = make([][]bool, len(p.Files))
 	for i, file := range p.Files {
@@ -1510,6 +1522,14 @@ func (p *Processor) InitializeNode() (*Node, *Node, error) {
 
 	if len(p.Files[0].Stmts) > 0 {
 		processPreInit(p.Init, p.Files[0].Stmts, p.preinitHookContent)
+	}
+	bindings, err := ExpandAssertionHeaders(p.Files[0], process.Heap.globals, process.Evaluator)
+	if err != nil {
+		return nil, nil, err
+	}
+	process.assertionBindings = bindings
+	for i, file := range process.Files {
+		process.Witness[i] = make([]bool, len(file.Invariants))
 	}
 
 	if p.Files[0].Actions[0].Name != "Init" {

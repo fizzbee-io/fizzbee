@@ -705,7 +705,7 @@ action MayStarve:
     # May never execute even if always enabled
 ```
 
-### Weak Fairness (fair or fair<weak>)
+### Weak Fairness (`fair` or `fair<weak>`)
 
 Eventually executes if **continuously enabled**:
 
@@ -718,7 +718,7 @@ fair action EventuallyRuns:
 
 **Use case**: Actions that should run when persistently enabled
 
-### Strong Fairness (fair<strong>)
+### Strong Fairness (`fair<strong>`)
 
 Eventually executes if **infinitely often enabled**:
 
@@ -919,6 +919,148 @@ always eventually assertion AlwaysProgresses:
 ```
 
 **Requires**: Strong fairness typically
+
+### Temporal Formulas
+
+An assertion without a prefix returns a temporal formula. The body may
+compute locals first, as any assertion can, and must end with a single
+`return`:
+
+```python
+assertion Answered:
+    waiting = [c for c in range(NUM_CLIENTS) if pending[c]]
+    return len(waiting) > 0 leadsto len(waiting) == 0
+
+assertion NoRequestsBeforeStart:
+    return no_requests() until started
+
+assertion StaysStarted:
+    return always (started implies always started)
+```
+
+| FizzBee | LTL | TLA+ | Holds on a run when |
+|---|---|---|---|
+| `always P` | □P or G P | `[]P` | P holds in every state |
+| `eventually P` | ◇P or F P | `<>P` | P holds in some state, now or later |
+| `P until Q` | P U Q | none built in | Q holds in some state, and P in every state before it |
+| `P leadsto Q` | □(P → ◇Q) | `P ~> Q` | every state where P holds is followed, now or later, by one where Q holds |
+| `P implies Q` | P → Q | `P => Q` | P is false or Q holds |
+| `not`, `and`, `or` | ¬, ∧, ∨ | `~`, `/\`, `\/` | as usual |
+
+There is no next operator (LTL X, TLA+ primes): a formula can't tell a
+state from a repeat of it.
+
+Operator precedence, from tightest to loosest binding:
+
+| Level | Operators | Meaning |
+|---|---|---|
+| 1 | any expression | evaluated in a state |
+| 2 | `not P`, `always P`, `eventually P` | prefix |
+| 3 | `P and Q` | |
+| 4 | `P or Q` | |
+| 5 | `P implies Q`, `P until Q`, `P leadsto Q` | need parentheses to combine |
+
+`and` and `or` chain (`P and Q and R`). The level 5 operators don't: write
+`(P until Q) until R` or `P until (Q until R)`; `P until Q until R` is an
+error, and so is mixing two of them without parentheses.
+
+- `P until Q`: Q eventually holds, and P holds in every state before it
+  (strong until).
+- `P leadsto Q`: `always (P implies eventually Q)`.
+- `implies`, `until` and `leadsto` are keywords only in an assertion's
+  return, so they can still be used as names elsewhere.
+
+**Atoms.** Each largest part of the formula with no temporal operator is an
+ordinary expression (it may call funcs), evaluated in every state.
+**Locals are recomputed in every state**: they are definitions, not
+snapshots. So `v = x` then `return eventually x > v` compares `x` with
+itself and is always false.
+
+**Parentheses.** Prefix operators bind tightest, so
+`always x >= 0 and y >= 0` would mean `(always x >= 0) and y >= 0`. That is
+an error; write `always (x >= 0 and y >= 0)`. The same holds for
+`eventually` and for `not always` on the left of any binary operator.
+
+**One formula per value.** A `for` clause on the header checks one instance
+per value, named like `Answered[0]`. Iterables and filters may use only
+constants and builtins, and are evaluated once, before `Init`. The targets
+are names; with several, like `for a, b in PAIRS`, each value must be a
+tuple or list of that length. Several clauses nest in order, and a later
+clause can use an earlier one's names. Inside the assertion (its filters,
+later clauses and body), a header name shadows a constant with the same
+name, as a loop variable would:
+
+```python
+assertion Answered for c in range(NUM_CLIENTS):
+    return pending[c] leadsto not pending[c]
+
+assertion Replicated for k in KEYS for r in REPLICAS if r != PRIMARY:
+    return written[k] leadsto r in copies[k]
+```
+
+`return always P`, `return always eventually P` and
+`return eventually always P` (with P free of temporal operators) are the
+same checks as the prefixed `always`, `always eventually` and
+`eventually always` assertions.
+
+**One return.** The body computes locals, then returns one formula. A
+formula can't be chosen with `if`:
+
+```python
+assertion Progress:
+    if MODE == 1:                 # error: a single return, as the last statement
+        return always x >= 0
+    return eventually x == 2
+```
+
+Instead, use one of these:
+
+```python
+# Separate assertions, when the cases are separate properties.
+assertion Bounded:
+    return always x >= 0
+
+assertion Reaches:
+    return eventually x == 2
+
+# A local for the non-temporal part.
+assertion Progress:
+    ready = MODE == 1 and x >= 0
+    return ready leadsto x == 2
+
+# Connectives. An atom outside every temporal operator, such as MODE == 1
+# here, is evaluated in the first state only.
+assertion ByMode:
+    return (MODE == 1 and always x >= 0) or (MODE != 1 and eventually x == 2)
+```
+
+**Common patterns.** For a request that is made and then served:
+
+| Pattern | Formula | Meaning |
+|---|---|---|
+| Invariance | `always (served implies requested)` | never served without being requested |
+| Absence | `always not (served and not requested)` | the bad state never occurs |
+| Existence | `eventually served` | served at some point |
+| Response | `requested leadsto served` | every request is eventually served |
+| Precedence | `((not served) until requested) or always (not served)` | not served before it's requested (weak until) |
+| Strict precedence | `(not served) until requested` | requested at some point, and not served before then |
+| Stays true | `always (served implies always served)` | once served, served forever |
+| Stability | `eventually always served` | eventually settles with served true |
+| Recurrence | `always eventually served` | served infinitely often |
+| Constrained response | `always (requested implies (requested until served))` | once requested, stays requested until served |
+| Conditional | `(always eventually requested) implies (always eventually served)` | if requested infinitely often, served infinitely often |
+
+`until` is strong. For weak until (P holds until Q, or forever if Q never
+does), write `(P until Q) or always P`, as in the precedence pattern.
+
+**Limitations.**
+- Formulas are checked by the default (strict) liveness checker only, not
+  with `liveness: eventual`, simulation or `--experimental_no_graph`.
+- `possibly` (branching time) is reserved but not supported yet.
+- Only one `return`, at the end (see below).
+- Temporal operators and `implies` can't be stored in locals.
+- `for` clauses can't iterate over symmetric domains yet.
+- Reference examples: `09-14` (passing) and `09-15` (a violation).
 
 ---
 

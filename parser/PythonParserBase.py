@@ -29,3 +29,7 @@ class PythonParserBase(Parser):
 
     def SetVersion(self, required_version: int) -> None:
         self.__version = PythonVersion(required_version)
+    def IsSoftKeyword(self, word: str) -> bool:
+        # Words such as `until` are keywords only inside a temporal formula,
+        # so they lex as NAME and the grammar checks the text.
+        return self._input.LT(1).text == word

@@ -9,6 +9,7 @@ go_library(
         "composition_types.go",
         "durability.go",
         "error.go",
+        "formula.go",
         "graph.go",
         "invariants.go",
         "liveness_scc.go",
@@ -44,6 +45,7 @@ go_test(
     name = "modelchecker_test",
     srcs = [
         "checker_test.go",
+        "formula_test.go",
         "graph_test.go",
         "invariants_test.go",
         "liveness_scc_test.go",

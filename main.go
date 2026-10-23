@@ -71,6 +71,10 @@ func main() {
 	// always-eventually / eventually-always / eventually invariants.
 	if experimentalNoGraph {
 		for _, inv := range f.Invariants {
+			if inv.Formula != nil {
+				fmt.Printf("--experimental_no_graph refused: spec declares temporal formula assertion '%s'. The no-graph mode keeps no state graph, so liveness checks cannot run.\n", inv.Name)
+				os.Exit(1)
+			}
 			for _, op := range inv.TemporalOperators {
 				if op == "eventually" || op == "always-eventually" || op == "eventually-always" {
 					fmt.Printf("--experimental_no_graph refused: spec declares liveness invariant '%s' (operator '%s'). The no-graph mode keeps no state graph, so cycle-based liveness checks cannot run.\n", inv.Name, op)
@@ -707,6 +711,9 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		holder.Store(p1)
 
 		rootNode, failedNode, endTime, err := startModelChecker(p1)
+		if err != nil {
+			printTraceAndExit(err)
+		}
 		runs++
 		lastRootNode = rootNode
 
@@ -879,19 +886,33 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 				if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "enabled" || stateConfig.GetLiveness() == "true" || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
 					// FIZZ_LIVENESS_ENGINE=cycles falls back to the old cycle finder,
 					// and "shadow" runs both and reports how they compare.
+					// "formula" checks the prefixed always-eventually and
+					// eventually-always assertions through the formula product.
+					// Formula assertions always use the SCC engine.
+					var err error
 					switch os.Getenv("FIZZ_LIVENESS_ENGINE") {
 					case "cycles":
 						failurePath, failedInvariant = modelchecker.CheckStrictLiveness(rootNode, nodes)
+						if failedInvariant == nil {
+							failurePath, failedInvariant, err = modelchecker.CheckFormulaAssertions(rootNode, nodes, false)
+						}
 					case "shadow":
 						failurePath, failedInvariant = modelchecker.CheckStrictLivenessShadow(rootNode, nodes)
-					default:
-						var err error
-						failurePath, failedInvariant, err = modelchecker.CheckStrictLivenessScc(rootNode, nodes)
-						if err != nil {
-							printTraceAndExit(fmt.Errorf("liveness check: %w", err))
+						if failedInvariant == nil {
+							failurePath, failedInvariant, err = modelchecker.CheckFormulaAssertions(rootNode, nodes, false)
 						}
+					case "formula":
+						failurePath, failedInvariant, err = modelchecker.CheckFormulaAssertions(rootNode, nodes, true)
+					default:
+						failurePath, failedInvariant, err = modelchecker.CheckStrictLivenessScc(rootNode, nodes)
+					}
+					if err != nil {
+						printTraceAndExit(fmt.Errorf("liveness check: %w", err))
 					}
 				} else if stateConfig.GetLiveness() == "eventual" || stateConfig.GetLiveness() == "nondeterministic" {
+					if modelchecker.HasFormulaAssertions(f) {
+						printTraceAndExit(fmt.Errorf("liveness: %s doesn't check temporal formula assertions; use the default strict liveness", stateConfig.GetLiveness()))
+					}
 					failurePath, failedInvariant = modelchecker.CheckFastLiveness(nodes)
 				}
 				fmt.Printf("IsLive: %t\n", failedInvariant == nil)

@@ -1,0 +1,2661 @@
+{
+  "sourceInfo": {
+    "fileName": "Counter.fizz",
+    "start": {
+      "line": 7,
+      "column": 1
+    },
+    "end": {
+      "line": 90
+    }
+  },
+  "invariants": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 27,
+          "column": 1
+        },
+        "end": {
+          "line": 30
+        }
+      },
+      "name": "PassAlways",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 28,
+            "column": 5
+          },
+          "end": {
+            "line": 30
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 28,
+                "column": 5
+              },
+              "end": {
+                "line": 30
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 28,
+                  "column": 5
+                },
+                "end": {
+                  "line": 28,
+                  "column": 37
+                }
+              },
+              "pyExpr": "((x >= 0) and (x <= 2))",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 28,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 28,
+                    "column": 37
+                  }
+                },
+                "pyExpr": "((x >= 0) and (x <= 2))"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassAlways():\n    return always (x >= 0 and x <= 2)\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 30,
+          "column": 1
+        },
+        "end": {
+          "line": 34
+        }
+      },
+      "name": "PassLocals",
+      "temporalOperators": [
+        "always",
+        "eventually"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 31,
+            "column": 5
+          },
+          "end": {
+            "line": 34
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 31,
+                "column": 5
+              },
+              "end": {
+                "line": 32,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 31,
+                  "column": 5
+                },
+                "end": {
+                  "line": 31,
+                  "column": 17
+                }
+              },
+              "code": "total = x + y"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 32,
+                "column": 5
+              },
+              "end": {
+                "line": 34
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 32,
+                  "column": 5
+                },
+                "end": {
+                  "line": 32,
+                  "column": 39
+                }
+              },
+              "pyExpr": "total >= 2",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 32,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 32,
+                    "column": 39
+                  }
+                },
+                "pyExpr": "total >= 2"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassLocals():\n    total = x + y\n    return always eventually total >= 2\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 34,
+          "column": 1
+        },
+        "end": {
+          "line": 37
+        }
+      },
+      "name": "PassLeadsTo",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 35,
+            "column": 5
+          },
+          "end": {
+            "line": 37
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 35,
+                "column": 5
+              },
+              "end": {
+                "line": 37
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 35,
+                  "column": 5
+                },
+                "end": {
+                  "line": 35,
+                  "column": 32
+                }
+              },
+              "pyExpr": "[bool(x == 0), bool(done())]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 35,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 35,
+                    "column": 32
+                  }
+                },
+                "pyExpr": "[bool(x == 0), bool(done())]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassLeadsTo():\n    return x == 0 leadsto done()\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 35,
+            "column": 12
+          },
+          "end": {
+            "line": 35,
+            "column": 32
+          }
+        },
+        "op": "LEADSTO",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 35,
+                "column": 12
+              },
+              "end": {
+                "line": 35,
+                "column": 17
+              }
+            },
+            "op": "ATOM"
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 35,
+                "column": 27
+              },
+              "end": {
+                "line": 35,
+                "column": 32
+              }
+            },
+            "op": "ATOM",
+            "atom": 1
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 37,
+          "column": 1
+        },
+        "end": {
+          "line": 40
+        }
+      },
+      "name": "PassImplies",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 38,
+            "column": 5
+          },
+          "end": {
+            "line": 40
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 38,
+                "column": 5
+              },
+              "end": {
+                "line": 40
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 38,
+                  "column": 5
+                },
+                "end": {
+                  "line": 38,
+                  "column": 52
+                }
+              },
+              "pyExpr": "[bool(x == 1), bool(x == 2)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 38,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 38,
+                    "column": 52
+                  }
+                },
+                "pyExpr": "[bool(x == 1), bool(x == 2)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassImplies():\n    return always (x == 1 implies eventually x == 2)\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 38,
+            "column": 12
+          },
+          "end": {
+            "line": 38,
+            "column": 52
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 38,
+                "column": 20
+              },
+              "end": {
+                "line": 38,
+                "column": 51
+              }
+            },
+            "op": "IMPLIES",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 38,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 38,
+                    "column": 25
+                  }
+                },
+                "op": "ATOM"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 38,
+                    "column": 35
+                  },
+                  "end": {
+                    "line": 38,
+                    "column": 51
+                  }
+                },
+                "op": "EVENTUALLY",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 38,
+                        "column": 46
+                      },
+                      "end": {
+                        "line": 38,
+                        "column": 51
+                      }
+                    },
+                    "op": "ATOM",
+                    "atom": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 40,
+          "column": 1
+        },
+        "end": {
+          "line": 43
+        }
+      },
+      "name": "PassStaysDone",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 41,
+            "column": 5
+          },
+          "end": {
+            "line": 43
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 41,
+                "column": 5
+              },
+              "end": {
+                "line": 43
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 41,
+                  "column": 5
+                },
+                "end": {
+                  "line": 41,
+                  "column": 48
+                }
+              },
+              "pyExpr": "[bool(done())]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 41,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 41,
+                    "column": 48
+                  }
+                },
+                "pyExpr": "[bool(done())]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassStaysDone():\n    return always (done() implies always done())\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 41,
+            "column": 12
+          },
+          "end": {
+            "line": 41,
+            "column": 48
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 41,
+                "column": 20
+              },
+              "end": {
+                "line": 41,
+                "column": 47
+              }
+            },
+            "op": "IMPLIES",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 41,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 41,
+                    "column": 25
+                  }
+                },
+                "op": "ATOM"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 41,
+                    "column": 35
+                  },
+                  "end": {
+                    "line": 41,
+                    "column": 47
+                  }
+                },
+                "op": "ALWAYS",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 41,
+                        "column": 42
+                      },
+                      "end": {
+                        "line": 41,
+                        "column": 47
+                      }
+                    },
+                    "op": "ATOM"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 43,
+          "column": 1
+        },
+        "end": {
+          "line": 46
+        }
+      },
+      "name": "PassUntil",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 44,
+            "column": 5
+          },
+          "end": {
+            "line": 46
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 44,
+                "column": 5
+              },
+              "end": {
+                "line": 46
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 44,
+                  "column": 5
+                },
+                "end": {
+                  "line": 44,
+                  "column": 30
+                }
+              },
+              "pyExpr": "[bool(x == 0), bool(x == 1)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 44,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 44,
+                    "column": 30
+                  }
+                },
+                "pyExpr": "[bool(x == 0), bool(x == 1)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassUntil():\n    return x == 0 until x == 1\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 44,
+            "column": 12
+          },
+          "end": {
+            "line": 44,
+            "column": 30
+          }
+        },
+        "op": "UNTIL",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 44,
+                "column": 12
+              },
+              "end": {
+                "line": 44,
+                "column": 17
+              }
+            },
+            "op": "ATOM"
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 44,
+                "column": 25
+              },
+              "end": {
+                "line": 44,
+                "column": 30
+              }
+            },
+            "op": "ATOM",
+            "atom": 1
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 46,
+          "column": 1
+        },
+        "end": {
+          "line": 49
+        }
+      },
+      "name": "PassNested",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 47,
+            "column": 5
+          },
+          "end": {
+            "line": 49
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 47,
+                "column": 5
+              },
+              "end": {
+                "line": 49
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 47,
+                  "column": 5
+                },
+                "end": {
+                  "line": 47,
+                  "column": 52
+                }
+              },
+              "pyExpr": "[bool(x == 1), bool(x == 2)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 47,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 47,
+                    "column": 52
+                  }
+                },
+                "pyExpr": "[bool(x == 1), bool(x == 2)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassNested():\n    return eventually (x == 1 and eventually x == 2)\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 47,
+            "column": 12
+          },
+          "end": {
+            "line": 47,
+            "column": 52
+          }
+        },
+        "op": "EVENTUALLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 47,
+                "column": 24
+              },
+              "end": {
+                "line": 47,
+                "column": 51
+              }
+            },
+            "op": "AND",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 47,
+                    "column": 24
+                  },
+                  "end": {
+                    "line": 47,
+                    "column": 29
+                  }
+                },
+                "op": "ATOM"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 47,
+                    "column": 35
+                  },
+                  "end": {
+                    "line": 47,
+                    "column": 51
+                  }
+                },
+                "op": "EVENTUALLY",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 47,
+                        "column": 46
+                      },
+                      "end": {
+                        "line": 47,
+                        "column": 51
+                      }
+                    },
+                    "op": "ATOM",
+                    "atom": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 49,
+          "column": 1
+        },
+        "end": {
+          "line": 52
+        }
+      },
+      "name": "PassNotAlways",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 50,
+            "column": 5
+          },
+          "end": {
+            "line": 52
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 50,
+                "column": 5
+              },
+              "end": {
+                "line": 52
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 50,
+                  "column": 5
+                },
+                "end": {
+                  "line": 50,
+                  "column": 27
+                }
+              },
+              "pyExpr": "[bool(x < 2)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 50,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 50,
+                    "column": 27
+                  }
+                },
+                "pyExpr": "[bool(x < 2)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassNotAlways():\n    return not always x < 2\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 50,
+            "column": 12
+          },
+          "end": {
+            "line": 50,
+            "column": 27
+          }
+        },
+        "op": "NOT",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 50,
+                "column": 16
+              },
+              "end": {
+                "line": 50,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 50,
+                    "column": 23
+                  },
+                  "end": {
+                    "line": 50,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 52,
+          "column": 1
+        },
+        "end": {
+          "line": 55
+        }
+      },
+      "name": "PassFor",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 53,
+            "column": 5
+          },
+          "end": {
+            "line": 55
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 53,
+                "column": 5
+              },
+              "end": {
+                "line": 55
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 53,
+                  "column": 5
+                },
+                "end": {
+                  "line": 53,
+                  "column": 28
+                }
+              },
+              "pyExpr": "[bool(x == v)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 53,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 53,
+                    "column": 28
+                  }
+                },
+                "pyExpr": "[bool(x == v)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassFor():\n    return eventually x == v\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 53,
+            "column": 12
+          },
+          "end": {
+            "line": 53,
+            "column": 28
+          }
+        },
+        "op": "EVENTUALLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 53,
+                "column": 23
+              },
+              "end": {
+                "line": 53,
+                "column": 28
+              }
+            },
+            "op": "ATOM"
+          }
+        ]
+      },
+      "forClauses": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 52,
+              "column": 19
+            },
+            "end": {
+              "line": 52,
+              "column": 42
+            }
+          },
+          "targets": [
+            "v"
+          ],
+          "iterablePyExpr": "VALUES",
+          "filterPyExprs": [
+            "v < 3"
+          ]
+        }
+      ]
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 55,
+          "column": 1
+        },
+        "end": {
+          "line": 59
+        }
+      },
+      "name": "PassPairs",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 56,
+            "column": 5
+          },
+          "end": {
+            "line": 59
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 56,
+                "column": 5
+              },
+              "end": {
+                "line": 59
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 56,
+                  "column": 5
+                },
+                "end": {
+                  "line": 56,
+                  "column": 32
+                }
+              },
+              "pyExpr": "[bool(x == a), bool(x == b)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 56,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 56,
+                    "column": 32
+                  }
+                },
+                "pyExpr": "[bool(x == a), bool(x == b)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassPairs():\n    return x == a leadsto x == b\n\n# The inner iterable uses the outer value.\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 56,
+            "column": 12
+          },
+          "end": {
+            "line": 56,
+            "column": 32
+          }
+        },
+        "op": "LEADSTO",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 56,
+                "column": 12
+              },
+              "end": {
+                "line": 56,
+                "column": 17
+              }
+            },
+            "op": "ATOM"
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 56,
+                "column": 27
+              },
+              "end": {
+                "line": 56,
+                "column": 32
+              }
+            },
+            "op": "ATOM",
+            "atom": 1
+          }
+        ]
+      },
+      "forClauses": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 55,
+              "column": 21
+            },
+            "end": {
+              "line": 55,
+              "column": 48
+            }
+          },
+          "targets": [
+            "a",
+            "b"
+          ],
+          "iterablePyExpr": "[(0, 1), (1, 2)]"
+        }
+      ]
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 59,
+          "column": 1
+        },
+        "end": {
+          "line": 63
+        }
+      },
+      "name": "PassNested",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 60,
+            "column": 5
+          },
+          "end": {
+            "line": 63
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 60,
+                "column": 5
+              },
+              "end": {
+                "line": 63
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 60,
+                  "column": 5
+                },
+                "end": {
+                  "line": 60,
+                  "column": 32
+                }
+              },
+              "pyExpr": "[bool(x == b), bool(x == a)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 60,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 60,
+                    "column": 32
+                  }
+                },
+                "pyExpr": "[bool(x == b), bool(x == a)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassNested():\n    return x == b leadsto x == a\n\n# Values without a literal form are bound as they are.\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 60,
+            "column": 12
+          },
+          "end": {
+            "line": 60,
+            "column": 32
+          }
+        },
+        "op": "LEADSTO",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 60,
+                "column": 12
+              },
+              "end": {
+                "line": 60,
+                "column": 17
+              }
+            },
+            "op": "ATOM"
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 60,
+                "column": 27
+              },
+              "end": {
+                "line": 60,
+                "column": 32
+              }
+            },
+            "op": "ATOM",
+            "atom": 1
+          }
+        ]
+      },
+      "forClauses": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 59,
+              "column": 22
+            },
+            "end": {
+              "line": 59,
+              "column": 38
+            }
+          },
+          "targets": [
+            "a"
+          ],
+          "iterablePyExpr": "range(3)"
+        },
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 59,
+              "column": 40
+            },
+            "end": {
+              "line": 59,
+              "column": 56
+            }
+          },
+          "targets": [
+            "b"
+          ],
+          "iterablePyExpr": "range(a)"
+        }
+      ]
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 63,
+          "column": 1
+        },
+        "end": {
+          "line": 67
+        }
+      },
+      "name": "PassRecords",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 64,
+            "column": 5
+          },
+          "end": {
+            "line": 67
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 64,
+                "column": 5
+              },
+              "end": {
+                "line": 67
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 64,
+                  "column": 5
+                },
+                "end": {
+                  "line": 64,
+                  "column": 31
+                }
+              },
+              "pyExpr": "[bool(x == t.at)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 64,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 64,
+                    "column": 31
+                  }
+                },
+                "pyExpr": "[bool(x == t.at)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassRecords():\n    return eventually x == t.at\n\n# A header name shadows a constant of the same name in that assertion.\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 64,
+            "column": 12
+          },
+          "end": {
+            "line": 64,
+            "column": 31
+          }
+        },
+        "op": "EVENTUALLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 64,
+                "column": 23
+              },
+              "end": {
+                "line": 64,
+                "column": 31
+              }
+            },
+            "op": "ATOM"
+          }
+        ]
+      },
+      "forClauses": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 63,
+              "column": 23
+            },
+            "end": {
+              "line": 63,
+              "column": 38
+            }
+          },
+          "targets": [
+            "t"
+          ],
+          "iterablePyExpr": "TARGETS"
+        }
+      ]
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 67,
+          "column": 1
+        },
+        "end": {
+          "line": 70
+        }
+      },
+      "name": "PassShadow",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 68,
+            "column": 5
+          },
+          "end": {
+            "line": 70
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 68,
+                "column": 5
+              },
+              "end": {
+                "line": 70
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 68,
+                  "column": 5
+                },
+                "end": {
+                  "line": 68,
+                  "column": 17
+                }
+              },
+              "pyExpr": "N == 0",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 68,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 68,
+                    "column": 17
+                  }
+                },
+                "pyExpr": "N == 0"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassShadow():\n    return N == 0\n\n",
+      "forClauses": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 67,
+              "column": 29
+            },
+            "end": {
+              "line": 67,
+              "column": 45
+            }
+          },
+          "targets": [
+            "N"
+          ],
+          "iterablePyExpr": "range(1)"
+        }
+      ]
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 70,
+          "column": 1
+        },
+        "end": {
+          "line": 73
+        }
+      },
+      "name": "PassConstantKept",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 71,
+            "column": 5
+          },
+          "end": {
+            "line": 73
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 71,
+                "column": 5
+              },
+              "end": {
+                "line": 73
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 71,
+                  "column": 5
+                },
+                "end": {
+                  "line": 71,
+                  "column": 46
+                }
+              },
+              "pyExpr": "__for_0__ == \"kept\" and v in VALUES",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 71,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 71,
+                    "column": 46
+                  }
+                },
+                "pyExpr": "__for_0__ == \"kept\" and v in VALUES"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassConstantKept():\n    return __for_0__ == \"kept\" and v in VALUES\n\n",
+      "forClauses": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 70,
+              "column": 35
+            },
+            "end": {
+              "line": 70,
+              "column": 49
+            }
+          },
+          "targets": [
+            "v"
+          ],
+          "iterablePyExpr": "VALUES"
+        }
+      ]
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 73,
+          "column": 1
+        },
+        "end": {
+          "line": 76
+        }
+      },
+      "name": "FailFor",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 74,
+            "column": 5
+          },
+          "end": {
+            "line": 76
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 74,
+                "column": 5
+              },
+              "end": {
+                "line": 76
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 74,
+                  "column": 5
+                },
+                "end": {
+                  "line": 74,
+                  "column": 28
+                }
+              },
+              "pyExpr": "[bool(x == v)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 74,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 74,
+                    "column": 28
+                  }
+                },
+                "pyExpr": "[bool(x == v)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailFor():\n    return eventually x == v\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 74,
+            "column": 12
+          },
+          "end": {
+            "line": 74,
+            "column": 28
+          }
+        },
+        "op": "EVENTUALLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 74,
+                "column": 23
+              },
+              "end": {
+                "line": 74,
+                "column": 28
+              }
+            },
+            "op": "ATOM"
+          }
+        ]
+      },
+      "forClauses": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 73,
+              "column": 19
+            },
+            "end": {
+              "line": 73,
+              "column": 33
+            }
+          },
+          "targets": [
+            "v"
+          ],
+          "iterablePyExpr": "VALUES"
+        }
+      ]
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 76,
+          "column": 1
+        },
+        "end": {
+          "line": 79
+        }
+      },
+      "name": "FailEventuallyAlways",
+      "temporalOperators": [
+        "eventually",
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 77,
+            "column": 5
+          },
+          "end": {
+            "line": 79
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 77,
+                "column": 5
+              },
+              "end": {
+                "line": 79
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 77,
+                  "column": 5
+                },
+                "end": {
+                  "line": 77,
+                  "column": 35
+                }
+              },
+              "pyExpr": "y == 0",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 77,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 77,
+                    "column": 35
+                  }
+                },
+                "pyExpr": "y == 0"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailEventuallyAlways():\n    return eventually always y == 0\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 79,
+          "column": 1
+        },
+        "end": {
+          "line": 82
+        }
+      },
+      "name": "FailUntil",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 80,
+            "column": 5
+          },
+          "end": {
+            "line": 82
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 80,
+                "column": 5
+              },
+              "end": {
+                "line": 82
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 80,
+                  "column": 5
+                },
+                "end": {
+                  "line": 80,
+                  "column": 30
+                }
+              },
+              "pyExpr": "[bool(x == 1), bool(x == 2)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 80,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 80,
+                    "column": 30
+                  }
+                },
+                "pyExpr": "[bool(x == 1), bool(x == 2)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailUntil():\n    return x == 1 until x == 2\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 80,
+            "column": 12
+          },
+          "end": {
+            "line": 80,
+            "column": 30
+          }
+        },
+        "op": "UNTIL",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 80,
+                "column": 12
+              },
+              "end": {
+                "line": 80,
+                "column": 17
+              }
+            },
+            "op": "ATOM"
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 80,
+                "column": 25
+              },
+              "end": {
+                "line": 80,
+                "column": 30
+              }
+            },
+            "op": "ATOM",
+            "atom": 1
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 82,
+          "column": 1
+        },
+        "end": {
+          "line": 85
+        }
+      },
+      "name": "FailYStays",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 83,
+            "column": 5
+          },
+          "end": {
+            "line": 85
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 83,
+                "column": 5
+              },
+              "end": {
+                "line": 85
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 83,
+                  "column": 5
+                },
+                "end": {
+                  "line": 83,
+                  "column": 56
+                }
+              },
+              "pyExpr": "[bool(y == 1), bool(x == 2)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 83,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 83,
+                    "column": 56
+                  }
+                },
+                "pyExpr": "[bool(y == 1), bool(x == 2)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailYStays():\n    return always (y == 1 implies (y == 1 until x == 2))\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 83,
+            "column": 12
+          },
+          "end": {
+            "line": 83,
+            "column": 56
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 83,
+                "column": 20
+              },
+              "end": {
+                "line": 83,
+                "column": 55
+              }
+            },
+            "op": "IMPLIES",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 83,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 83,
+                    "column": 25
+                  }
+                },
+                "op": "ATOM"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 83,
+                    "column": 36
+                  },
+                  "end": {
+                    "line": 83,
+                    "column": 54
+                  }
+                },
+                "op": "UNTIL",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 83,
+                        "column": 36
+                      },
+                      "end": {
+                        "line": 83,
+                        "column": 41
+                      }
+                    },
+                    "op": "ATOM"
+                  },
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 83,
+                        "column": 49
+                      },
+                      "end": {
+                        "line": 83,
+                        "column": 54
+                      }
+                    },
+                    "op": "ATOM",
+                    "atom": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 85,
+          "column": 1
+        },
+        "end": {
+          "line": 88
+        }
+      },
+      "name": "FailBack",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 86,
+            "column": 5
+          },
+          "end": {
+            "line": 88
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 86,
+                "column": 5
+              },
+              "end": {
+                "line": 88
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 86,
+                  "column": 5
+                },
+                "end": {
+                  "line": 86,
+                  "column": 52
+                }
+              },
+              "pyExpr": "[bool(x == 1), bool(x == 0)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 86,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 86,
+                    "column": 52
+                  }
+                },
+                "pyExpr": "[bool(x == 1), bool(x == 0)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailBack():\n    return eventually (x == 1 and eventually x == 0)\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 86,
+            "column": 12
+          },
+          "end": {
+            "line": 86,
+            "column": 52
+          }
+        },
+        "op": "EVENTUALLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 86,
+                "column": 24
+              },
+              "end": {
+                "line": 86,
+                "column": 51
+              }
+            },
+            "op": "AND",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 86,
+                    "column": 24
+                  },
+                  "end": {
+                    "line": 86,
+                    "column": 29
+                  }
+                },
+                "op": "ATOM"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 86,
+                    "column": 35
+                  },
+                  "end": {
+                    "line": 86,
+                    "column": 51
+                  }
+                },
+                "op": "EVENTUALLY",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 86,
+                        "column": 46
+                      },
+                      "end": {
+                        "line": 86,
+                        "column": 51
+                      }
+                    },
+                    "op": "ATOM",
+                    "atom": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 88,
+          "column": 1
+        },
+        "end": {
+          "line": 90
+        }
+      },
+      "name": "FailToggleLeadsTo",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 89,
+            "column": 5
+          },
+          "end": {
+            "line": 90
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 89,
+                "column": 5
+              },
+              "end": {
+                "line": 90
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 89,
+                  "column": 5
+                },
+                "end": {
+                  "line": 89,
+                  "column": 32
+                }
+              },
+              "pyExpr": "[bool(y == 0), bool(y == 1)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 89,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 89,
+                    "column": 32
+                  }
+                },
+                "pyExpr": "[bool(y == 0), bool(y == 1)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailToggleLeadsTo():\n    return y == 0 leadsto y == 1\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 89,
+            "column": 12
+          },
+          "end": {
+            "line": 89,
+            "column": 32
+          }
+        },
+        "op": "LEADSTO",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 89,
+                "column": 12
+              },
+              "end": {
+                "line": 89,
+                "column": 17
+              }
+            },
+            "op": "ATOM"
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 89,
+                "column": 27
+              },
+              "end": {
+                "line": 89,
+                "column": 32
+              }
+            },
+            "op": "ATOM",
+            "atom": 1
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 13,
+          "column": 1
+        },
+        "end": {
+          "line": 17
+        }
+      },
+      "name": "Init",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 14,
+            "column": 5
+          },
+          "end": {
+            "line": 17
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 14,
+                "column": 5
+              },
+              "end": {
+                "line": 15,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 14,
+                  "column": 5
+                },
+                "end": {
+                  "line": 14,
+                  "column": 9
+                }
+              },
+              "code": "x = 0"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 15,
+                "column": 5
+              },
+              "end": {
+                "line": 17
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 15,
+                  "column": 5
+                },
+                "end": {
+                  "line": 15,
+                  "column": 9
+                }
+              },
+              "code": "y = 0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 17,
+          "column": 1
+        },
+        "end": {
+          "line": 21
+        }
+      },
+      "name": "Inc",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "sourceInfo": {
+          "start": {
+            "line": 17,
+            "column": 8
+          },
+          "end": {
+            "line": 17,
+            "column": 11
+          }
+        },
+        "level": "FAIRNESS_LEVEL_WEAK"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 18,
+            "column": 5
+          },
+          "end": {
+            "line": 21
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 18,
+                "column": 5
+              },
+              "end": {
+                "line": 21
+              }
+            },
+            "ifStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 18,
+                  "column": 5
+                },
+                "end": {
+                  "line": 21
+                }
+              },
+              "branches": [
+                {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 18,
+                      "column": 8
+                    },
+                    "end": {
+                      "line": 21
+                    }
+                  },
+                  "condition": "x < 2",
+                  "block": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 19,
+                        "column": 9
+                      },
+                      "end": {
+                        "line": 21
+                      }
+                    },
+                    "stmts": [
+                      {
+                        "sourceInfo": {
+                          "start": {
+                            "line": 19,
+                            "column": 9
+                          },
+                          "end": {
+                            "line": 21
+                          }
+                        },
+                        "pyStmt": {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 19,
+                              "column": 9
+                            },
+                            "end": {
+                              "line": 19,
+                              "column": 17
+                            }
+                          },
+                          "code": "x = x + 1"
+                        }
+                      }
+                    ]
+                  },
+                  "conditionExpr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 18,
+                        "column": 8
+                      },
+                      "end": {
+                        "line": 18,
+                        "column": 12
+                      }
+                    },
+                    "pyExpr": "x < 2"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 21,
+          "column": 1
+        },
+        "end": {
+          "line": 24
+        }
+      },
+      "name": "Toggle",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 22,
+            "column": 5
+          },
+          "end": {
+            "line": 24
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 22,
+                "column": 5
+              },
+              "end": {
+                "line": 24
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 22,
+                  "column": 5
+                },
+                "end": {
+                  "line": 22,
+                  "column": 13
+                }
+              },
+              "code": "y = 1 - y"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "functions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 24,
+          "column": 1
+        },
+        "end": {
+          "line": 27
+        }
+      },
+      "name": "done",
+      "flow": "FLOW_SERIAL",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 25,
+            "column": 5
+          },
+          "end": {
+            "line": 27
+          }
+        },
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 25,
+                "column": 5
+              },
+              "end": {
+                "line": 27
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 25,
+                  "column": 5
+                },
+                "end": {
+                  "line": 25,
+                  "column": 17
+                }
+              },
+              "pyExpr": "x == 2",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 25,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 25,
+                    "column": 17
+                  }
+                },
+                "pyExpr": "x == 2"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "stmts": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 7,
+          "column": 1
+        },
+        "end": {
+          "line": 8
+        }
+      },
+      "pyStmt": {
+        "sourceInfo": {
+          "start": {
+            "line": 7,
+            "column": 1
+          },
+          "end": {
+            "line": 7,
+            "column": 18
+          }
+        },
+        "code": "VALUES = [1, 2, 3]"
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 8,
+          "column": 1
+        },
+        "end": {
+          "line": 10
+        }
+      },
+      "pyStmt": {
+        "sourceInfo": {
+          "start": {
+            "line": 8,
+            "column": 1
+          },
+          "end": {
+            "line": 8,
+            "column": 38
+          }
+        },
+        "code": "TARGETS = [record(at=1), record(at=2)]"
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 10,
+          "column": 1
+        },
+        "end": {
+          "line": 11
+        }
+      },
+      "pyStmt": {
+        "sourceInfo": {
+          "start": {
+            "line": 10,
+            "column": 1
+          },
+          "end": {
+            "line": 10,
+            "column": 18
+          }
+        },
+        "code": "__for_0__ = \"kept\""
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 11,
+          "column": 1
+        },
+        "end": {
+          "line": 13
+        }
+      },
+      "pyStmt": {
+        "sourceInfo": {
+          "start": {
+            "line": 11,
+            "column": 1
+          },
+          "end": {
+            "line": 11,
+            "column": 5
+          }
+        },
+        "code": "N = 5"
+      }
+    }
+  ],
+  "frontMatter": {
+    "yaml": "\ndeadlock_detection: false\n"
+  }
+}

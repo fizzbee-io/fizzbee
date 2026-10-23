@@ -214,6 +214,41 @@ class FizzParserVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by FizzParser#assertion_for_clause.
+    def visitAssertion_for_clause(self, ctx:FizzParser.Assertion_for_clauseContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by FizzParser#formula.
+    def visitFormula(self, ctx:FizzParser.FormulaContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by FizzParser#formula_binop.
+    def visitFormula_binop(self, ctx:FizzParser.Formula_binopContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by FizzParser#formula_or.
+    def visitFormula_or(self, ctx:FizzParser.Formula_orContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by FizzParser#formula_and.
+    def visitFormula_and(self, ctx:FizzParser.Formula_andContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by FizzParser#formula_unary.
+    def visitFormula_unary(self, ctx:FizzParser.Formula_unaryContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by FizzParser#formula_possibly.
+    def visitFormula_possibly(self, ctx:FizzParser.Formula_possiblyContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by FizzParser#typedargslist.
     def visitTypedargslist(self, ctx:FizzParser.TypedargslistContext):
         return self.visitChildren(ctx)
@@ -296,6 +331,11 @@ class FizzParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by FizzParser#return_stmt.
     def visitReturn_stmt(self, ctx:FizzParser.Return_stmtContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by FizzParser#formula_return_stmt.
+    def visitFormula_return_stmt(self, ctx:FizzParser.Formula_return_stmtContext):
         return self.visitChildren(ctx)
 
 

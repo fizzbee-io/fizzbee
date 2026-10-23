@@ -1,0 +1,89 @@
+---
+deadlock_detection: false
+---
+# x counts up to 2 under a fair action, while y toggles under an unfair one.
+# Assertions named Pass... hold, Fail... don't (see formula_test.go).
+
+VALUES = [1, 2, 3]
+TARGETS = [record(at=1), record(at=2)]
+# Header values must not land in the constants, whatever their names.
+__for_0__ = "kept"
+N = 5
+
+action Init:
+    x = 0
+    y = 0
+
+atomic fair action Inc:
+    if x < 2:
+        x = x + 1
+
+atomic action Toggle:
+    y = 1 - y
+
+func done():
+    return x == 2
+
+assertion PassAlways:
+    return always (x >= 0 and x <= 2)
+
+assertion PassLocals:
+    total = x + y
+    return always eventually total >= 2
+
+assertion PassLeadsTo:
+    return x == 0 leadsto done()
+
+assertion PassImplies:
+    return always (x == 1 implies eventually x == 2)
+
+assertion PassStaysDone:
+    return always (done() implies always done())
+
+assertion PassUntil:
+    return x == 0 until x == 1
+
+assertion PassNested:
+    return eventually (x == 1 and eventually x == 2)
+
+assertion PassNotAlways:
+    return not always x < 2
+
+assertion PassFor for v in VALUES if v < 3:
+    return eventually x == v
+
+assertion PassPairs for a, b in [(0, 1), (1, 2)]:
+    return x == a leadsto x == b
+
+# The inner iterable uses the outer value.
+assertion PassNested for a in range(3) for b in range(a):
+    return x == b leadsto x == a
+
+# Values without a literal form are bound as they are.
+assertion PassRecords for t in TARGETS:
+    return eventually x == t.at
+
+# A header name shadows a constant of the same name in that assertion.
+always assertion PassShadow for N in range(1):
+    return N == 0
+
+always assertion PassConstantKept for v in VALUES:
+    return __for_0__ == "kept" and v in VALUES
+
+assertion FailFor for v in VALUES:
+    return eventually x == v
+
+assertion FailEventuallyAlways:
+    return eventually always y == 0
+
+assertion FailUntil:
+    return x == 1 until x == 2
+
+assertion FailYStays:
+    return always (y == 1 implies (y == 1 until x == 2))
+
+assertion FailBack:
+    return eventually (x == 1 and eventually x == 0)
+
+assertion FailToggleLeadsTo:
+    return y == 0 leadsto y == 1
