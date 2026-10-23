@@ -24,6 +24,29 @@ func NewInvariantPosition(fileIndex, invariantIndex int) *InvariantPosition {
 	}
 }
 
+// RejectRoleInvariants returns an error when any role declares an assertion.
+// Only file-level invariants are evaluated, so a role-scoped assertion would
+// never run and the spec would pass vacuously.
+func RejectRoleInvariants(file *ast.File) error {
+	offenders := make([]string, 0)
+	for _, role := range file.GetRoles() {
+		for _, invariant := range role.GetInvariants() {
+			name := "unnamed assertion"
+			if invariant.GetName() != "" {
+				name = fmt.Sprintf("assertion '%s'", invariant.GetName())
+			}
+			offenders = append(offenders, fmt.Sprintf("%s in role '%s' (line %d)",
+				name, role.GetName(), invariant.GetSourceInfo().GetStart().GetLine()))
+		}
+	}
+	if len(offenders) == 0 {
+		return nil
+	}
+	return fmt.Errorf("assertions inside roles are not supported: %s. "+
+		"Declare them at the top level and loop over the role instances instead "+
+		"(see https://github.com/fizzbee-io/fizzbee/issues/179)", strings.Join(offenders, ", "))
+}
+
 func CheckRefinement(process *Process, refinement *ast.Refinement, joinHashes JoinHashes) bool {
 	if process.Parent == nil {
 		return true

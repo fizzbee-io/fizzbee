@@ -2333,7 +2333,7 @@ Supported methods (registered in `lib/starlark_types.go`):
 
 **Line numbers in error messages**: Line numbers may be incorrect in some error messages (known issue, to be fixed)
 
-**Assertions within roles**: Assertions within role definitions are not yet fully supported. Use top-level assertions instead.
+**Assertions within roles**: Assertions declared inside a role definition are not evaluated. The checker rejects such a spec at load with a `FAILED:` line naming the role and assertion (see [issue 179](https://github.com/fizzbee-io/fizzbee/issues/179)). Use top-level assertions instead.
 
 **Interactive commands**: Commands requiring interactive input (e.g., `git rebase -i`, `git add -i`) are not supported in model checking context
 
@@ -2350,7 +2350,7 @@ For a complete list of gotchas and workarounds, see **[Gotchas and Common Issues
 
 ### Workarounds
 
-**For role assertions**: Define assertions at top level and reference role state:
+**For role assertions** (rejected at load): Define assertions at top level and reference role state:
 
 ```python
 role Server:

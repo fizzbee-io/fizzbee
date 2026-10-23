@@ -25,7 +25,7 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **06**: Functions (5) - Function definitions and modifiers
 - **07**: Guards (3) - require/pass statements
 - **08**: Data Types (9) - Collections, enums, records
-- **09**: Assertions (5) - Safety and liveness properties
+- **09**: Assertions (13) - Safety and liveness properties
 - **10**: Fairness (3) - Unfair, weak fair, strong fair
 - **11**: Roles (8) - Role basics and management
 - **12**: Advanced (6) - Nesting, config, best practices
@@ -345,6 +345,12 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Purpose**: System always makes progress
 - **Key concepts**: `always eventually`, strong fairness, progress
 - **Status**: ✅ PASSED
+
+### 09-13-role-assertion-rejected: Role Assertion Rejected at Load
+- **State space**: not explored, the spec is rejected at load
+- **Purpose**: An assertion declared inside a role is never evaluated, so the checker refuses the spec instead of passing vacuously
+- **Key concepts**: role-scoped assertions, load-time FAILED, top-level workaround (issue 179)
+- **Status**: FAILED at load (expected)
 
 ### 10-01-unfair-action: Unfair Action (Default)
 - **State space**: 108 nodes, 46 unique states

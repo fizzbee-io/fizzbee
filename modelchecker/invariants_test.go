@@ -63,3 +63,52 @@ func TestCheckInvariants(t *testing.T) {
 	})
 
 }
+
+func TestRejectRoleInvariants(t *testing.T) {
+	roleAssertion := func(name string, line int32) *ast.Invariant {
+		return &ast.Invariant{
+			Name:              name,
+			TemporalOperators: []string{"always"},
+			SourceInfo:        &ast.SourceInfo{Start: &ast.Position{Line: line}},
+		}
+	}
+	t.Run("topLevelOnly", func(t *testing.T) {
+		file := &ast.File{
+			Invariants: []*ast.Invariant{roleAssertion("Safe", 3)},
+			Roles:      []*ast.Role{{Name: "Server"}},
+		}
+		assert.Nil(t, RejectRoleInvariants(file))
+	})
+	t.Run("roleAssertion", func(t *testing.T) {
+		file := &ast.File{
+			Roles: []*ast.Role{{Name: "Server", Invariants: []*ast.Invariant{roleAssertion("ValuePositive", 5)}}},
+		}
+		err := RejectRoleInvariants(file)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "assertion 'ValuePositive' in role 'Server' (line 5)")
+		assert.Contains(t, err.Error(), "issues/179")
+	})
+	t.Run("listsEveryOffender", func(t *testing.T) {
+		file := &ast.File{
+			Roles: []*ast.Role{
+				{Name: "Server", Invariants: []*ast.Invariant{roleAssertion("A", 5), roleAssertion("B", 8)}},
+				{Name: "Client", Invariants: []*ast.Invariant{roleAssertion("C", 12)}},
+			},
+		}
+		err := RejectRoleInvariants(file)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "assertion 'A' in role 'Server' (line 5)")
+		assert.Contains(t, err.Error(), "assertion 'B' in role 'Server' (line 8)")
+		assert.Contains(t, err.Error(), "assertion 'C' in role 'Client' (line 12)")
+	})
+	t.Run("deprecatedInvariantsBlock", func(t *testing.T) {
+		file := &ast.File{
+			Roles: []*ast.Role{{Name: "Server", Invariants: []*ast.Invariant{
+				{Always: true, PyExpr: "self.value >= 0", SourceInfo: &ast.SourceInfo{Start: &ast.Position{Line: 7}}},
+			}}},
+		}
+		err := RejectRoleInvariants(file)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "unnamed assertion in role 'Server' (line 7)")
+	})
+}
