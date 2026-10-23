@@ -703,7 +703,7 @@ action MayStarve:
     # May never execute even if always enabled
 ```
 
-### Weak Fairness (fair or fair<weak>)
+### Weak Fairness (`fair` or `fair<weak>`)
 
 Eventually executes if **continuously enabled**:
 
@@ -716,7 +716,7 @@ fair action EventuallyRuns:
 
 **Use case**: Actions that should run when persistently enabled
 
-### Strong Fairness (fair<strong>)
+### Strong Fairness (`fair<strong>`)
 
 Eventually executes if **infinitely often enabled**:
 
