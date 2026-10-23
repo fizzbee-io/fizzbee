@@ -13,15 +13,16 @@ import (
 	"go.starlark.net/starlark"
 )
 
-// TestFormulaAssertions checks each assertion of testdata/formulas/Counter
-// on its own: the ones named Pass... hold, the ones named Fail... don't, and
-// every failure comes with a counterexample that starts at Init.
-func TestFormulaAssertions(t *testing.T) {
+// checkFormulaSpec checks each assertion of testdata/formulas/<name> on its
+// own: the ones named Pass... hold, the ones named Fail... don't, except
+// those in holds, and every failure comes with a counterexample that starts
+// at Init. It returns the file, with its for headers expanded.
+func checkFormulaSpec(t *testing.T, name string, holds ...string) *ast.File {
 	base := "."
 	if dir := os.Getenv("RUNFILES_DIR"); dir != "" {
 		base = filepath.Join(dir, "_main", "modelchecker")
 	}
-	file, err := readAstFromFile(filepath.Join(base, "testdata", "formulas", "Counter.json"))
+	file, err := readAstFromFile(filepath.Join(base, "testdata", "formulas", name+".json"))
 	require.Nil(t, err)
 	noDeadlock, noCrash := false, false
 	stateConfig := &ast.StateSpaceOptions{
@@ -33,19 +34,6 @@ func TestFormulaAssertions(t *testing.T) {
 	require.Nil(t, err)
 	require.Nil(t, failed)
 	nodes, _, _, _ := GetAllNodes(root, 10)
-
-	var names []string
-	for _, inv := range file.Invariants {
-		names = append(names, inv.Name)
-	}
-	// The header for clauses expand in place, one instance per binding.
-	for _, want := range []string{"PassFor[1]", "PassFor[2]", "PassPairs[0, 1]", "PassPairs[1, 2]", "FailFor[1]", "FailFor[3]",
-		"PassNested[1, 0]", "PassNested[2, 1]", "PassRecords[record(at = 2)]", "PassConstantKept[3]"} {
-		assert.Contains(t, names, want)
-	}
-	assert.NotContains(t, names, "PassFor[3]")
-	assert.NotContains(t, names, "PassNested[0, 0]")
-	assert.NotContains(t, names, "PassFor")
 
 	s := newSccGraph(root, nodes)
 	for j, inv := range file.Invariants {
@@ -60,7 +48,7 @@ func TestFormulaAssertions(t *testing.T) {
 				// exploration already checked.
 				assert.Equal(t, []string{"always"}, inv.TemporalOperators)
 			}
-			wantFail := strings.HasPrefix(inv.Name, "Fail") && inv.Name != "FailFor[1]" && inv.Name != "FailFor[2]"
+			wantFail := strings.HasPrefix(inv.Name, "Fail") && !slices.Contains(holds, inv.Name)
 			if !wantFail {
 				assert.Nil(t, path, "unexpected counterexample")
 				return
@@ -76,6 +64,36 @@ func TestFormulaAssertions(t *testing.T) {
 			}
 		})
 	}
+	return file
+}
+
+func TestFormulaAssertions(t *testing.T) {
+	file := checkFormulaSpec(t, "Counter", "FailFor[1]", "FailFor[2]")
+	var names []string
+	for _, inv := range file.Invariants {
+		names = append(names, inv.Name)
+	}
+	// The header for clauses expand in place, one instance per binding.
+	for _, want := range []string{"PassFor[1]", "PassFor[2]", "PassPairs[0, 1]", "PassPairs[1, 2]", "FailFor[1]", "FailFor[3]",
+		"PassNested[1, 0]", "PassNested[2, 1]", "PassRecords[record(at = 2)]", "PassConstantKept[3]", "PassShadow[0]"} {
+		assert.Contains(t, names, want)
+	}
+	assert.NotContains(t, names, "PassFor[3]")
+	assert.NotContains(t, names, "PassNested[0, 0]")
+	assert.NotContains(t, names, "PassFor")
+}
+
+// Fairness is the state graph's: whether a formula holds can depend on
+// whether an action is weakly or strongly fair, and on whether a run may
+// stop.
+func TestFormulaFairness(t *testing.T) {
+	checkFormulaSpec(t, "Fairness")
+	checkFormulaSpec(t, "Stutter")
+}
+
+// until, leadsto and implies stay usable as names outside formulas.
+func TestFormulaSoftKeywords(t *testing.T) {
+	checkFormulaSpec(t, "SoftKeywords")
 }
 
 func TestExpandAssertionHeaderErrors(t *testing.T) {
@@ -84,6 +102,9 @@ func TestExpandAssertionHeaderErrors(t *testing.T) {
 	}
 	clause := func(iterable string, filters ...string) *ast.ForClause {
 		return &ast.ForClause{Targets: []string{"v"}, IterablePyExpr: iterable, FilterPyExprs: filters}
+	}
+	pairs := func(iterable string) *ast.ForClause {
+		return &ast.ForClause{Targets: []string{"a", "b"}, IterablePyExpr: iterable}
 	}
 	globals := starlark.StringDict{"VALUES": starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.String("1")})}
 	for name, tc := range map[string]struct {
@@ -94,6 +115,8 @@ func TestExpandAssertionHeaderErrors(t *testing.T) {
 		"NotConstant": {[]*ast.Invariant{assertion("A", clause("state_var"))}, "can use only constants"},
 		"NotIterable": {[]*ast.Invariant{assertion("A", clause("3"))}, "isn't iterable"},
 		"BadFilter":   {[]*ast.Invariant{assertion("A", clause("range(2)", "1 / 0"))}, "if 1 / 0"},
+		"NotATuple":   {[]*ast.Invariant{assertion("A", pairs(`["ab"]`))}, `can't unpack "ab" into a, b`},
+		"WrongLength": {[]*ast.Invariant{assertion("A", pairs("[(1, 2, 3)]"))}, "can't unpack (1, 2, 3) into a, b"},
 		"Empty":       {[]*ast.Invariant{assertion("A", clause("range(2)", "v > 5")), assertion("B")}, ""},
 	} {
 		t.Run(name, func(t *testing.T) {

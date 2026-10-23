@@ -1,0 +1,29 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+---
+# Flip isn't fair, so a run may stop with the gate open or closed. It can't
+# stop while Take, which is strongly fair, is enabled, but Take needn't run
+# if the gate opens only finitely often (see formula_test.go).
+
+action Init:
+    open = False
+    taken = False
+
+atomic action Flip:
+    open = not open
+
+atomic fair<strong> action Take:
+    require open and not taken
+    taken = True
+
+assertion FailEventuallyTaken:
+    return eventually taken
+
+assertion PassNotStuckOpen:
+    return not (eventually always (open and not taken))
+
+# Opening once isn't enough: Flip can close the gate and the run stop.
+assertion FailOpenLeadsToTaken:
+    return (open and not taken) leadsto taken

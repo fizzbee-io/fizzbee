@@ -1,0 +1,995 @@
+{
+  "sourceInfo": {
+    "fileName": "SoftKeywords.fizz",
+    "start": {
+      "line": 7,
+      "column": 1
+    },
+    "end": {
+      "line": 35
+    }
+  },
+  "invariants": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 26,
+          "column": 1
+        },
+        "end": {
+          "line": 29
+        }
+      },
+      "name": "PassUsesNames",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 27,
+            "column": 5
+          },
+          "end": {
+            "line": 29
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 27,
+                "column": 5
+              },
+              "end": {
+                "line": 29
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 27,
+                  "column": 5
+                },
+                "end": {
+                  "line": 27,
+                  "column": 85
+                }
+              },
+              "pyExpr": "implies(True, False) and leadsto(1) == 2 and P.implies == 3 and until == 1",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 27,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 27,
+                    "column": 85
+                  }
+                },
+                "pyExpr": "implies(True, False) and leadsto(1) == 2 and P.implies == 3 and until == 1"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassUsesNames():\n    return implies(True, False) and leadsto(1) == 2 and P.implies == 3 and until == 1\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 29,
+          "column": 1
+        },
+        "end": {
+          "line": 33
+        }
+      },
+      "name": "PassUsesNamesInBlock",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 30,
+            "column": 5
+          },
+          "end": {
+            "line": 33
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 30,
+                "column": 5
+              },
+              "end": {
+                "line": 31,
+                "column": 4
+              }
+            },
+            "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 30,
+                  "column": 5
+                },
+                "end": {
+                  "line": 30,
+                  "column": 22
+                }
+              },
+              "vars": [
+                "v"
+              ],
+              "name": "leadsto",
+              "args": [
+                {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 30,
+                      "column": 17
+                    },
+                    "end": {
+                      "line": 30,
+                      "column": 21
+                    }
+                  },
+                  "pyExpr": "until",
+                  "expr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 30,
+                        "column": 17
+                      },
+                      "end": {
+                        "line": 30,
+                        "column": 21
+                      }
+                    },
+                    "pyExpr": "until"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 31,
+                "column": 5
+              },
+              "end": {
+                "line": 33
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 31,
+                  "column": 5
+                },
+                "end": {
+                  "line": 31,
+                  "column": 39
+                }
+              },
+              "pyExpr": "v == 2 and implies(x, until)",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 31,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 31,
+                    "column": 39
+                  }
+                },
+                "pyExpr": "v == 2 and implies(x, until)"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassUsesNamesInBlock():\n    v = leadsto(until)\n    return v == 2 and implies(x, until)\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 33,
+          "column": 1
+        },
+        "end": {
+          "line": 35
+        }
+      },
+      "name": "PassFormulaWithNames",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 34,
+            "column": 5
+          },
+          "end": {
+            "line": 35
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 34,
+                "column": 5
+              },
+              "end": {
+                "line": 35
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 34,
+                  "column": 5
+                },
+                "end": {
+                  "line": 34,
+                  "column": 91
+                }
+              },
+              "pyExpr": "[bool(((implies(True, False)) and (P.leadsto == 2))), bool(leadsto(until) == 2)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 34,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 34,
+                    "column": 91
+                  }
+                },
+                "pyExpr": "[bool(((implies(True, False)) and (P.leadsto == 2))), bool(leadsto(until) == 2)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassFormulaWithNames():\n    return (implies(True, False) and P.leadsto == 2) implies eventually leadsto(until) == 2\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 34,
+            "column": 12
+          },
+          "end": {
+            "line": 34,
+            "column": 91
+          }
+        },
+        "op": "IMPLIES",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 34,
+                "column": 13
+              },
+              "end": {
+                "line": 34,
+                "column": 51
+              }
+            },
+            "op": "ATOM",
+            "text": "implies(True, False) and P.leadsto == 2"
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 34,
+                "column": 62
+              },
+              "end": {
+                "line": 34,
+                "column": 91
+              }
+            },
+            "op": "EVENTUALLY",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 34,
+                    "column": 73
+                  },
+                  "end": {
+                    "line": 34,
+                    "column": 91
+                  }
+                },
+                "op": "ATOM",
+                "atom": 1,
+                "text": "leadsto(until) == 2"
+              }
+            ],
+            "text": "eventually leadsto(until) == 2"
+          }
+        ],
+        "text": "(implies(True, False) and P.leadsto == 2) implies eventually leadsto(until) == 2"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 16,
+          "column": 1
+        },
+        "end": {
+          "line": 21
+        }
+      },
+      "name": "Init",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 17,
+            "column": 5
+          },
+          "end": {
+            "line": 21
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 17,
+                "column": 5
+              },
+              "end": {
+                "line": 18,
+                "column": 4
+              }
+            },
+            "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 17,
+                  "column": 5
+                },
+                "end": {
+                  "line": 17,
+                  "column": 28
+                }
+              },
+              "vars": [
+                "x"
+              ],
+              "name": "implies",
+              "args": [
+                {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 17,
+                      "column": 17
+                    },
+                    "end": {
+                      "line": 17,
+                      "column": 20
+                    }
+                  },
+                  "pyExpr": "True",
+                  "expr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 17,
+                        "column": 17
+                      },
+                      "end": {
+                        "line": 17,
+                        "column": 20
+                      }
+                    },
+                    "pyExpr": "True"
+                  }
+                },
+                {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 17,
+                      "column": 23
+                    },
+                    "end": {
+                      "line": 17,
+                      "column": 27
+                    }
+                  },
+                  "pyExpr": "False",
+                  "expr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 17,
+                        "column": 23
+                      },
+                      "end": {
+                        "line": 17,
+                        "column": 27
+                      }
+                    },
+                    "pyExpr": "False"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 18,
+                "column": 5
+              },
+              "end": {
+                "line": 19,
+                "column": 4
+              }
+            },
+            "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 18,
+                  "column": 5
+                },
+                "end": {
+                  "line": 18,
+                  "column": 18
+                }
+              },
+              "vars": [
+                "y"
+              ],
+              "name": "leadsto",
+              "args": [
+                {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 18,
+                      "column": 17
+                    },
+                    "end": {
+                      "line": 18,
+                      "column": 17
+                    }
+                  },
+                  "pyExpr": "1",
+                  "expr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 18,
+                        "column": 17
+                      },
+                      "end": {
+                        "line": 18,
+                        "column": 17
+                      }
+                    },
+                    "pyExpr": "1"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 19,
+                "column": 5
+              },
+              "end": {
+                "line": 21
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 19,
+                  "column": 5
+                },
+                "end": {
+                  "line": 19,
+                  "column": 33
+                }
+              },
+              "code": "y = y + P.leadsto + P.implies"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 21,
+          "column": 1
+        },
+        "end": {
+          "line": 26
+        }
+      },
+      "name": "Step",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 22,
+            "column": 5
+          },
+          "end": {
+            "line": 26
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 22,
+                "column": 5
+              },
+              "end": {
+                "line": 23,
+                "column": 4
+              }
+            },
+            "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 22,
+                  "column": 5
+                },
+                "end": {
+                  "line": 22,
+                  "column": 17
+                }
+              },
+              "name": "implies",
+              "args": [
+                {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 22,
+                      "column": 13
+                    },
+                    "end": {
+                      "line": 22,
+                      "column": 13
+                    }
+                  },
+                  "pyExpr": "1",
+                  "expr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 22,
+                        "column": 13
+                      },
+                      "end": {
+                        "line": 22,
+                        "column": 13
+                      }
+                    },
+                    "pyExpr": "1"
+                  }
+                },
+                {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 22,
+                      "column": 16
+                    },
+                    "end": {
+                      "line": 22,
+                      "column": 16
+                    }
+                  },
+                  "pyExpr": "2",
+                  "expr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 22,
+                        "column": 16
+                      },
+                      "end": {
+                        "line": 22,
+                        "column": 16
+                      }
+                    },
+                    "pyExpr": "2"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 23,
+                "column": 5
+              },
+              "end": {
+                "line": 24,
+                "column": 4
+              }
+            },
+            "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 23,
+                  "column": 5
+                },
+                "end": {
+                  "line": 23,
+                  "column": 22
+                }
+              },
+              "vars": [
+                "w"
+              ],
+              "name": "leadsto",
+              "args": [
+                {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 23,
+                      "column": 17
+                    },
+                    "end": {
+                      "line": 23,
+                      "column": 21
+                    }
+                  },
+                  "pyExpr": "until",
+                  "expr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 23,
+                        "column": 17
+                      },
+                      "end": {
+                        "line": 23,
+                        "column": 21
+                      }
+                    },
+                    "pyExpr": "until"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 24,
+                "column": 5
+              },
+              "end": {
+                "line": 26
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 24,
+                  "column": 5
+                },
+                "end": {
+                  "line": 24,
+                  "column": 18
+                }
+              },
+              "code": "z = [until, w]"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "functions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 10,
+          "column": 1
+        },
+        "end": {
+          "line": 13
+        }
+      },
+      "name": "implies",
+      "flow": "FLOW_SERIAL",
+      "params": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 10,
+              "column": 14
+            },
+            "end": {
+              "line": 10,
+              "column": 14
+            }
+          },
+          "name": "a"
+        },
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 10,
+              "column": 17
+            },
+            "end": {
+              "line": 10,
+              "column": 17
+            }
+          },
+          "name": "b"
+        }
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 11,
+            "column": 5
+          },
+          "end": {
+            "line": 13
+          }
+        },
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 11,
+                "column": 5
+              },
+              "end": {
+                "line": 13
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 11,
+                  "column": 5
+                },
+                "end": {
+                  "line": 11,
+                  "column": 12
+                }
+              },
+              "pyExpr": "a",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 11,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 11,
+                    "column": 12
+                  }
+                },
+                "pyExpr": "a"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 13,
+          "column": 1
+        },
+        "end": {
+          "line": 16
+        }
+      },
+      "name": "leadsto",
+      "flow": "FLOW_SERIAL",
+      "params": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 13,
+              "column": 14
+            },
+            "end": {
+              "line": 13,
+              "column": 14
+            }
+          },
+          "name": "a"
+        }
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 14,
+            "column": 5
+          },
+          "end": {
+            "line": 16
+          }
+        },
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 14,
+                "column": 5
+              },
+              "end": {
+                "line": 16
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 14,
+                  "column": 5
+                },
+                "end": {
+                  "line": 14,
+                  "column": 20
+                }
+              },
+              "pyExpr": "a + until",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 14,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 14,
+                    "column": 20
+                  }
+                },
+                "pyExpr": "a + until"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "stmts": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 7,
+          "column": 1
+        },
+        "end": {
+          "line": 8
+        }
+      },
+      "pyStmt": {
+        "sourceInfo": {
+          "start": {
+            "line": 7,
+            "column": 1
+          },
+          "end": {
+            "line": 7,
+            "column": 9
+          }
+        },
+        "code": "until = 1"
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 8,
+          "column": 1
+        },
+        "end": {
+          "line": 10
+        }
+      },
+      "callStmt": {
+        "sourceInfo": {
+          "start": {
+            "line": 8,
+            "column": 1
+          },
+          "end": {
+            "line": 8,
+            "column": 32
+          }
+        },
+        "vars": [
+          "P"
+        ],
+        "name": "record",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 8,
+                "column": 12
+              },
+              "end": {
+                "line": 8,
+                "column": 20
+              }
+            },
+            "pyExpr": "leadsto=2",
+            "expr": {
+              "sourceInfo": {
+                "start": {
+                  "line": 8,
+                  "column": 12
+                },
+                "end": {
+                  "line": 8,
+                  "column": 20
+                }
+              },
+              "pyExpr": "leadsto=2"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 8,
+                "column": 23
+              },
+              "end": {
+                "line": 8,
+                "column": 31
+              }
+            },
+            "pyExpr": "implies=3",
+            "expr": {
+              "sourceInfo": {
+                "start": {
+                  "line": 8,
+                  "column": 23
+                },
+                "end": {
+                  "line": 8,
+                  "column": 31
+                }
+              },
+              "pyExpr": "implies=3"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "frontMatter": {
+    "yaml": "\ndeadlock_detection: false\n"
+  }
+}

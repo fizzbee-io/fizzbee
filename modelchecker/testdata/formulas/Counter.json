@@ -6,18 +6,18 @@
       "column": 1
     },
     "end": {
-      "line": 85
+      "line": 90
     }
   },
   "invariants": [
     {
       "sourceInfo": {
         "start": {
-          "line": 26,
+          "line": 27,
           "column": 1
         },
         "end": {
-          "line": 29
+          "line": 30
         }
       },
       "name": "PassAlways",
@@ -27,11 +27,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 27,
+            "line": 28,
             "column": 5
           },
           "end": {
-            "line": 29
+            "line": 30
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -39,21 +39,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 27,
+                "line": 28,
                 "column": 5
               },
               "end": {
-                "line": 29
+                "line": 30
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 27,
+                  "line": 28,
                   "column": 5
                 },
                 "end": {
-                  "line": 27,
+                  "line": 28,
                   "column": 37
                 }
               },
@@ -61,11 +61,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 27,
+                    "line": 28,
                     "column": 5
                   },
                   "end": {
-                    "line": 27,
+                    "line": 28,
                     "column": 37
                   }
                 },
@@ -80,11 +80,11 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 29,
+          "line": 30,
           "column": 1
         },
         "end": {
-          "line": 33
+          "line": 34
         }
       },
       "name": "PassLocals",
@@ -95,11 +95,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 30,
+            "line": 31,
             "column": 5
           },
           "end": {
-            "line": 33
+            "line": 34
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -107,22 +107,22 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 30,
+                "line": 31,
                 "column": 5
               },
               "end": {
-                "line": 31,
+                "line": 32,
                 "column": 4
               }
             },
             "pyStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 30,
+                  "line": 31,
                   "column": 5
                 },
                 "end": {
-                  "line": 30,
+                  "line": 31,
                   "column": 17
                 }
               },
@@ -132,21 +132,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 31,
+                "line": 32,
                 "column": 5
               },
               "end": {
-                "line": 33
+                "line": 34
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 31,
+                  "line": 32,
                   "column": 5
                 },
                 "end": {
-                  "line": 31,
+                  "line": 32,
                   "column": 39
                 }
               },
@@ -154,11 +154,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 31,
+                    "line": 32,
                     "column": 5
                   },
                   "end": {
-                    "line": 31,
+                    "line": 32,
                     "column": 39
                   }
                 },
@@ -173,22 +173,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 33,
+          "line": 34,
           "column": 1
         },
         "end": {
-          "line": 36
+          "line": 37
         }
       },
       "name": "PassLeadsTo",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 34,
+            "line": 35,
             "column": 5
           },
           "end": {
-            "line": 36
+            "line": 37
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -196,21 +196,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 34,
+                "line": 35,
                 "column": 5
               },
               "end": {
-                "line": 36
+                "line": 37
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 34,
+                  "line": 35,
                   "column": 5
                 },
                 "end": {
-                  "line": 34,
+                  "line": 35,
                   "column": 32
                 }
               },
@@ -218,11 +218,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 34,
+                    "line": 35,
                     "column": 5
                   },
                   "end": {
-                    "line": 34,
+                    "line": 35,
                     "column": 32
                   }
                 },
@@ -236,11 +236,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 34,
+            "line": 35,
             "column": 12
           },
           "end": {
-            "line": 34,
+            "line": 35,
             "column": 32
           }
         },
@@ -249,11 +249,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 34,
+                "line": 35,
                 "column": 12
               },
               "end": {
-                "line": 34,
+                "line": 35,
                 "column": 17
               }
             },
@@ -263,11 +263,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 34,
+                "line": 35,
                 "column": 27
               },
               "end": {
-                "line": 34,
+                "line": 35,
                 "column": 32
               }
             },
@@ -282,22 +282,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 36,
+          "line": 37,
           "column": 1
         },
         "end": {
-          "line": 39
+          "line": 40
         }
       },
       "name": "PassImplies",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 37,
+            "line": 38,
             "column": 5
           },
           "end": {
-            "line": 39
+            "line": 40
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -305,21 +305,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 37,
+                "line": 38,
                 "column": 5
               },
               "end": {
-                "line": 39
+                "line": 40
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 37,
+                  "line": 38,
                   "column": 5
                 },
                 "end": {
-                  "line": 37,
+                  "line": 38,
                   "column": 52
                 }
               },
@@ -327,11 +327,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 37,
+                    "line": 38,
                     "column": 5
                   },
                   "end": {
-                    "line": 37,
+                    "line": 38,
                     "column": 52
                   }
                 },
@@ -345,11 +345,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 37,
+            "line": 38,
             "column": 12
           },
           "end": {
-            "line": 37,
+            "line": 38,
             "column": 52
           }
         },
@@ -358,11 +358,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 37,
+                "line": 38,
                 "column": 20
               },
               "end": {
-                "line": 37,
+                "line": 38,
                 "column": 51
               }
             },
@@ -371,11 +371,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 37,
+                    "line": 38,
                     "column": 20
                   },
                   "end": {
-                    "line": 37,
+                    "line": 38,
                     "column": 25
                   }
                 },
@@ -385,11 +385,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 37,
+                    "line": 38,
                     "column": 35
                   },
                   "end": {
-                    "line": 37,
+                    "line": 38,
                     "column": 51
                   }
                 },
@@ -398,11 +398,11 @@
                   {
                     "sourceInfo": {
                       "start": {
-                        "line": 37,
+                        "line": 38,
                         "column": 46
                       },
                       "end": {
-                        "line": 37,
+                        "line": 38,
                         "column": 51
                       }
                     },
@@ -423,22 +423,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 39,
+          "line": 40,
           "column": 1
         },
         "end": {
-          "line": 42
+          "line": 43
         }
       },
       "name": "PassStaysDone",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 40,
+            "line": 41,
             "column": 5
           },
           "end": {
-            "line": 42
+            "line": 43
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -446,21 +446,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 40,
+                "line": 41,
                 "column": 5
               },
               "end": {
-                "line": 42
+                "line": 43
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 40,
+                  "line": 41,
                   "column": 5
                 },
                 "end": {
-                  "line": 40,
+                  "line": 41,
                   "column": 48
                 }
               },
@@ -468,11 +468,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 40,
+                    "line": 41,
                     "column": 5
                   },
                   "end": {
-                    "line": 40,
+                    "line": 41,
                     "column": 48
                   }
                 },
@@ -486,11 +486,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 40,
+            "line": 41,
             "column": 12
           },
           "end": {
-            "line": 40,
+            "line": 41,
             "column": 48
           }
         },
@@ -499,11 +499,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 40,
+                "line": 41,
                 "column": 20
               },
               "end": {
-                "line": 40,
+                "line": 41,
                 "column": 47
               }
             },
@@ -512,11 +512,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 40,
+                    "line": 41,
                     "column": 20
                   },
                   "end": {
-                    "line": 40,
+                    "line": 41,
                     "column": 25
                   }
                 },
@@ -526,11 +526,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 40,
+                    "line": 41,
                     "column": 35
                   },
                   "end": {
-                    "line": 40,
+                    "line": 41,
                     "column": 47
                   }
                 },
@@ -539,11 +539,11 @@
                   {
                     "sourceInfo": {
                       "start": {
-                        "line": 40,
+                        "line": 41,
                         "column": 42
                       },
                       "end": {
-                        "line": 40,
+                        "line": 41,
                         "column": 47
                       }
                     },
@@ -563,22 +563,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 42,
+          "line": 43,
           "column": 1
         },
         "end": {
-          "line": 45
+          "line": 46
         }
       },
       "name": "PassUntil",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 43,
+            "line": 44,
             "column": 5
           },
           "end": {
-            "line": 45
+            "line": 46
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -586,21 +586,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 43,
+                "line": 44,
                 "column": 5
               },
               "end": {
-                "line": 45
+                "line": 46
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 43,
+                  "line": 44,
                   "column": 5
                 },
                 "end": {
-                  "line": 43,
+                  "line": 44,
                   "column": 30
                 }
               },
@@ -608,11 +608,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 43,
+                    "line": 44,
                     "column": 5
                   },
                   "end": {
-                    "line": 43,
+                    "line": 44,
                     "column": 30
                   }
                 },
@@ -626,11 +626,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 43,
+            "line": 44,
             "column": 12
           },
           "end": {
-            "line": 43,
+            "line": 44,
             "column": 30
           }
         },
@@ -639,11 +639,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 43,
+                "line": 44,
                 "column": 12
               },
               "end": {
-                "line": 43,
+                "line": 44,
                 "column": 17
               }
             },
@@ -653,11 +653,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 43,
+                "line": 44,
                 "column": 25
               },
               "end": {
-                "line": 43,
+                "line": 44,
                 "column": 30
               }
             },
@@ -672,22 +672,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 45,
+          "line": 46,
           "column": 1
         },
         "end": {
-          "line": 48
+          "line": 49
         }
       },
       "name": "PassNested",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 46,
+            "line": 47,
             "column": 5
           },
           "end": {
-            "line": 48
+            "line": 49
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -695,21 +695,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 46,
+                "line": 47,
                 "column": 5
               },
               "end": {
-                "line": 48
+                "line": 49
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 46,
+                  "line": 47,
                   "column": 5
                 },
                 "end": {
-                  "line": 46,
+                  "line": 47,
                   "column": 52
                 }
               },
@@ -717,11 +717,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 46,
+                    "line": 47,
                     "column": 5
                   },
                   "end": {
-                    "line": 46,
+                    "line": 47,
                     "column": 52
                   }
                 },
@@ -735,11 +735,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 46,
+            "line": 47,
             "column": 12
           },
           "end": {
-            "line": 46,
+            "line": 47,
             "column": 52
           }
         },
@@ -748,11 +748,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 46,
+                "line": 47,
                 "column": 24
               },
               "end": {
-                "line": 46,
+                "line": 47,
                 "column": 51
               }
             },
@@ -761,11 +761,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 46,
+                    "line": 47,
                     "column": 24
                   },
                   "end": {
-                    "line": 46,
+                    "line": 47,
                     "column": 29
                   }
                 },
@@ -775,11 +775,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 46,
+                    "line": 47,
                     "column": 35
                   },
                   "end": {
-                    "line": 46,
+                    "line": 47,
                     "column": 51
                   }
                 },
@@ -788,11 +788,11 @@
                   {
                     "sourceInfo": {
                       "start": {
-                        "line": 46,
+                        "line": 47,
                         "column": 46
                       },
                       "end": {
-                        "line": 46,
+                        "line": 47,
                         "column": 51
                       }
                     },
@@ -813,22 +813,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 48,
+          "line": 49,
           "column": 1
         },
         "end": {
-          "line": 51
+          "line": 52
         }
       },
       "name": "PassNotAlways",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 49,
+            "line": 50,
             "column": 5
           },
           "end": {
-            "line": 51
+            "line": 52
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -836,21 +836,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 49,
+                "line": 50,
                 "column": 5
               },
               "end": {
-                "line": 51
+                "line": 52
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 49,
+                  "line": 50,
                   "column": 5
                 },
                 "end": {
-                  "line": 49,
+                  "line": 50,
                   "column": 27
                 }
               },
@@ -858,11 +858,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 49,
+                    "line": 50,
                     "column": 5
                   },
                   "end": {
-                    "line": 49,
+                    "line": 50,
                     "column": 27
                   }
                 },
@@ -876,11 +876,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 49,
+            "line": 50,
             "column": 12
           },
           "end": {
-            "line": 49,
+            "line": 50,
             "column": 27
           }
         },
@@ -889,11 +889,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 49,
+                "line": 50,
                 "column": 16
               },
               "end": {
-                "line": 49,
+                "line": 50,
                 "column": 27
               }
             },
@@ -902,11 +902,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 49,
+                    "line": 50,
                     "column": 23
                   },
                   "end": {
-                    "line": 49,
+                    "line": 50,
                     "column": 27
                   }
                 },
@@ -923,22 +923,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 51,
+          "line": 52,
           "column": 1
         },
         "end": {
-          "line": 54
+          "line": 55
         }
       },
       "name": "PassFor",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 52,
+            "line": 53,
             "column": 5
           },
           "end": {
-            "line": 54
+            "line": 55
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -946,21 +946,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 52,
+                "line": 53,
                 "column": 5
               },
               "end": {
-                "line": 54
+                "line": 55
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 52,
+                  "line": 53,
                   "column": 5
                 },
                 "end": {
-                  "line": 52,
+                  "line": 53,
                   "column": 28
                 }
               },
@@ -968,11 +968,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 52,
+                    "line": 53,
                     "column": 5
                   },
                   "end": {
-                    "line": 52,
+                    "line": 53,
                     "column": 28
                   }
                 },
@@ -986,11 +986,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 52,
+            "line": 53,
             "column": 12
           },
           "end": {
-            "line": 52,
+            "line": 53,
             "column": 28
           }
         },
@@ -999,11 +999,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 52,
+                "line": 53,
                 "column": 23
               },
               "end": {
-                "line": 52,
+                "line": 53,
                 "column": 28
               }
             },
@@ -1017,11 +1017,11 @@
         {
           "sourceInfo": {
             "start": {
-              "line": 51,
+              "line": 52,
               "column": 19
             },
             "end": {
-              "line": 51,
+              "line": 52,
               "column": 42
             }
           },
@@ -1038,22 +1038,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 54,
+          "line": 55,
           "column": 1
         },
         "end": {
-          "line": 58
+          "line": 59
         }
       },
       "name": "PassPairs",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 55,
+            "line": 56,
             "column": 5
           },
           "end": {
-            "line": 58
+            "line": 59
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -1061,21 +1061,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 55,
+                "line": 56,
                 "column": 5
               },
               "end": {
-                "line": 58
+                "line": 59
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 55,
+                  "line": 56,
                   "column": 5
                 },
                 "end": {
-                  "line": 55,
+                  "line": 56,
                   "column": 32
                 }
               },
@@ -1083,11 +1083,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 55,
+                    "line": 56,
                     "column": 5
                   },
                   "end": {
-                    "line": 55,
+                    "line": 56,
                     "column": 32
                   }
                 },
@@ -1101,11 +1101,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 55,
+            "line": 56,
             "column": 12
           },
           "end": {
-            "line": 55,
+            "line": 56,
             "column": 32
           }
         },
@@ -1114,11 +1114,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 55,
+                "line": 56,
                 "column": 12
               },
               "end": {
-                "line": 55,
+                "line": 56,
                 "column": 17
               }
             },
@@ -1128,11 +1128,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 55,
+                "line": 56,
                 "column": 27
               },
               "end": {
-                "line": 55,
+                "line": 56,
                 "column": 32
               }
             },
@@ -1147,11 +1147,11 @@
         {
           "sourceInfo": {
             "start": {
-              "line": 54,
+              "line": 55,
               "column": 21
             },
             "end": {
-              "line": 54,
+              "line": 55,
               "column": 48
             }
           },
@@ -1166,22 +1166,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 58,
+          "line": 59,
           "column": 1
         },
         "end": {
-          "line": 62
+          "line": 63
         }
       },
       "name": "PassNested",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 59,
+            "line": 60,
             "column": 5
           },
           "end": {
-            "line": 62
+            "line": 63
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -1189,21 +1189,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 59,
+                "line": 60,
                 "column": 5
               },
               "end": {
-                "line": 62
+                "line": 63
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 59,
+                  "line": 60,
                   "column": 5
                 },
                 "end": {
-                  "line": 59,
+                  "line": 60,
                   "column": 32
                 }
               },
@@ -1211,11 +1211,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 59,
+                    "line": 60,
                     "column": 5
                   },
                   "end": {
-                    "line": 59,
+                    "line": 60,
                     "column": 32
                   }
                 },
@@ -1229,11 +1229,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 59,
+            "line": 60,
             "column": 12
           },
           "end": {
-            "line": 59,
+            "line": 60,
             "column": 32
           }
         },
@@ -1242,11 +1242,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 59,
+                "line": 60,
                 "column": 12
               },
               "end": {
-                "line": 59,
+                "line": 60,
                 "column": 17
               }
             },
@@ -1256,11 +1256,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 59,
+                "line": 60,
                 "column": 27
               },
               "end": {
-                "line": 59,
+                "line": 60,
                 "column": 32
               }
             },
@@ -1275,11 +1275,11 @@
         {
           "sourceInfo": {
             "start": {
-              "line": 58,
+              "line": 59,
               "column": 22
             },
             "end": {
-              "line": 58,
+              "line": 59,
               "column": 38
             }
           },
@@ -1291,11 +1291,11 @@
         {
           "sourceInfo": {
             "start": {
-              "line": 58,
+              "line": 59,
               "column": 40
             },
             "end": {
-              "line": 58,
+              "line": 59,
               "column": 56
             }
           },
@@ -1309,22 +1309,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 62,
+          "line": 63,
           "column": 1
         },
         "end": {
-          "line": 65
+          "line": 67
         }
       },
       "name": "PassRecords",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 63,
+            "line": 64,
             "column": 5
           },
           "end": {
-            "line": 65
+            "line": 67
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -1332,21 +1332,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 63,
+                "line": 64,
                 "column": 5
               },
               "end": {
-                "line": 65
+                "line": 67
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 63,
+                  "line": 64,
                   "column": 5
                 },
                 "end": {
-                  "line": 63,
+                  "line": 64,
                   "column": 31
                 }
               },
@@ -1354,11 +1354,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 63,
+                    "line": 64,
                     "column": 5
                   },
                   "end": {
-                    "line": 63,
+                    "line": 64,
                     "column": 31
                   }
                 },
@@ -1368,15 +1368,15 @@
           }
         ]
       },
-      "pyCode": "def PassRecords():\n    return eventually x == t.at\n\n",
+      "pyCode": "def PassRecords():\n    return eventually x == t.at\n\n# A header name shadows a constant of the same name in that assertion.\n",
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 63,
+            "line": 64,
             "column": 12
           },
           "end": {
-            "line": 63,
+            "line": 64,
             "column": 31
           }
         },
@@ -1385,11 +1385,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 63,
+                "line": 64,
                 "column": 23
               },
               "end": {
-                "line": 63,
+                "line": 64,
                 "column": 31
               }
             },
@@ -1403,11 +1403,11 @@
         {
           "sourceInfo": {
             "start": {
-              "line": 62,
+              "line": 63,
               "column": 23
             },
             "end": {
-              "line": 62,
+              "line": 63,
               "column": 38
             }
           },
@@ -1421,11 +1421,96 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 65,
+          "line": 67,
           "column": 1
         },
         "end": {
-          "line": 68
+          "line": 70
+        }
+      },
+      "name": "PassShadow",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 68,
+            "column": 5
+          },
+          "end": {
+            "line": 70
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 68,
+                "column": 5
+              },
+              "end": {
+                "line": 70
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 68,
+                  "column": 5
+                },
+                "end": {
+                  "line": 68,
+                  "column": 17
+                }
+              },
+              "pyExpr": "N == 0",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 68,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 68,
+                    "column": 17
+                  }
+                },
+                "pyExpr": "N == 0"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassShadow():\n    return N == 0\n\n",
+      "forClauses": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 67,
+              "column": 29
+            },
+            "end": {
+              "line": 67,
+              "column": 45
+            }
+          },
+          "targets": [
+            "N"
+          ],
+          "iterablePyExpr": "range(1)"
+        }
+      ]
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 70,
+          "column": 1
+        },
+        "end": {
+          "line": 73
         }
       },
       "name": "PassConstantKept",
@@ -1435,11 +1520,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 66,
+            "line": 71,
             "column": 5
           },
           "end": {
-            "line": 68
+            "line": 73
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -1447,21 +1532,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 66,
+                "line": 71,
                 "column": 5
               },
               "end": {
-                "line": 68
+                "line": 73
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 66,
+                  "line": 71,
                   "column": 5
                 },
                 "end": {
-                  "line": 66,
+                  "line": 71,
                   "column": 46
                 }
               },
@@ -1469,11 +1554,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 66,
+                    "line": 71,
                     "column": 12
                   },
                   "end": {
-                    "line": 66,
+                    "line": 71,
                     "column": 46
                   }
                 },
@@ -1488,11 +1573,11 @@
         {
           "sourceInfo": {
             "start": {
-              "line": 65,
+              "line": 70,
               "column": 35
             },
             "end": {
-              "line": 65,
+              "line": 70,
               "column": 49
             }
           },
@@ -1506,22 +1591,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 68,
+          "line": 73,
           "column": 1
         },
         "end": {
-          "line": 71
+          "line": 76
         }
       },
       "name": "FailFor",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 69,
+            "line": 74,
             "column": 5
           },
           "end": {
-            "line": 71
+            "line": 76
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -1529,21 +1614,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 69,
+                "line": 74,
                 "column": 5
               },
               "end": {
-                "line": 71
+                "line": 76
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 69,
+                  "line": 74,
                   "column": 5
                 },
                 "end": {
-                  "line": 69,
+                  "line": 74,
                   "column": 28
                 }
               },
@@ -1551,11 +1636,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 69,
+                    "line": 74,
                     "column": 5
                   },
                   "end": {
-                    "line": 69,
+                    "line": 74,
                     "column": 28
                   }
                 },
@@ -1569,11 +1654,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 69,
+            "line": 74,
             "column": 12
           },
           "end": {
-            "line": 69,
+            "line": 74,
             "column": 28
           }
         },
@@ -1582,11 +1667,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 69,
+                "line": 74,
                 "column": 23
               },
               "end": {
-                "line": 69,
+                "line": 74,
                 "column": 28
               }
             },
@@ -1600,11 +1685,11 @@
         {
           "sourceInfo": {
             "start": {
-              "line": 68,
+              "line": 73,
               "column": 19
             },
             "end": {
-              "line": 68,
+              "line": 73,
               "column": 33
             }
           },
@@ -1618,11 +1703,11 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 71,
+          "line": 76,
           "column": 1
         },
         "end": {
-          "line": 74
+          "line": 79
         }
       },
       "name": "FailEventuallyAlways",
@@ -1633,11 +1718,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 72,
+            "line": 77,
             "column": 5
           },
           "end": {
-            "line": 74
+            "line": 79
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -1645,21 +1730,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 72,
+                "line": 77,
                 "column": 5
               },
               "end": {
-                "line": 74
+                "line": 79
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 72,
+                  "line": 77,
                   "column": 5
                 },
                 "end": {
-                  "line": 72,
+                  "line": 77,
                   "column": 35
                 }
               },
@@ -1667,11 +1752,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 72,
+                    "line": 77,
                     "column": 5
                   },
                   "end": {
-                    "line": 72,
+                    "line": 77,
                     "column": 35
                   }
                 },
@@ -1686,22 +1771,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 74,
+          "line": 79,
           "column": 1
         },
         "end": {
-          "line": 77
+          "line": 82
         }
       },
       "name": "FailUntil",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 75,
+            "line": 80,
             "column": 5
           },
           "end": {
-            "line": 77
+            "line": 82
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -1709,21 +1794,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 75,
+                "line": 80,
                 "column": 5
               },
               "end": {
-                "line": 77
+                "line": 82
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 75,
+                  "line": 80,
                   "column": 5
                 },
                 "end": {
-                  "line": 75,
+                  "line": 80,
                   "column": 30
                 }
               },
@@ -1731,11 +1816,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 75,
+                    "line": 80,
                     "column": 5
                   },
                   "end": {
-                    "line": 75,
+                    "line": 80,
                     "column": 30
                   }
                 },
@@ -1749,11 +1834,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 75,
+            "line": 80,
             "column": 12
           },
           "end": {
-            "line": 75,
+            "line": 80,
             "column": 30
           }
         },
@@ -1762,11 +1847,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 75,
+                "line": 80,
                 "column": 12
               },
               "end": {
-                "line": 75,
+                "line": 80,
                 "column": 17
               }
             },
@@ -1776,11 +1861,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 75,
+                "line": 80,
                 "column": 25
               },
               "end": {
-                "line": 75,
+                "line": 80,
                 "column": 30
               }
             },
@@ -1795,22 +1880,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 77,
+          "line": 82,
           "column": 1
         },
         "end": {
-          "line": 80
+          "line": 85
         }
       },
       "name": "FailYStays",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 78,
+            "line": 83,
             "column": 5
           },
           "end": {
-            "line": 80
+            "line": 85
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -1818,21 +1903,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 78,
+                "line": 83,
                 "column": 5
               },
               "end": {
-                "line": 80
+                "line": 85
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 78,
+                  "line": 83,
                   "column": 5
                 },
                 "end": {
-                  "line": 78,
+                  "line": 83,
                   "column": 56
                 }
               },
@@ -1840,11 +1925,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 78,
+                    "line": 83,
                     "column": 5
                   },
                   "end": {
-                    "line": 78,
+                    "line": 83,
                     "column": 56
                   }
                 },
@@ -1858,11 +1943,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 78,
+            "line": 83,
             "column": 12
           },
           "end": {
-            "line": 78,
+            "line": 83,
             "column": 56
           }
         },
@@ -1871,11 +1956,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 78,
+                "line": 83,
                 "column": 20
               },
               "end": {
-                "line": 78,
+                "line": 83,
                 "column": 55
               }
             },
@@ -1884,11 +1969,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 78,
+                    "line": 83,
                     "column": 20
                   },
                   "end": {
-                    "line": 78,
+                    "line": 83,
                     "column": 25
                   }
                 },
@@ -1898,11 +1983,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 78,
+                    "line": 83,
                     "column": 36
                   },
                   "end": {
-                    "line": 78,
+                    "line": 83,
                     "column": 54
                   }
                 },
@@ -1911,11 +1996,11 @@
                   {
                     "sourceInfo": {
                       "start": {
-                        "line": 78,
+                        "line": 83,
                         "column": 36
                       },
                       "end": {
-                        "line": 78,
+                        "line": 83,
                         "column": 41
                       }
                     },
@@ -1925,11 +2010,11 @@
                   {
                     "sourceInfo": {
                       "start": {
-                        "line": 78,
+                        "line": 83,
                         "column": 49
                       },
                       "end": {
-                        "line": 78,
+                        "line": 83,
                         "column": 54
                       }
                     },
@@ -1950,22 +2035,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 80,
+          "line": 85,
           "column": 1
         },
         "end": {
-          "line": 83
+          "line": 88
         }
       },
       "name": "FailBack",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 81,
+            "line": 86,
             "column": 5
           },
           "end": {
-            "line": 83
+            "line": 88
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -1973,21 +2058,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 81,
+                "line": 86,
                 "column": 5
               },
               "end": {
-                "line": 83
+                "line": 88
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 81,
+                  "line": 86,
                   "column": 5
                 },
                 "end": {
-                  "line": 81,
+                  "line": 86,
                   "column": 52
                 }
               },
@@ -1995,11 +2080,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 81,
+                    "line": 86,
                     "column": 5
                   },
                   "end": {
-                    "line": 81,
+                    "line": 86,
                     "column": 52
                   }
                 },
@@ -2013,11 +2098,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 81,
+            "line": 86,
             "column": 12
           },
           "end": {
-            "line": 81,
+            "line": 86,
             "column": 52
           }
         },
@@ -2026,11 +2111,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 81,
+                "line": 86,
                 "column": 24
               },
               "end": {
-                "line": 81,
+                "line": 86,
                 "column": 51
               }
             },
@@ -2039,11 +2124,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 81,
+                    "line": 86,
                     "column": 24
                   },
                   "end": {
-                    "line": 81,
+                    "line": 86,
                     "column": 29
                   }
                 },
@@ -2053,11 +2138,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 81,
+                    "line": 86,
                     "column": 35
                   },
                   "end": {
-                    "line": 81,
+                    "line": 86,
                     "column": 51
                   }
                 },
@@ -2066,11 +2151,11 @@
                   {
                     "sourceInfo": {
                       "start": {
-                        "line": 81,
+                        "line": 86,
                         "column": 46
                       },
                       "end": {
-                        "line": 81,
+                        "line": 86,
                         "column": 51
                       }
                     },
@@ -2091,22 +2176,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 83,
+          "line": 88,
           "column": 1
         },
         "end": {
-          "line": 85
+          "line": 90
         }
       },
       "name": "FailToggleLeadsTo",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 84,
+            "line": 89,
             "column": 5
           },
           "end": {
-            "line": 85
+            "line": 90
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -2114,21 +2199,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 84,
+                "line": 89,
                 "column": 5
               },
               "end": {
-                "line": 85
+                "line": 90
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 84,
+                  "line": 89,
                   "column": 5
                 },
                 "end": {
-                  "line": 84,
+                  "line": 89,
                   "column": 32
                 }
               },
@@ -2136,11 +2221,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 84,
+                    "line": 89,
                     "column": 5
                   },
                   "end": {
-                    "line": 84,
+                    "line": 89,
                     "column": 32
                   }
                 },
@@ -2154,11 +2239,11 @@
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 84,
+            "line": 89,
             "column": 12
           },
           "end": {
-            "line": 84,
+            "line": 89,
             "column": 32
           }
         },
@@ -2167,11 +2252,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 84,
+                "line": 89,
                 "column": 12
               },
               "end": {
-                "line": 84,
+                "line": 89,
                 "column": 17
               }
             },
@@ -2181,11 +2266,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 84,
+                "line": 89,
                 "column": 27
               },
               "end": {
-                "line": 84,
+                "line": 89,
                 "column": 32
               }
             },
@@ -2202,11 +2287,11 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 12,
+          "line": 13,
           "column": 1
         },
         "end": {
-          "line": 16
+          "line": 17
         }
       },
       "name": "Init",
@@ -2217,11 +2302,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 13,
+            "line": 14,
             "column": 5
           },
           "end": {
-            "line": 16
+            "line": 17
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -2229,22 +2314,22 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 13,
+                "line": 14,
                 "column": 5
               },
               "end": {
-                "line": 14,
+                "line": 15,
                 "column": 4
               }
             },
             "pyStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 13,
+                  "line": 14,
                   "column": 5
                 },
                 "end": {
-                  "line": 13,
+                  "line": 14,
                   "column": 9
                 }
               },
@@ -2254,21 +2339,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 14,
+                "line": 15,
                 "column": 5
               },
               "end": {
-                "line": 16
+                "line": 17
               }
             },
             "pyStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 14,
+                  "line": 15,
                   "column": 5
                 },
                 "end": {
-                  "line": 14,
+                  "line": 15,
                   "column": 9
                 }
               },
@@ -2281,11 +2366,11 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 16,
+          "line": 17,
           "column": 1
         },
         "end": {
-          "line": 20
+          "line": 21
         }
       },
       "name": "Inc",
@@ -2293,11 +2378,11 @@
       "fairness": {
         "sourceInfo": {
           "start": {
-            "line": 16,
+            "line": 17,
             "column": 8
           },
           "end": {
-            "line": 16,
+            "line": 17,
             "column": 11
           }
         },
@@ -2306,11 +2391,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 17,
+            "line": 18,
             "column": 5
           },
           "end": {
-            "line": 20
+            "line": 21
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -2318,64 +2403,64 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 17,
+                "line": 18,
                 "column": 5
               },
               "end": {
-                "line": 20
+                "line": 21
               }
             },
             "ifStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 17,
+                  "line": 18,
                   "column": 5
                 },
                 "end": {
-                  "line": 20
+                  "line": 21
                 }
               },
               "branches": [
                 {
                   "sourceInfo": {
                     "start": {
-                      "line": 17,
+                      "line": 18,
                       "column": 8
                     },
                     "end": {
-                      "line": 20
+                      "line": 21
                     }
                   },
                   "condition": "x < 2",
                   "block": {
                     "sourceInfo": {
                       "start": {
-                        "line": 18,
+                        "line": 19,
                         "column": 9
                       },
                       "end": {
-                        "line": 20
+                        "line": 21
                       }
                     },
                     "stmts": [
                       {
                         "sourceInfo": {
                           "start": {
-                            "line": 18,
+                            "line": 19,
                             "column": 9
                           },
                           "end": {
-                            "line": 20
+                            "line": 21
                           }
                         },
                         "pyStmt": {
                           "sourceInfo": {
                             "start": {
-                              "line": 18,
+                              "line": 19,
                               "column": 9
                             },
                             "end": {
-                              "line": 18,
+                              "line": 19,
                               "column": 17
                             }
                           },
@@ -2387,11 +2472,11 @@
                   "conditionExpr": {
                     "sourceInfo": {
                       "start": {
-                        "line": 17,
+                        "line": 18,
                         "column": 8
                       },
                       "end": {
-                        "line": 17,
+                        "line": 18,
                         "column": 12
                       }
                     },
@@ -2407,11 +2492,11 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 20,
+          "line": 21,
           "column": 1
         },
         "end": {
-          "line": 23
+          "line": 24
         }
       },
       "name": "Toggle",
@@ -2422,11 +2507,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 21,
+            "line": 22,
             "column": 5
           },
           "end": {
-            "line": 23
+            "line": 24
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -2434,21 +2519,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 21,
+                "line": 22,
                 "column": 5
               },
               "end": {
-                "line": 23
+                "line": 24
               }
             },
             "pyStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 21,
+                  "line": 22,
                   "column": 5
                 },
                 "end": {
-                  "line": 21,
+                  "line": 22,
                   "column": 13
                 }
               },
@@ -2463,11 +2548,11 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 23,
+          "line": 24,
           "column": 1
         },
         "end": {
-          "line": 26
+          "line": 27
         }
       },
       "name": "done",
@@ -2475,11 +2560,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 24,
+            "line": 25,
             "column": 5
           },
           "end": {
-            "line": 26
+            "line": 27
           }
         },
         "flow": "FLOW_SERIAL",
@@ -2487,21 +2572,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 24,
+                "line": 25,
                 "column": 5
               },
               "end": {
-                "line": 26
+                "line": 27
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 24,
+                  "line": 25,
                   "column": 5
                 },
                 "end": {
-                  "line": 24,
+                  "line": 25,
                   "column": 17
                 }
               },
@@ -2509,11 +2594,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 24,
+                    "line": 25,
                     "column": 12
                   },
                   "end": {
-                    "line": 24,
+                    "line": 25,
                     "column": 17
                   }
                 },
@@ -2581,7 +2666,7 @@
           "column": 1
         },
         "end": {
-          "line": 12
+          "line": 11
         }
       },
       "pyStmt": {
@@ -2596,6 +2681,30 @@
           }
         },
         "code": "__for_0__ = \"kept\""
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 11,
+          "column": 1
+        },
+        "end": {
+          "line": 13
+        }
+      },
+      "pyStmt": {
+        "sourceInfo": {
+          "start": {
+            "line": 11,
+            "column": 1
+          },
+          "end": {
+            "line": 11,
+            "column": 5
+          }
+        },
+        "code": "N = 5"
       }
     }
   ],

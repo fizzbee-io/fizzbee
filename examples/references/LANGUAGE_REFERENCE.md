@@ -968,7 +968,9 @@ per value, named like `Answered[0]`. Iterables and filters may use only
 constants and builtins, and are evaluated once, before `Init`. The targets
 are names; with several, like `for a, b in PAIRS`, each value must be a
 tuple or list of that length. Several clauses nest in order, and a later
-clause can use an earlier one's names:
+clause can use an earlier one's names. Inside the assertion (its filters,
+later clauses and body), a header name shadows a constant with the same
+name, as a loop variable would:
 
 ```python
 assertion Answered for c in range(NUM_CLIENTS):

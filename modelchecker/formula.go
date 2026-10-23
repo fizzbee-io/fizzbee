@@ -167,8 +167,15 @@ func expandForClauses(fileName string, inv *ast.Invariant, env starlark.StringDi
 			}
 			unpacked := []starlark.Value{v}
 			if len(clause.Targets) > 1 {
-				seq, ok := v.(starlark.Indexable)
-				if !ok || seq.Len() != len(clause.Targets) {
+				// Only tuples and lists unpack, as in a Starlark assignment.
+				var seq starlark.Indexable
+				switch v := v.(type) {
+				case starlark.Tuple:
+					seq = v
+				case *starlark.List:
+					seq = v
+				}
+				if seq == nil || seq.Len() != len(clause.Targets) {
 					return fail("can't unpack %s into %s", v, strings.Join(clause.Targets, ", "))
 				}
 				unpacked = make([]starlark.Value, seq.Len())

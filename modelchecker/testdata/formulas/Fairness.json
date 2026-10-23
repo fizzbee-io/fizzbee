@@ -1,0 +1,994 @@
+{
+  "sourceInfo": {
+    "fileName": "Fairness.fizz",
+    "start": {
+      "line": 11,
+      "column": 1
+    },
+    "end": {
+      "line": 42
+    }
+  },
+  "invariants": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 28,
+          "column": 1
+        },
+        "end": {
+          "line": 31
+        }
+      },
+      "name": "PassStrong",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 29,
+            "column": 5
+          },
+          "end": {
+            "line": 31
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 29,
+                "column": 5
+              },
+              "end": {
+                "line": 31
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 29,
+                  "column": 5
+                },
+                "end": {
+                  "line": 29,
+                  "column": 39
+                }
+              },
+              "pyExpr": "[bool(taken_strong == 2)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 29,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 29,
+                    "column": 39
+                  }
+                },
+                "pyExpr": "[bool(taken_strong == 2)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassStrong():\n    return eventually taken_strong == 2\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 29,
+            "column": 12
+          },
+          "end": {
+            "line": 29,
+            "column": 39
+          }
+        },
+        "op": "EVENTUALLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 29,
+                "column": 23
+              },
+              "end": {
+                "line": 29,
+                "column": 39
+              }
+            },
+            "op": "ATOM",
+            "text": "taken_strong == 2"
+          }
+        ],
+        "text": "eventually taken_strong == 2"
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 31,
+          "column": 1
+        },
+        "end": {
+          "line": 34
+        }
+      },
+      "name": "PassStrongUntil",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 32,
+            "column": 5
+          },
+          "end": {
+            "line": 34
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 32,
+                "column": 5
+              },
+              "end": {
+                "line": 34
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 32,
+                  "column": 5
+                },
+                "end": {
+                  "line": 32,
+                  "column": 52
+                }
+              },
+              "pyExpr": "[bool(taken_strong == 0), bool(taken_strong == 1)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 32,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 32,
+                    "column": 52
+                  }
+                },
+                "pyExpr": "[bool(taken_strong == 0), bool(taken_strong == 1)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassStrongUntil():\n    return taken_strong == 0 until taken_strong == 1\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 32,
+            "column": 12
+          },
+          "end": {
+            "line": 32,
+            "column": 52
+          }
+        },
+        "op": "UNTIL",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 32,
+                "column": 12
+              },
+              "end": {
+                "line": 32,
+                "column": 28
+              }
+            },
+            "op": "ATOM",
+            "text": "taken_strong == 0"
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 32,
+                "column": 36
+              },
+              "end": {
+                "line": 32,
+                "column": 52
+              }
+            },
+            "op": "ATOM",
+            "atom": 1,
+            "text": "taken_strong == 1"
+          }
+        ],
+        "text": "taken_strong == 0 until taken_strong == 1"
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 34,
+          "column": 1
+        },
+        "end": {
+          "line": 37
+        }
+      },
+      "name": "PassStepsInOrder",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 35,
+            "column": 5
+          },
+          "end": {
+            "line": 37
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 35,
+                "column": 5
+              },
+              "end": {
+                "line": 37
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 35,
+                  "column": 5
+                },
+                "end": {
+                  "line": 35,
+                  "column": 74
+                }
+              },
+              "pyExpr": "[bool(taken_strong == 1), bool(taken_strong == 2)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 35,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 35,
+                    "column": 74
+                  }
+                },
+                "pyExpr": "[bool(taken_strong == 1), bool(taken_strong == 2)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassStepsInOrder():\n    return always (taken_strong == 1 implies eventually taken_strong == 2)\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 35,
+            "column": 12
+          },
+          "end": {
+            "line": 35,
+            "column": 74
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 35,
+                "column": 20
+              },
+              "end": {
+                "line": 35,
+                "column": 73
+              }
+            },
+            "op": "IMPLIES",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 35,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 35,
+                    "column": 36
+                  }
+                },
+                "op": "ATOM",
+                "text": "taken_strong == 1"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 35,
+                    "column": 46
+                  },
+                  "end": {
+                    "line": 35,
+                    "column": 73
+                  }
+                },
+                "op": "EVENTUALLY",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 35,
+                        "column": 57
+                      },
+                      "end": {
+                        "line": 35,
+                        "column": 73
+                      }
+                    },
+                    "op": "ATOM",
+                    "atom": 1,
+                    "text": "taken_strong == 2"
+                  }
+                ],
+                "text": "eventually taken_strong == 2"
+              }
+            ],
+            "text": "taken_strong == 1 implies eventually taken_strong == 2"
+          }
+        ],
+        "text": "always (taken_strong == 1 implies eventually taken_strong == 2)"
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 37,
+          "column": 1
+        },
+        "end": {
+          "line": 40
+        }
+      },
+      "name": "FailWeak",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 38,
+            "column": 5
+          },
+          "end": {
+            "line": 40
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 38,
+                "column": 5
+              },
+              "end": {
+                "line": 40
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 38,
+                  "column": 5
+                },
+                "end": {
+                  "line": 38,
+                  "column": 32
+                }
+              },
+              "pyExpr": "[bool(taken_weak)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 38,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 38,
+                    "column": 32
+                  }
+                },
+                "pyExpr": "[bool(taken_weak)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailWeak():\n    return eventually taken_weak\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 38,
+            "column": 12
+          },
+          "end": {
+            "line": 38,
+            "column": 32
+          }
+        },
+        "op": "EVENTUALLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 38,
+                "column": 23
+              },
+              "end": {
+                "line": 38,
+                "column": 32
+              }
+            },
+            "op": "ATOM",
+            "text": "taken_weak"
+          }
+        ],
+        "text": "eventually taken_weak"
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 40,
+          "column": 1
+        },
+        "end": {
+          "line": 42
+        }
+      },
+      "name": "PassWeakStays",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 41,
+            "column": 5
+          },
+          "end": {
+            "line": 42
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 41,
+                "column": 5
+              },
+              "end": {
+                "line": 42
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 41,
+                  "column": 5
+                },
+                "end": {
+                  "line": 41,
+                  "column": 56
+                }
+              },
+              "pyExpr": "[bool(taken_weak)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 41,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 41,
+                    "column": 56
+                  }
+                },
+                "pyExpr": "[bool(taken_weak)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassWeakStays():\n    return always (taken_weak implies always taken_weak)\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 41,
+            "column": 12
+          },
+          "end": {
+            "line": 41,
+            "column": 56
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 41,
+                "column": 20
+              },
+              "end": {
+                "line": 41,
+                "column": 55
+              }
+            },
+            "op": "IMPLIES",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 41,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 41,
+                    "column": 29
+                  }
+                },
+                "op": "ATOM",
+                "text": "taken_weak"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 41,
+                    "column": 39
+                  },
+                  "end": {
+                    "line": 41,
+                    "column": 55
+                  }
+                },
+                "op": "ALWAYS",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 41,
+                        "column": 46
+                      },
+                      "end": {
+                        "line": 41,
+                        "column": 55
+                      }
+                    },
+                    "op": "ATOM",
+                    "text": "taken_weak"
+                  }
+                ],
+                "text": "always taken_weak"
+              }
+            ],
+            "text": "taken_weak implies always taken_weak"
+          }
+        ],
+        "text": "always (taken_weak implies always taken_weak)"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 11,
+          "column": 1
+        },
+        "end": {
+          "line": 16
+        }
+      },
+      "name": "Init",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 12,
+            "column": 5
+          },
+          "end": {
+            "line": 16
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 12,
+                "column": 5
+              },
+              "end": {
+                "line": 13,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 12,
+                  "column": 5
+                },
+                "end": {
+                  "line": 12,
+                  "column": 16
+                }
+              },
+              "code": "open = False"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 13,
+                "column": 5
+              },
+              "end": {
+                "line": 14,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 13,
+                  "column": 5
+                },
+                "end": {
+                  "line": 13,
+                  "column": 22
+                }
+              },
+              "code": "taken_weak = False"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 14,
+                "column": 5
+              },
+              "end": {
+                "line": 16
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 14,
+                  "column": 5
+                },
+                "end": {
+                  "line": 14,
+                  "column": 20
+                }
+              },
+              "code": "taken_strong = 0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 16,
+          "column": 1
+        },
+        "end": {
+          "line": 19
+        }
+      },
+      "name": "Flip",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "sourceInfo": {
+          "start": {
+            "line": 16,
+            "column": 8
+          },
+          "end": {
+            "line": 16,
+            "column": 11
+          }
+        },
+        "level": "FAIRNESS_LEVEL_WEAK"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 17,
+            "column": 5
+          },
+          "end": {
+            "line": 19
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 17,
+                "column": 5
+              },
+              "end": {
+                "line": 19
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 17,
+                  "column": 5
+                },
+                "end": {
+                  "line": 17,
+                  "column": 19
+                }
+              },
+              "code": "open = not open"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 19,
+          "column": 1
+        },
+        "end": {
+          "line": 23
+        }
+      },
+      "name": "TakeWeak",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "sourceInfo": {
+          "start": {
+            "line": 19,
+            "column": 8
+          },
+          "end": {
+            "line": 19,
+            "column": 11
+          }
+        },
+        "level": "FAIRNESS_LEVEL_WEAK"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 20,
+            "column": 5
+          },
+          "end": {
+            "line": 23
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 20,
+                "column": 5
+              },
+              "end": {
+                "line": 21,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 20,
+                  "column": 5
+                },
+                "end": {
+                  "line": 20,
+                  "column": 35
+                }
+              },
+              "condition": "open and not taken_weak",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 20,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 35
+                  }
+                },
+                "pyExpr": "open and not taken_weak"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 21,
+                "column": 5
+              },
+              "end": {
+                "line": 23
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 21,
+                  "column": 5
+                },
+                "end": {
+                  "line": 21,
+                  "column": 21
+                }
+              },
+              "code": "taken_weak = True"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 23,
+          "column": 1
+        },
+        "end": {
+          "line": 28
+        }
+      },
+      "name": "TakeStrong",
+      "flow": "FLOW_SERIAL",
+      "fairness": {
+        "sourceInfo": {
+          "start": {
+            "line": 23,
+            "column": 8
+          },
+          "end": {
+            "line": 23,
+            "column": 19
+          }
+        },
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 24,
+            "column": 5
+          },
+          "end": {
+            "line": 28
+          }
+        },
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 24,
+                "column": 5
+              },
+              "end": {
+                "line": 25,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 24,
+                  "column": 5
+                },
+                "end": {
+                  "line": 24,
+                  "column": 38
+                }
+              },
+              "condition": "open and taken_strong == 0",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 24,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 24,
+                    "column": 38
+                  }
+                },
+                "pyExpr": "open and taken_strong == 0"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 25,
+                "column": 5
+              },
+              "end": {
+                "line": 26,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 25,
+                  "column": 5
+                },
+                "end": {
+                  "line": 25,
+                  "column": 20
+                }
+              },
+              "code": "taken_strong = 1"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 26,
+                "column": 5
+              },
+              "end": {
+                "line": 28
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 26,
+                  "column": 5
+                },
+                "end": {
+                  "line": 26,
+                  "column": 20
+                }
+              },
+              "code": "taken_strong = 2"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "frontMatter": {
+    "yaml": "\ndeadlock_detection: false\noptions:\n  crash_on_yield: false\n"
+  }
+}

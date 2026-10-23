@@ -1,0 +1,583 @@
+{
+  "sourceInfo": {
+    "fileName": "Stutter.fizz",
+    "start": {
+      "line": 10,
+      "column": 1
+    },
+    "end": {
+      "line": 30
+    }
+  },
+  "invariants": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 21,
+          "column": 1
+        },
+        "end": {
+          "line": 24
+        }
+      },
+      "name": "FailEventuallyTaken",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 22,
+            "column": 5
+          },
+          "end": {
+            "line": 24
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 22,
+                "column": 5
+              },
+              "end": {
+                "line": 24
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 22,
+                  "column": 5
+                },
+                "end": {
+                  "line": 22,
+                  "column": 27
+                }
+              },
+              "pyExpr": "[bool(taken)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 22,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 22,
+                    "column": 27
+                  }
+                },
+                "pyExpr": "[bool(taken)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailEventuallyTaken():\n    return eventually taken\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 22,
+            "column": 12
+          },
+          "end": {
+            "line": 22,
+            "column": 27
+          }
+        },
+        "op": "EVENTUALLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 22,
+                "column": 23
+              },
+              "end": {
+                "line": 22,
+                "column": 27
+              }
+            },
+            "op": "ATOM",
+            "text": "taken"
+          }
+        ],
+        "text": "eventually taken"
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 24,
+          "column": 1
+        },
+        "end": {
+          "line": 28
+        }
+      },
+      "name": "PassNotStuckOpen",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 25,
+            "column": 5
+          },
+          "end": {
+            "line": 28
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 25,
+                "column": 5
+              },
+              "end": {
+                "line": 28
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 25,
+                  "column": 5
+                },
+                "end": {
+                  "line": 25,
+                  "column": 55
+                }
+              },
+              "pyExpr": "[bool(((open) and (not (taken))))]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 25,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 25,
+                    "column": 55
+                  }
+                },
+                "pyExpr": "[bool(((open) and (not (taken))))]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassNotStuckOpen():\n    return not (eventually always (open and not taken))\n\n# Opening once isn't enough: Flip can close the gate and the run stop.\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 25,
+            "column": 12
+          },
+          "end": {
+            "line": 25,
+            "column": 55
+          }
+        },
+        "op": "NOT",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 25,
+                "column": 17
+              },
+              "end": {
+                "line": 25,
+                "column": 54
+              }
+            },
+            "op": "EVENTUALLY",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 25,
+                    "column": 28
+                  },
+                  "end": {
+                    "line": 25,
+                    "column": 54
+                  }
+                },
+                "op": "ALWAYS",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 25,
+                        "column": 36
+                      },
+                      "end": {
+                        "line": 25,
+                        "column": 53
+                      }
+                    },
+                    "op": "ATOM",
+                    "text": "open and not taken"
+                  }
+                ],
+                "text": "always (open and not taken)"
+              }
+            ],
+            "text": "eventually always (open and not taken)"
+          }
+        ],
+        "text": "not (eventually always (open and not taken))"
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 28,
+          "column": 1
+        },
+        "end": {
+          "line": 30
+        }
+      },
+      "name": "FailOpenLeadsToTaken",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 29,
+            "column": 5
+          },
+          "end": {
+            "line": 30
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 29,
+                "column": 5
+              },
+              "end": {
+                "line": 30
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 29,
+                  "column": 5
+                },
+                "end": {
+                  "line": 29,
+                  "column": 45
+                }
+              },
+              "pyExpr": "[bool(((open) and (not (taken)))), bool(taken)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 29,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 29,
+                    "column": 45
+                  }
+                },
+                "pyExpr": "[bool(((open) and (not (taken)))), bool(taken)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailOpenLeadsToTaken():\n    return (open and not taken) leadsto taken\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 29,
+            "column": 12
+          },
+          "end": {
+            "line": 29,
+            "column": 45
+          }
+        },
+        "op": "LEADSTO",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 29,
+                "column": 13
+              },
+              "end": {
+                "line": 29,
+                "column": 30
+              }
+            },
+            "op": "ATOM",
+            "text": "open and not taken"
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 29,
+                "column": 41
+              },
+              "end": {
+                "line": 29,
+                "column": 45
+              }
+            },
+            "op": "ATOM",
+            "atom": 1,
+            "text": "taken"
+          }
+        ],
+        "text": "(open and not taken) leadsto taken"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 10,
+          "column": 1
+        },
+        "end": {
+          "line": 14
+        }
+      },
+      "name": "Init",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 11,
+            "column": 5
+          },
+          "end": {
+            "line": 14
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 11,
+                "column": 5
+              },
+              "end": {
+                "line": 12,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 11,
+                  "column": 5
+                },
+                "end": {
+                  "line": 11,
+                  "column": 16
+                }
+              },
+              "code": "open = False"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 12,
+                "column": 5
+              },
+              "end": {
+                "line": 14
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 12,
+                  "column": 5
+                },
+                "end": {
+                  "line": 12,
+                  "column": 17
+                }
+              },
+              "code": "taken = False"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 14,
+          "column": 1
+        },
+        "end": {
+          "line": 17
+        }
+      },
+      "name": "Flip",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 15,
+            "column": 5
+          },
+          "end": {
+            "line": 17
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 15,
+                "column": 5
+              },
+              "end": {
+                "line": 17
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 15,
+                  "column": 5
+                },
+                "end": {
+                  "line": 15,
+                  "column": 19
+                }
+              },
+              "code": "open = not open"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 17,
+          "column": 1
+        },
+        "end": {
+          "line": 21
+        }
+      },
+      "name": "Take",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "sourceInfo": {
+          "start": {
+            "line": 17,
+            "column": 8
+          },
+          "end": {
+            "line": 17,
+            "column": 19
+          }
+        },
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 18,
+            "column": 5
+          },
+          "end": {
+            "line": 21
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 18,
+                "column": 5
+              },
+              "end": {
+                "line": 19,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 18,
+                  "column": 5
+                },
+                "end": {
+                  "line": 18,
+                  "column": 30
+                }
+              },
+              "condition": "open and not taken",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 18,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 18,
+                    "column": 30
+                  }
+                },
+                "pyExpr": "open and not taken"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 19,
+                "column": 5
+              },
+              "end": {
+                "line": 21
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 19,
+                  "column": 5
+                },
+                "end": {
+                  "line": 19,
+                  "column": 16
+                }
+              },
+              "code": "taken = True"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "frontMatter": {
+    "yaml": "\ndeadlock_detection: false\noptions:\n  crash_on_yield: false\n"
+  }
+}
