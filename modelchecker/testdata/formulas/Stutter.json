@@ -97,11 +97,9 @@
                 "column": 27
               }
             },
-            "op": "ATOM",
-            "text": "taken"
+            "op": "ATOM"
           }
-        ],
-        "text": "eventually taken"
+        ]
       }
     },
     {
@@ -217,17 +215,13 @@
                         "column": 53
                       }
                     },
-                    "op": "ATOM",
-                    "text": "open and not taken"
+                    "op": "ATOM"
                   }
-                ],
-                "text": "always (open and not taken)"
+                ]
               }
-            ],
-            "text": "eventually always (open and not taken)"
+            ]
           }
-        ],
-        "text": "not (eventually always (open and not taken))"
+        ]
       }
     },
     {
@@ -317,8 +311,7 @@
                 "column": 30
               }
             },
-            "op": "ATOM",
-            "text": "open and not taken"
+            "op": "ATOM"
           },
           {
             "sourceInfo": {
@@ -332,11 +325,9 @@
               }
             },
             "op": "ATOM",
-            "atom": 1,
-            "text": "taken"
+            "atom": 1
           }
-        ],
-        "text": "(open and not taken) leadsto taken"
+        ]
       }
     }
   ],

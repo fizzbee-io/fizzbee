@@ -97,11 +97,9 @@
                 "column": 39
               }
             },
-            "op": "ATOM",
-            "text": "taken_strong == 2"
+            "op": "ATOM"
           }
-        ],
-        "text": "eventually taken_strong == 2"
+        ]
       }
     },
     {
@@ -191,8 +189,7 @@
                 "column": 28
               }
             },
-            "op": "ATOM",
-            "text": "taken_strong == 0"
+            "op": "ATOM"
           },
           {
             "sourceInfo": {
@@ -206,11 +203,9 @@
               }
             },
             "op": "ATOM",
-            "atom": 1,
-            "text": "taken_strong == 1"
+            "atom": 1
           }
-        ],
-        "text": "taken_strong == 0 until taken_strong == 1"
+        ]
       }
     },
     {
@@ -313,8 +308,7 @@
                     "column": 36
                   }
                 },
-                "op": "ATOM",
-                "text": "taken_strong == 1"
+                "op": "ATOM"
               },
               {
                 "sourceInfo": {
@@ -341,17 +335,13 @@
                       }
                     },
                     "op": "ATOM",
-                    "atom": 1,
-                    "text": "taken_strong == 2"
+                    "atom": 1
                   }
-                ],
-                "text": "eventually taken_strong == 2"
+                ]
               }
-            ],
-            "text": "taken_strong == 1 implies eventually taken_strong == 2"
+            ]
           }
-        ],
-        "text": "always (taken_strong == 1 implies eventually taken_strong == 2)"
+        ]
       }
     },
     {
@@ -441,11 +431,9 @@
                 "column": 32
               }
             },
-            "op": "ATOM",
-            "text": "taken_weak"
+            "op": "ATOM"
           }
-        ],
-        "text": "eventually taken_weak"
+        ]
       }
     },
     {
@@ -548,8 +536,7 @@
                     "column": 29
                   }
                 },
-                "op": "ATOM",
-                "text": "taken_weak"
+                "op": "ATOM"
               },
               {
                 "sourceInfo": {
@@ -575,17 +562,13 @@
                         "column": 55
                       }
                     },
-                    "op": "ATOM",
-                    "text": "taken_weak"
+                    "op": "ATOM"
                   }
-                ],
-                "text": "always taken_weak"
+                ]
               }
-            ],
-            "text": "taken_weak implies always taken_weak"
+            ]
           }
-        ],
-        "text": "always (taken_weak implies always taken_weak)"
+        ]
       }
     }
   ],

@@ -257,8 +257,7 @@
                 "column": 17
               }
             },
-            "op": "ATOM",
-            "text": "x == 0"
+            "op": "ATOM"
           },
           {
             "sourceInfo": {
@@ -272,11 +271,9 @@
               }
             },
             "op": "ATOM",
-            "atom": 1,
-            "text": "done()"
+            "atom": 1
           }
-        ],
-        "text": "x == 0 leadsto done()"
+        ]
       }
     },
     {
@@ -379,8 +376,7 @@
                     "column": 25
                   }
                 },
-                "op": "ATOM",
-                "text": "x == 1"
+                "op": "ATOM"
               },
               {
                 "sourceInfo": {
@@ -407,17 +403,13 @@
                       }
                     },
                     "op": "ATOM",
-                    "atom": 1,
-                    "text": "x == 2"
+                    "atom": 1
                   }
-                ],
-                "text": "eventually x == 2"
+                ]
               }
-            ],
-            "text": "x == 1 implies eventually x == 2"
+            ]
           }
-        ],
-        "text": "always (x == 1 implies eventually x == 2)"
+        ]
       }
     },
     {
@@ -520,8 +512,7 @@
                     "column": 25
                   }
                 },
-                "op": "ATOM",
-                "text": "done()"
+                "op": "ATOM"
               },
               {
                 "sourceInfo": {
@@ -547,17 +538,13 @@
                         "column": 47
                       }
                     },
-                    "op": "ATOM",
-                    "text": "done()"
+                    "op": "ATOM"
                   }
-                ],
-                "text": "always done()"
+                ]
               }
-            ],
-            "text": "done() implies always done()"
+            ]
           }
-        ],
-        "text": "always (done() implies always done())"
+        ]
       }
     },
     {
@@ -647,8 +634,7 @@
                 "column": 17
               }
             },
-            "op": "ATOM",
-            "text": "x == 0"
+            "op": "ATOM"
           },
           {
             "sourceInfo": {
@@ -662,11 +648,9 @@
               }
             },
             "op": "ATOM",
-            "atom": 1,
-            "text": "x == 1"
+            "atom": 1
           }
-        ],
-        "text": "x == 0 until x == 1"
+        ]
       }
     },
     {
@@ -769,8 +753,7 @@
                     "column": 29
                   }
                 },
-                "op": "ATOM",
-                "text": "x == 1"
+                "op": "ATOM"
               },
               {
                 "sourceInfo": {
@@ -797,17 +780,13 @@
                       }
                     },
                     "op": "ATOM",
-                    "atom": 1,
-                    "text": "x == 2"
+                    "atom": 1
                   }
-                ],
-                "text": "eventually x == 2"
+                ]
               }
-            ],
-            "text": "x == 1 and eventually x == 2"
+            ]
           }
-        ],
-        "text": "eventually (x == 1 and eventually x == 2)"
+        ]
       }
     },
     {
@@ -910,14 +889,11 @@
                     "column": 27
                   }
                 },
-                "op": "ATOM",
-                "text": "x < 2"
+                "op": "ATOM"
               }
-            ],
-            "text": "always x < 2"
+            ]
           }
-        ],
-        "text": "not always x < 2"
+        ]
       }
     },
     {
@@ -1007,11 +983,9 @@
                 "column": 28
               }
             },
-            "op": "ATOM",
-            "text": "x == v"
+            "op": "ATOM"
           }
-        ],
-        "text": "eventually x == v"
+        ]
       },
       "forClauses": [
         {
@@ -1122,8 +1096,7 @@
                 "column": 17
               }
             },
-            "op": "ATOM",
-            "text": "x == a"
+            "op": "ATOM"
           },
           {
             "sourceInfo": {
@@ -1137,11 +1110,9 @@
               }
             },
             "op": "ATOM",
-            "atom": 1,
-            "text": "x == b"
+            "atom": 1
           }
-        ],
-        "text": "x == a leadsto x == b"
+        ]
       },
       "forClauses": [
         {
@@ -1250,8 +1221,7 @@
                 "column": 17
               }
             },
-            "op": "ATOM",
-            "text": "x == b"
+            "op": "ATOM"
           },
           {
             "sourceInfo": {
@@ -1265,11 +1235,9 @@
               }
             },
             "op": "ATOM",
-            "atom": 1,
-            "text": "x == a"
+            "atom": 1
           }
-        ],
-        "text": "x == b leadsto x == a"
+        ]
       },
       "forClauses": [
         {
@@ -1393,11 +1361,9 @@
                 "column": 31
               }
             },
-            "op": "ATOM",
-            "text": "x == t.at"
+            "op": "ATOM"
           }
-        ],
-        "text": "eventually x == t.at"
+        ]
       },
       "forClauses": [
         {
@@ -1675,11 +1641,9 @@
                 "column": 28
               }
             },
-            "op": "ATOM",
-            "text": "x == v"
+            "op": "ATOM"
           }
-        ],
-        "text": "eventually x == v"
+        ]
       },
       "forClauses": [
         {
@@ -1855,8 +1819,7 @@
                 "column": 17
               }
             },
-            "op": "ATOM",
-            "text": "x == 1"
+            "op": "ATOM"
           },
           {
             "sourceInfo": {
@@ -1870,11 +1833,9 @@
               }
             },
             "op": "ATOM",
-            "atom": 1,
-            "text": "x == 2"
+            "atom": 1
           }
-        ],
-        "text": "x == 1 until x == 2"
+        ]
       }
     },
     {
@@ -1977,8 +1938,7 @@
                     "column": 25
                   }
                 },
-                "op": "ATOM",
-                "text": "y == 1"
+                "op": "ATOM"
               },
               {
                 "sourceInfo": {
@@ -2004,8 +1964,7 @@
                         "column": 41
                       }
                     },
-                    "op": "ATOM",
-                    "text": "y == 1"
+                    "op": "ATOM"
                   },
                   {
                     "sourceInfo": {
@@ -2019,17 +1978,13 @@
                       }
                     },
                     "op": "ATOM",
-                    "atom": 1,
-                    "text": "x == 2"
+                    "atom": 1
                   }
-                ],
-                "text": "y == 1 until x == 2"
+                ]
               }
-            ],
-            "text": "y == 1 implies (y == 1 until x == 2)"
+            ]
           }
-        ],
-        "text": "always (y == 1 implies (y == 1 until x == 2))"
+        ]
       }
     },
     {
@@ -2132,8 +2087,7 @@
                     "column": 29
                   }
                 },
-                "op": "ATOM",
-                "text": "x == 1"
+                "op": "ATOM"
               },
               {
                 "sourceInfo": {
@@ -2160,17 +2114,13 @@
                       }
                     },
                     "op": "ATOM",
-                    "atom": 1,
-                    "text": "x == 0"
+                    "atom": 1
                   }
-                ],
-                "text": "eventually x == 0"
+                ]
               }
-            ],
-            "text": "x == 1 and eventually x == 0"
+            ]
           }
-        ],
-        "text": "eventually (x == 1 and eventually x == 0)"
+        ]
       }
     },
     {
@@ -2260,8 +2210,7 @@
                 "column": 17
               }
             },
-            "op": "ATOM",
-            "text": "y == 0"
+            "op": "ATOM"
           },
           {
             "sourceInfo": {
@@ -2275,11 +2224,9 @@
               }
             },
             "op": "ATOM",
-            "atom": 1,
-            "text": "y == 1"
+            "atom": 1
           }
-        ],
-        "text": "y == 0 leadsto y == 1"
+        ]
       }
     }
   ],

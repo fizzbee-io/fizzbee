@@ -287,8 +287,7 @@
                 "column": 51
               }
             },
-            "op": "ATOM",
-            "text": "implies(True, False) and P.leadsto == 2"
+            "op": "ATOM"
           },
           {
             "sourceInfo": {
@@ -315,14 +314,11 @@
                   }
                 },
                 "op": "ATOM",
-                "atom": 1,
-                "text": "leadsto(until) == 2"
+                "atom": 1
               }
-            ],
-            "text": "eventually leadsto(until) == 2"
+            ]
           }
-        ],
-        "text": "(implies(True, False) and P.leadsto == 2) implies eventually leadsto(until) == 2"
+        ]
       }
     }
   ],

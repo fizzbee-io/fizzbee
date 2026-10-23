@@ -1464,7 +1464,7 @@ class BuildAstVisitor(FizzParserVisitor):
             ret.py_expr = body.text
         else:
             atoms = []
-            invariant.formula.CopyFrom(f.to_proto(atoms, self.input_stream))
+            invariant.formula.CopyFrom(f.to_proto(atoms))
             ret.py_expr = "[" + ", ".join(f"bool({a})" for a in atoms) + "]"
         ret.expr.py_expr = ret.py_expr
         ret.expr.source_info.CopyFrom(get_source_info(formula_returns[0][1]))
@@ -1626,11 +1626,10 @@ class Formula:
             return [self.kind, self.args[0].kind], self.args[0].args[0]
         return None
 
-    def to_proto(self, atoms, input_stream):
+    def to_proto(self, atoms):
         source_info = get_source_info(self.start)
         source_info.end.CopyFrom(get_source_info(self.stop).end)
-        p = ast.Formula(source_info=source_info,
-                        text=input_stream.getText(self.start.start.start, self.stop.stop.stop))
+        p = ast.Formula(source_info=source_info)
         if self.kind == "atom":
             p.op = ast.Formula.ATOM
             if self.text not in atoms:
@@ -1639,5 +1638,5 @@ class Formula:
             return p
         p.op = Formula.OPS[self.kind]
         for a in self.args:
-            p.args.append(a.to_proto(atoms, input_stream))
+            p.args.append(a.to_proto(atoms))
         return p

@@ -262,7 +262,6 @@ message Formula {
   Op op = 2;
   repeated Formula args = 3;
   int32 atom = 4;
-  string text = 5;  // source text, for messages
 }
 
 message ForClause {

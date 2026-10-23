@@ -39,7 +39,7 @@ func toLivenessFormula(f *ast.Formula) *liveness.Formula {
 	case ast.Formula_LEADSTO:
 		return liveness.LeadsTo(args[0], args[1])
 	}
-	panic(fmt.Sprintf("unknown formula operator %v in %q", f.Op, f.Text))
+	panic(fmt.Sprintf("unknown formula operator %v at line %d", f.Op, f.GetSourceInfo().GetStart().GetLine()))
 }
 
 // classicFormula is the formula a prefixed liveness assertion checks, with
