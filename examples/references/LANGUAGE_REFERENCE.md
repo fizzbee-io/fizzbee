@@ -1,5 +1,7 @@
 # FizzBee Language Reference
 
+> Rendered with runnable examples at [fizzbee.io/reference/language/](https://fizzbee.io/reference/language/).
+
 Complete reference guide for the FizzBee specification language for modeling distributed systems and concurrent algorithms.
 
 **Version**: 0.2.0

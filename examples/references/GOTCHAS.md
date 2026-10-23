@@ -1,5 +1,7 @@
 # FizzBee Gotchas and Common Issues
 
+> Rendered at [fizzbee.io/reference/language/gotchas/](https://fizzbee.io/reference/language/gotchas/).
+
 Known pitfalls, language quirks, and their workarounds.
 
 ---

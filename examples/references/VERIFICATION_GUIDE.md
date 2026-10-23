@@ -1,5 +1,7 @@
 # FizzBee Spec Verification Guide
 
+> Rendered at [fizzbee.io/reference/verification/](https://fizzbee.io/reference/verification/).
+
 How to sanity-check that a specification is correct, beyond just looking at
 "PASSED" and state counts.
 

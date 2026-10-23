@@ -1,5 +1,7 @@
 # FizzBee Performance Guide
 
+> Rendered at [fizzbee.io/reference/performance/](https://fizzbee.io/reference/performance/).
+
 Practical tips for reducing state space and speeding up model checking.
 Each tip is ranked by typical impact.
 
