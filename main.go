@@ -941,7 +941,12 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			// misleading "Deadlock/stuttering" message, and in model-checking
 			// mode nothing about the failure is printed at all.
 			if failedNode.FailedInvariants != nil && len(failedNode.FailedInvariants) > 0 && len(failedNode.FailedInvariants[0]) > 0 {
-				fmt.Println("FAILED: Model checker failed. Invariant: ", f.Invariants[failedNode.FailedInvariants[0][0]].Name)
+				invariant := f.Invariants[failedNode.FailedInvariants[0][0]]
+				if simulation && (invariant.Eventually || slices.Contains(invariant.TemporalOperators, "eventually")) {
+					fmt.Println("FAILED: Liveness check failed. Invariant:", invariant.Name)
+				} else {
+					fmt.Println("FAILED: Model checker failed. Invariant: ", invariant.Name)
+				}
 			} else if len(failedNode.Inbound) > 0 && failedNode.Inbound[0].FailedInvariants != nil && len(failedNode.Inbound[0].FailedInvariants[0]) > 0 {
 				fmt.Println("FAILED: Model checker failed. Transition Invariant:", f.Invariants[failedNode.Inbound[0].FailedInvariants[0][0]].Name)
 			} else if simulation {
