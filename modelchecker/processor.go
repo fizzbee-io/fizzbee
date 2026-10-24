@@ -2452,6 +2452,13 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		}
 	}
 
+	// Respace ordinal IDs before the state is stored, so repeated midpoint
+	// allocation into one gap never runs out of room. Skipped when symmetry
+	// reduction is disabled, since those states must keep concrete identities.
+	if !p.disableSymmetryReduction && node.Process.respaceOrdinalIDs() {
+		node.CachedHashCode = ""
+	}
+
 	other, found, canonicalHash := p.findVisitedSymmetric(node)
 	if p.experimentalNoGraph {
 		// No-graph mode: visited stores hashes only (values are nil). Skip

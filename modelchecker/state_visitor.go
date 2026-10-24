@@ -13,6 +13,12 @@ type StateVisitor interface {
 	VisitSymmetricValue(sv *lib.SymmetricValue)
 }
 
+// SegmentVisitor is implemented by state visitors that also want the ordinal
+// segments held in the state.
+type SegmentVisitor interface {
+	VisitSegment(s *lib.Segment)
+}
+
 // UsedSymmetricValuesCollector collects all SymmetricValue instances in the current state
 type UsedSymmetricValuesCollector struct {
 	usedValues map[string]map[int64]bool                // prefix -> set of IDs
@@ -113,6 +119,11 @@ func visitStarlarkValue(value starlark.Value, visitor StateVisitor, visited map[
 	case "symmetric_value":
 		sv := value.(*lib.SymmetricValue)
 		visitor.VisitSymmetricValue(sv)
+
+	case "symmetry_segment":
+		if sv, ok := visitor.(SegmentVisitor); ok {
+			sv.VisitSegment(value.(*lib.Segment))
+		}
 
 	case "list":
 		list := value.(*starlark.List)
