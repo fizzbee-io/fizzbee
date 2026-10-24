@@ -6,7 +6,7 @@
       "column": 1
     },
     "end": {
-      "line": 92
+      "line": 97
     }
   },
   "invariants": [
@@ -1885,7 +1885,7 @@
           "column": 1
         },
         "end": {
-          "line": 92
+          "line": 95
         }
       },
       "name": "PassCallForm",
@@ -1896,7 +1896,7 @@
             "column": 5
           },
           "end": {
-            "line": 92
+            "line": 95
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -1908,7 +1908,7 @@
                 "column": 5
               },
               "end": {
-                "line": 92
+                "line": 95
               }
             },
             "returnStmt": {
@@ -1940,7 +1940,7 @@
           }
         ]
       },
-      "pyCode": "def PassCallForm():\n    return always possibly(status == \"flown\" or detour)\n",
+      "pyCode": "def PassCallForm():\n    return always possibly(status == \"flown\" or detour)\n\n# Both uses are false once the ticket has flown; the notes come in source\n# order.\n",
       "formula": {
         "sourceInfo": {
           "start": {
@@ -1979,6 +1979,157 @@
                   }
                 },
                 "op": "ATOM"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 95,
+          "column": 1
+        },
+        "end": {
+          "line": 97
+        }
+      },
+      "name": "FailTwoNotes",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 96,
+            "column": 5
+          },
+          "end": {
+            "line": 97
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 96,
+                "column": 5
+              },
+              "end": {
+                "line": 97
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 96,
+                  "column": 5
+                },
+                "end": {
+                  "line": 96,
+                  "column": 83
+                }
+              },
+              "pyExpr": "[bool(status == \"none\"), bool(status == \"cancelled\")]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 96,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 96,
+                    "column": 83
+                  }
+                },
+                "pyExpr": "[bool(status == \"none\"), bool(status == \"cancelled\")]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailTwoNotes():\n    return always ((possibly status == \"none\") or (possibly status == \"cancelled\"))\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 96,
+            "column": 12
+          },
+          "end": {
+            "line": 96,
+            "column": 83
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 96,
+                "column": 20
+              },
+              "end": {
+                "line": 96,
+                "column": 82
+              }
+            },
+            "op": "OR",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 96,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 96,
+                    "column": 45
+                  }
+                },
+                "op": "POSSIBLY",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 96,
+                        "column": 30
+                      },
+                      "end": {
+                        "line": 96,
+                        "column": 45
+                      }
+                    },
+                    "op": "ATOM"
+                  }
+                ]
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 96,
+                    "column": 52
+                  },
+                  "end": {
+                    "line": 96,
+                    "column": 81
+                  }
+                },
+                "op": "POSSIBLY",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 96,
+                        "column": 61
+                      },
+                      "end": {
+                        "line": 96,
+                        "column": 81
+                      }
+                    },
+                    "op": "ATOM",
+                    "atom": 1
+                  }
+                ]
               }
             ]
           }

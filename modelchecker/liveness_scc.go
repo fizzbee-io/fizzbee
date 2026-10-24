@@ -1,7 +1,9 @@
 package modelchecker
 
 import (
+	"cmp"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -251,10 +253,16 @@ func (s *sccGraph) derivePossibly(f *ast.Formula, isLabeled []bool, letters []ui
 }
 
 // possiblyNotes explains a counterexample for each possibly that is false
-// somewhere on it: the first step after which it is false.
+// somewhere on it, in source order: the first step after which it is false.
 func (s *sccGraph) possiblyNotes(path []*Link, derived map[*ast.Formula]int, isLabeled []bool, letters []uint64) []string {
+	occurrences := slices.Collect(maps.Keys(derived))
+	slices.SortFunc(occurrences, func(a, b *ast.Formula) int {
+		pa, pb := a.GetSourceInfo().GetStart(), b.GetSourceInfo().GetStart()
+		return cmp.Or(cmp.Compare(pa.GetLine(), pb.GetLine()), cmp.Compare(pa.GetColumn(), pb.GetColumn()))
+	})
 	var notes []string
-	for p, bit := range derived {
+	for _, p := range occurrences {
+		bit := derived[p]
 		for k, link := range path {
 			i, ok := s.index[link.Node]
 			if !ok || !isLabeled[i] || letters[i]&(1<<uint(bit)) != 0 {
@@ -267,7 +275,6 @@ func (s *sccGraph) possiblyNotes(path []*Link, derived map[*ast.Formula]int, isL
 			break
 		}
 	}
-	slices.Sort(notes)
 	return notes
 }
 

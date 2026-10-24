@@ -1385,9 +1385,10 @@ class BuildAstVisitor(FizzParserVisitor):
     # compiles to; the ReturnStmt returned here is a placeholder it replaces.
     def visitFormula_return_stmt(self, ctx:FizzParser.Formula_return_stmtContext):
         f = self.build_formula(ctx.formula())
-        if not self.in_assertion and not f.temporal and f.count("possibly"):
-            # possibly is a soft keyword: outside an assertion this is a
-            # plain return that calls a function named possibly.
+        if not self.in_assertion and not f.temporal and not uses_implies(ctx.formula()):
+            # possibly is a soft keyword: a return that uses it is parsed as
+            # a formula (see ReturnsPossibly), but outside an assertion it is
+            # a plain return that calls a function named possibly.
             return self.plain_return(ctx)
         if not self.in_assertion:
             word = "implies" if f.kind == "atom" else "a temporal operator"
@@ -1574,6 +1575,16 @@ def count_returns(block):
     return count
 
 
+def uses_implies(ctx):
+    """Whether a formula's parse tree uses implies as an operator, outside
+    the expressions that are its atoms."""
+    if isinstance(ctx, FizzParser.ComparisonContext):
+        return False
+    if isinstance(ctx, FizzParser.Formula_binopContext):
+        return ctx.getText() == "implies"
+    return any(uses_implies(c) for c in ctx.getChildren() if isinstance(c, ParserRuleContext))
+
+
 def check_left_operand(f, op, input_stream):
     """A prefix temporal operator binds tighter than any binary, so in
     `always a implies b` it applies to `a` alone. Require parentheses there,
@@ -1616,6 +1627,9 @@ class Formula:
         self.ctx = self.start
         self.text = text  # Starlark text, for atoms
         self.paren = False
+        # Whether the formula has a linear-time operator. possibly isn't
+        # one: `possibly Q` is a condition on a state, like an atom, but it
+        # isn't a Starlark expression, so it never merges into one.
         self.temporal = kind in Formula.TEMPORAL or any(a.temporal for a in args)
 
     @staticmethod

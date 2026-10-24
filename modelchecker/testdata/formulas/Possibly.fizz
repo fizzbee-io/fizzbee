@@ -89,3 +89,8 @@ assertion FailAlias:
 # The call form parses as the operator too.
 assertion PassCallForm:
     return always possibly(status == "flown" or detour)
+
+# Both uses are false once the ticket has flown; the notes come in source
+# order.
+assertion FailTwoNotes:
+    return always ((possibly status == "none") or (possibly status == "cancelled"))

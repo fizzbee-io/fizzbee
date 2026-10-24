@@ -131,6 +131,10 @@ func TestFormulaPossibly(t *testing.T) {
 	require.Len(t, notes["FailRecoverable"], 1)
 	assert.Contains(t, notes["FailRecoverable"][0], "is false in the state after Fly (step 2; Init is step 0)")
 	assert.Empty(t, notes["FailNotGuaranteed"])
+	two := notes["FailTwoNotes"]
+	require.Len(t, two, 2)
+	assert.Contains(t, two[0], "column 21")
+	assert.Contains(t, two[1], "column 52")
 }
 
 // possibly doesn't follow crash links, so a state reached only by a crash
