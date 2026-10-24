@@ -1455,7 +1455,7 @@ class BuildAstVisitor(FizzParserVisitor):
             raise formula_error(ctx, "`possibly (eventually Q)` means the same as `possibly Q`; drop the `eventually`")
         if operand.linear_time:
             raise formula_error(ctx, "`possibly` takes a condition on a state, which can't contain "
-                                "always, eventually, until or leadsto")
+                                "always, eventually, until, unless or leadsto")
         return Formula.combine("possibly", [operand], ctx)
 
     def finish_formula_assertion(self, ctx, invariant, formula_returns):
@@ -1609,13 +1609,14 @@ class Formula:
     """A temporal formula while it is being built. Subtrees without a
     temporal operator or `possibly` collapse into atoms: Starlark
     expressions, evaluated in each state, with `implies` written out."""
-    LINEAR_TIME = ("always", "eventually", "until", "leadsto")
-    BINARY = ("and", "or", "implies", "until", "leadsto")
+    LINEAR_TIME = ("always", "eventually", "until", "unless", "leadsto")
+    BINARY = ("and", "or", "implies", "until", "unless", "leadsto")
     OPS = {
         "not": ast.Formula.NOT, "and": ast.Formula.AND, "or": ast.Formula.OR,
         "implies": ast.Formula.IMPLIES, "always": ast.Formula.ALWAYS,
         "eventually": ast.Formula.EVENTUALLY, "until": ast.Formula.UNTIL,
-        "leadsto": ast.Formula.LEADSTO, "possibly": ast.Formula.POSSIBLY,
+        "unless": ast.Formula.WEAK_UNTIL, "leadsto": ast.Formula.LEADSTO,
+        "possibly": ast.Formula.POSSIBLY,
     }
 
     def __init__(self, kind, args, ctx, text=""):

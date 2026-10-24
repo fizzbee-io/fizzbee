@@ -1,0 +1,60 @@
+---
+deadlock_detection: false
+---
+# A lock is acquired, then may be released. Release isn't fair, so a run may
+# hold the lock forever. A cache is filled, then may be committed or
+# evicted; eviction breaks the hold before the commit.
+
+action Init:
+    held = False
+    released = False
+    cache = 0
+
+atomic fair action Acquire:
+    require not held and not released
+    held = True
+
+atomic action Release:
+    require held
+    held = False
+    released = True
+
+atomic fair action Fill:
+    require cache == 0
+    cache = 1
+
+atomic action Commit:
+    require cache == 1
+    cache = 2
+
+atomic action Evict:
+    require cache == 1
+    cache = 3
+
+# The lock stays held until it is released, or forever. Once it is released,
+# unless says nothing more about held.
+assertion PassHeldUnlessReleased:
+    return always (held implies (held unless released))
+
+# until also needs the release to happen, and a run may never release.
+assertion FailHeldUntilReleased:
+    return always (held implies (held until released))
+
+# The written-out form means the same.
+assertion PassWrittenOut:
+    return always (held implies ((held until released) or always held))
+
+# Eviction ends the hold before any commit, so both fail.
+assertion FailCacheUnlessCommitted:
+    return always (cache == 1 implies (cache == 1 unless cache == 2))
+
+assertion FailCacheUntilCommitted:
+    return always (cache == 1 implies (cache == 1 until cache == 2))
+
+# Q holding now satisfies it, whatever P does.
+assertion PassRightAway:
+    return held unless cache == 0
+
+# Neither side needs to be a plain condition.
+assertion PassNested:
+    return (not released) unless (eventually cache != 1)
