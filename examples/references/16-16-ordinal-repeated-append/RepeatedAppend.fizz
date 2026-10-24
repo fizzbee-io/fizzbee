@@ -1,4 +1,4 @@
-# Example 1615: Repeated fresh() appends in an ordinal domain
+# Example 1616: Repeated fresh() appends in an ordinal domain
 # Regression test: appending after the maximum many times along one path
 # must keep working. fresh() allocates the midpoint between the current
 # maximum and the top of the ID range, so each append halves the space

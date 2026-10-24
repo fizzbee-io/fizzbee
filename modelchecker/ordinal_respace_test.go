@@ -19,7 +19,8 @@ import (
 // stored state must keep its held segments in place relative to the values.
 //
 // HeldSegment keeps both ends of the segment live. DeadEndpoint drops the
-// value at its left end before using it. Each runs with the default respace
+// value at its left end before using it. ResolvedMemo keeps the value()
+// result only as the segment's memo between two calls. Each runs with the default respace
 // threshold, and with respacing forced on every state.
 func TestOrdinalRespaceHeldSegment(t *testing.T) {
 	base := "."
@@ -28,8 +29,9 @@ func TestOrdinalRespaceHeldSegment(t *testing.T) {
 	}
 	defaultGap := lib.OrdinalRespaceMinGap
 	defer func() { lib.OrdinalRespaceMinGap = defaultGap }()
+	defaultMemoOnly := 0
 
-	for _, spec := range []string{"HeldSegment", "DeadEndpoint"} {
+	for _, spec := range []string{"HeldSegment", "DeadEndpoint", "ResolvedMemo"} {
 		for _, gap := range []int64{defaultGap, 1 << 61} {
 			t.Run(fmt.Sprintf("%s/gap=%d", spec, gap), func(t *testing.T) {
 				lib.OrdinalRespaceMinGap = gap
@@ -48,6 +50,7 @@ func TestOrdinalRespaceHeldSegment(t *testing.T) {
 
 				maxCount := 0
 				heldSegments := 0
+				memoOnly := 0
 				for _, node := range p.visited {
 					if count, ok := node.Process.Heap.state["count"].(starlark.Int); ok {
 						c, _ := count.Int64()
@@ -70,12 +73,29 @@ func TestOrdinalRespaceHeldSegment(t *testing.T) {
 								assert.Less(t, lo, seg.Left, "segment %v vs lo %d", seg, lo)
 								assert.Less(t, seg.Left, seg.Right, "segment %v", seg)
 								assert.Equal(t, hi, seg.Right, "segment %v vs hi %d", seg, hi)
+								if seg.Resolved {
+									assert.Less(t, seg.Left, seg.ResolvedID, "segment %v", seg)
+									assert.Less(t, seg.ResolvedID, seg.Right, "segment %v", seg)
+									if node.Process.Heap.state["v"] == starlark.None {
+										memoOnly++
+									}
+								}
 							}
 						}
 					}
 				}
 				assert.Equal(t, 80, maxCount)
 				assert.Positive(t, heldSegments)
+				if spec == "ResolvedMemo" {
+					assert.Positive(t, memoOnly, "no state kept a memo held only by the segment")
+					// Respacing must not drop memos: forcing it on every state
+					// keeps exactly as many as the default run.
+					if gap == defaultGap {
+						defaultMemoOnly = memoOnly
+					} else {
+						assert.Equal(t, defaultMemoOnly, memoOnly, "memos dropped by respacing")
+					}
+				}
 			})
 		}
 	}

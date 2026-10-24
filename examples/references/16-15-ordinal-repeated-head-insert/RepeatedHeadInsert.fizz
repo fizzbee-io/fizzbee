@@ -1,4 +1,4 @@
-# Example 1614: Repeated insertion into the same ordinal gap
+# Example 1615: Repeated insertion into the same ordinal gap
 # Regression test: inserting before the minimum many times along one path
 # must keep working. Ordinal values are allocated by midpoint, so each
 # insertion halves the gap below the minimum. The model checker respaces

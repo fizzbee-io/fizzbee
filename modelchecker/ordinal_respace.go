@@ -90,8 +90,9 @@ func (p *Process) respaceOrdinalIDs() bool {
 			remap(sv)
 		}
 	}
-	// Endpoints of held segments whose values are gone from the state. The
-	// clone maps segment endpoints by value, so a stand-in key is enough.
+	// Endpoints and memoized values of held segments that are not otherwise
+	// in the state. The clone maps these by value, so a stand-in key is
+	// enough.
 	for name, ids := range collector.segmentIDs {
 		mapping, ok := newIDs[name]
 		if !ok {
@@ -130,7 +131,7 @@ func (p *Process) respaceOrdinalIDs() bool {
 }
 
 // ordinalIDCollector collects the symmetric values in a state, and the
-// endpoints of the ordinal segments held in it.
+// endpoints and memoized values of the ordinal segments held in it.
 type ordinalIDCollector struct {
 	*UsedSymmetricValuesCollector
 	segmentIDs map[string]map[int64]bool // domain -> endpoint IDs
@@ -146,5 +147,10 @@ func (c *ordinalIDCollector) VisitSegment(s *lib.Segment) {
 	}
 	if !s.IsTail {
 		c.segmentIDs[name][s.Right] = true
+	}
+	// A value allocated by value() and memoized on the segment, which may
+	// not be stored anywhere else in the state yet.
+	if s.Resolved {
+		c.segmentIDs[name][s.ResolvedID] = true
 	}
 }
