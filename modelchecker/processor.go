@@ -1003,6 +1003,11 @@ type Node struct {
 
 	DuplicateOf *Node
 
+	// transient marks a mid-action step that --experimental_collapse_steps
+	// kept out of the graph: it is neither a yield point nor a fair choice,
+	// so its successors link directly from the nearest kept ancestor.
+	transient bool
+
 	// yieldForks: in the experimental processed-queue mode, when a node
 	// reaches yield, its forks list (from thread.Execute) is saved here so
 	// startProcessedQueue can replay YieldNode/YieldFork later when the
@@ -1219,6 +1224,61 @@ func (n *Node) ForkForAlternatePaths(process *Process, name string) *Node {
 	return forkNode
 }
 
+// isKeptNodeName reports whether a node with this name is always stored
+// under --experimental_collapse_steps: init and crash nodes are observation
+// nodes for liveness, like yield points.
+func isKeptNodeName(name string) bool {
+	return name == "init" || name == "yield" || name == "crash"
+}
+
+// isFairChoiceForks reports whether forks are the options of a fair `any`
+// choice. The node that produced them must stay in the graph, since
+// liveness observes the enabledness of its options there (isFairChoiceNode).
+func isFairChoiceForks(forks []*Process) bool {
+	if len(forks) == 0 || !strings.HasPrefix(forks[0].Name, "Any:") {
+		return false
+	}
+	f := forks[0].ChoiceFairness
+	return f != ast.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN && f != ast.FairnessLevel_FAIRNESS_LEVEL_UNFAIR
+}
+
+// mergeCollapsedLink joins the inbound link of a collapsed step (top, which
+// already reaches back to the nearest kept ancestor) with the link from that
+// step to its successor (cur). The result reads as the single step that the
+// kept ancestor took: name, type, fairness and request id come from the top
+// link, while labels, messages, returns and failed invariants accumulate.
+func mergeCollapsedLink(top *Link, cur *Link) *Link {
+	merged := &Link{
+		Node:           top.Node,
+		Type:           top.Type,
+		Name:           top.Name,
+		Fairness:       top.Fairness,
+		ChoiceFairness: top.ChoiceFairness,
+		ReqId:          top.ReqId,
+	}
+	if len(top.Labels)+len(cur.Labels) > 0 {
+		merged.Labels = make([]string, 0, len(top.Labels)+len(cur.Labels))
+		merged.Labels = append(merged.Labels, top.Labels...)
+		merged.Labels = append(merged.Labels, cur.Labels...)
+	}
+	if len(top.Messages)+len(cur.Messages) > 0 {
+		merged.Messages = make([]*ast.Message, 0, len(top.Messages)+len(cur.Messages))
+		merged.Messages = append(merged.Messages, top.Messages...)
+		merged.Messages = append(merged.Messages, cur.Messages...)
+	}
+	if len(top.Returns)+len(cur.Returns) > 0 {
+		merged.Returns = make(starlark.StringDict, len(top.Returns)+len(cur.Returns))
+		maps.Copy(merged.Returns, top.Returns)
+		maps.Copy(merged.Returns, cur.Returns)
+	}
+	if len(top.FailedInvariants)+len(cur.FailedInvariants) > 0 {
+		merged.FailedInvariants = make(map[int][]int, len(top.FailedInvariants)+len(cur.FailedInvariants))
+		maps.Copy(merged.FailedInvariants, top.FailedInvariants)
+		maps.Copy(merged.FailedInvariants, cur.FailedInvariants)
+	}
+	return merged
+}
+
 type Processor struct {
 	Init               *Node
 	Files              []*ast.File
@@ -1253,6 +1313,20 @@ type Processor struct {
 	// at startup. The failure path (parent pointer chain via Inbound[0])
 	// remains intact so a failure trace can be reconstructed on demand.
 	experimentalNoGraph bool
+
+	// experimentalCollapseSteps: when true, mid-action steps that are
+	// neither yield points nor fair `any` choices are not stored in the
+	// graph or the visited set. Once an action's internal steps have been
+	// explored to the next yield point, that yield point links directly
+	// from the previous one, carrying the action link's name and fairness.
+	// Liveness reads fairness only on links out of yield/init/crash and
+	// fair-choice nodes, so those are kept as nodes. Internal steps are
+	// deduplicated per expansion in stepVisited (reset in expandToYield),
+	// not across the run. Off by default; only the default BFS path
+	// (Start) honours it; see collapseActive.
+	experimentalCollapseSteps bool
+	collapseActive            bool
+	stepVisited               map[string]*Node
 
 	// disableSymmetryReduction: when true, visited-set dedup uses only the
 	// plain state hash — no symmetry permutations, so no canonical renaming
@@ -1375,6 +1449,12 @@ func (p *Processor) SetExperimentalProcessedQueue(v bool) {
 // experimentalProcessedQueue and for refusing specs with liveness assertions.
 func (p *Processor) SetExperimentalNoGraph(v bool) {
 	p.experimentalNoGraph = v
+}
+
+// SetExperimentalCollapseSteps enables collapsing of unfair mid-action
+// steps into direct yield-to-yield links. Must be called before Start.
+func (p *Processor) SetExperimentalCollapseSteps(v bool) {
+	p.experimentalCollapseSteps = v
 }
 
 // SetDisableSymmetryReduction turns off symmetry-permutation dedup so every
@@ -1625,6 +1705,12 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 	if p.Init != nil {
 		panic("processor already started")
 	}
+	// Guided traces match link names step by step, and refinement checks
+	// read every stored node, so collapsing is limited to plain BFS runs.
+	p.collapseActive = p.experimentalCollapseSteps && p.guidedTrace == nil && len(p.Files[0].Refinements) == 0
+	if p.collapseActive {
+		p.stepVisited = make(map[string]*Node)
+	}
 	startTime := time.Now()
 	init, failedNode, err = p.InitializeNode()
 	if err != nil {
@@ -1702,6 +1788,12 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 func (p *Processor) expandToYield(node *Node, startTime time.Time, prevCount *int) (
 	invariantFailure bool, symmetryFound bool, crashFailedNode *Node, finalNode *Node) {
 	finalNode = node
+	if p.collapseActive {
+		// Internal steps are shared only within one expansion: the same
+		// mid-action state reached from another yield point is explored
+		// again, which costs time but keeps no step alive across yields.
+		clear(p.stepVisited)
+	}
 	for {
 		if len(p.visited)%20000 == 0 && len(p.visited) != *prevCount {
 			if p.isTest {
@@ -2450,6 +2542,17 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	if node.ThreadProgress {
 		node.Enable()
 	}
+	transient := false
+	collapsedParent := false
+	if p.collapseActive && len(node.Inbound) > 0 {
+		transient = !yield && !isKeptNodeName(node.Name) && !isFairChoiceForks(forks)
+		if parent := node.Inbound[0].Node; parent != nil && parent.transient {
+			// The parent was a collapsed step: link this node from the
+			// nearest kept ancestor instead, as the action's single step.
+			node.Inbound[0] = mergeCollapsedLink(parent.Inbound[0], node.Inbound[0])
+			collapsedParent = true
+		}
+	}
 	// Add the labels from the process to the inbound links
 	// This must be done even for duplicate nodes
 	// The labels for the outbound links are added when the node is merged/attached
@@ -2495,6 +2598,15 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 			}
 		}
 	}
+	if collapsedParent {
+		// Process.Parent was needed up to here: Execute read Parent.Enabled
+		// and propagated Enabled up the chain, and the transition
+		// invariants compared against the parent's heap. Re-point it past
+		// the collapsed steps so they can be freed once this expansion
+		// ends. propagateEnabled behaves the same: a step is only Enabled
+		// after its ancestors were, so the walk stops at the same place.
+		node.Process.Parent = node.Inbound[0].Node.Process
+	}
 
 	if node.actionDepth > 0 {
 		passed, _ := CheckSymmetryConstraints(node.Process)
@@ -2516,28 +2628,31 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 			return false, false
 		}
 		p.visited[canonicalHash] = nil
-	} else if found {
+	} else if found && (other.Enabled || !node.Enabled) {
 		// TODO: Enabled should be a property of the link/transition, not the node.
 		// We will keep the enabled state in the node, during execution but have to be
 		// copied to the link/transition when attaching/merging similar to Fairness.
-		if other.Enabled || !node.Enabled {
-			if yield && other.Name == "crash" {
-				if p.shouldThreadCrash(other) {
-					p.crashThread(other)
-				}
+		if yield && other.Name == "crash" {
+			if p.shouldThreadCrash(other) {
+				p.crashThread(other)
 			}
-			node.Duplicate(other, yield)
-			// Count this as a "live successor" signal for the early
-			// deadlock detector in startProcessedQueue Phase 2. A dedup
-			// hit means an action-start reached a previously visited
-			// canonical state — a real transition out of the current yp,
-			// even though no new entry is added to p.queue.
-			p.dedupHitsInExpansion++
-			return false, false
-		} else {
-			node.Attach()
-			p.visited[canonicalHash] = node
 		}
+		node.Duplicate(other, yield)
+		// Count this as a "live successor" signal for the early
+		// deadlock detector in startProcessedQueue Phase 2. A dedup
+		// hit means an action-start reached a previously visited
+		// canonical state — a real transition out of the current yp,
+		// even though no new entry is added to p.queue.
+		p.dedupHitsInExpansion++
+		return false, false
+	} else if transient {
+		// Collapsed step: not attached to the graph and not in the global
+		// visited set. Dedup only against the steps of this expansion.
+		if prev, ok := p.stepVisited[canonicalHash]; ok && (prev.Enabled || !node.Enabled) {
+			return false, false
+		}
+		p.stepVisited[canonicalHash] = node
+		node.transient = true
 	} else {
 		node.Attach()
 		p.visited[canonicalHash] = node
