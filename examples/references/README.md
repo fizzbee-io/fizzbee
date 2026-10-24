@@ -358,6 +358,18 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: counterexample for a formula, per-instance names (`Answered[0]`)
 - **Status**: ❌ FAILED (expected)
 
+### 09-16-possibly: Possibility
+- **State space**: 8 nodes, 8 unique states
+- **Purpose**: `possibly` says what can happen from a state, next to what fair runs must do
+- **Key concepts**: `possibly`, can versus will, nested `possibly`, `exists eventually`
+- **Status**: ✅ PASSED
+
+### 09-17-possibly-violation: Possibility Violation
+- **State space**: 3 nodes, 3 unique states
+- **Purpose**: A recoverability property that fails once a document is purged
+- **Key concepts**: `always possibly`, counterexample note for `possibly`
+- **Status**: ❌ FAILED (expected)
+
 ### 10-01-unfair-action: Unfair Action (Default)
 - **State space**: 108 nodes, 46 unique states
 - **Purpose**: Unfair actions have no fairness guarantees

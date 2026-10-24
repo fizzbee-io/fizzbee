@@ -1,7 +1,7 @@
 import sys
 from enum import Enum
 from typing import TextIO
-from antlr4 import Parser, TokenStream
+from antlr4 import Parser, Token, TokenStream
 
 class PythonVersion(Enum):
     Autodetect = 0
@@ -33,3 +33,19 @@ class PythonParserBase(Parser):
         # Words such as `until` are keywords only inside a temporal formula,
         # so they lex as NAME and the grammar checks the text.
         return self._input.LT(1).text == word
+
+    def ReturnsPossibly(self) -> bool:
+        # `return possibly (Q)` also reads as a call to a function named
+        # possibly, so a return whose expression uses `possibly` followed by
+        # an operand is parsed as a formula. Outside an assertion, the
+        # formula falls back to the plain return it would have been.
+        if self._input.LA(1) != self.RETURN:
+            return False
+        operand_starts = (self.NAME, self.OPEN_PAREN, self.NOT, self.ALWAYS, self.EVENTUALLY, self.EXISTS)
+        i = 2
+        while self._input.LA(i) not in (self.LINE_BREAK, Token.EOF):
+            t = self._input.LT(i)
+            if t.type == self.NAME and t.text == "possibly" and self._input.LA(i + 1) in operand_starts:
+                return True
+            i += 1
+        return False

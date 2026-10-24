@@ -13,11 +13,15 @@ import (
 )
 
 // toLivenessFormula converts a formula assertion's tree into the engine's
-// operators. Atom i of the tree is atom i of the formula.
-func toLivenessFormula(f *ast.Formula) *liveness.Formula {
+// operators. Atom i of the tree is atom i of the formula, and each possibly
+// is the atom derived maps it to.
+func toLivenessFormula(f *ast.Formula, derived map[*ast.Formula]int) *liveness.Formula {
+	if f.Op == ast.Formula_POSSIBLY {
+		return liveness.Atom(derived[f])
+	}
 	args := make([]*liveness.Formula, len(f.Args))
 	for i, a := range f.Args {
-		args[i] = toLivenessFormula(a)
+		args[i] = toLivenessFormula(a, derived)
 	}
 	switch f.Op {
 	case ast.Formula_ATOM:
@@ -40,6 +44,57 @@ func toLivenessFormula(f *ast.Formula) *liveness.Formula {
 		return liveness.LeadsTo(args[0], args[1])
 	}
 	panic(fmt.Sprintf("unknown formula operator %v at line %d", f.Op, f.GetSourceInfo().GetStart().GetLine()))
+}
+
+// possiblyOccurrences returns f's possibly subformulas, each after the ones
+// inside it, and the number of atoms the assertion's block returns.
+func possiblyOccurrences(f *ast.Formula) ([]*ast.Formula, int) {
+	var occurrences []*ast.Formula
+	atoms := 0
+	var walk func(f *ast.Formula)
+	walk = func(f *ast.Formula) {
+		for _, a := range f.Args {
+			walk(a)
+		}
+		switch f.Op {
+		case ast.Formula_POSSIBLY:
+			occurrences = append(occurrences, f)
+		case ast.Formula_ATOM:
+			atoms = max(atoms, int(f.Atom)+1)
+		}
+	}
+	walk(f)
+	return occurrences, atoms
+}
+
+// holdsInState evaluates a state formula, the operand of a possibly, on a
+// state's letter.
+func holdsInState(f *ast.Formula, letter uint64, derived map[*ast.Formula]int) bool {
+	switch f.Op {
+	case ast.Formula_ATOM:
+		return letter&(1<<uint(f.Atom)) != 0
+	case ast.Formula_POSSIBLY:
+		return letter&(1<<uint(derived[f])) != 0
+	case ast.Formula_NOT:
+		return !holdsInState(f.Args[0], letter, derived)
+	case ast.Formula_AND:
+		for _, a := range f.Args {
+			if !holdsInState(a, letter, derived) {
+				return false
+			}
+		}
+		return true
+	case ast.Formula_OR:
+		for _, a := range f.Args {
+			if holdsInState(a, letter, derived) {
+				return true
+			}
+		}
+		return false
+	case ast.Formula_IMPLIES:
+		return !holdsInState(f.Args[0], letter, derived) || holdsInState(f.Args[1], letter, derived)
+	}
+	panic(fmt.Sprintf("%v at line %d isn't allowed inside possibly", f.Op, f.GetSourceInfo().GetStart().GetLine()))
 }
 
 // classicFormula is the formula a prefixed liveness assertion checks, with

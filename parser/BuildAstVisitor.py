@@ -1385,17 +1385,29 @@ class BuildAstVisitor(FizzParserVisitor):
     # compiles to; the ReturnStmt returned here is a placeholder it replaces.
     def visitFormula_return_stmt(self, ctx:FizzParser.Formula_return_stmtContext):
         f = self.build_formula(ctx.formula())
+        if not self.in_assertion and not f.linear_time and not uses_implies(ctx.formula()):
+            # possibly is a soft keyword: a return that uses it is parsed as
+            # a formula (see ReturnsPossibly), but outside an assertion it is
+            # a plain return that calls a function named possibly.
+            return self.plain_return(ctx)
         if not self.in_assertion:
-            word = "a temporal operator" if f.temporal else "implies"
+            word = "implies" if f.kind == "atom" else "a temporal operator"
             raise formula_error(ctx, f"{word} can only be used in the return of an assertion")
         return_stmt = ast.ReturnStmt(source_info=get_source_info(ctx))
-        if not f.temporal:
+        if f.kind == "atom":
             # Just an expression, e.g. `return a implies b`.
             return_stmt.py_expr = f.text
             return_stmt.expr.py_expr = f.text
             return_stmt.expr.source_info.CopyFrom(get_source_info(ctx.formula()))
             return return_stmt
         self.formula_returns.append((f, ctx))
+        return return_stmt
+
+    def plain_return(self, ctx):
+        return_stmt = ast.ReturnStmt(source_info=get_source_info(ctx))
+        return_stmt.py_expr = self.get_py_str(ctx.formula())
+        return_stmt.expr.py_expr = return_stmt.py_expr
+        return_stmt.expr.source_info.CopyFrom(get_source_info(ctx.formula()))
         return return_stmt
 
     def build_formula(self, ctx):
@@ -1423,11 +1435,28 @@ class BuildAstVisitor(FizzParserVisitor):
             if ctx.formula() is not None:
                 inner = self.build_formula(ctx.formula())
                 return inner.parenthesized()
-            if ctx.formula_possibly() is not None:
-                raise formula_error(ctx, "possibly is not supported yet")
+            if ctx.formula_possibly() is not None or ctx.EXISTS() is not None:
+                return self.build_possibly(ctx)
             op = ctx.getChild(0).getText()
             return Formula.combine(op, [self.build_formula(ctx.formula_unary())], ctx)
         raise Exception("build_formula: unexpected node", ctx.__class__.__name__)
+
+    def build_possibly(self, ctx):
+        """`possibly Q`, or its other spelling `exists eventually Q`. Q must
+        be a condition on one state: atoms and nested `possibly`."""
+        operand_ctx = ctx.formula_unary()
+        if ctx.EXISTS() is not None:
+            if operand_ctx.EVENTUALLY() is None:
+                raise formula_error(ctx, "inside a formula, `exists` is only used as `exists eventually`; "
+                                    "write `possibly Q` for \"some path from here reaches Q\"")
+            operand_ctx = operand_ctx.formula_unary()
+        operand = self.build_formula(operand_ctx)
+        if operand.kind == "eventually":
+            raise formula_error(ctx, "`possibly (eventually Q)` means the same as `possibly Q`; drop the `eventually`")
+        if operand.linear_time:
+            raise formula_error(ctx, "`possibly` takes a condition on a state, which can't contain "
+                                "always, eventually, until or leadsto")
+        return Formula.combine("possibly", [operand], ctx)
 
     def finish_formula_assertion(self, ctx, invariant, formula_returns):
         """Checks the formula rules for an assertion and compiles its formula.
@@ -1465,6 +1494,12 @@ class BuildAstVisitor(FizzParserVisitor):
         else:
             atoms = []
             invariant.formula.CopyFrom(f.to_proto(atoms))
+            # Each use of possibly is computed into one more atom.
+            count = len(atoms) + f.count("possibly")
+            if count > MAX_FORMULA_ATOMS:
+                raise formula_error(formula_returns[0][1], f"assertion {invariant.name} needs {count} atoms "
+                                    f"(each distinct condition and each use of possibly is one); "
+                                    f"at most {MAX_FORMULA_ATOMS} are supported")
             ret.py_expr = "[" + ", ".join(f"bool({a})" for a in atoms) + "]"
         ret.expr.py_expr = ret.py_expr
         ret.expr.source_info.CopyFrom(get_source_info(formula_returns[0][1]))
@@ -1540,13 +1575,23 @@ def count_returns(block):
     return count
 
 
+def uses_implies(ctx):
+    """Whether a formula's parse tree uses implies as an operator, outside
+    the expressions that are its atoms."""
+    if isinstance(ctx, FizzParser.ComparisonContext):
+        return False
+    if isinstance(ctx, FizzParser.Formula_binopContext):
+        return ctx.getText() == "implies"
+    return any(uses_implies(c) for c in ctx.getChildren() if isinstance(c, ParserRuleContext))
+
+
 def check_left_operand(f, op, input_stream):
     """A prefix temporal operator binds tighter than any binary, so in
     `always a implies b` it applies to `a` alone. Require parentheses there,
     since it rarely means what it reads as."""
     n = f
     while not n.paren:
-        if n.kind in ("always", "eventually"):
+        if n.kind in ("always", "eventually", "possibly"):
             arg = n.args[0]
             arg_text = input_stream.getText(arg.start.start.start, arg.stop.stop.stop)
             raise formula_error(n.ctx, f"`{n.kind}` here applies only to `{arg_text}`, not to the `{op}` after it; "
@@ -1557,17 +1602,20 @@ def check_left_operand(f, op, input_stream):
         break
 
 
+MAX_FORMULA_ATOMS = 64
+
+
 class Formula:
     """A temporal formula while it is being built. Subtrees without a
-    temporal operator collapse into atoms: Starlark expressions, evaluated
-    in each state, with `implies` written out."""
-    TEMPORAL = ("always", "eventually", "until", "leadsto")
+    temporal operator or `possibly` collapse into atoms: Starlark
+    expressions, evaluated in each state, with `implies` written out."""
+    LINEAR_TIME = ("always", "eventually", "until", "leadsto")
     BINARY = ("and", "or", "implies", "until", "leadsto")
     OPS = {
         "not": ast.Formula.NOT, "and": ast.Formula.AND, "or": ast.Formula.OR,
         "implies": ast.Formula.IMPLIES, "always": ast.Formula.ALWAYS,
         "eventually": ast.Formula.EVENTUALLY, "until": ast.Formula.UNTIL,
-        "leadsto": ast.Formula.LEADSTO,
+        "leadsto": ast.Formula.LEADSTO, "possibly": ast.Formula.POSSIBLY,
     }
 
     def __init__(self, kind, args, ctx, text=""):
@@ -1579,7 +1627,11 @@ class Formula:
         self.ctx = self.start
         self.text = text  # Starlark text, for atoms
         self.paren = False
-        self.temporal = kind in Formula.TEMPORAL or any(a.temporal for a in args)
+        # Whether the formula has a linear-time operator. possibly is a
+        # branching-time operator instead: `possibly Q` is a condition on a
+        # state, like an atom, but it isn't a Starlark expression, so it
+        # never merges into one.
+        self.linear_time = kind in Formula.LINEAR_TIME or any(a.linear_time for a in args)
 
     @staticmethod
     def atom(text, ctx):
@@ -1594,21 +1646,21 @@ class Formula:
 
     @staticmethod
     def combine(op, operands, ctx):
-        if op in Formula.TEMPORAL:
+        if op in Formula.LINEAR_TIME or op == "possibly":
             return Formula(op, operands, ctx)
         if op == "not":
-            if not operands[0].temporal:
+            if operands[0].kind == "atom":
                 return Formula.atom(f"not ({operands[0].text})", ctx)
             return Formula(op, operands, ctx)
         if op == "implies":
-            if not any(o.temporal for o in operands):
+            if all(o.kind == "atom" for o in operands):
                 return Formula.atom(f"(not ({operands[0].text})) or ({operands[1].text})", ctx)
             return Formula(op, operands, ctx)
         # and / or: merge each run of adjacent atoms into one atom, keeping
         # their order so short-circuiting inside the atom is unchanged.
         merged = []
         for o in operands:
-            if not o.temporal and merged and not merged[-1].temporal:
+            if o.kind == "atom" and merged and merged[-1].kind == "atom":
                 merged[-1] = Formula.atom(f"({merged[-1].text}) {op} ({o.text})", (merged[-1].start, o.stop))
             else:
                 merged.append(o)
@@ -1625,6 +1677,9 @@ class Formula:
                 and self.args[0].kind != self.kind and self.args[0].args[0].kind == "atom":
             return [self.kind, self.args[0].kind], self.args[0].args[0]
         return None
+
+    def count(self, kind):
+        return (self.kind == kind) + sum(a.count(kind) for a in self.args)
 
     def to_proto(self, atoms):
         source_info = get_source_info(self.start)

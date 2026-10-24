@@ -1,0 +1,574 @@
+{
+  "sourceInfo": {
+    "fileName": "PossiblyCrash.fizz",
+    "start": {
+      "line": 7,
+      "column": 1
+    },
+    "end": {
+      "line": 30
+    }
+  },
+  "invariants": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 25,
+          "column": 1
+        },
+        "end": {
+          "line": 28
+        }
+      },
+      "name": "FailOnlyByCrash",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 26,
+            "column": 5
+          },
+          "end": {
+            "line": 28
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 26,
+                "column": 5
+              },
+              "end": {
+                "line": 28
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 26,
+                  "column": 5
+                },
+                "end": {
+                  "line": 26,
+                  "column": 57
+                }
+              },
+              "pyExpr": "[bool(((server.warmed) and (server.cache == 0)))]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 26,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 26,
+                    "column": 57
+                  }
+                },
+                "pyExpr": "[bool(((server.warmed) and (server.cache == 0)))]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailOnlyByCrash():\n    return possibly (server.warmed and server.cache == 0)\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 26,
+            "column": 12
+          },
+          "end": {
+            "line": 26,
+            "column": 57
+          }
+        },
+        "op": "POSSIBLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 26,
+                "column": 22
+              },
+              "end": {
+                "line": 26,
+                "column": 56
+              }
+            },
+            "op": "ATOM"
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 28,
+          "column": 1
+        },
+        "end": {
+          "line": 30
+        }
+      },
+      "name": "PassWithoutCrash",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 29,
+            "column": 5
+          },
+          "end": {
+            "line": 30
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 29,
+                "column": 5
+              },
+              "end": {
+                "line": 30
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 29,
+                  "column": 5
+                },
+                "end": {
+                  "line": 29,
+                  "column": 57
+                }
+              },
+              "pyExpr": "[bool(((server.warmed) and (server.cache == 1)))]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 29,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 29,
+                    "column": 57
+                  }
+                },
+                "pyExpr": "[bool(((server.warmed) and (server.cache == 1)))]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassWithoutCrash():\n    return possibly (server.warmed and server.cache == 1)\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 29,
+            "column": 12
+          },
+          "end": {
+            "line": 29,
+            "column": 57
+          }
+        },
+        "op": "POSSIBLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 29,
+                "column": 22
+              },
+              "end": {
+                "line": 29,
+                "column": 56
+              }
+            },
+            "op": "ATOM"
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 22,
+          "column": 1
+        },
+        "end": {
+          "line": 25
+        }
+      },
+      "name": "Init",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 23,
+            "column": 5
+          },
+          "end": {
+            "line": 25
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 23,
+                "column": 5
+              },
+              "end": {
+                "line": 25
+              }
+            },
+            "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 23,
+                  "column": 5
+                },
+                "end": {
+                  "line": 23,
+                  "column": 21
+                }
+              },
+              "vars": [
+                "server"
+              ],
+              "name": "Server"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "roles": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 8,
+          "column": 1
+        },
+        "end": {
+          "line": 22
+        }
+      },
+      "name": "Server",
+      "actions": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 9,
+              "column": 5
+            },
+            "end": {
+              "line": 13,
+              "column": 4
+            }
+          },
+          "name": "Init",
+          "flow": "FLOW_ATOMIC",
+          "fairness": {
+            "level": "FAIRNESS_LEVEL_STRONG"
+          },
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 10,
+                "column": 9
+              },
+              "end": {
+                "line": 13,
+                "column": 4
+              }
+            },
+            "flow": "FLOW_ATOMIC",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 10,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 11,
+                    "column": 8
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 10,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 10,
+                      "column": 22
+                    }
+                  },
+                  "code": "self.cache = 0"
+                }
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 11,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 13,
+                    "column": 4
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 11,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 11,
+                      "column": 27
+                    }
+                  },
+                  "code": "self.warmed = False"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 13,
+              "column": 5
+            },
+            "end": {
+              "line": 19,
+              "column": 4
+            }
+          },
+          "name": "Warm",
+          "flow": "FLOW_ATOMIC",
+          "fairness": {
+            "level": "FAIRNESS_LEVEL_UNFAIR"
+          },
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 14,
+                "column": 9
+              },
+              "end": {
+                "line": 19,
+                "column": 4
+              }
+            },
+            "flow": "FLOW_ATOMIC",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 14,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 15,
+                    "column": 8
+                  }
+                },
+                "requireStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 14,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 14,
+                      "column": 31
+                    }
+                  },
+                  "condition": "not self.warmed",
+                  "conditionExpr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 14,
+                        "column": 17
+                      },
+                      "end": {
+                        "line": 14,
+                        "column": 31
+                      }
+                    },
+                    "pyExpr": "not self.warmed"
+                  }
+                }
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 15,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 16,
+                    "column": 8
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 15,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 15,
+                      "column": 26
+                    }
+                  },
+                  "code": "self.warmed = True"
+                }
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 16,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 19,
+                    "column": 4
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 16,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 16,
+                      "column": 22
+                    }
+                  },
+                  "code": "self.cache = 1"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 19,
+              "column": 5
+            },
+            "end": {
+              "line": 22
+            }
+          },
+          "name": "Ping",
+          "flow": "FLOW_ATOMIC",
+          "fairness": {
+            "level": "FAIRNESS_LEVEL_UNFAIR"
+          },
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 20,
+                "column": 9
+              },
+              "end": {
+                "line": 22
+              }
+            },
+            "flow": "FLOW_ATOMIC",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 20,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 22
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 20,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 20,
+                      "column": 12
+                    }
+                  },
+                  "code": "pass"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "decorators": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 7,
+              "column": 1
+            },
+            "end": {
+              "line": 8
+            }
+          },
+          "name": "state",
+          "args": [
+            {
+              "sourceInfo": {
+                "start": {
+                  "line": 7,
+                  "column": 8
+                },
+                "end": {
+                  "line": 7,
+                  "column": 26
+                }
+              },
+              "pyExpr": "ephemeral=['cache']",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 7,
+                    "column": 8
+                  },
+                  "end": {
+                    "line": 7,
+                    "column": 26
+                  }
+                },
+                "pyExpr": "ephemeral=['cache']"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "frontMatter": {
+    "yaml": "\ndeadlock_detection: false\n"
+  }
+}

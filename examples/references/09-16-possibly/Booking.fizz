@@ -1,0 +1,67 @@
+# Example 0118: Possibility
+# possibly P: some path from this state reaches a state where P holds
+# Demonstrates: possibly, can happen versus will happen, nested possibly, exists eventually
+
+---
+deadlock_detection: false
+---
+# `possibly P` holds in a state when some path from it, of zero or more
+# steps, reaches a state where P holds. It asks what *can* happen, so it
+# follows every action, fair or not (but never a crash). The operators
+# around it keep their usual meaning over fair runs.
+#
+# A ticket is booked, then flown or cancelled. A cancelled ticket can be
+# booked again, and flying ends it. Upgrade is not fair: it may happen, but
+# no run has to take it.
+
+action Init:
+    status = "none"
+    upgraded = False
+
+atomic fair action Book:
+    require status == "none"
+    status = "booked"
+
+atomic fair action Cancel:
+    require status == "booked"
+    status = "cancelled"
+
+atomic fair action Rebook:
+    require status == "cancelled"
+    status = "none"
+
+atomic fair<strong> action Fly:
+    require status == "booked"
+    status = "flown"
+
+atomic action Upgrade:
+    require status == "booked" and not upgraded
+    upgraded = True
+
+# From every booked state, cancelling is still possible.
+assertion CanCancel:
+    return always (status == "booked" implies possibly status == "cancelled")
+
+# An upgrade can happen from any booked, not yet upgraded ticket, even
+# though Upgrade isn't fair. `eventually upgraded` would fail: a fair run can
+# fly without upgrading. possibly says it *can* happen, not that it *will*.
+assertion CanUpgrade:
+    return always ((status == "booked" and not upgraded) implies possibly upgraded)
+
+# Nested: from the start, the ticket can be booked in a state from which it
+# can still fly.
+assertion CanBookThenFly:
+    return possibly (status == "booked" and possibly status == "flown")
+
+# Once flown, booking is no longer possible.
+assertion FlyingIsFinal:
+    return always (status == "flown" implies not possibly status == "booked")
+
+# Fly is strongly fair, so every fair run reaches a state from which booking
+# is no longer possible.
+assertion EventuallyDone:
+    return eventually not possibly status == "booked"
+
+# `exists eventually P` is another spelling of `possibly P`.
+assertion CanFly:
+    return exists eventually status == "flown"

@@ -27,3 +27,9 @@ py_binary(
     visibility = ["//visibility:public"],
     deps = [":fizz"],
 )
+
+py_test(
+    name = "formula_test",
+    srcs = ["formula_test.py"],
+    deps = [":fizz"],
+)

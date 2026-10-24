@@ -946,6 +946,7 @@ assertion StaysStarted:
 | `P leadsto Q` | □(P → ◇Q) | `P ~> Q` | every state where P holds is followed, now or later, by one where Q holds |
 | `P implies Q` | P → Q | `P => Q` | P is false or Q holds |
 | `not`, `and`, `or` | ¬, ∧, ∨ | `~`, `/\`, `\/` | as usual |
+| `possibly P` | none; CTL's EF P | none built in | some path from the current state reaches a state where P holds (see Possibility below) |
 
 There is no next operator (LTL X, TLA+ primes): a formula can't tell a
 state from a repeat of it.
@@ -955,7 +956,7 @@ Operator precedence, from tightest to loosest binding:
 | Level | Operators | Meaning |
 |---|---|---|
 | 1 | any expression | evaluated in a state |
-| 2 | `not P`, `always P`, `eventually P` | prefix |
+| 2 | `not P`, `always P`, `eventually P`, `possibly P` | prefix |
 | 3 | `P and Q` | |
 | 4 | `P or Q` | |
 | 5 | `P implies Q`, `P until Q`, `P leadsto Q` | need parentheses to combine |
@@ -967,8 +968,8 @@ error, and so is mixing two of them without parentheses.
 - `P until Q`: Q eventually holds, and P holds in every state before it
   (strong until).
 - `P leadsto Q`: `always (P implies eventually Q)`.
-- `implies`, `until` and `leadsto` are keywords only in an assertion's
-  return, so they can still be used as names elsewhere.
+- `implies`, `until`, `leadsto` and `possibly` are keywords only in an
+  assertion's return, so they can still be used as names elsewhere.
 
 **Atoms.** Each largest part of the formula with no temporal operator is an
 ordinary expression (it may call funcs), evaluated in every state.
@@ -979,7 +980,8 @@ itself and is always false.
 **Parentheses.** Prefix operators bind tightest, so
 `always x >= 0 and y >= 0` would mean `(always x >= 0) and y >= 0`. That is
 an error; write `always (x >= 0 and y >= 0)`. The same holds for
-`eventually` and for `not always` on the left of any binary operator.
+`eventually`, `possibly` and `not always` on the left of any binary
+operator.
 
 **One formula per value.** A `for` clause on the header checks one instance
 per value, named like `Answered[0]`. Iterables and filters may use only
@@ -1053,14 +1055,67 @@ assertion ByMode:
 `until` is strong. For weak until (P holds until Q, or forever if Q never
 does), write `(P until Q) or always P`, as in the precedence pattern.
 
+**Possibility.** The other operators are linear-time, as in LTL: they
+describe each fair run. `possibly` is the one branching-time operator,
+CTL's EF: `possibly P` holds in a state when some path from it, of zero or
+more steps, reaches a state where P holds. It says P *can* happen,
+never that it *will*: the path may take any action, fair or not. The
+operators around it keep their meaning over fair runs:
+
+```python
+# From every booked state, cancelling is still possible.
+assertion CanCancel:
+    return always (booked implies possibly cancelled)
+
+# The system can always get back to idle.
+assertion CanReset:
+    return always possibly status == "idle"
+```
+
+```python
+action Init:
+    x = 0
+
+atomic action Leave:        # not fair
+    x = 1
+
+atomic fair action Stay:
+    x = 0
+
+assertion CanLeave:
+    return always possibly (x == 1)   # passes: Leave is a path to x == 1
+
+assertion WillLeave:
+    return eventually (x == 1)        # fails: a fair run can repeat Stay forever
+```
+
+- What follows `possibly` is a condition on a state: expressions combined
+  with `and`, `or`, `not`, `implies` and nested `possibly`. Temporal
+  operators can't appear inside it, so `possibly (always P)` is an error,
+  and `possibly (eventually P)` is written `possibly P`.
+- The path never takes a crash: recovery that needs a fault isn't something
+  a user can count on. States reached after a crash are still checked by an
+  enclosing `always`.
+- `exists eventually P` is another spelling of `possibly P`. An
+  `exists assertion` is close to `possibly` checked in the initial state,
+  except that it also counts states reached by a crash.
+- `next_states()` looks one step ahead; `possibly` looks any number of
+  steps ahead.
+- When a formula with `possibly` fails, a note under the assertion's name
+  gives the step of the counterexample after which that `possibly` is
+  false.
+- An assertion has at most 64 atoms. Each distinct condition counts once,
+  and each use of `possibly` adds one, so
+  `always (possibly ready and possibly recovered)` uses four.
+
 **Limitations.**
 - Formulas are checked by the default (strict) liveness checker only, not
   with `liveness: eventual`, simulation or `--experimental_no_graph`.
-- `possibly` (branching time) is reserved but not supported yet.
 - Only one `return`, at the end (see below).
 - Temporal operators and `implies` can't be stored in locals.
 - `for` clauses can't iterate over symmetric domains yet.
-- Reference examples: `09-14` (passing) and `09-15` (a violation).
+- Reference examples: `09-14` (passing) and `09-15` (a violation);
+  for `possibly`, `09-16` (passing) and `09-17` (a violation).
 
 ---
 
