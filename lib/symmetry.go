@@ -263,7 +263,7 @@ func (d *SymmetryDomain) AttrNames() []string {
 // after/before are aliases of gt/lt. A bound is compared by position and need
 // not be active; a gap is only returned when all of it is in range, so an
 // empty or reversed range returns an empty list.
-// Usage: domain.segments(include_points=False, gt=None, ge=None, lt=None, le=None, after=None, before=None)
+// Usage: domain.segments(after=None, before=None, include_points=False, gt=None, ge=None, lt=None, le=None)
 func (d *SymmetryDomain) segments(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var after, before, gt, ge, lt, le starlark.Value
 	includePoints := false
@@ -460,26 +460,10 @@ func (s *Segment) value(thread *starlark.Thread, b *starlark.Builtin, args starl
 		return nil, err
 	}
 	if s.IsPoint {
-		return NewSymmetricValueWithKind(s.Domain.Name, s.Left, s.Domain.Kind), nil
+		return s.reuse(thread, s.Left)
 	}
 	if s.Resolved {
-		ctxVal := thread.Local(SymmetryContextKey)
-		if ctxVal == nil {
-			return nil, fmt.Errorf("internal error: symmetry context not found in thread")
-		}
-		ctx := ctxVal.(*SymmetryContext)
-		ctx.EnsureDomainInit(s.Domain.Name)
-		// The memoized value may have been dropped from the state since it was
-		// allocated; bringing it back must still respect the limit.
-		if !ctx.Cache[s.Domain.Name][s.ResolvedID] {
-			if len(ctx.Cache[s.Domain.Name]) >= s.Domain.Limit {
-				return nil, &DisableTransitionError{
-					Message: fmt.Sprintf("symmetry limit reached for domain %q (limit %d)", s.Domain.Name, s.Domain.Limit),
-				}
-			}
-			ctx.Cache[s.Domain.Name][s.ResolvedID] = true
-		}
-		return NewSymmetricValueWithKind(s.Domain.Name, s.ResolvedID, s.Domain.Kind), nil
+		return s.reuse(thread, s.ResolvedID)
 	}
 	v, err := s.fresh(thread, b, nil, nil)
 	if err != nil {
@@ -488,6 +472,28 @@ func (s *Segment) value(thread *starlark.Thread, b *starlark.Builtin, args starl
 	s.Resolved = true
 	s.ResolvedID = v.(*SymmetricValue).id
 	return v, nil
+}
+
+// reuse returns an already known value of this segment (a point's value, or a
+// memoized gap value). The value may have been dropped from the state since the
+// segment was selected, for example across a yield in a non-atomic action;
+// bringing it back must still respect the limit.
+func (s *Segment) reuse(thread *starlark.Thread, id int64) (starlark.Value, error) {
+	ctxVal := thread.Local(SymmetryContextKey)
+	if ctxVal == nil {
+		return nil, fmt.Errorf("internal error: symmetry context not found in thread")
+	}
+	ctx := ctxVal.(*SymmetryContext)
+	ctx.EnsureDomainInit(s.Domain.Name)
+	if !ctx.Cache[s.Domain.Name][id] {
+		if len(ctx.Cache[s.Domain.Name]) >= s.Domain.Limit {
+			return nil, &DisableTransitionError{
+				Message: fmt.Sprintf("symmetry limit reached for domain %q (limit %d)", s.Domain.Name, s.Domain.Limit),
+			}
+		}
+		ctx.Cache[s.Domain.Name][id] = true
+	}
+	return NewSymmetricValueWithKind(s.Domain.Name, id, s.Domain.Kind), nil
 }
 
 func (s *Segment) fresh(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

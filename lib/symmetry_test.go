@@ -149,3 +149,28 @@ func TestOrdinalSegmentValue(t *testing.T) {
 	_, err = call(list.Index(4), "value")
 	assert.True(t, IsDisableTransitionError(err), "got %v", err)
 }
+
+func TestOrdinalPointValueRestoresDroppedValue(t *testing.T) {
+	d := &SymmetryDomain{Name: "ts", Limit: 2, Kind: SymmetryKindOrdinal}
+	thread := newOrdinalThread(10, 20)
+	segs, err := starlark.Eval(thread, "test", "TIMES.segments(include_points=True)", starlark.StringDict{"TIMES": d})
+	require.NoError(t, err)
+	point := segs.(*starlark.List).Index(1).(*Segment)
+	require.True(t, point.IsPoint)
+	valueFn, _ := point.Attr("value")
+	cache := thread.Local(SymmetryContextKey).(*SymmetryContext).Cache["ts"]
+
+	// The point's value was dropped from the state before value() ran: it is
+	// brought back and counted again.
+	delete(cache, 10)
+	v, err := starlark.Call(thread, valueFn, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, int64(10), v.(*SymmetricValue).GetId())
+	assert.True(t, cache[10])
+
+	// If its slot was taken in the meantime, bringing it back would exceed the limit.
+	delete(cache, 10)
+	cache[15] = true
+	_, err = starlark.Call(thread, valueFn, nil, nil)
+	assert.True(t, IsDisableTransitionError(err), "got %v", err)
+}

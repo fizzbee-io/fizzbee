@@ -1891,7 +1891,7 @@ symmetry.rotational(name, limit, materialize=False, reflection=False)
 | `choices()` | Y | - | - | Y | `values()` + one `fresh()` |
 | `min()` | - | Y | Y | - | Smallest active value or fresh |
 | `max()` | - | Y | Y | - | Largest active value or fresh |
-| `segments(include_points?, gt?, ge?, lt?, le?)` | - | Y | - | - | Gaps between active values, optionally with existing values as points |
+| `segments(after?, before?, include_points?, gt?, ge?, lt?, le?)` | - | Y | - | - | Gaps between active values, optionally with existing values as points |
 
 #### Nominal Symmetry
 
