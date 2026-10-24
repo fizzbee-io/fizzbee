@@ -93,13 +93,25 @@ func CheckInvariantsWithProber(process *Process, prober NextStatesProber) map[in
 	// calls, are thrown away with it; don't let them shift the ids that
 	// real exploration allocates next. Restored even if an assertion fails.
 	defer lib.RestoreGlobalRefs(lib.SnapshotGlobalRefs())
+	// All invariants of this state run on one clone of process, made on
+	// first use: cloning is the expensive part of a check, and assertions
+	// only read the state. An assertion that writes to the state would be
+	// seen by the assertions after it; fizz funcs called from an assertion
+	// still run on their own clone, so a func can't leak writes.
+	var cloned *Process
+	shared := func() *Process {
+		if cloned == nil {
+			cloned = assertionClone(process, prober)
+		}
+		return cloned
+	}
 	results := make(map[int][]int)
 	for i, file := range process.Files {
 		results[i] = make([]int, 0)
 		for j, invariant := range file.Invariants {
 			passed := false
 			if invariant.Block == nil {
-				passed = CheckInvariant(process, invariant)
+				passed = CheckInvariant(process, shared(), invariant)
 				if invariant.Eventually && passed /*&& (len(process.Threads) == 0 || process.Name == "yield")*/ {
 					process.Witness[i][j] = true
 				} else if !invariant.Eventually && !passed {
@@ -113,10 +125,10 @@ func CheckInvariantsWithProber(process *Process, prober NextStatesProber) map[in
 					if process.Atoms == nil {
 						process.Atoms = make([]uint64, len(file.Invariants))
 					}
-					process.Atoms[j] = CheckFormulaAtoms(process, invariant, j, prober)
+					process.Atoms[j] = CheckFormulaAtoms(shared(), invariant, j)
 					continue
 				}
-				passed = CheckAssertion(process, invariant, j, prober)
+				passed = CheckAssertion(shared(), invariant, j)
 				if (slices.Contains(invariant.TemporalOperators, "eventually") || slices.Contains(invariant.TemporalOperators, "exists")) && passed /*&& (len(process.Threads) == 0 || process.Name == "yield")*/ {
 					process.Witness[i][j] = true
 				} else if !(slices.Contains(invariant.TemporalOperators, "eventually") || slices.Contains(invariant.TemporalOperators, "exists")) && !passed {
@@ -128,7 +140,9 @@ func CheckInvariantsWithProber(process *Process, prober NextStatesProber) map[in
 	return results
 }
 
-func CheckInvariant(process *Process, invariant *ast.Invariant) bool {
+// CheckInvariant evaluates an expression invariant of process on cloned, a
+// clone of process made by assertionClone.
+func CheckInvariant(process *Process, cloned *Process, invariant *ast.Invariant) bool {
 	eventuallyAlways := invariant.Eventually && invariant.GetNested().GetAlways()
 	if !invariant.Always && !(eventuallyAlways) {
 		panic("Invariant checking not supported for non-always invariants")
@@ -140,14 +154,12 @@ func CheckInvariant(process *Process, invariant *ast.Invariant) bool {
 	if eventuallyAlways && invariant.Nested != nil {
 		pyExpr = invariant.Nested.PyExpr
 	}
-	cloned := process.CloneForAssert(nil, 0)
-	cloned.enablePredicateCalls()
 	// Builtins and constants first, so state variables shadow them, as in
-	// assertion bodies (see GetAllVariables).
+	// assertion bodies (see GetAllVariables). __returns__ is in the clone's
+	// state already.
 	vars := maps.Clone(lib.Builtins)
 	maps.Copy(vars, cloned.Heap.globals)
 	maps.Copy(vars, cloned.Heap.state)
-	vars["__returns__"] = NewDictFromStringDict(cloned.Returns)
 	cloned.addPredicateFuncs(vars)
 	symCtx := cloned.createSymmetryContext()
 	cond, err := cloned.Evaluator.EvalPyExprWithContext(process.Files[0].GetSourceInfo().GetFileName(), pyExpr, vars, symCtx)
@@ -155,15 +167,18 @@ func CheckInvariant(process *Process, invariant *ast.Invariant) bool {
 	return bool(cond.Truth())
 }
 
-func CheckAssertion(process *Process, invariant *ast.Invariant, index int, prober NextStatesProber) bool {
+// CheckAssertion runs a block assertion on cloned, a clone of the process
+// under check made by assertionClone.
+func CheckAssertion(cloned *Process, invariant *ast.Invariant, index int) bool {
 	if !slices.Contains(invariant.TemporalOperators, "always") && !slices.Contains(invariant.TemporalOperators, "exists") {
 		panic("Invariant checking supported only for always/always-eventually/eventually-always/exists invariants" + strings.Join(invariant.TemporalOperators, ","))
 	}
-	return execAssertionFunction(assertionClone(process, prober), index, invariant)
+	return execAssertionFunction(cloned, index, invariant)
 }
 
-// assertionClone is the process an assertion body runs on: a clone of
-// process that can call fizz funcs, and see next_states() when prober is set.
+// assertionClone is the process assertions run on: a clone of process that
+// can call fizz funcs, and see next_states() when prober is set. One clone
+// serves every invariant checked on process (see CheckInvariantsWithProber).
 func assertionClone(process *Process, prober NextStatesProber) *Process {
 	cloned := process.CloneForAssert(nil, 0)
 	cloned.enablePredicateCalls()

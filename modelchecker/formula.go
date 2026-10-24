@@ -110,10 +110,10 @@ func classicFormula(invariant *ast.Invariant) *liveness.Formula {
 	return nil
 }
 
-// CheckFormulaAtoms evaluates the atoms of formula assertion index in this
-// state. The assertion's block runs once and returns every atom's value.
-func CheckFormulaAtoms(process *Process, invariant *ast.Invariant, index int, prober NextStatesProber) uint64 {
-	cloned := assertionClone(process, prober)
+// CheckFormulaAtoms evaluates the atoms of formula assertion index on cloned,
+// a clone of the state under check made by assertionClone. The assertion's
+// block runs once and returns every atom's value.
+func CheckFormulaAtoms(cloned *Process, invariant *ast.Invariant, index int) uint64 {
 	result := execFunctionBlock(cloned, invariant.Name, fmt.Sprintf("Invariants[%d]", index), cloned.assertionBindings[invariant.Name])
 	list, ok := result.(*starlark.List)
 	if !ok {
