@@ -181,8 +181,9 @@ assertion_for_clause
 
 // A temporal formula, allowed only as the final return of an assertion.
 // Prefix operators bind tighter than `and`, which binds tighter than `or`,
-// which binds tighter than `implies`, `until` and `leadsto`. Those three are
-// soft keywords: they lex as NAME, and chaining them needs parentheses.
+// which binds tighter than `implies`, `until`, `unless` and `leadsto`. Those
+// four are soft keywords: they lex as NAME, and chaining them needs
+// parentheses. `unless` is weak until.
 // `possibly` is a soft keyword too; `exists eventually` is another spelling
 // of it.
 formula
@@ -192,6 +193,7 @@ formula
 formula_binop
     : {self.IsSoftKeyword("implies")}? NAME
     | {self.IsSoftKeyword("until")}? NAME
+    | {self.IsSoftKeyword("unless")}? NAME
     | {self.IsSoftKeyword("leadsto")}? NAME
     ;
 
