@@ -228,14 +228,6 @@ type Process struct {
 
 	topLevelVars []string
 
-	// baseEnv caches the constant part of the statement environment; see
-	// baseEnvironment. Never copied by Fork or CloneWithRefs.
-	baseEnv starlark.StringDict
-	// baseEnvGlobals and baseEnvModules identify the globals and modules
-	// maps baseEnv was built from.
-	baseEnvGlobals uintptr
-	baseEnvModules uintptr
-
 	// assertionBindings holds, for each assertion instance a `for` header
 	// expanded to, the values its clause names are bound to.
 	assertionBindings map[string]starlark.StringDict
@@ -761,76 +753,8 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 	return dict
 }
 
-// GetAllVariablesNocopy returns all variables visible in the Current thread, without deep copying.
-// This includes state variables and variables from the Current thread's variables in the top call frame
-func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
-	// Resolution precedence: builtins < globals < state < self < locals.
-	// See GetAllVariables for the full rationale.
-	base := p.baseEnvironment()
-	dict := maps.Clone(base)
-
-	maps.Copy(dict, p.Heap.state)
-	frame := p.currentThread().currentFrame()
-	if frame.obj != nil {
-		dict["self"] = frame.obj
-	}
-	maps.Copy(dict, frame.vars)
-	frame.scope.getAllVisibleVariablesToDictNoCopy(dict)
-
-	// These were historically added after the state and locals, so they
-	// win over a user variable of the same name. Re-assert them from the
-	// base so that order still holds.
-	dict["deepcopy"] = base["deepcopy"]
-	dict["resolve_role"] = base["resolve_role"]
-	for k, v := range p.Modules {
-		dict[k] = v
-	}
-	for _, file := range p.Files {
-		for _, role := range file.Roles {
-			dict[role.Name] = base[role.Name]
-		}
-	}
-	dict["Channel"] = base["Channel"]
-	p.addPredicateFuncs(dict)
-	return dict
-}
-
 // deepcopyBuiltin is shared by every environment; it holds no state.
 var deepcopyBuiltin = starlark.NewBuiltin("deepcopy", DeepCopyBuiltIn)
-
-// baseEnvironment returns the part of the statement environment that is
-// the same for every statement this process runs: builtins, globals,
-// modules and the constructor builtins, which close over this process's
-// role list and channel map. Built on first use and reused for the life of
-// the process; a fork starts with none and builds its own, since its
-// closures must point at its own roles and channels.
-func (p *Process) baseEnvironment() starlark.StringDict {
-	// Heap.globals is replaced once, when preinit finishes (processPreInit
-	// builds the map in a local and assigns it), and is otherwise never
-	// written. A cache built from the earlier, empty map must be rebuilt
-	// once the real one is in place, so key the cache on the map's identity.
-	globalsID := reflect.ValueOf(p.Heap.globals).Pointer()
-	modulesID := reflect.ValueOf(p.Modules).Pointer()
-	if p.baseEnv != nil && p.baseEnvGlobals == globalsID && p.baseEnvModules == modulesID {
-		return p.baseEnv
-	}
-	p.baseEnvGlobals = globalsID
-	p.baseEnvModules = modulesID
-	dict := maps.Clone(lib.Builtins)
-	maps.Copy(dict, p.Heap.globals)
-	dict["deepcopy"] = deepcopyBuiltin
-	dict["resolve_role"] = lib.CreateResolveRoleBuiltIn(&p.Roles)
-	maps.Copy(dict, p.Modules)
-	for _, file := range p.Files {
-		for _, role := range file.Roles {
-			symmetric := slices.Contains(role.Modifiers, "symmetric")
-			dict[role.Name] = lib.CreateRoleBuiltin(role, symmetric, &p.Roles)
-		}
-	}
-	dict["Channel"] = lib.CreateChannelBuiltin(p.Channels)
-	p.baseEnv = dict
-	return dict
-}
 
 // createSymmetryContext creates a new SymmetryContext for use during statement execution.
 // The context provides a scanner function that collects all currently used symmetric values
@@ -848,7 +772,104 @@ func (p *Process) createSymmetryContext() *lib.SymmetryContext {
 		ctx = lib.NewSymmetryContext(scanner)
 	}
 	ctx.FizzCall = p.fizzCall
+	ctx.Roles = &p.Roles
+	ctx.Channels = p.Channels
 	return ctx
+}
+
+// fixedEnvironment returns the shared map of names asserted after the
+// user's own in every environment; see Evaluator.fixedEnv.
+func (p *Process) fixedEnvironment() starlark.StringDict {
+	e := p.Evaluator
+	modulesID := reflect.ValueOf(p.Modules).Pointer()
+	if e.fixedEnv != nil && e.fixedEnvModules == modulesID {
+		return e.fixedEnv
+	}
+	dict := make(starlark.StringDict, len(p.Modules)+8)
+	dict["deepcopy"] = deepcopyBuiltin
+	dict["resolve_role"] = lib.CreateResolveRoleBuiltInFromThread()
+	maps.Copy(dict, p.Modules)
+	for _, file := range p.Files {
+		for _, role := range file.Roles {
+			symmetric := slices.Contains(role.Modifiers, "symmetric")
+			dict[role.Name] = lib.CreateRoleBuiltinFromThread(role, symmetric)
+		}
+	}
+	dict["Channel"] = lib.CreateChannelBuiltinFromThread()
+	e.fixedEnv = dict
+	e.fixedEnvModules = modulesID
+	return dict
+}
+
+// lookupName resolves one name as the statement environment would, with
+// the same precedence as GetAllVariables: the fixed names win, then
+// the innermost scope outwards, the frame's arguments, self, state,
+// globals, the top-level fizz funcs (when predicate calls are on) and the
+// builtins.
+func (p *Process) lookupName(name string) (starlark.Value, bool) {
+	if v, ok := p.fixedEnvironment()[name]; ok {
+		return v, true
+	}
+	frame := p.currentThread().currentFrame()
+	for s := frame.scope; s != nil; s = s.parent {
+		if v, ok := s.vars[name]; ok {
+			return v, true
+		}
+	}
+	if v, ok := frame.vars[name]; ok {
+		return v, true
+	}
+	if name == "self" && frame.obj != nil {
+		return frame.obj, true
+	}
+	if v, ok := p.Heap.state[name]; ok {
+		return v, true
+	}
+	if v, ok := p.Heap.globals[name]; ok {
+		return v, true
+	}
+	if p.fizzCall != nil {
+		if def, ok := p.SymbolTable[name]; ok && def.DefType == Function && def.roleName == "" {
+			e := p.Evaluator
+			if e.fizzFuncs == nil {
+				e.fizzFuncs = make(map[string]*starlark.Builtin)
+			}
+			b, ok := e.fizzFuncs[name]
+			if !ok {
+				b = lib.FizzFuncBuiltin(name)
+				e.fizzFuncs[name] = b
+			}
+			return b, true
+		}
+	}
+	if v, ok := lib.Builtins[name]; ok {
+		return v, true
+	}
+	return nil, false
+}
+
+// envForNames builds the environment for code that references names:
+// just those names, each looked up in place. Starlark needs a flat map,
+// and a statement names a handful of things, so this replaces copying
+// every builtin, global, state variable and local for every statement.
+func (p *Process) envForNames(names []string) starlark.StringDict {
+	dict := make(starlark.StringDict, len(names)+2)
+	for _, name := range names {
+		if v, ok := p.lookupName(name); ok {
+			dict[name] = v
+		}
+	}
+	return dict
+}
+
+// envForExpr is envForNames for a spec expression.
+func (p *Process) envForExpr(expr *ast.Expr) starlark.StringDict {
+	return p.envForNames(exprNames(expr.GetPyExpr()))
+}
+
+// envForPyStmt is envForNames for a spec statement.
+func (p *Process) envForPyStmt(stmt *ast.PyStmt) starlark.StringDict {
+	return p.envForNames(stmtNames(stmt.GetCode()))
 }
 
 // saveRotationalLastAllocated persists the LastAllocated state from a SymmetryContext back to the Process.

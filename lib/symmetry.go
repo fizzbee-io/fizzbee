@@ -98,7 +98,18 @@ type SymmetryContext struct {
 	// FizzCall, when set, lets fizz funcs be called inside expressions.
 	// Only predicate contexts (assertions) set it; see FizzCallKey.
 	FizzCall FizzCallFunc
+
+	// Roles and Channels are the running process's role list and channel
+	// map, published to the thread as RolesKey and ChannelsKey so that
+	// constructor builtins shared by every process find the right ones.
+	Roles    *[]*Role
+	Channels map[int]*Channel
 }
+
+// RolesKey is the starlark Thread local holding the running process's
+// *[]*Role; ChannelsKey holds its map[int]*Channel.
+const RolesKey = "fizz_roles"
+const ChannelsKey = "fizz_channels"
 
 // FizzCallFunc runs fizz func name synchronously. recv is the role for a role
 // method, nil for a top-level func.

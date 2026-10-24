@@ -597,7 +597,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			t.currentFrame().pc = t.FindNextProgramCounter()
 			return nil, false
 		}
-		vars := t.Process.GetAllVariablesNocopy()
+		vars := t.Process.envForPyStmt(stmt.PyStmt)
 		symCtx := t.Process.createSymmetryContext()
 		_, err := t.Process.Evaluator.ExecPyStmtWithContext(t.getFileName(), stmt.PyStmt, vars, symCtx)
 		t.Process.saveRotationalLastAllocated(symCtx)
@@ -622,8 +622,8 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		// So there is no yield in between an if condition evaluation and elif
 		// or if/elif/else and the first statement of the block.
 		for i, branch := range stmt.IfStmt.Branches {
-			vars := t.Process.GetAllVariablesNocopy()
 			conditionExpr := branch.GetConditionExpr()
+			vars := t.Process.envForExpr(conditionExpr)
 			symCtx := t.Process.createSymmetryContext()
 			cond, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), conditionExpr, vars, symCtx)
 			t.Process.saveRotationalLastAllocated(symCtx)
@@ -660,7 +660,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		if len(stmt.AnyStmt.LoopVars) != 1 {
 			t.Process.PanicIfFalse(false, stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Exactly one loop variable expected. Got %d in %s", len(stmt.AnyStmt.LoopVars), stmt.AnyStmt.LoopVars))
 		}
-		vars := t.Process.GetAllVariablesNocopy()
+		vars := t.Process.envForExpr(stmt.AnyStmt.IterExpr)
 		symCtx := t.Process.createSymmetryContext()
 		val, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), stmt.AnyStmt.IterExpr, vars, symCtx)
 		t.Process.saveRotationalLastAllocated(symCtx)
@@ -705,7 +705,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			}
 
 			if stmt.AnyStmt.Condition != "" {
-				vars := fork.GetAllVariablesNocopy()
+				vars := fork.envForExpr(stmt.AnyStmt.ConditionExpr)
 				vars[stmt.AnyStmt.LoopVars[0]] = x
 				symCtx := fork.createSymmetryContext()
 				cond, err := fork.Evaluator.EvalExprWithContext(t.getFileName(), stmt.AnyStmt.ConditionExpr, vars, symCtx)
@@ -751,7 +751,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		if len(stmt.ForStmt.LoopVars) != 1 {
 			t.Process.PanicIfFalse(false, stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Loop variables must be exactly one. TODO: Support multiple loop variables. Got %d in %s", len(stmt.ForStmt.LoopVars), stmt.ForStmt.LoopVars))
 		}
-		vars := t.Process.GetAllVariablesNocopy()
+		vars := t.Process.envForExpr(stmt.ForStmt.IterExpr)
 		symCtx := t.Process.createSymmetryContext()
 		val, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), stmt.ForStmt.IterExpr, vars, symCtx)
 		t.Process.saveRotationalLastAllocated(symCtx)
@@ -808,7 +808,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 					"or wrap it with its dependent statements in an atomic/serial block to guard that branch.", nil))
 		}
 		t.Process.ThreadProgress = false
-		vars := t.Process.GetAllVariablesNocopy()
+		vars := t.Process.envForExpr(stmt.RequireStmt.GetConditionExpr())
 		symCtx := t.Process.createSymmetryContext()
 		cond, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), stmt.RequireStmt.GetConditionExpr(), vars, symCtx)
 		t.Process.saveRotationalLastAllocated(symCtx)
@@ -822,9 +822,10 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			return nil, false
 		}
 	} else if stmt.ReturnStmt != nil {
-		vars := t.Process.GetAllVariablesNocopy()
 		var val starlark.Value = starlark.None
+		vars := starlark.StringDict{}
 		if stmt.ReturnStmt.PyExpr != "" {
+			vars = t.Process.envForExpr(stmt.ReturnStmt.GetExpr())
 			symCtx := t.Process.createSymmetryContext()
 			v, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), stmt.ReturnStmt.GetExpr(), vars, symCtx)
 			t.Process.PanicOnError(stmt.ReturnStmt.GetSourceInfo(), fmt.Sprintf("Error evaluating expr: %s", stmt.ReturnStmt.PyExpr), err)
@@ -925,7 +926,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			}
 			code.WriteString(")")
 			pyEquivStmt := &ast.PyStmt{Code: code.String(), SourceInfo: stmt.CallStmt.GetSourceInfo()}
-			vars := t.Process.GetAllVariablesNocopy()
+			vars := t.Process.envForPyStmt(pyEquivStmt)
 			symCtx := t.Process.createSymmetryContext()
 			_, err := t.Process.Evaluator.ExecPyStmtWithContext(t.getFileName(), pyEquivStmt, vars, symCtx)
 			t.Process.saveRotationalLastAllocated(symCtx)
@@ -945,10 +946,8 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			newFrame := &CallFrame{FileIndex: def.fileIndex, pc: def.path + ".Block", Name: stmt.CallStmt.Name}
 			newFrame.vars = starlark.StringDict{}
 			hasNamedArgs := false
-			vars := t.Process.GetAllVariablesNocopy()
 			for i, arg := range stmt.CallStmt.Args {
-				// TODO: Is it really required to GetAllVariables() for each arg?
-
+				vars := t.Process.envForExpr(arg.Expr)
 				symCtx := t.Process.createSymmetryContext()
 				val, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), arg.Expr, vars, symCtx)
 				t.Process.saveRotationalLastAllocated(symCtx)
@@ -979,11 +978,11 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 					panic("Named arguments must come after positional arguments")
 				}
 			}
-			vars = t.Process.GetAllVariablesNocopy()
 			for _, param := range def.params {
 				// handle default values
 				if _, ok := newFrame.vars[param.Name]; !ok {
 					if param.DefaultPyExpr != "" {
+						vars := t.Process.envForExpr(param.DefaultExpr)
 						symCtx := t.Process.createSymmetryContext()
 						val, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), param.DefaultExpr, vars, symCtx)
 						t.Process.saveRotationalLastAllocated(symCtx)
@@ -1055,9 +1054,8 @@ func (t *Thread) getFileName() string {
 }
 
 func (t *Thread) getDefinition(stmt *ast.Statement) (*lib.Role, *lib.RoleStub, *Definition) {
-	vars := t.Process.GetAllVariablesNocopy()
 	if stmt.CallStmt.Receiver != "" {
-		if receiver, ok := vars[stmt.CallStmt.Receiver]; ok {
+		if receiver, ok := t.Process.lookupName(stmt.CallStmt.Receiver); ok {
 			if receiver.Type() == "RoleStub" {
 				stub := receiver.(*lib.RoleStub)
 				role := stub.Role
@@ -1160,7 +1158,7 @@ func (t *Thread) executeWhileStatement() ([]*Process, bool) {
 	if stmt.Flow == ast.Flow_FLOW_PARALLEL || stmt.Flow == ast.Flow_FLOW_ONEOF {
 		panic("Only atomic/serial flow is supported for while statements")
 	}
-	vars := t.Process.GetAllVariablesNocopy()
+	vars := t.Process.envForExpr(stmt.GetIterExpr())
 	symCtx := t.Process.createSymmetryContext()
 	cond, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), stmt.GetIterExpr(), vars, symCtx)
 	t.Process.saveRotationalLastAllocated(symCtx)
