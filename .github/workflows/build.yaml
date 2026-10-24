@@ -40,3 +40,12 @@ jobs:
       - name: Reference example baselines
         run: |
           FIZZ=./fizzbee-test-linux_x86/fizz python3 test_references.py --skip-lovable
+
+      # Only the maintained unit tests run here. The older tests in
+      # //lib and //modelchecker have stale expectations and need their
+      # own cleanup before they can join.
+      - name: Unit tests
+        run: |
+          bazel test --test_output=errors //modelchecker/liveness/... //parser/...
+          bazel test --test_output=errors //modelchecker:modelchecker_test \
+            --test_filter='^(TestFormula|TestExpandAssertionHeaderErrors|TestSccLivenessMatchesCycleFinder|TestPredicateCall|TestModelErrorStackTraceShowsCause)'
