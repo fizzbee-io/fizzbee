@@ -1071,6 +1071,24 @@ type Link struct {
 	// Forward-compatible field for consumers (graph, MBT, explorer) to migrate
 	// to reading return values from the link instead of from Process.Returns.
 	Returns starlark.StringDict
+
+	// Weight is this link's share of its source node's fan-out at the time
+	// the fork was made (1/number of forks), or 0 when not recorded. A
+	// collapsed link carries the product along the collapsed path, so the
+	// exported graph keeps the original branching probabilities.
+	Weight float64
+	// Choices are the names of the collapsed steps this link stands for,
+	// in order, when --experimental_collapse_steps removed their nodes.
+	Choices []string
+}
+
+// linkWeight is a link's weight for probability purposes: an unrecorded
+// weight counts as 1.
+func linkWeight(l *Link) float64 {
+	if l.Weight > 0 {
+		return l.Weight
+	}
+	return 1
 }
 
 func (l *Link) IsCrashLink() bool {
@@ -1125,6 +1143,8 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 		Messages:       n.Inbound[0].Messages,
 		ReqId:          n.Inbound[0].ReqId,
 		Returns:        n.Inbound[0].Returns,
+		Weight:         n.Inbound[0].Weight,
+		Choices:        n.Inbound[0].Choices,
 	}
 	parent.Outbound = append(parent.Outbound, newOutLink)
 
@@ -1176,6 +1196,8 @@ func (n *Node) Attach() {
 		Messages:       n.Inbound[0].Messages,
 		ReqId:          n.Inbound[0].ReqId,
 		Returns:        n.Inbound[0].Returns,
+		Weight:         n.Inbound[0].Weight,
+		Choices:        n.Inbound[0].Choices,
 
 		FailedInvariants: n.Inbound[0].FailedInvariants,
 	}
@@ -1255,7 +1277,11 @@ func mergeCollapsedLink(top *Link, cur *Link) *Link {
 		Fairness:       top.Fairness,
 		ChoiceFairness: top.ChoiceFairness,
 		ReqId:          top.ReqId,
+		Weight:         linkWeight(top) * linkWeight(cur),
 	}
+	merged.Choices = make([]string, 0, len(top.Choices)+1)
+	merged.Choices = append(merged.Choices, top.Choices...)
+	merged.Choices = append(merged.Choices, cur.Name)
 	if len(top.Labels)+len(cur.Labels) > 0 {
 		merged.Labels = make([]string, 0, len(top.Labels)+len(cur.Labels))
 		merged.Labels = append(merged.Labels, top.Labels...)
@@ -2674,6 +2700,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	if !yield {
 		for _, fork := range forks {
 			newNode := node.ForkForAlternatePaths(fork, fork.Name)
+			newNode.Inbound[0].Weight = 1.0 / float64(len(forks))
 			if p.ShouldScheduleNode(newNode) {
 				// Intermediate forks carry choice information in fork.Name:
 				// "Stmt:N" / "Any:var=value" / "For:value" / "checkpoint".
