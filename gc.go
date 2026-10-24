@@ -15,9 +15,15 @@ import (
 // the heap grow further between collections, and the memory limit makes
 // the collector aggressive again before the machine swaps. Both are
 // defaults only: GOGC and GOMEMLIMIT in the environment win.
+//
+// 200 is the measured middle: on Kafka transactions 3 brokers x 3 clients
+// (15,498 states, 4 cores) GOGC=400 peaks at 4.7 GB of RSS for the same
+// check time as GOGC=200 at 3.2 GB, because the larger heap costs page
+// faults what it saves in marking; GOGC=100 peaks at 2.7 GB but doubles
+// the collector's CPU, which is free only while cores are idle.
 func tuneGC() {
 	if os.Getenv("GOGC") == "" {
-		debug.SetGCPercent(400)
+		debug.SetGCPercent(200)
 	}
 	if os.Getenv("GOMEMLIMIT") == "" {
 		if total := physicalMemoryBytes(); total > 0 {
