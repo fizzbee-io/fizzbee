@@ -192,6 +192,10 @@ usage() {
   echo "        expanded. Major RSS reduction; refuses specs with liveness"
   echo "        assertions; disables crash-on-yield simulation. Auto-enables"
   echo "        --experimental_processed_queue."
+  echo "    --experimental_collapse_steps"
+  echo "        Does not store mid-action steps (only yield points and fair"
+  echo "        any choices); yield points link directly to each other."
+  echo "        Same states and results, fewer stored nodes, less memory."
   echo "    --experimental_no_state_returns"
   echo "        Omits Process.Returns from HashCode, JSON state, and dot-file"
   echo "        state labels. Returns remain available on the per-transition"
@@ -217,6 +221,7 @@ preinit_hook_string=""
 experimental_processed_queue=false
 experimental_no_graph=false
 experimental_no_state_returns=false
+experimental_collapse_steps=false
 no_symmetry_reduction=false
 parallel=1
 
@@ -341,6 +346,10 @@ while [[ "$1" =~ ^- ]]; do
       experimental_no_graph=true
       shift
       ;;
+    --experimental_collapse_steps )
+      experimental_collapse_steps=true
+      shift
+      ;;
     --experimental_no_state_returns )
       experimental_no_state_returns=true
       shift
@@ -415,6 +424,9 @@ if [ "$experimental_processed_queue" = true ]; then
 fi
 if [ "$experimental_no_graph" = true ]; then
   args+=("--experimental_no_graph")
+fi
+if [ "$experimental_collapse_steps" = true ]; then
+  args+=("--experimental_collapse_steps")
 fi
 if [ "$experimental_no_state_returns" = true ]; then
   args+=("--experimental_no_state_returns")

@@ -97,7 +97,22 @@ func GenerateProtoOfJson(nodes []*Node, pathPrefix string) ([]string, []string, 
 			})
 		}
 		numLinks := len(node.Outbound)
+		// Links out of a node share its probability mass equally, unless
+		// collapsed steps recorded their share of the original branching,
+		// in which case the recorded weights are normalised over the node.
+		weightSum := 0.0
+		weighted := false
 		for _, outboundLink := range node.Outbound {
+			if outboundLink.Weight > 0 {
+				weighted = true
+			}
+			weightSum += linkWeight(outboundLink)
+		}
+		for _, outboundLink := range node.Outbound {
+			weight := 1.0 / float64(numLinks)
+			if weighted && weightSum > 0 {
+				weight = linkWeight(outboundLink) / weightSum
+			}
 			intMap := make(map[int64]int64)
 			for k, v := range outboundLink.ThreadsMap {
 				intMap[int64(k)] = int64(v)
@@ -111,10 +126,11 @@ func GenerateProtoOfJson(nodes []*Node, pathPrefix string) ([]string, []string, 
 				Name:            outLinkName,
 				Labels:          outboundLink.Labels,
 				Messages:        outboundLink.Messages,
-				Weight:          1.0 / float64(numLinks),
+				Weight:          weight,
 				NewToOldThreads: intMap,
 				Type:            outboundLink.Type,
 				Returns:         returnsToNameValues(outboundLink.Returns),
+				Choices:         outboundLink.Choices,
 			})
 
 			if len(links) >= linksShardSize {
@@ -183,6 +199,7 @@ func GenerateErrorPathProtoOfJson(errorPath []*Link, pathPrefix string) ([]strin
 			Messages: outboundLink.Messages,
 			Weight:   1.0,
 			Returns:  returnsToNameValues(outboundLink.Returns),
+			Choices:  outboundLink.Choices,
 		}
 		links = append(links, protoLink)
 
