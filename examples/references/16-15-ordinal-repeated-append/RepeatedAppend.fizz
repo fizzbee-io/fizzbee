@@ -1,0 +1,25 @@
+# Example 1615: Repeated fresh() appends in an ordinal domain
+# Regression test: appending after the maximum many times along one path
+# must keep working. fresh() allocates the midpoint between the current
+# maximum and the top of the ID range, so each append halves the space
+# left above the maximum. The model checker respaces the stored ordinal
+# IDs by rank before that space runs out.
+# Demonstrates: ordinal fresh(), ordinal ID respacing
+
+# Only one timestamp is live at a time, so the limit never binds. Every
+# state is distinct (count differs), so symmetry reduction cannot merge
+# the path: all 100 appends run back to back.
+
+TIMES = symmetry.ordinal(name="ts", limit=2)
+
+action Init:
+    t = TIMES.fresh()
+    count = 0
+
+atomic fair action Append:
+    require count < 100
+    t = TIMES.fresh()
+    count += 1
+
+always eventually assertion ReachesHundred:
+    return count == 100

@@ -1,0 +1,15 @@
+Model checking examples/references/16-15-ordinal-repeated-append/RepeatedAppend.json
+configFileName: examples/references/16-15-ordinal-repeated-append/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
+Nodes: 101, queued: 0, elapsed: 14.434745ms
+Time taken for model checking: 14.498666ms
+Writen graph dotfile: examples/references/16-15-ordinal-repeated-append/out/run_2026-10-24_07-40-28/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/16-15-ordinal-repeated-append/out/run_2026-10-24_07-40-28/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 101 Unique states: 101
+Checking always eventually ReachesHundred
+IsLive: true
+Time taken to check liveness: 3.98852ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/16-15-ordinal-repeated-append/out/run_2026-10-24_07-40-28

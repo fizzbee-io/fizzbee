@@ -1,0 +1,82 @@
+package modelchecker
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+
+	ast "fizz/proto"
+	"github.com/fizzbee-io/fizzbee/lib"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.starlark.net/starlark"
+)
+
+// TestOrdinalRespaceHeldSegment inserts 80 times into the same ordinal gap
+// along one path, well past the ~60 midpoint halvings the ID range allows,
+// while a non-atomic action holds the chosen segment across a yield. Every
+// stored state must keep its held segments in place relative to the values.
+//
+// HeldSegment keeps both ends of the segment live. DeadEndpoint drops the
+// value at its left end before using it. Each runs with the default respace
+// threshold, and with respacing forced on every state.
+func TestOrdinalRespaceHeldSegment(t *testing.T) {
+	base := "."
+	if dir := os.Getenv("RUNFILES_DIR"); dir != "" {
+		base = filepath.Join(dir, "_main", "modelchecker")
+	}
+	defaultGap := lib.OrdinalRespaceMinGap
+	defer func() { lib.OrdinalRespaceMinGap = defaultGap }()
+
+	for _, spec := range []string{"HeldSegment", "DeadEndpoint"} {
+		for _, gap := range []int64{defaultGap, 1 << 61} {
+			t.Run(fmt.Sprintf("%s/gap=%d", spec, gap), func(t *testing.T) {
+				lib.OrdinalRespaceMinGap = gap
+				file, err := readAstFromFile(filepath.Join(base, "testdata", "ordinal_respace", spec+".json"))
+				require.Nil(t, err)
+				noDeadlock, noCrash := false, false
+				stateConfig := &ast.StateSpaceOptions{
+					Options:           &ast.Options{MaxActions: 100, MaxConcurrentActions: 1, CrashOnYield: &noCrash},
+					DeadlockDetection: &noDeadlock,
+				}
+				p := NewProcessor([]*ast.File{file}, stateConfig, false, 0, "", "", false, nil, nil, "")
+				root, failed, err := p.Start()
+				require.Nil(t, err)
+				require.NotNil(t, root)
+				assert.Nil(t, failed)
+
+				maxCount := 0
+				heldSegments := 0
+				for _, node := range p.visited {
+					if count, ok := node.Process.Heap.state["count"].(starlark.Int); ok {
+						c, _ := count.Int64()
+						maxCount = max(maxCount, int(c))
+					}
+					for _, thread := range node.Process.Threads {
+						if thread == nil {
+							continue
+						}
+						for _, frame := range thread.Stack.RawArray() {
+							for scope := frame.scope; scope != nil; scope = scope.parent {
+								seg, ok := scope.vars["seg"].(*lib.Segment)
+								if !ok {
+									continue
+								}
+								heldSegments++
+								// The segment runs from above lo up to hi.
+								lo := node.Process.Heap.state["lo"].(*lib.SymmetricValue).GetId()
+								hi := node.Process.Heap.state["hi"].(*lib.SymmetricValue).GetId()
+								assert.Less(t, lo, seg.Left, "segment %v vs lo %d", seg, lo)
+								assert.Less(t, seg.Left, seg.Right, "segment %v", seg)
+								assert.Equal(t, hi, seg.Right, "segment %v vs hi %d", seg, hi)
+							}
+						}
+					}
+				}
+				assert.Equal(t, 80, maxCount)
+				assert.Positive(t, heldSegments)
+			})
+		}
+	}
+}

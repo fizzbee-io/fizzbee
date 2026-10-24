@@ -709,6 +709,18 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Status**: ✅ PASSED
 - **Note**: Compare with 11-08 (non-symmetric, 113 nodes / 70 states). Symmetric version needs no hire cap — removed nodes get replaced by fresh ones that map to the same canonical states.
 
+### 16-14-ordinal-repeated-head-insert: Repeated Ordinal Gap Insertion
+- **State space**: 201 nodes, 101 unique states
+- **Purpose**: Regression test for inserting into the same ordinal gap 100 times along one path
+- **Key concepts**: `segments(before=...)`, ordinal ID respacing
+- **Status**: ✅ PASSED
+
+### 16-15-ordinal-repeated-append: Repeated Ordinal Append
+- **State space**: 101 nodes, 101 unique states
+- **Purpose**: Regression test for appending with `fresh()` 100 times along one path
+- **Key concepts**: ordinal `fresh()`, ordinal ID respacing
+- **Status**: ✅ PASSED
+
 ### 99-01-checkpoints: Visualization Checkpoints
 - **State space**: 12 nodes, 10 unique states
 - **Purpose**: Using backtick labels to create visualization breakpoints

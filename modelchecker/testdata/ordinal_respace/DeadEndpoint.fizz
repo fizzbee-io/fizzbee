@@ -1,0 +1,31 @@
+# Like HeldSegment, but the value at the left end of the held segment is
+# dropped from the state before the segment is used, so respacing must
+# move the segment's endpoint without a live value to follow. A value
+# appended and dropped meanwhile changes how many values there are, so
+# respacing moves every ID.
+TIMES = symmetry.ordinal(name="ts", limit=4)
+
+action Init:
+    lo = TIMES.fresh()
+    hi = TIMES.fresh()
+    gaps = TIMES.segments(after=lo, before=hi)
+    g = oneof gaps
+    mid = g.fresh()
+    gaps = []
+    g = None
+    top = None
+    count = 0
+
+action Squeeze:
+    require count < 80
+    gaps = TIMES.segments(after=mid, before=hi)
+    seg = oneof gaps
+    gaps = []
+    mid = None
+    top = TIMES.fresh()
+    mid = seg.fresh()
+    top = None
+    count += 1
+
+always assertion Ordered:
+    return mid == None or (lo < mid and mid < hi)

@@ -37,7 +37,10 @@ go_library(
 
 go_test(
     name = "lib_test",
-    srcs = ["jsonmarshaller_test.go"],
+    srcs = [
+        "jsonmarshaller_test.go",
+        "symmetry_test.go",
+    ],
     embed = [":lib"],
     deps = [
         "@com_github_stretchr_testify//assert",

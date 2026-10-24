@@ -1,0 +1,25 @@
+# Example 1614: Repeated insertion into the same ordinal gap
+# Regression test: inserting before the minimum many times along one path
+# must keep working. Ordinal values are allocated by midpoint, so each
+# insertion halves the gap below the minimum. The model checker respaces
+# the stored ordinal IDs by rank before the gap runs out.
+# Demonstrates: segments(before=...), ordinal ID respacing
+
+# Only one timestamp is live at a time, so the limit never binds. Every
+# state is distinct (count differs), so symmetry reduction cannot merge
+# the path: all 100 insertions run back to back into the head gap.
+
+TIMES = symmetry.ordinal(name="ts", limit=2)
+
+action Init:
+    t = TIMES.fresh()
+    count = 0
+
+atomic fair action InsertBefore:
+    require count < 100
+    gap = oneof TIMES.segments(before=t)
+    t = gap.fresh()
+    count += 1
+
+always eventually assertion ReachesHundred:
+    return count == 100
