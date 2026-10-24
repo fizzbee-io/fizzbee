@@ -231,6 +231,11 @@ type Process struct {
 	// baseEnv caches the constant part of the statement environment; see
 	// baseEnvironment. Never copied by Fork or CloneWithRefs.
 	baseEnv starlark.StringDict
+	// envVersion counts changes to anything a frame's cached statement
+	// environment mirrors other than through that frame's own
+	// assignments: state writes from another frame, the base environment
+	// being rebuilt, state being replaced or inserted. See CallFrame.env.
+	envVersion uint64
 	// baseEnvGlobals and baseEnvModules identify the globals and modules
 	// maps baseEnv was built from.
 	baseEnvGlobals uintptr
@@ -767,10 +772,13 @@ func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
 	// Resolution precedence: builtins < globals < state < self < locals.
 	// See GetAllVariables for the full rationale.
 	base := p.baseEnvironment()
+	frame := p.currentThread().currentFrame()
+	if frame.env != nil && frame.envVersion == p.envVersion {
+		return frame.env
+	}
 	dict := maps.Clone(base)
 
 	maps.Copy(dict, p.Heap.state)
-	frame := p.currentThread().currentFrame()
 	if frame.obj != nil {
 		dict["self"] = frame.obj
 	}
@@ -792,7 +800,36 @@ func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
 	}
 	dict["Channel"] = base["Channel"]
 	p.addPredicateFuncs(dict)
+	frame.env = dict
+	frame.envVersion = p.envVersion
 	return dict
+}
+
+// isFixedEnvName reports whether GetAllVariablesNocopy asserts name after
+// the state and locals, so that a user variable of that name never shows
+// in the environment. An assignment to such a name invalidates the cached
+// environment instead of being written through.
+func (p *Process) isFixedEnvName(name string) bool {
+	switch name {
+	case "deepcopy", "resolve_role", "Channel":
+		return true
+	}
+	if _, ok := p.Modules[name]; ok {
+		return true
+	}
+	for _, file := range p.Files {
+		for _, role := range file.Roles {
+			if role.Name == name {
+				return true
+			}
+		}
+	}
+	if p.fizzCall != nil && lib.Builtins[name] != nil {
+		if def, ok := p.SymbolTable[name]; ok && def.DefType == Function && def.roleName == "" {
+			return true
+		}
+	}
+	return false
 }
 
 // deepcopyBuiltin is shared by every environment; it holds no state.
@@ -816,6 +853,7 @@ func (p *Process) baseEnvironment() starlark.StringDict {
 	}
 	p.baseEnvGlobals = globalsID
 	p.baseEnvModules = modulesID
+	p.envVersion++
 	dict := maps.Clone(lib.Builtins)
 	maps.Copy(dict, p.Heap.globals)
 	dict["deepcopy"] = deepcopyBuiltin
@@ -865,7 +903,27 @@ func (p *Process) saveRotationalLastAllocated(ctx *lib.SymmetryContext) {
 
 func (p *Process) updateAllVariablesInScope(dict starlark.StringDict) {
 	frame := p.currentThread().currentFrame()
+	if frame.env != nil && reflect.ValueOf(dict).Pointer() == reflect.ValueOf(frame.env).Pointer() {
+		// The frame's own environment: only a statement can rebind a name
+		// in it, and statements report their assignments through
+		// updateAssignedVariables. Writing every entry back would be a
+		// no-op (and would invalidate every other frame's environment).
+		return
+	}
 	for k, v := range dict {
+		p.updateVariableInternal(k, v, frame)
+	}
+}
+
+// updateAssignedVariables writes back the names a statement assigned in
+// dict, the frame's environment.
+func (p *Process) updateAssignedVariables(dict starlark.StringDict, names []string) {
+	frame := p.currentThread().currentFrame()
+	for _, k := range names {
+		v, ok := dict[k]
+		if !ok {
+			continue
+		}
 		p.updateVariableInternal(k, v, frame)
 	}
 }
@@ -876,30 +934,53 @@ func (p *Process) updateVariable(key string, val starlark.Value) {
 }
 
 func (p *Process) updateVariableInternal(key string, val starlark.Value, frame *CallFrame) {
+	stored := p.storeVariable(key, val, frame)
+	// Keep the frame's cached environment in step: a stored assignment is
+	// written through, unless the environment would not show it (a name
+	// the environment asserts after the locals, or a value that was not
+	// stored at all), in which case the frame rebuilds. Other frames see
+	// the change through envVersion.
+	if frame.env != nil {
+		if stored && !p.isFixedEnvName(key) {
+			frame.env[key] = val
+		} else {
+			frame.env = nil
+		}
+	}
+	p.envVersion++
+	if frame.env != nil {
+		frame.envVersion = p.envVersion
+	}
+}
+
+// storeVariable writes an assignment to where the name lives (scope,
+// frame arguments, state, self, or a new local) and reports whether it was
+// stored. Assignments to globals and of builtins and modules are dropped.
+func (p *Process) storeVariable(key string, val starlark.Value, frame *CallFrame) bool {
 	if p.updateScopedVariable(frame.scope, key, val) {
 		// Check local variables in the scope, starting from
 		// deepest to its parent. If present, update that
 		// and continue
-		return
+		return true
 	}
 	if _, ok := frame.vars[key]; ok {
 		frame.vars[key] = val
-		return
+		return true
 	}
 	if p.Heap.update(key, val) {
 		// if no scoped variable exists, check if it is state
 		// variable, then update the state variable
-		return
+		return true
 	}
 	if p.Heap.globals.Has(key) {
-		return
+		return false
 	}
 	if key == "self" {
 		frame.obj = val.(*lib.Role)
-		return
+		return true
 	}
 	if val.Type() == "builtin_function_or_method" || val.Type() == "module" {
-		return
+		return false
 	}
 	// Declare the variable to the Current scope
 	frame.scope.vars[key] = val
@@ -907,6 +988,7 @@ func (p *Process) updateVariableInternal(key string, val starlark.Value, frame *
 	if p.Stats.TotalActions == 0 && frame.scope.parent == nil && p.currentThread().Stack.Len() == 1 {
 		p.topLevelVars = append(p.topLevelVars, key)
 	}
+	return true
 }
 
 func (p *Process) updateScopedVariable(scope *Scope, key string, val starlark.Value) bool {
@@ -1593,6 +1675,7 @@ func (p *Processor) InitializeNode() (*Node, *Node, error) {
 		}
 		process.Enable()
 		process.Heap.state = globals
+		process.envVersion++
 		failed := CheckInvariantsWithProber(process, p.makeProber(process))
 		p.accumulateExistsWitness(process)
 		if len(failed[0]) > 0 {

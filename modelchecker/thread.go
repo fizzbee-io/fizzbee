@@ -286,6 +286,15 @@ type CallFrame struct {
 	// This should eventually replace local variables from the scope as python doesn't have block scope.
 	vars starlark.StringDict
 
+	// env is the statement environment GetAllVariablesNocopy built for
+	// this frame (builtins, globals, state, self, vars, scope), reused by
+	// the following statements of the frame. Assignments are written
+	// through to it by updateVariableInternal; any other change to what it
+	// mirrors bumps Process.envVersion, and a frame whose envVersion is
+	// behind rebuilds. Never copied by Clone: a fork builds its own.
+	env        starlark.StringDict
+	envVersion uint64
+
 	callerAssignVarNames []string
 	obj                  *lib.Role
 }
@@ -599,7 +608,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		}
 		vars := t.Process.GetAllVariablesNocopy()
 		symCtx := t.Process.createSymmetryContext()
-		_, err := t.Process.Evaluator.ExecPyStmtWithContext(t.getFileName(), stmt.PyStmt, vars, symCtx)
+		assigned, err := t.Process.Evaluator.ExecPyStmtAssigned(t.getFileName(), stmt.PyStmt, vars, symCtx)
 		t.Process.saveRotationalLastAllocated(symCtx)
 		if err != nil {
 			if lib.IsDisableTransitionError(err) {
@@ -611,7 +620,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			}
 			t.Process.PanicOnError(stmt.PyStmt.GetSourceInfo(), fmt.Sprintf("Error executing statement: %s", stmt.PyStmt.GetCode()), err)
 		}
-		t.Process.updateAllVariablesInScope(vars)
+		t.Process.updateAssignedVariables(vars, assigned)
 		t.Process.Enable()
 	} else if stmt.Block != nil {
 		currentFrame.pc = currentFrame.pc + ".Block"
@@ -702,6 +711,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 				fork.updateVariable(stmt.AnyStmt.LoopVars[0], x)
 			} else {
 				fork.currentThread().currentFrame().scope.vars[stmt.AnyStmt.LoopVars[0]] = x
+				fork.envVersion++
 			}
 
 			if stmt.AnyStmt.Condition != "" {
@@ -927,7 +937,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			pyEquivStmt := &ast.PyStmt{Code: code.String(), SourceInfo: stmt.CallStmt.GetSourceInfo()}
 			vars := t.Process.GetAllVariablesNocopy()
 			symCtx := t.Process.createSymmetryContext()
-			_, err := t.Process.Evaluator.ExecPyStmtWithContext(t.getFileName(), pyEquivStmt, vars, symCtx)
+			assigned, err := t.Process.Evaluator.ExecPyStmtAssigned(t.getFileName(), pyEquivStmt, vars, symCtx)
 			t.Process.saveRotationalLastAllocated(symCtx)
 			if err != nil {
 				if lib.IsDisableTransitionError(err) {
@@ -938,7 +948,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 				}
 				t.Process.PanicOnError(stmt.CallStmt.GetSourceInfo(), fmt.Sprintf("Error executing statement: %s", pyEquivStmt.GetCode()), err)
 			}
-			t.Process.updateAllVariablesInScope(vars)
+			t.Process.updateAssignedVariables(vars, assigned)
 			t.Process.Enable()
 		} else {
 			// Handle function calls
@@ -1119,6 +1129,7 @@ func (t *Thread) executeForStatement() ([]*Process, bool) {
 	// only atomic flow is supported for now.
 	if scope.flow == ast.Flow_FLOW_ATOMIC || scope.flow == ast.Flow_FLOW_SERIAL {
 		scope.vars[scope.loopVars[0]] = scope.loopRange[0]
+		t.Process.envVersion++
 		scope.loopRange = scope.loopRange[1:]
 		return nil, false
 	}
@@ -1144,6 +1155,7 @@ func (t *Thread) executeForStatement() ([]*Process, bool) {
 			}
 		}
 		fork.currentThread().currentFrame().scope.vars[scope.loopVars[0]] = x
+		fork.envVersion++
 		fork.Name = fmt.Sprintf("For:%s", x.String())
 		newSlice := removeElement(scope.loopRange, i)
 		fork.currentThread().currentFrame().scope.loopRange = newSlice
@@ -1265,6 +1277,7 @@ func (t *Thread) executeEndOfBlock() ([]*Process, bool) {
 							t.Process.Heap.insert(s, value)
 						}
 					}
+					t.Process.envVersion++
 				}
 			}
 			isRole := false

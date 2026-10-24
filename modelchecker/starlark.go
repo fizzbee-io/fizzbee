@@ -55,6 +55,16 @@ func (e *Evaluator) ExecPyStmt(filename string, stmt *ast.PyStmt, prevState star
 }
 
 func (e *Evaluator) ExecPyStmtWithContext(filename string, stmt *ast.PyStmt, prevState starlark.StringDict, symCtx *lib.SymmetryContext) (bool, error) {
+	_, err := e.ExecPyStmtAssigned(filename, stmt, prevState, symCtx)
+	return err == nil, err
+}
+
+// ExecPyStmtAssigned executes stmt in prevState and returns the names the
+// statement binds at its top level: assignment and augmented-assignment
+// targets, loop variables and def names. The REPL chunk writes those into
+// prevState; the caller uses the list to write them back to the process
+// without walking the whole environment.
+func (e *Evaluator) ExecPyStmtAssigned(filename string, stmt *ast.PyStmt, prevState starlark.StringDict, symCtx *lib.SymmetryContext) ([]string, error) {
 	start := stmt.GetSourceInfo().GetStart()
 	filePortion := syntax.FilePortion{
 		Content:   []byte(stmt.Code),
@@ -64,8 +74,9 @@ func (e *Evaluator) ExecPyStmtWithContext(filename string, stmt *ast.PyStmt, pre
 	f, err := e.options.Parse(filename, filePortion, 0)
 	if err != nil {
 		glog.Errorf("Error parsing expr: %+v", err)
-		return false, err
+		return nil, err
 	}
+	assigned := assignedNames(f.Stmts, nil)
 	thread := &starlark.Thread{
 		Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
 	}
@@ -77,20 +88,54 @@ func (e *Evaluator) ExecPyStmtWithContext(filename string, stmt *ast.PyStmt, pre
 		}
 	}
 	err = starlark.ExecREPLChunk(f, thread, prevState)
-	globals := prevState
 	//state, err := starlark.ExecFileOptions(e.options, e.thread, filename, starCode, prevState)
 	if err != nil {
 		if !lib.IsDisableTransitionError(err) {
 			glog.Errorf("Error executing stmt: %+v", err)
 		}
-		return false, err
+		return nil, err
 	}
+	return assigned, nil
+}
 
-	// Print the global environment.
-	for _, name := range globals.Keys() {
-		v := globals[name]
-
-		prevState[name] = v
+// assignedNames appends to names every name the statements bind at the
+// level of a REPL chunk: assignment targets (through tuple and list
+// destructuring), augmented-assignment targets, for-loop variables and
+// def names, including inside if/for/while bodies, which do not open a
+// scope. Index and attribute targets mutate a value and bind nothing.
+func assignedNames(stmts []syntax.Stmt, names []string) []string {
+	var target func(e syntax.Expr)
+	target = func(e syntax.Expr) {
+		switch e := e.(type) {
+		case *syntax.Ident:
+			names = append(names, e.Name)
+		case *syntax.TupleExpr:
+			for _, x := range e.List {
+				target(x)
+			}
+		case *syntax.ListExpr:
+			for _, x := range e.List {
+				target(x)
+			}
+		case *syntax.ParenExpr:
+			target(e.X)
+		}
 	}
-	return true, nil
+	for _, st := range stmts {
+		switch st := st.(type) {
+		case *syntax.AssignStmt:
+			target(st.LHS)
+		case *syntax.DefStmt:
+			names = append(names, st.Name.Name)
+		case *syntax.ForStmt:
+			target(st.Vars)
+			names = assignedNames(st.Body, names)
+		case *syntax.WhileStmt:
+			names = assignedNames(st.Body, names)
+		case *syntax.IfStmt:
+			names = assignedNames(st.True, names)
+			names = assignedNames(st.False, names)
+		}
+	}
+	return names
 }
