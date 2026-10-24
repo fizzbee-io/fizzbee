@@ -174,6 +174,35 @@ func TestFormulaPossiblyAtomLimit(t *testing.T) {
 	}
 }
 
+// The parser and the checker count atoms separately. On the parser's own
+// output at its limit, with repeated conditions and a nested possibly, the
+// checker allocates the same 64 bits: the values the return produces, then
+// one bit for each use of possibly, innermost first.
+func TestFormulaAtomLimitMatchesParser(t *testing.T) {
+	base := "."
+	if dir := os.Getenv("RUNFILES_DIR"); dir != "" {
+		base = filepath.Join(dir, "_main", "modelchecker")
+	}
+	file, err := readAstFromFile(filepath.Join(base, "testdata", "formulas", "AtomLimit.json"))
+	require.Nil(t, err)
+	inv := file.Invariants[0]
+	stmts := inv.Block.Stmts
+	conditions := strings.Count(stmts[len(stmts)-1].ReturnStmt.PyExpr, "bool(")
+	occurrences, atoms := possiblyOccurrences(inv.Formula)
+	assert.Equal(t, 61, conditions)
+	assert.Equal(t, conditions, atoms)
+	require.Len(t, occurrences, 3)
+
+	s := &sccGraph{g: &liveness.Graph{}}
+	derived, err := s.derivePossibly(inv.Formula, nil, nil)
+	require.Nil(t, err)
+	var bits []int
+	for _, occurrence := range occurrences {
+		bits = append(bits, derived[occurrence])
+	}
+	assert.Equal(t, []int{61, 62, 63}, bits)
+}
+
 func TestExpandAssertionHeaderErrors(t *testing.T) {
 	assertion := func(name string, clauses ...*ast.ForClause) *ast.Invariant {
 		return &ast.Invariant{Name: name, Block: &ast.Block{}, ForClauses: clauses}
