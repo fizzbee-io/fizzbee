@@ -951,6 +951,12 @@ type Node struct {
 	forkDepth  int
 	stacktrace string
 
+	// actionLimitHit: an action was not scheduled from this yield point
+	// because a per-action max_actions or max_concurrent_actions limit was
+	// reached. The state space is cut here by configuration, so deadlock
+	// detection skips the node, as it does at the global max_actions bound.
+	actionLimitHit bool
+
 	DuplicateOf *Node
 
 	// yieldForks: in the experimental processed-queue mode, when a node
@@ -1800,6 +1806,7 @@ func (p *Processor) startProcessedQueue() (init *Node, failedNode *Node, err err
 		if p.config.GetDeadlockDetection() &&
 			p.queue.Len() == queueLenBefore &&
 			p.dedupHitsInExpansion == 0 &&
+			!yp.actionLimitHit &&
 			yp.actionDepth < int(p.config.Options.MaxActions) {
 			if p.earlyDeadlock == nil {
 				p.earlyDeadlock = yp
@@ -3381,6 +3388,7 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 	}
 
 	if p.ExceedsActionCountLimits(action, statProcess, role) {
+		node.actionLimitHit = true
 		return
 	}
 
