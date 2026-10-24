@@ -162,13 +162,36 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 			}
 		}
 
-		newSegment := &lib.Segment{
-			Domain: s.Domain,
-			Left:   newLeft,
-			Right:  newRight,
-			IsHead: s.IsHead,
-			IsTail: s.IsTail,
+		newResolved := s.Resolved
+		newResolvedID := s.ResolvedID
+		if permutations != nil && s.Resolved {
+			// The memoized value only has a counterpart in the permuted state
+			// while the value itself is still in the state. Otherwise drop the
+			// memo: a later value() allocates afresh in the (remapped) gap,
+			// which is equivalent under ordinal symmetry.
+			newResolved = false
+			newResolvedID = 0
+			for oldSV, newSVs := range permutations {
+				if oldSV.GetPrefix() == s.Domain.Name && oldSV.GetId() == s.ResolvedID {
+					newResolved = true
+					newResolvedID = newSVs[alt].GetId()
+					break
+				}
+			}
 		}
+
+		newSegment := &lib.Segment{
+			Domain:     s.Domain,
+			Left:       newLeft,
+			Right:      newRight,
+			IsHead:     s.IsHead,
+			IsTail:     s.IsTail,
+			IsPoint:    s.IsPoint,
+			Resolved:   newResolved,
+			ResolvedID: newResolvedID,
+		}
+		// value() memoizes into the segment, so aliases must stay shared.
+		refs[value] = newSegment
 		return newSegment, nil
 	case "genericset":
 		s := value.(*lib.GenericSet)

@@ -709,6 +709,12 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Status**: ✅ PASSED
 - **Note**: Compare with 11-08 (non-symmetric, 113 nodes / 70 states). Symmetric version needs no hire cap — removed nodes get replaced by fresh ones that map to the same canonical states.
 
+### 16-14-ordinal-segment-points: Ordinal Segment Points (existing or new value)
+- **State space**: 6 nodes, 4 unique states
+- **Purpose**: Choosing an existing ordinal value or a new one in any position
+- **Key concepts**: `segments(include_points=True)`, `segment.value()`, `is_point`, `gt`/`ge`/`lt`/`le` bounds
+- **Status**: ✅ PASSED
+
 ### 99-01-checkpoints: Visualization Checkpoints
 - **State space**: 12 nodes, 10 unique states
 - **Purpose**: Using backtick labels to create visualization breakpoints

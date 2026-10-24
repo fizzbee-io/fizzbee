@@ -1891,7 +1891,7 @@ symmetry.rotational(name, limit, materialize=False, reflection=False)
 | `choices()` | Y | - | - | Y | `values()` + one `fresh()` |
 | `min()` | - | Y | Y | - | Smallest active value or fresh |
 | `max()` | - | Y | Y | - | Largest active value or fresh |
-| `segments(after?, before?)` | - | Y | - | - | Gaps between active values |
+| `segments(after?, before?, include_points?, gt?, ge?, lt?, le?)` | - | Y | - | - | Gaps between active values, optionally with existing values as points |
 
 #### Nominal Symmetry
 
@@ -1958,6 +1958,30 @@ atomic action InsertBetween:
 With N active values, `segments()` returns N+1 gaps: a head gap (before first), body gaps (between consecutive pairs), and a tail gap (after last). Ordinal gaps are always non-empty since the domain is dense (infinitely divisible in theory).
 
 **Reference**: [16-07-ordinal-segments](16-07-ordinal-segments/)
+
+##### Choosing an Existing or New Ordinal Value
+
+`segments(include_points=True)` also returns each existing value as a point segment, interleaved with the gaps in rank order. `value()` resolves the chosen segment: a point returns its existing value, and a gap allocates a new value in that position.
+
+```python
+TIMES = symmetry.ordinal(name="ts", limit=3)
+
+action Init:
+    deadline = TIMES.fresh()
+
+atomic action Observe:
+    # (-inf, deadline)  [deadline]  (deadline, +inf)
+    seg = oneof TIMES.segments(include_points=True)
+    t = seg.value()   # t < deadline, t == deadline, or t > deadline
+```
+
+- With N active values this gives 2N+1 choices: N points and N+1 gaps.
+- `value()` on a gap allocates once; calling it again on the same segment returns the same value. At the limit it disables the transition, like `fresh()`.
+- `seg.is_point` tells points from gaps. `fresh()` on a point is an error.
+- Bounds: `gt`/`lt` exclude the bound, `ge`/`le` include it, and the bound must be a value from the same domain (it need not still be active). Only gaps that lie entirely in range are returned, so an empty or reversed range returns an empty list, and `oneof` over it disables the transition. `after`/`before` are aliases of `gt`/`lt`. For example, `segments(include_points=True, ge=t_start, lt=t_end)` offers `t_start`, every value up to `t_end`, and every gap between them.
+- Resolve a segment in the action that selected it. If other values are inserted into its gap before `value()` runs, the new value still lands between the segment's endpoints, but its position relative to those newer values is arbitrary.
+
+**Reference**: [16-14-ordinal-segment-points](16-14-ordinal-segment-points/)
 
 #### Interval Symmetry
 
