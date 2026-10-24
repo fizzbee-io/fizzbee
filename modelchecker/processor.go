@@ -14,7 +14,6 @@
 package modelchecker
 
 import (
-	"crypto/sha256"
 	ast "fizz/proto"
 	"fmt"
 	"log"
@@ -614,77 +613,6 @@ func (n *Node) GetName() string {
 		return ""
 	}
 	return p.Name
-}
-
-func (p *Process) HashCode() string {
-	if p.CachedHashCode != "" {
-		return p.CachedHashCode
-	}
-	threadHashes := make([]string, len(p.Threads))
-	p.CachedThreadHashes = make([]string, len(threadHashes))
-	for i, thread := range p.Threads {
-		threadHashes[i] = thread.HashCode()
-		// Having a second copy of the thread hashes as the first one
-		// will be sorted to create the process hash
-		p.CachedThreadHashes[i] = threadHashes[i]
-	}
-
-	h := sha256.New()
-
-	// Use the Current thread's hash first, not the index
-	currentThreadHash := ""
-	if len(threadHashes) > 0 && p.Current >= 0 {
-		currentThreadHash = threadHashes[p.Current]
-	}
-	h.Write([]byte(currentThreadHash))
-
-	// Sort the thread hashes to make the hash deterministic
-	sort.Strings(threadHashes)
-	for _, hash := range threadHashes {
-		h.Write([]byte(hash))
-	}
-
-	if !excludeReturnsFromState {
-		h.Write([]byte(StringDictToJsonString(p.Returns)))
-	}
-
-	for _, role := range p.Roles {
-		// Include the role's data in the hash to distinguish processes with different role states
-		// This should not use the lib/jsonmarshaller.go, that just substitutes roles with their reference.
-		bytes, err := role.MarshalJSON()
-		if err != nil {
-			panic(err)
-		}
-		h.Write(bytes)
-	}
-	// hash the heap variables as well
-	heapHash := p.Heap.HashCode()
-	h.Write([]byte(heapHash))
-
-	channelKeys := make([]int, 0, len(p.Channels))
-	for k := range p.Channels {
-		channelKeys = append(channelKeys, k)
-	}
-	sort.Ints(channelKeys)
-	for _, k := range channelKeys {
-		channel := p.Channels[k]
-		h.Write([]byte(fmt.Sprintf("%d:%s", k, channel.String())))
-	}
-
-	channelMsgKeys := make([]int, 0, len(p.ChannelMessages))
-	for k := range p.ChannelMessages {
-		channelMsgKeys = append(channelMsgKeys, k)
-	}
-	sort.Ints(channelMsgKeys)
-	for _, k := range channelMsgKeys {
-		messages := p.ChannelMessages[k]
-		// TODO: Sort the messages, for unordered channels
-		for _, message := range messages {
-			h.Write([]byte(fmt.Sprintf("%d:%s", k, message.HashCode())))
-		}
-	}
-	p.CachedHashCode = fmt.Sprintf("%x", h.Sum(nil))
-	return p.CachedHashCode
 }
 
 func (p *Process) currentThread() *Thread {
