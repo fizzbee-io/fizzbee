@@ -22,6 +22,12 @@ def parse(code):
         return parse_file("test.fizz", PRELUDE + code)
 
 
+def walk(f):
+    yield f
+    for a in f.args:
+        yield from walk(a)
+
+
 def shape(f):
     if f.op == ast.Formula.ATOM:
         return f"a{f.atom}"
@@ -49,6 +55,8 @@ class PossiblyTest(unittest.TestCase):
             "always (x == 0 and (possibly x == 1) or x == 2)": "ALWAYS(OR(AND(a0, POSSIBLY(a1)), a2))",
             "possibly (x == 0 and possibly x == 1)": "POSSIBLY(AND(a0, POSSIBLY(a1)))",
             "(possibly x == 1) until x == 1": "UNTIL(POSSIBLY(a0), a0)",
+            # Line breaks inside parentheses don't end the return.
+            "always (x == 0 implies\n        possibly(x == 1))": "ALWAYS(IMPLIES(a0, POSSIBLY(a1)))",
         }.items():
             with self.subTest(ret):
                 self.assertEqual(want, self.formula(ret))
@@ -64,6 +72,10 @@ func g():
 
 func h():
     return [possibly(v) for v in range(2)]
+
+func k():
+    return helper(
+        possibly(1))
 
 always assertion Var:
     return possibly == 1
@@ -82,6 +94,7 @@ always assertion Nested:
         self.assertEqual("possibly(1)", funcs["f"])
         self.assertEqual("helper(possibly(1))", funcs["g"])
         self.assertEqual("[possibly(v) for v in range(2)]", funcs["h"])
+        self.assertEqual("helper(\n        possibly(1))", funcs["k"])
 
     def test_errors(self):
         for code, want in {
@@ -99,13 +112,16 @@ always assertion Nested:
         # Each distinct condition is one atom, and each use of possibly is
         # one more, nested ones included.
         def formula(n):
-            # n separate atoms, then two more and two uses of possibly.
+            # n separate conditions, then two more inside two uses of
+            # possibly: n + 4 atoms in all.
             separate = " and ".join(f"(always x != {i})" for i in range(n))
             return f"assertion A:\n    return {separate} and always possibly (x == 99 and possibly x == 98)\n"
-        atoms = parse(formula(60)).invariants[0].block.stmts[-1].return_stmt.py_expr.count("bool(")
-        self.assertEqual(62, atoms)
-        over = formula(61)
-        self.assertIn("needs 65 atoms", self.error(over))
+        f = parse(formula(60)).invariants[0].formula
+        conditions = len({a.atom for a in walk(f) if a.op == ast.Formula.ATOM})
+        uses = len([a for a in walk(f) if a.op == ast.Formula.POSSIBLY])
+        self.assertEqual((62, 2), (conditions, uses))
+        self.assertEqual(64, conditions + uses)  # the limit, accepted
+        self.assertIn("needs 65 atoms", self.error(formula(61)))
 
 
 if __name__ == "__main__":

@@ -1385,7 +1385,7 @@ class BuildAstVisitor(FizzParserVisitor):
     # compiles to; the ReturnStmt returned here is a placeholder it replaces.
     def visitFormula_return_stmt(self, ctx:FizzParser.Formula_return_stmtContext):
         f = self.build_formula(ctx.formula())
-        if not self.in_assertion and not f.temporal and not uses_implies(ctx.formula()):
+        if not self.in_assertion and not f.linear_time and not uses_implies(ctx.formula()):
             # possibly is a soft keyword: a return that uses it is parsed as
             # a formula (see ReturnsPossibly), but outside an assertion it is
             # a plain return that calls a function named possibly.
@@ -1453,7 +1453,7 @@ class BuildAstVisitor(FizzParserVisitor):
         operand = self.build_formula(operand_ctx)
         if operand.kind == "eventually":
             raise formula_error(ctx, "`possibly (eventually Q)` means the same as `possibly Q`; drop the `eventually`")
-        if operand.temporal:
+        if operand.linear_time:
             raise formula_error(ctx, "`possibly` takes a condition on a state, which can't contain "
                                 "always, eventually, until or leadsto")
         return Formula.combine("possibly", [operand], ctx)
@@ -1609,7 +1609,7 @@ class Formula:
     """A temporal formula while it is being built. Subtrees without a
     temporal operator or `possibly` collapse into atoms: Starlark
     expressions, evaluated in each state, with `implies` written out."""
-    TEMPORAL = ("always", "eventually", "until", "leadsto")
+    LINEAR_TIME = ("always", "eventually", "until", "leadsto")
     BINARY = ("and", "or", "implies", "until", "leadsto")
     OPS = {
         "not": ast.Formula.NOT, "and": ast.Formula.AND, "or": ast.Formula.OR,
@@ -1627,10 +1627,11 @@ class Formula:
         self.ctx = self.start
         self.text = text  # Starlark text, for atoms
         self.paren = False
-        # Whether the formula has a linear-time operator. possibly isn't
-        # one: `possibly Q` is a condition on a state, like an atom, but it
-        # isn't a Starlark expression, so it never merges into one.
-        self.temporal = kind in Formula.TEMPORAL or any(a.temporal for a in args)
+        # Whether the formula has a linear-time operator. possibly is a
+        # branching-time operator instead: `possibly Q` is a condition on a
+        # state, like an atom, but it isn't a Starlark expression, so it
+        # never merges into one.
+        self.linear_time = kind in Formula.LINEAR_TIME or any(a.linear_time for a in args)
 
     @staticmethod
     def atom(text, ctx):
@@ -1645,7 +1646,7 @@ class Formula:
 
     @staticmethod
     def combine(op, operands, ctx):
-        if op in Formula.TEMPORAL or op == "possibly":
+        if op in Formula.LINEAR_TIME or op == "possibly":
             return Formula(op, operands, ctx)
         if op == "not":
             if operands[0].kind == "atom":

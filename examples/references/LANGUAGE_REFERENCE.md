@@ -1055,8 +1055,10 @@ assertion ByMode:
 `until` is strong. For weak until (P holds until Q, or forever if Q never
 does), write `(P until Q) or always P`, as in the precedence pattern.
 
-**Possibility.** `possibly P` holds in a state when some path from it, of
-zero or more steps, reaches a state where P holds. It says P *can* happen,
+**Possibility.** The other operators are linear-time, as in LTL: they
+describe each fair run. `possibly` is the one branching-time operator,
+CTL's EF: `possibly P` holds in a state when some path from it, of zero or
+more steps, reaches a state where P holds. It says P *can* happen,
 never that it *will*: the path may take any action, fair or not. The
 operators around it keep their meaning over fair runs:
 
