@@ -1,0 +1,2083 @@
+{
+  "sourceInfo": {
+    "fileName": "AtomLimit.fizz",
+    "start": {
+      "line": 6,
+      "column": 1
+    },
+    "end": {
+      "line": 76
+    }
+  },
+  "states": {
+    "sourceInfo": {
+      "start": {
+        "line": 6,
+        "column": 1
+      },
+      "end": {
+        "line": 9
+      }
+    },
+    "code": "x = 100\n\n"
+  },
+  "invariants": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 13,
+          "column": 1
+        },
+        "end": {
+          "line": 76
+        }
+      },
+      "name": "AtLimit",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 14,
+            "column": 5
+          },
+          "end": {
+            "line": 76
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 14,
+                "column": 5
+              },
+              "end": {
+                "line": 76
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 14,
+                  "column": 5
+                },
+                "end": {
+                  "line": 75,
+                  "column": 52
+                }
+              },
+              "pyExpr": "[bool(x != 0), bool(x != 1), bool(x != 2), bool(x != 3), bool(x != 4), bool(x != 5), bool(x != 6), bool(x != 7), bool(x != 8), bool(x != 9), bool(x != 10), bool(x != 11), bool(x != 12), bool(x != 13), bool(x != 14), bool(x != 15), bool(x != 16), bool(x != 17), bool(x != 18), bool(x != 19), bool(x != 20), bool(x != 21), bool(x != 22), bool(x != 23), bool(x != 24), bool(x != 25), bool(x != 26), bool(x != 27), bool(x != 28), bool(x != 29), bool(x != 30), bool(x != 31), bool(x != 32), bool(x != 33), bool(x != 34), bool(x != 35), bool(x != 36), bool(x != 37), bool(x != 38), bool(x != 39), bool(x != 40), bool(x != 41), bool(x != 42), bool(x != 43), bool(x != 44), bool(x != 45), bool(x != 46), bool(x != 47), bool(x != 48), bool(x != 49), bool(x != 50), bool(x != 51), bool(x != 52), bool(x != 53), bool(x != 54), bool(x != 55), bool(x != 56), bool(x != 57), bool(x != 58), bool(x == 99), bool(x == 98)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 14,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 75,
+                    "column": 52
+                  }
+                },
+                "pyExpr": "[bool(x != 0), bool(x != 1), bool(x != 2), bool(x != 3), bool(x != 4), bool(x != 5), bool(x != 6), bool(x != 7), bool(x != 8), bool(x != 9), bool(x != 10), bool(x != 11), bool(x != 12), bool(x != 13), bool(x != 14), bool(x != 15), bool(x != 16), bool(x != 17), bool(x != 18), bool(x != 19), bool(x != 20), bool(x != 21), bool(x != 22), bool(x != 23), bool(x != 24), bool(x != 25), bool(x != 26), bool(x != 27), bool(x != 28), bool(x != 29), bool(x != 30), bool(x != 31), bool(x != 32), bool(x != 33), bool(x != 34), bool(x != 35), bool(x != 36), bool(x != 37), bool(x != 38), bool(x != 39), bool(x != 40), bool(x != 41), bool(x != 42), bool(x != 43), bool(x != 44), bool(x != 45), bool(x != 46), bool(x != 47), bool(x != 48), bool(x != 49), bool(x != 50), bool(x != 51), bool(x != 52), bool(x != 53), bool(x != 54), bool(x != 55), bool(x != 56), bool(x != 57), bool(x != 58), bool(x == 99), bool(x == 98)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def AtLimit():\n    return ((always x != 0) and (always x != 1)\n        and (always x != 0)\n        and (always x != 1)\n        and (always x != 2)\n        and (always x != 3)\n        and (always x != 4)\n        and (always x != 5)\n        and (always x != 6)\n        and (always x != 7)\n        and (always x != 8)\n        and (always x != 9)\n        and (always x != 10)\n        and (always x != 11)\n        and (always x != 12)\n        and (always x != 13)\n        and (always x != 14)\n        and (always x != 15)\n        and (always x != 16)\n        and (always x != 17)\n        and (always x != 18)\n        and (always x != 19)\n        and (always x != 20)\n        and (always x != 21)\n        and (always x != 22)\n        and (always x != 23)\n        and (always x != 24)\n        and (always x != 25)\n        and (always x != 26)\n        and (always x != 27)\n        and (always x != 28)\n        and (always x != 29)\n        and (always x != 30)\n        and (always x != 31)\n        and (always x != 32)\n        and (always x != 33)\n        and (always x != 34)\n        and (always x != 35)\n        and (always x != 36)\n        and (always x != 37)\n        and (always x != 38)\n        and (always x != 39)\n        and (always x != 40)\n        and (always x != 41)\n        and (always x != 42)\n        and (always x != 43)\n        and (always x != 44)\n        and (always x != 45)\n        and (always x != 46)\n        and (always x != 47)\n        and (always x != 48)\n        and (always x != 49)\n        and (always x != 50)\n        and (always x != 51)\n        and (always x != 52)\n        and (always x != 53)\n        and (always x != 54)\n        and (always x != 55)\n        and (always x != 56)\n        and (always x != 57)\n        and (always x != 58)\n        and (always possibly x != 0)\n        and possibly (x == 99 and possibly x == 98))\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 14,
+            "column": 13
+          },
+          "end": {
+            "line": 75,
+            "column": 51
+          }
+        },
+        "op": "AND",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 14,
+                "column": 14
+              },
+              "end": {
+                "line": 14,
+                "column": 26
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 14,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 14,
+                    "column": 26
+                  }
+                },
+                "op": "ATOM"
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 14,
+                "column": 34
+              },
+              "end": {
+                "line": 14,
+                "column": 46
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 14,
+                    "column": 41
+                  },
+                  "end": {
+                    "line": 14,
+                    "column": 46
+                  }
+                },
+                "op": "ATOM",
+                "atom": 1
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 15,
+                "column": 14
+              },
+              "end": {
+                "line": 15,
+                "column": 26
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 15,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 15,
+                    "column": 26
+                  }
+                },
+                "op": "ATOM"
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 16,
+                "column": 14
+              },
+              "end": {
+                "line": 16,
+                "column": 26
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 16,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 16,
+                    "column": 26
+                  }
+                },
+                "op": "ATOM",
+                "atom": 1
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 17,
+                "column": 14
+              },
+              "end": {
+                "line": 17,
+                "column": 26
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 17,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 17,
+                    "column": 26
+                  }
+                },
+                "op": "ATOM",
+                "atom": 2
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 18,
+                "column": 14
+              },
+              "end": {
+                "line": 18,
+                "column": 26
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 18,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 18,
+                    "column": 26
+                  }
+                },
+                "op": "ATOM",
+                "atom": 3
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 19,
+                "column": 14
+              },
+              "end": {
+                "line": 19,
+                "column": 26
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 19,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 19,
+                    "column": 26
+                  }
+                },
+                "op": "ATOM",
+                "atom": 4
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 20,
+                "column": 14
+              },
+              "end": {
+                "line": 20,
+                "column": 26
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 20,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 26
+                  }
+                },
+                "op": "ATOM",
+                "atom": 5
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 21,
+                "column": 14
+              },
+              "end": {
+                "line": 21,
+                "column": 26
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 21,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 26
+                  }
+                },
+                "op": "ATOM",
+                "atom": 6
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 22,
+                "column": 14
+              },
+              "end": {
+                "line": 22,
+                "column": 26
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 22,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 22,
+                    "column": 26
+                  }
+                },
+                "op": "ATOM",
+                "atom": 7
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 23,
+                "column": 14
+              },
+              "end": {
+                "line": 23,
+                "column": 26
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 23,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 23,
+                    "column": 26
+                  }
+                },
+                "op": "ATOM",
+                "atom": 8
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 24,
+                "column": 14
+              },
+              "end": {
+                "line": 24,
+                "column": 26
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 24,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 24,
+                    "column": 26
+                  }
+                },
+                "op": "ATOM",
+                "atom": 9
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 25,
+                "column": 14
+              },
+              "end": {
+                "line": 25,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 25,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 25,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 10
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 26,
+                "column": 14
+              },
+              "end": {
+                "line": 26,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 26,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 26,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 11
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 27,
+                "column": 14
+              },
+              "end": {
+                "line": 27,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 27,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 27,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 12
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 28,
+                "column": 14
+              },
+              "end": {
+                "line": 28,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 28,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 28,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 13
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 29,
+                "column": 14
+              },
+              "end": {
+                "line": 29,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 29,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 29,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 14
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 30,
+                "column": 14
+              },
+              "end": {
+                "line": 30,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 30,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 30,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 15
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 31,
+                "column": 14
+              },
+              "end": {
+                "line": 31,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 31,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 31,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 16
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 32,
+                "column": 14
+              },
+              "end": {
+                "line": 32,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 32,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 32,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 17
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 33,
+                "column": 14
+              },
+              "end": {
+                "line": 33,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 33,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 33,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 18
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 34,
+                "column": 14
+              },
+              "end": {
+                "line": 34,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 34,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 34,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 19
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 35,
+                "column": 14
+              },
+              "end": {
+                "line": 35,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 35,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 35,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 20
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 36,
+                "column": 14
+              },
+              "end": {
+                "line": 36,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 36,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 36,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 21
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 37,
+                "column": 14
+              },
+              "end": {
+                "line": 37,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 37,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 37,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 22
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 38,
+                "column": 14
+              },
+              "end": {
+                "line": 38,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 38,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 38,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 23
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 39,
+                "column": 14
+              },
+              "end": {
+                "line": 39,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 39,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 39,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 24
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 40,
+                "column": 14
+              },
+              "end": {
+                "line": 40,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 40,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 40,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 25
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 41,
+                "column": 14
+              },
+              "end": {
+                "line": 41,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 41,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 41,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 26
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 42,
+                "column": 14
+              },
+              "end": {
+                "line": 42,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 42,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 42,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 27
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 43,
+                "column": 14
+              },
+              "end": {
+                "line": 43,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 43,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 43,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 28
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 44,
+                "column": 14
+              },
+              "end": {
+                "line": 44,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 44,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 44,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 29
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 45,
+                "column": 14
+              },
+              "end": {
+                "line": 45,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 45,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 45,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 30
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 46,
+                "column": 14
+              },
+              "end": {
+                "line": 46,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 46,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 46,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 31
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 47,
+                "column": 14
+              },
+              "end": {
+                "line": 47,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 47,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 47,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 32
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 48,
+                "column": 14
+              },
+              "end": {
+                "line": 48,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 48,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 48,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 33
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 49,
+                "column": 14
+              },
+              "end": {
+                "line": 49,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 49,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 49,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 34
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 50,
+                "column": 14
+              },
+              "end": {
+                "line": 50,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 50,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 50,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 35
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 51,
+                "column": 14
+              },
+              "end": {
+                "line": 51,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 51,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 51,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 36
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 52,
+                "column": 14
+              },
+              "end": {
+                "line": 52,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 52,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 52,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 37
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 53,
+                "column": 14
+              },
+              "end": {
+                "line": 53,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 53,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 53,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 38
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 54,
+                "column": 14
+              },
+              "end": {
+                "line": 54,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 54,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 54,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 39
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 55,
+                "column": 14
+              },
+              "end": {
+                "line": 55,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 55,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 55,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 40
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 56,
+                "column": 14
+              },
+              "end": {
+                "line": 56,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 56,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 56,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 41
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 57,
+                "column": 14
+              },
+              "end": {
+                "line": 57,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 57,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 57,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 42
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 58,
+                "column": 14
+              },
+              "end": {
+                "line": 58,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 58,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 58,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 43
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 59,
+                "column": 14
+              },
+              "end": {
+                "line": 59,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 59,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 59,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 44
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 60,
+                "column": 14
+              },
+              "end": {
+                "line": 60,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 60,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 60,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 45
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 61,
+                "column": 14
+              },
+              "end": {
+                "line": 61,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 61,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 61,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 46
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 62,
+                "column": 14
+              },
+              "end": {
+                "line": 62,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 62,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 62,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 47
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 63,
+                "column": 14
+              },
+              "end": {
+                "line": 63,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 63,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 63,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 48
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 64,
+                "column": 14
+              },
+              "end": {
+                "line": 64,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 64,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 64,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 49
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 65,
+                "column": 14
+              },
+              "end": {
+                "line": 65,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 65,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 65,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 50
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 66,
+                "column": 14
+              },
+              "end": {
+                "line": 66,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 66,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 66,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 51
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 67,
+                "column": 14
+              },
+              "end": {
+                "line": 67,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 67,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 67,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 52
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 68,
+                "column": 14
+              },
+              "end": {
+                "line": 68,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 68,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 68,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 53
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 69,
+                "column": 14
+              },
+              "end": {
+                "line": 69,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 69,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 69,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 54
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 70,
+                "column": 14
+              },
+              "end": {
+                "line": 70,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 70,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 70,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 55
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 71,
+                "column": 14
+              },
+              "end": {
+                "line": 71,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 71,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 71,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 56
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 72,
+                "column": 14
+              },
+              "end": {
+                "line": 72,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 72,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 72,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 57
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 73,
+                "column": 14
+              },
+              "end": {
+                "line": 73,
+                "column": 27
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 73,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 73,
+                    "column": 27
+                  }
+                },
+                "op": "ATOM",
+                "atom": 58
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 74,
+                "column": 14
+              },
+              "end": {
+                "line": 74,
+                "column": 35
+              }
+            },
+            "op": "ALWAYS",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 74,
+                    "column": 21
+                  },
+                  "end": {
+                    "line": 74,
+                    "column": 35
+                  }
+                },
+                "op": "POSSIBLY",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 74,
+                        "column": 30
+                      },
+                      "end": {
+                        "line": 74,
+                        "column": 35
+                      }
+                    },
+                    "op": "ATOM"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 75,
+                "column": 13
+              },
+              "end": {
+                "line": 75,
+                "column": 51
+              }
+            },
+            "op": "POSSIBLY",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 75,
+                    "column": 23
+                  },
+                  "end": {
+                    "line": 75,
+                    "column": 50
+                  }
+                },
+                "op": "AND",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 75,
+                        "column": 23
+                      },
+                      "end": {
+                        "line": 75,
+                        "column": 29
+                      }
+                    },
+                    "op": "ATOM",
+                    "atom": 59
+                  },
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 75,
+                        "column": 35
+                      },
+                      "end": {
+                        "line": 75,
+                        "column": 50
+                      }
+                    },
+                    "op": "POSSIBLY",
+                    "args": [
+                      {
+                        "sourceInfo": {
+                          "start": {
+                            "line": 75,
+                            "column": 44
+                          },
+                          "end": {
+                            "line": 75,
+                            "column": 50
+                          }
+                        },
+                        "op": "ATOM",
+                        "atom": 60
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 9,
+          "column": 1
+        },
+        "end": {
+          "line": 13
+        }
+      },
+      "name": "Down",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 10,
+            "column": 5
+          },
+          "end": {
+            "line": 13
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 10,
+                "column": 5
+              },
+              "end": {
+                "line": 11,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 10,
+                  "column": 5
+                },
+                "end": {
+                  "line": 10,
+                  "column": 18
+                }
+              },
+              "condition": "x > 98",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 10,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 10,
+                    "column": 18
+                  }
+                },
+                "pyExpr": "x > 98"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 11,
+                "column": 5
+              },
+              "end": {
+                "line": 13
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 11,
+                  "column": 5
+                },
+                "end": {
+                  "line": 11,
+                  "column": 13
+                }
+              },
+              "code": "x = x - 1"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "frontMatter": {}
+}

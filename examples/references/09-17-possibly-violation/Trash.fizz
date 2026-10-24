@@ -1,0 +1,37 @@
+# Example 0119: Possibility Violation
+# A possibly property that fails: from some state, no path reaches the condition
+# Demonstrates: possibly, recoverability, counterexample note
+
+---
+deadlock_detection: false
+---
+# A document can be moved to the trash and restored, or purged from the
+# trash for good. Every trashed document can still be restored, but once
+# purged it can't come back, so "the document can always become active
+# again" fails.
+#
+# The counterexample ends in a state where the possibly is false, and a note
+# says the step after which no path reaches its condition.
+
+action Init:
+    status = "active"
+
+atomic action Delete:
+    require status == "active"
+    status = "trash"
+
+atomic action Restore:
+    require status == "trash"
+    status = "active"
+
+atomic action Purge:
+    require status == "trash"
+    status = "purged"
+
+# Holds: a trashed document can still be restored.
+assertion Restorable:
+    return always (status == "trash" implies possibly status == "active")
+
+# Fails: after Purge, no path leads back to an active document.
+assertion Recoverable:
+    return always possibly status == "active"

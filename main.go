@@ -944,6 +944,11 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 				} else {
 					fmt.Printf("Invariant: %s\n", f.Invariants[failedInvariant.InvariantIndex].Name)
 				}
+				if failedInvariant.Note != "" {
+					for _, note := range strings.Split(failedInvariant.Note, "\n") {
+						fmt.Println("Note:", note)
+					}
+				}
 				GenerateFailurePath(sourceFileName, failurePath, failedInvariant, outDir)
 				_, _, err = modelchecker.GenerateErrorPathProtoOfJson(failurePath, outDir+"/")
 				if err != nil {

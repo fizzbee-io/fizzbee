@@ -1,0 +1,96 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+---
+# A ticket is booked, then flown or cancelled. A cancelled ticket can be
+# booked again; flying ends it. Fly is strongly fair, so every run flies.
+# Detour is never fair, so `possibly` can use it but no run has to.
+
+action Init:
+    status = "none"
+    detour = False
+
+atomic fair action Book:
+    require status == "none"
+    status = "booked"
+
+atomic fair action Cancel:
+    require status == "booked"
+    status = "cancelled"
+
+atomic fair action Rebook:
+    require status == "cancelled"
+    status = "none"
+
+atomic fair<strong> action Fly:
+    require status == "booked"
+    status = "flown"
+
+atomic action Detour:
+    require status == "booked" and not detour
+    detour = True
+
+# The current state counts: zero steps. Nothing follows a flown ticket.
+assertion PassHere:
+    return always (status == "flown" implies possibly status == "flown")
+
+assertion PassOneStep:
+    return possibly status == "booked"
+
+assertion PassManySteps:
+    return possibly (status == "flown" and detour)
+
+assertion FailUnreachable:
+    return possibly status == "lost"
+
+# Detour is never fair, but a path may still use it.
+assertion PassThroughUnfair:
+    return always (status == "booked" implies possibly detour)
+
+# Possible, but not guaranteed: a fair run can fly without the detour.
+assertion FailNotGuaranteed:
+    return eventually detour
+
+assertion PassCanCancel:
+    return always (status == "booked" implies possibly status == "cancelled")
+
+# Flying ends the ticket, so it can't always be booked again.
+assertion FailRecoverable:
+    return always possibly status == "none"
+
+assertion PassNested:
+    return possibly (status == "booked" and possibly status == "flown")
+
+assertion FailNested:
+    return always possibly (status == "booked" and possibly status == "cancelled")
+
+assertion PassNotPossibly:
+    return always (status == "flown" implies not possibly status == "booked")
+
+# The outer operators keep their fair-run meaning: Fly is strongly fair, so
+# every run reaches a state from which booking is no longer possible.
+assertion PassEventuallyNotPossibly:
+    return eventually not possibly status == "booked"
+
+assertion PassEventuallyPossibly:
+    return eventually possibly status == "flown"
+
+# possibly may sit under until.
+assertion PassUntil:
+    return (possibly status == "flown") until status == "flown"
+
+assertion PassAlias:
+    return exists eventually status == "flown"
+
+assertion FailAlias:
+    return always exists eventually status == "none"
+
+# The call form parses as the operator too.
+assertion PassCallForm:
+    return always possibly(status == "flown" or detour)
+
+# Both uses are false once the ticket has flown; the notes come in source
+# order.
+assertion FailTwoNotes:
+    return always ((possibly status == "none") or (possibly status == "cancelled"))

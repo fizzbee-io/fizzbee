@@ -243,8 +243,9 @@ message Invariant {
   repeated ForClause for_clauses = 12;
 }
 
-// A node of a temporal formula. Atoms are the maximal non-temporal
-// subexpressions; each is an index into the list the assertion's block returns.
+// A node of a temporal formula. Atoms are the maximal subexpressions with no
+// temporal operator or possibly; each is an index into the list the
+// assertion's block returns.
 message Formula {
   enum Op {
     OP_UNKNOWN = 0;
@@ -257,6 +258,7 @@ message Formula {
     EVENTUALLY = 7;
     UNTIL = 8;    // strong until
     LEADSTO = 9;  // always (a implies eventually b)
+    POSSIBLY = 10;  // EF: some path from this state reaches a state where args[0] holds
   }
   SourceInfo source_info = 1;
   Op op = 2;
