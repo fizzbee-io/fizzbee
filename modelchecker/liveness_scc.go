@@ -18,6 +18,7 @@ type sccGraph struct {
 	root       int
 	index      map[*Node]int
 	actionKeys []string // action identities, for diagnostics
+	reverse    [][]int  // predecessors over non-crash edges, built on first use
 }
 
 // isObservationNode reports whether n is a state between actions, where the
@@ -179,18 +180,104 @@ func strictLivenessPredicate(nodes []*Node, i, j int, eventuallyAlways bool) []b
 	return q
 }
 
-// checkFormula checks formula f on the state graph through the product with
-// its negation's automaton. The letter of a node is labels(node) at the
-// nodes where invariants were evaluated; other nodes, the steps inside an
-// action, repeat the letter before them.
-func (s *sccGraph) checkFormula(f *liveness.Formula, labeled func(*Node) bool, letter func(*Node) uint64) ([]*Link, error) {
-	n := len(s.nodes)
-	isLabeled, letters, canStop := make([]bool, n), make([]uint64, n), make([]bool, n)
+// letters returns which nodes are labeled, and the letter of each labeled
+// node.
+func (s *sccGraph) letters(labeled func(*Node) bool, letter func(*Node) uint64) ([]bool, []uint64) {
+	isLabeled, letters := make([]bool, len(s.nodes)), make([]uint64, len(s.nodes))
 	for i, node := range s.nodes {
 		isLabeled[i] = labeled(node)
 		if isLabeled[i] {
 			letters[i] = letter(node)
 		}
+	}
+	return isLabeled, letters
+}
+
+// canReach reports, for every node, whether some path from it reaches a
+// target node. The path can take fair and unfair links, but not crashes.
+func (s *sccGraph) canReach(target []bool) []bool {
+	if s.reverse == nil {
+		s.reverse = make([][]int, len(s.nodes))
+		for _, e := range s.g.Edges {
+			if s.g.Actions[e.Action] != liveness.Crash {
+				s.reverse[e.To] = append(s.reverse[e.To], e.From)
+			}
+		}
+	}
+	reached := slices.Clone(target)
+	var queue []int
+	for i, t := range target {
+		if t {
+			queue = append(queue, i)
+		}
+	}
+	for len(queue) > 0 {
+		i := queue[0]
+		queue = queue[1:]
+		for _, from := range s.reverse[i] {
+			if !reached[from] {
+				reached[from] = true
+				queue = append(queue, from)
+			}
+		}
+	}
+	return reached
+}
+
+// derivePossibly computes each possibly of formula f into one more atom of
+// the letters, innermost first: the atom holds at a labeled node when some
+// path from it reaches a labeled node where the possibly's operand holds.
+// It returns the atom each possibly became.
+func (s *sccGraph) derivePossibly(f *ast.Formula, isLabeled []bool, letters []uint64) (map[*ast.Formula]int, error) {
+	occurrences, atoms := possiblyOccurrences(f)
+	if atoms+len(occurrences) > 64 {
+		return nil, fmt.Errorf("%d atoms and %d uses of possibly; at most 64 atoms in all are supported", atoms, len(occurrences))
+	}
+	derived := map[*ast.Formula]int{}
+	for k, p := range occurrences {
+		bit := atoms + k
+		target := make([]bool, len(s.nodes))
+		for i := range s.nodes {
+			target[i] = isLabeled[i] && holdsInState(p.Args[0], letters[i], derived)
+		}
+		for i, ok := range s.canReach(target) {
+			if ok && isLabeled[i] {
+				letters[i] |= 1 << uint(bit)
+			}
+		}
+		derived[p] = bit
+	}
+	return derived, nil
+}
+
+// possiblyNotes explains a counterexample for each possibly that is false
+// somewhere on it: the first step after which it is false.
+func (s *sccGraph) possiblyNotes(path []*Link, derived map[*ast.Formula]int, isLabeled []bool, letters []uint64) []string {
+	var notes []string
+	for p, bit := range derived {
+		for k, link := range path {
+			i, ok := s.index[link.Node]
+			if !ok || !isLabeled[i] || letters[i]&(1<<uint(bit)) != 0 {
+				continue
+			}
+			start := p.GetSourceInfo().GetStart()
+			notes = append(notes, fmt.Sprintf("the possibly at line %d, column %d is false in the state after %s (step %d; Init is step 0): "+
+				"no path from there, without a crash, reaches its condition",
+				start.GetLine(), start.GetColumn(), link.Name, k))
+			break
+		}
+	}
+	slices.Sort(notes)
+	return notes
+}
+
+// checkFormula checks formula f on the state graph through the product with
+// its negation's automaton. The letter of a labeled node, one where
+// invariants were evaluated, is letters[i]; other nodes, the steps inside an
+// action, repeat the letter before them.
+func (s *sccGraph) checkFormula(f *liveness.Formula, isLabeled []bool, letters []uint64) ([]*Link, error) {
+	canStop := make([]bool, len(s.nodes))
+	for i, node := range s.nodes {
 		canStop[i] = isObservationNode(node)
 	}
 	p, err := liveness.NewProduct(s.g, liveness.Not(f), isLabeled, letters, canStop)
@@ -217,14 +304,24 @@ func (s *sccGraph) checkFormula(f *liveness.Formula, labeled func(*Node) bool, l
 // checkFormulaAssertion checks formula assertion j of the first file. With
 // classic set, a prefixed always-eventually or eventually-always assertion
 // is checked through the product too, with its witness as the only atom.
-// It reports whether invariant j was checked.
-func (s *sccGraph) checkFormulaAssertion(invariant *ast.Invariant, j int, classic bool) (bool, []*Link, error) {
+// It reports whether invariant j was checked, and notes that explain the
+// counterexample.
+func (s *sccGraph) checkFormulaAssertion(invariant *ast.Invariant, j int, classic bool) (bool, []*Link, []string, error) {
 	if invariant.Formula != nil {
 		fmt.Println("Checking formula", invariant.Name)
-		path, err := s.checkFormula(toLivenessFormula(invariant.Formula),
+		isLabeled, letters := s.letters(
 			func(n *Node) bool { return n.Process.Atoms != nil },
 			func(n *Node) uint64 { return n.Process.Atoms[j] })
-		return true, path, err
+		derived, err := s.derivePossibly(invariant.Formula, isLabeled, letters)
+		if err != nil {
+			return true, nil, nil, err
+		}
+		path, err := s.checkFormula(toLivenessFormula(invariant.Formula, derived), isLabeled, letters)
+		var notes []string
+		if path != nil {
+			notes = s.possiblyNotes(path, derived, isLabeled, letters)
+		}
+		return true, path, notes, err
 	}
 	if f := classicFormula(invariant); classic && f != nil {
 		if _, eventuallyAlways := livenessOperators(invariant); eventuallyAlways {
@@ -234,15 +331,16 @@ func (s *sccGraph) checkFormulaAssertion(invariant *ast.Invariant, j int, classi
 		}
 		// The same nodes strictLivenessPredicate counts.
 		relevant := func(n *Node) bool { return n.Process.GetThreadsCount() == 0 || n.Name == "yield" }
-		path, err := s.checkFormula(f, relevant, func(n *Node) uint64 {
+		isLabeled, letters := s.letters(relevant, func(n *Node) uint64 {
 			if n.Process.Witness[0][j] {
 				return 1
 			}
 			return 0
 		})
-		return true, path, err
+		path, err := s.checkFormula(f, isLabeled, letters)
+		return true, path, nil, err
 	}
-	return false, nil, nil
+	return false, nil, nil, nil
 }
 
 // CheckFormulaAssertions checks every formula assertion. With classic set,
@@ -254,12 +352,14 @@ func CheckFormulaAssertions(root *Node, nodes []*Node, classic bool) ([]*Link, *
 	}
 	s := newSccGraph(root, nodes)
 	for j, invariant := range process.Files[0].Invariants {
-		checked, path, err := s.checkFormulaAssertion(invariant, j, classic)
+		checked, path, notes, err := s.checkFormulaAssertion(invariant, j, classic)
 		if err != nil {
 			return nil, nil, fmt.Errorf("assertion %s: %w", invariant.Name, err)
 		}
 		if checked && path != nil {
-			return path, NewInvariantPosition(0, j), nil
+			pos := NewInvariantPosition(0, j)
+			pos.Note = strings.Join(notes, "\n")
+			return path, pos, nil
 		}
 	}
 	return nil, nil, nil
@@ -284,12 +384,14 @@ func CheckStrictLivenessScc(root *Node, nodes []*Node) ([]*Link, *InvariantPosit
 	s := newSccGraph(root, nodes)
 	for i, file := range process.Files {
 		for j, invariant := range file.Invariants {
-			if checked, path, err := s.checkFormulaAssertion(invariant, j, false); checked {
+			if checked, path, notes, err := s.checkFormulaAssertion(invariant, j, false); checked {
 				if err != nil {
 					return nil, nil, fmt.Errorf("assertion %s: %w", invariant.Name, err)
 				}
 				if path != nil {
-					return path, NewInvariantPosition(i, j), nil
+					pos := NewInvariantPosition(i, j)
+					pos.Note = strings.Join(notes, "\n")
+					return path, pos, nil
 				}
 				continue
 			}

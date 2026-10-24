@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	ast "fizz/proto"
+	"github.com/fizzbee-io/fizzbee/lib"
+	"github.com/fizzbee-io/fizzbee/modelchecker/liveness"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.starlark.net/starlark"
@@ -19,15 +21,22 @@ import (
 // at Init. For the classic shapes, the direct check must agree. It returns
 // the file, with its for headers expanded.
 func checkFormulaSpec(t *testing.T, name string, holds ...string) *ast.File {
+	file, _, _ := checkFormulaSpecWith(t, name, false, holds...)
+	return file
+}
+
+// checkFormulaSpecWith is checkFormulaSpec with crashes on yield set as
+// given. It also returns the explored nodes and each assertion's notes.
+func checkFormulaSpecWith(t *testing.T, name string, crashOnYield bool, holds ...string) (*ast.File, []*Node, map[string][]string) {
 	base := "."
 	if dir := os.Getenv("RUNFILES_DIR"); dir != "" {
 		base = filepath.Join(dir, "_main", "modelchecker")
 	}
 	file, err := readAstFromFile(filepath.Join(base, "testdata", "formulas", name+".json"))
 	require.Nil(t, err)
-	noDeadlock, noCrash := false, false
+	noDeadlock := false
 	stateConfig := &ast.StateSpaceOptions{
-		Options:           &ast.Options{MaxActions: 10, MaxConcurrentActions: 1, CrashOnYield: &noCrash},
+		Options:           &ast.Options{MaxActions: 10, MaxConcurrentActions: 1, CrashOnYield: &crashOnYield},
 		DeadlockDetection: &noDeadlock,
 	}
 	p := NewProcessor([]*ast.File{file}, stateConfig, false, 0, "", "", false, nil, nil, "")
@@ -37,12 +46,13 @@ func checkFormulaSpec(t *testing.T, name string, holds ...string) *ast.File {
 	nodes, _, _, _ := GetAllNodes(root, 10)
 
 	s := newSccGraph(root, nodes)
+	notes := map[string][]string{}
 	for j, inv := range file.Invariants {
 		t.Run(inv.Name, func(t *testing.T) {
 			var path []*Link
 			if inv.Formula != nil || classicFormula(inv) != nil {
 				var err error
-				_, path, err = s.checkFormulaAssertion(inv, j, true)
+				_, path, notes[inv.Name], err = s.checkFormulaAssertion(inv, j, true)
 				require.Nil(t, err)
 				if inv.Formula == nil {
 					// A classic shape: the engine's direct check, which the
@@ -73,7 +83,7 @@ func checkFormulaSpec(t *testing.T, name string, holds ...string) *ast.File {
 			}
 		})
 	}
-	return file
+	return file, nodes, notes
 }
 
 func TestFormulaAssertions(t *testing.T) {
@@ -103,6 +113,61 @@ func TestFormulaFairness(t *testing.T) {
 // until, leadsto and implies stay usable as names outside formulas.
 func TestFormulaSoftKeywords(t *testing.T) {
 	checkFormulaSpec(t, "SoftKeywords")
+}
+
+// possibly Q holds where some path, of zero or more steps over fair and
+// unfair links, reaches Q. The surrounding operators keep their fair-run
+// meaning.
+func TestFormulaPossibly(t *testing.T) {
+	file, _, notes := checkFormulaSpecWith(t, "Possibly", false)
+	for _, inv := range file.Invariants {
+		if inv.Name == "PassAlias" {
+			// exists eventually is the same operator.
+			assert.Equal(t, ast.Formula_POSSIBLY, inv.Formula.Op)
+		}
+	}
+	// The note names the first step from which the ticket can't be booked
+	// again: flying, the second step after Init.
+	require.Len(t, notes["FailRecoverable"], 1)
+	assert.Contains(t, notes["FailRecoverable"][0], "is false in the state after Fly (step 2; Init is step 0)")
+	assert.Empty(t, notes["FailNotGuaranteed"])
+}
+
+// possibly doesn't follow crash links, so a state reached only by a crash
+// isn't possible.
+func TestFormulaPossiblyIgnoresCrashes(t *testing.T) {
+	_, nodes, _ := checkFormulaSpecWith(t, "PossiblyCrash", true)
+	// The state is in the graph, reached by a crash.
+	assert.True(t, slices.ContainsFunc(nodes, func(n *Node) bool {
+		server := n.Process.Heap.state["server"].(*lib.Role)
+		warmed, _ := server.Fields.Attr("warmed")
+		cache, _ := server.Fields.Attr("cache")
+		return warmed == starlark.True && cache == starlark.MakeInt(0) &&
+			slices.ContainsFunc(n.Inbound, func(l *Link) bool { return l.IsCrashLink() })
+	}), "no crash leads to a warm server with an empty cache")
+}
+
+// Each possibly is one more atom, so the atoms and the uses of possibly
+// together can't pass 64.
+func TestFormulaPossiblyAtomLimit(t *testing.T) {
+	possibly := func(atom int32) *ast.Formula {
+		return &ast.Formula{Op: ast.Formula_POSSIBLY, Args: []*ast.Formula{{Op: ast.Formula_ATOM, Atom: atom}}}
+	}
+	s := &sccGraph{g: &liveness.Graph{}}
+	for _, tc := range []struct {
+		last int32 // the highest atom index: last+1 atoms
+		ok   bool
+	}{{61, true}, {62, false}} {
+		f := &ast.Formula{Op: ast.Formula_AND, Args: []*ast.Formula{possibly(0), possibly(tc.last)}}
+		derived, err := s.derivePossibly(f, nil, nil)
+		if tc.ok {
+			require.Nil(t, err)
+			assert.Equal(t, map[*ast.Formula]int{f.Args[0]: int(tc.last) + 1, f.Args[1]: int(tc.last) + 2}, derived)
+		} else {
+			require.NotNil(t, err)
+			assert.Contains(t, err.Error(), "63 atoms and 2 uses of possibly; at most 64")
+		}
+	}
 }
 
 func TestExpandAssertionHeaderErrors(t *testing.T) {

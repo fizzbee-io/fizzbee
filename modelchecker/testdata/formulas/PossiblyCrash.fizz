@@ -1,0 +1,29 @@
+---
+deadlock_detection: false
+---
+# A crash resets the server's ephemeral cache. Only a crash leads to a warm
+# server with an empty cache, and possibly doesn't follow crash links.
+
+@state(ephemeral=['cache'])
+role Server:
+    action Init:
+        self.cache = 0
+        self.warmed = False
+
+    atomic action Warm:
+        require not self.warmed
+        self.warmed = True
+        self.cache = 1
+
+    # Keeps an action enabled, so the crash is explored after Warm too.
+    atomic action Ping:
+        pass
+
+action Init:
+    server = Server()
+
+assertion FailOnlyByCrash:
+    return possibly (server.warmed and server.cache == 0)
+
+assertion PassWithoutCrash:
+    return possibly (server.warmed and server.cache == 1)

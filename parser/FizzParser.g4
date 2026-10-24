@@ -183,6 +183,8 @@ assertion_for_clause
 // Prefix operators bind tighter than `and`, which binds tighter than `or`,
 // which binds tighter than `implies`, `until` and `leadsto`. Those three are
 // soft keywords: they lex as NAME, and chaining them needs parentheses.
+// `possibly` is a soft keyword too; `exists eventually` is another spelling
+// of it.
 formula
     : formula_or (formula_binop formula_or)*
     ;
@@ -202,11 +204,13 @@ formula_and
     ;
 
 formula_unary
-    : (NOT | ALWAYS | EVENTUALLY | formula_possibly) formula_unary
+    : (NOT | ALWAYS | EVENTUALLY | EXISTS | formula_possibly) formula_unary
     | OPEN_PAREN formula CLOSE_PAREN
     | comparison
     ;
 
+// `possibly Q`, or `exists eventually Q`: some path from this state reaches
+// a state where Q holds. Q is a condition on a state.
 formula_possibly
     : {self.IsSoftKeyword("possibly")}? NAME
     ;
@@ -261,7 +265,7 @@ small_stmt
     | PASS                                                   # pass_stmt
     | BREAK                                                  # break_stmt
     | CONTINUE                                               # continue_stmt
-    | RETURN testlist?                                       # return_stmt
+    | {not self.ReturnsPossibly()}? RETURN testlist?         # return_stmt
     | RETURN formula                                         # formula_return_stmt
     | RAISE (test (COMMA test (COMMA test)?)?)? (FROM test)? # raise_stmt
     | yield_expr                                             # yield_stmt

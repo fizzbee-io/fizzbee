@@ -15,6 +15,9 @@ import (
 type InvariantPosition struct {
 	FileIndex      int
 	InvariantIndex int
+	// Note explains a counterexample, such as where a possibly fails, one
+	// line per point. It is a string so positions stay comparable.
+	Note string
 }
 
 func NewInvariantPosition(fileIndex, invariantIndex int) *InvariantPosition {

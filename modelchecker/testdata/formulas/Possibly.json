@@ -1,0 +1,2573 @@
+{
+  "sourceInfo": {
+    "fileName": "Possibly.fizz",
+    "start": {
+      "line": 10,
+      "column": 1
+    },
+    "end": {
+      "line": 92
+    }
+  },
+  "invariants": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 35,
+          "column": 1
+        },
+        "end": {
+          "line": 38
+        }
+      },
+      "name": "PassHere",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 36,
+            "column": 5
+          },
+          "end": {
+            "line": 38
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 36,
+                "column": 5
+              },
+              "end": {
+                "line": 38
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 36,
+                  "column": 5
+                },
+                "end": {
+                  "line": 36,
+                  "column": 72
+                }
+              },
+              "pyExpr": "[bool(status == \"flown\")]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 36,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 36,
+                    "column": 72
+                  }
+                },
+                "pyExpr": "[bool(status == \"flown\")]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassHere():\n    return always (status == \"flown\" implies possibly status == \"flown\")\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 36,
+            "column": 12
+          },
+          "end": {
+            "line": 36,
+            "column": 72
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 36,
+                "column": 20
+              },
+              "end": {
+                "line": 36,
+                "column": 71
+              }
+            },
+            "op": "IMPLIES",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 36,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 36,
+                    "column": 36
+                  }
+                },
+                "op": "ATOM"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 36,
+                    "column": 46
+                  },
+                  "end": {
+                    "line": 36,
+                    "column": 71
+                  }
+                },
+                "op": "POSSIBLY",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 36,
+                        "column": 55
+                      },
+                      "end": {
+                        "line": 36,
+                        "column": 71
+                      }
+                    },
+                    "op": "ATOM"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 38,
+          "column": 1
+        },
+        "end": {
+          "line": 41
+        }
+      },
+      "name": "PassOneStep",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 39,
+            "column": 5
+          },
+          "end": {
+            "line": 41
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 39,
+                "column": 5
+              },
+              "end": {
+                "line": 41
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 39,
+                  "column": 5
+                },
+                "end": {
+                  "line": 39,
+                  "column": 38
+                }
+              },
+              "pyExpr": "[bool(status == \"booked\")]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 39,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 39,
+                    "column": 38
+                  }
+                },
+                "pyExpr": "[bool(status == \"booked\")]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassOneStep():\n    return possibly status == \"booked\"\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 39,
+            "column": 12
+          },
+          "end": {
+            "line": 39,
+            "column": 38
+          }
+        },
+        "op": "POSSIBLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 39,
+                "column": 21
+              },
+              "end": {
+                "line": 39,
+                "column": 38
+              }
+            },
+            "op": "ATOM"
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 41,
+          "column": 1
+        },
+        "end": {
+          "line": 44
+        }
+      },
+      "name": "PassManySteps",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 42,
+            "column": 5
+          },
+          "end": {
+            "line": 44
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 42,
+                "column": 5
+              },
+              "end": {
+                "line": 44
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 42,
+                  "column": 5
+                },
+                "end": {
+                  "line": 42,
+                  "column": 50
+                }
+              },
+              "pyExpr": "[bool(((status == \"flown\") and (detour)))]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 42,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 42,
+                    "column": 50
+                  }
+                },
+                "pyExpr": "[bool(((status == \"flown\") and (detour)))]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassManySteps():\n    return possibly (status == \"flown\" and detour)\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 42,
+            "column": 12
+          },
+          "end": {
+            "line": 42,
+            "column": 50
+          }
+        },
+        "op": "POSSIBLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 42,
+                "column": 22
+              },
+              "end": {
+                "line": 42,
+                "column": 49
+              }
+            },
+            "op": "ATOM"
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 44,
+          "column": 1
+        },
+        "end": {
+          "line": 48
+        }
+      },
+      "name": "FailUnreachable",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 45,
+            "column": 5
+          },
+          "end": {
+            "line": 48
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 45,
+                "column": 5
+              },
+              "end": {
+                "line": 48
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 45,
+                  "column": 5
+                },
+                "end": {
+                  "line": 45,
+                  "column": 36
+                }
+              },
+              "pyExpr": "[bool(status == \"lost\")]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 45,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 45,
+                    "column": 36
+                  }
+                },
+                "pyExpr": "[bool(status == \"lost\")]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailUnreachable():\n    return possibly status == \"lost\"\n\n# Detour is never fair, but a path may still use it.\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 45,
+            "column": 12
+          },
+          "end": {
+            "line": 45,
+            "column": 36
+          }
+        },
+        "op": "POSSIBLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 45,
+                "column": 21
+              },
+              "end": {
+                "line": 45,
+                "column": 36
+              }
+            },
+            "op": "ATOM"
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 48,
+          "column": 1
+        },
+        "end": {
+          "line": 52
+        }
+      },
+      "name": "PassThroughUnfair",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 49,
+            "column": 5
+          },
+          "end": {
+            "line": 52
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 49,
+                "column": 5
+              },
+              "end": {
+                "line": 52
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 49,
+                  "column": 5
+                },
+                "end": {
+                  "line": 49,
+                  "column": 62
+                }
+              },
+              "pyExpr": "[bool(status == \"booked\"), bool(detour)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 49,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 49,
+                    "column": 62
+                  }
+                },
+                "pyExpr": "[bool(status == \"booked\"), bool(detour)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassThroughUnfair():\n    return always (status == \"booked\" implies possibly detour)\n\n# Possible, but not guaranteed: a fair run can fly without the detour.\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 49,
+            "column": 12
+          },
+          "end": {
+            "line": 49,
+            "column": 62
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 49,
+                "column": 20
+              },
+              "end": {
+                "line": 49,
+                "column": 61
+              }
+            },
+            "op": "IMPLIES",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 49,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 49,
+                    "column": 37
+                  }
+                },
+                "op": "ATOM"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 49,
+                    "column": 47
+                  },
+                  "end": {
+                    "line": 49,
+                    "column": 61
+                  }
+                },
+                "op": "POSSIBLY",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 49,
+                        "column": 56
+                      },
+                      "end": {
+                        "line": 49,
+                        "column": 61
+                      }
+                    },
+                    "op": "ATOM",
+                    "atom": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 52,
+          "column": 1
+        },
+        "end": {
+          "line": 55
+        }
+      },
+      "name": "FailNotGuaranteed",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 53,
+            "column": 5
+          },
+          "end": {
+            "line": 55
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 53,
+                "column": 5
+              },
+              "end": {
+                "line": 55
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 53,
+                  "column": 5
+                },
+                "end": {
+                  "line": 53,
+                  "column": 28
+                }
+              },
+              "pyExpr": "[bool(detour)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 53,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 53,
+                    "column": 28
+                  }
+                },
+                "pyExpr": "[bool(detour)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailNotGuaranteed():\n    return eventually detour\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 53,
+            "column": 12
+          },
+          "end": {
+            "line": 53,
+            "column": 28
+          }
+        },
+        "op": "EVENTUALLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 53,
+                "column": 23
+              },
+              "end": {
+                "line": 53,
+                "column": 28
+              }
+            },
+            "op": "ATOM"
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 55,
+          "column": 1
+        },
+        "end": {
+          "line": 59
+        }
+      },
+      "name": "PassCanCancel",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 56,
+            "column": 5
+          },
+          "end": {
+            "line": 59
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 56,
+                "column": 5
+              },
+              "end": {
+                "line": 59
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 56,
+                  "column": 5
+                },
+                "end": {
+                  "line": 56,
+                  "column": 77
+                }
+              },
+              "pyExpr": "[bool(status == \"booked\"), bool(status == \"cancelled\")]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 56,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 56,
+                    "column": 77
+                  }
+                },
+                "pyExpr": "[bool(status == \"booked\"), bool(status == \"cancelled\")]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassCanCancel():\n    return always (status == \"booked\" implies possibly status == \"cancelled\")\n\n# Flying ends the ticket, so it can't always be booked again.\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 56,
+            "column": 12
+          },
+          "end": {
+            "line": 56,
+            "column": 77
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 56,
+                "column": 20
+              },
+              "end": {
+                "line": 56,
+                "column": 76
+              }
+            },
+            "op": "IMPLIES",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 56,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 56,
+                    "column": 37
+                  }
+                },
+                "op": "ATOM"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 56,
+                    "column": 47
+                  },
+                  "end": {
+                    "line": 56,
+                    "column": 76
+                  }
+                },
+                "op": "POSSIBLY",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 56,
+                        "column": 56
+                      },
+                      "end": {
+                        "line": 56,
+                        "column": 76
+                      }
+                    },
+                    "op": "ATOM",
+                    "atom": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 59,
+          "column": 1
+        },
+        "end": {
+          "line": 62
+        }
+      },
+      "name": "FailRecoverable",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 60,
+            "column": 5
+          },
+          "end": {
+            "line": 62
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 60,
+                "column": 5
+              },
+              "end": {
+                "line": 62
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 60,
+                  "column": 5
+                },
+                "end": {
+                  "line": 60,
+                  "column": 43
+                }
+              },
+              "pyExpr": "[bool(status == \"none\")]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 60,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 60,
+                    "column": 43
+                  }
+                },
+                "pyExpr": "[bool(status == \"none\")]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailRecoverable():\n    return always possibly status == \"none\"\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 60,
+            "column": 12
+          },
+          "end": {
+            "line": 60,
+            "column": 43
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 60,
+                "column": 19
+              },
+              "end": {
+                "line": 60,
+                "column": 43
+              }
+            },
+            "op": "POSSIBLY",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 60,
+                    "column": 28
+                  },
+                  "end": {
+                    "line": 60,
+                    "column": 43
+                  }
+                },
+                "op": "ATOM"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 62,
+          "column": 1
+        },
+        "end": {
+          "line": 65
+        }
+      },
+      "name": "PassNested",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 63,
+            "column": 5
+          },
+          "end": {
+            "line": 65
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 63,
+                "column": 5
+              },
+              "end": {
+                "line": 65
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 63,
+                  "column": 5
+                },
+                "end": {
+                  "line": 63,
+                  "column": 71
+                }
+              },
+              "pyExpr": "[bool(status == \"booked\"), bool(status == \"flown\")]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 63,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 63,
+                    "column": 71
+                  }
+                },
+                "pyExpr": "[bool(status == \"booked\"), bool(status == \"flown\")]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassNested():\n    return possibly (status == \"booked\" and possibly status == \"flown\")\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 63,
+            "column": 12
+          },
+          "end": {
+            "line": 63,
+            "column": 71
+          }
+        },
+        "op": "POSSIBLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 63,
+                "column": 22
+              },
+              "end": {
+                "line": 63,
+                "column": 70
+              }
+            },
+            "op": "AND",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 63,
+                    "column": 22
+                  },
+                  "end": {
+                    "line": 63,
+                    "column": 39
+                  }
+                },
+                "op": "ATOM"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 63,
+                    "column": 45
+                  },
+                  "end": {
+                    "line": 63,
+                    "column": 70
+                  }
+                },
+                "op": "POSSIBLY",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 63,
+                        "column": 54
+                      },
+                      "end": {
+                        "line": 63,
+                        "column": 70
+                      }
+                    },
+                    "op": "ATOM",
+                    "atom": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 65,
+          "column": 1
+        },
+        "end": {
+          "line": 68
+        }
+      },
+      "name": "FailNested",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 66,
+            "column": 5
+          },
+          "end": {
+            "line": 68
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 66,
+                "column": 5
+              },
+              "end": {
+                "line": 68
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 66,
+                  "column": 5
+                },
+                "end": {
+                  "line": 66,
+                  "column": 82
+                }
+              },
+              "pyExpr": "[bool(status == \"booked\"), bool(status == \"cancelled\")]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 66,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 66,
+                    "column": 82
+                  }
+                },
+                "pyExpr": "[bool(status == \"booked\"), bool(status == \"cancelled\")]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailNested():\n    return always possibly (status == \"booked\" and possibly status == \"cancelled\")\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 66,
+            "column": 12
+          },
+          "end": {
+            "line": 66,
+            "column": 82
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 66,
+                "column": 19
+              },
+              "end": {
+                "line": 66,
+                "column": 82
+              }
+            },
+            "op": "POSSIBLY",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 66,
+                    "column": 29
+                  },
+                  "end": {
+                    "line": 66,
+                    "column": 81
+                  }
+                },
+                "op": "AND",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 66,
+                        "column": 29
+                      },
+                      "end": {
+                        "line": 66,
+                        "column": 46
+                      }
+                    },
+                    "op": "ATOM"
+                  },
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 66,
+                        "column": 52
+                      },
+                      "end": {
+                        "line": 66,
+                        "column": 81
+                      }
+                    },
+                    "op": "POSSIBLY",
+                    "args": [
+                      {
+                        "sourceInfo": {
+                          "start": {
+                            "line": 66,
+                            "column": 61
+                          },
+                          "end": {
+                            "line": 66,
+                            "column": 81
+                          }
+                        },
+                        "op": "ATOM",
+                        "atom": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 68,
+          "column": 1
+        },
+        "end": {
+          "line": 73
+        }
+      },
+      "name": "PassNotPossibly",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 69,
+            "column": 5
+          },
+          "end": {
+            "line": 73
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 69,
+                "column": 5
+              },
+              "end": {
+                "line": 73
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 69,
+                  "column": 5
+                },
+                "end": {
+                  "line": 69,
+                  "column": 77
+                }
+              },
+              "pyExpr": "[bool(status == \"flown\"), bool(status == \"booked\")]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 69,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 69,
+                    "column": 77
+                  }
+                },
+                "pyExpr": "[bool(status == \"flown\"), bool(status == \"booked\")]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassNotPossibly():\n    return always (status == \"flown\" implies not possibly status == \"booked\")\n\n# The outer operators keep their fair-run meaning: Fly is strongly fair, so\n# every run reaches a state from which booking is no longer possible.\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 69,
+            "column": 12
+          },
+          "end": {
+            "line": 69,
+            "column": 77
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 69,
+                "column": 20
+              },
+              "end": {
+                "line": 69,
+                "column": 76
+              }
+            },
+            "op": "IMPLIES",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 69,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 69,
+                    "column": 36
+                  }
+                },
+                "op": "ATOM"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 69,
+                    "column": 46
+                  },
+                  "end": {
+                    "line": 69,
+                    "column": 76
+                  }
+                },
+                "op": "NOT",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 69,
+                        "column": 50
+                      },
+                      "end": {
+                        "line": 69,
+                        "column": 76
+                      }
+                    },
+                    "op": "POSSIBLY",
+                    "args": [
+                      {
+                        "sourceInfo": {
+                          "start": {
+                            "line": 69,
+                            "column": 59
+                          },
+                          "end": {
+                            "line": 69,
+                            "column": 76
+                          }
+                        },
+                        "op": "ATOM",
+                        "atom": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 73,
+          "column": 1
+        },
+        "end": {
+          "line": 76
+        }
+      },
+      "name": "PassEventuallyNotPossibly",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 74,
+            "column": 5
+          },
+          "end": {
+            "line": 76
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 74,
+                "column": 5
+              },
+              "end": {
+                "line": 76
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 74,
+                  "column": 5
+                },
+                "end": {
+                  "line": 74,
+                  "column": 53
+                }
+              },
+              "pyExpr": "[bool(status == \"booked\")]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 74,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 74,
+                    "column": 53
+                  }
+                },
+                "pyExpr": "[bool(status == \"booked\")]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassEventuallyNotPossibly():\n    return eventually not possibly status == \"booked\"\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 74,
+            "column": 12
+          },
+          "end": {
+            "line": 74,
+            "column": 53
+          }
+        },
+        "op": "EVENTUALLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 74,
+                "column": 23
+              },
+              "end": {
+                "line": 74,
+                "column": 53
+              }
+            },
+            "op": "NOT",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 74,
+                    "column": 27
+                  },
+                  "end": {
+                    "line": 74,
+                    "column": 53
+                  }
+                },
+                "op": "POSSIBLY",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 74,
+                        "column": 36
+                      },
+                      "end": {
+                        "line": 74,
+                        "column": 53
+                      }
+                    },
+                    "op": "ATOM"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 76,
+          "column": 1
+        },
+        "end": {
+          "line": 80
+        }
+      },
+      "name": "PassEventuallyPossibly",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 77,
+            "column": 5
+          },
+          "end": {
+            "line": 80
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 77,
+                "column": 5
+              },
+              "end": {
+                "line": 80
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 77,
+                  "column": 5
+                },
+                "end": {
+                  "line": 77,
+                  "column": 48
+                }
+              },
+              "pyExpr": "[bool(status == \"flown\")]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 77,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 77,
+                    "column": 48
+                  }
+                },
+                "pyExpr": "[bool(status == \"flown\")]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassEventuallyPossibly():\n    return eventually possibly status == \"flown\"\n\n# possibly may sit under until.\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 77,
+            "column": 12
+          },
+          "end": {
+            "line": 77,
+            "column": 48
+          }
+        },
+        "op": "EVENTUALLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 77,
+                "column": 23
+              },
+              "end": {
+                "line": 77,
+                "column": 48
+              }
+            },
+            "op": "POSSIBLY",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 77,
+                    "column": 32
+                  },
+                  "end": {
+                    "line": 77,
+                    "column": 48
+                  }
+                },
+                "op": "ATOM"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 80,
+          "column": 1
+        },
+        "end": {
+          "line": 83
+        }
+      },
+      "name": "PassUntil",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 81,
+            "column": 5
+          },
+          "end": {
+            "line": 83
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 81,
+                "column": 5
+              },
+              "end": {
+                "line": 83
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 81,
+                  "column": 5
+                },
+                "end": {
+                  "line": 81,
+                  "column": 63
+                }
+              },
+              "pyExpr": "[bool(status == \"flown\")]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 81,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 81,
+                    "column": 63
+                  }
+                },
+                "pyExpr": "[bool(status == \"flown\")]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassUntil():\n    return (possibly status == \"flown\") until status == \"flown\"\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 81,
+            "column": 12
+          },
+          "end": {
+            "line": 81,
+            "column": 63
+          }
+        },
+        "op": "UNTIL",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 81,
+                "column": 13
+              },
+              "end": {
+                "line": 81,
+                "column": 38
+              }
+            },
+            "op": "POSSIBLY",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 81,
+                    "column": 22
+                  },
+                  "end": {
+                    "line": 81,
+                    "column": 38
+                  }
+                },
+                "op": "ATOM"
+              }
+            ]
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 81,
+                "column": 47
+              },
+              "end": {
+                "line": 81,
+                "column": 63
+              }
+            },
+            "op": "ATOM"
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 83,
+          "column": 1
+        },
+        "end": {
+          "line": 86
+        }
+      },
+      "name": "PassAlias",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 84,
+            "column": 5
+          },
+          "end": {
+            "line": 86
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 84,
+                "column": 5
+              },
+              "end": {
+                "line": 86
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 84,
+                  "column": 5
+                },
+                "end": {
+                  "line": 84,
+                  "column": 46
+                }
+              },
+              "pyExpr": "[bool(status == \"flown\")]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 84,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 84,
+                    "column": 46
+                  }
+                },
+                "pyExpr": "[bool(status == \"flown\")]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassAlias():\n    return exists eventually status == \"flown\"\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 84,
+            "column": 12
+          },
+          "end": {
+            "line": 84,
+            "column": 46
+          }
+        },
+        "op": "POSSIBLY",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 84,
+                "column": 30
+              },
+              "end": {
+                "line": 84,
+                "column": 46
+              }
+            },
+            "op": "ATOM"
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 86,
+          "column": 1
+        },
+        "end": {
+          "line": 90
+        }
+      },
+      "name": "FailAlias",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 87,
+            "column": 5
+          },
+          "end": {
+            "line": 90
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 87,
+                "column": 5
+              },
+              "end": {
+                "line": 90
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 87,
+                  "column": 5
+                },
+                "end": {
+                  "line": 87,
+                  "column": 52
+                }
+              },
+              "pyExpr": "[bool(status == \"none\")]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 87,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 87,
+                    "column": 52
+                  }
+                },
+                "pyExpr": "[bool(status == \"none\")]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailAlias():\n    return always exists eventually status == \"none\"\n\n# The call form parses as the operator too.\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 87,
+            "column": 12
+          },
+          "end": {
+            "line": 87,
+            "column": 52
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 87,
+                "column": 19
+              },
+              "end": {
+                "line": 87,
+                "column": 52
+              }
+            },
+            "op": "POSSIBLY",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 87,
+                    "column": 37
+                  },
+                  "end": {
+                    "line": 87,
+                    "column": 52
+                  }
+                },
+                "op": "ATOM"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 90,
+          "column": 1
+        },
+        "end": {
+          "line": 92
+        }
+      },
+      "name": "PassCallForm",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 91,
+            "column": 5
+          },
+          "end": {
+            "line": 92
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 91,
+                "column": 5
+              },
+              "end": {
+                "line": 92
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 91,
+                  "column": 5
+                },
+                "end": {
+                  "line": 91,
+                  "column": 55
+                }
+              },
+              "pyExpr": "[bool(((status == \"flown\") or (detour)))]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 91,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 91,
+                    "column": 55
+                  }
+                },
+                "pyExpr": "[bool(((status == \"flown\") or (detour)))]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassCallForm():\n    return always possibly(status == \"flown\" or detour)\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 91,
+            "column": 12
+          },
+          "end": {
+            "line": 91,
+            "column": 55
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 91,
+                "column": 19
+              },
+              "end": {
+                "line": 91,
+                "column": 55
+              }
+            },
+            "op": "POSSIBLY",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 91,
+                    "column": 28
+                  },
+                  "end": {
+                    "line": 91,
+                    "column": 54
+                  }
+                },
+                "op": "ATOM"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 10,
+          "column": 1
+        },
+        "end": {
+          "line": 14
+        }
+      },
+      "name": "Init",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 11,
+            "column": 5
+          },
+          "end": {
+            "line": 14
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 11,
+                "column": 5
+              },
+              "end": {
+                "line": 12,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 11,
+                  "column": 5
+                },
+                "end": {
+                  "line": 11,
+                  "column": 19
+                }
+              },
+              "code": "status = \"none\""
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 12,
+                "column": 5
+              },
+              "end": {
+                "line": 14
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 12,
+                  "column": 5
+                },
+                "end": {
+                  "line": 12,
+                  "column": 18
+                }
+              },
+              "code": "detour = False"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 14,
+          "column": 1
+        },
+        "end": {
+          "line": 18
+        }
+      },
+      "name": "Book",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "sourceInfo": {
+          "start": {
+            "line": 14,
+            "column": 8
+          },
+          "end": {
+            "line": 14,
+            "column": 11
+          }
+        },
+        "level": "FAIRNESS_LEVEL_WEAK"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 15,
+            "column": 5
+          },
+          "end": {
+            "line": 18
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 15,
+                "column": 5
+              },
+              "end": {
+                "line": 16,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 15,
+                  "column": 5
+                },
+                "end": {
+                  "line": 15,
+                  "column": 28
+                }
+              },
+              "condition": "status == \"none\"",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 15,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 15,
+                    "column": 28
+                  }
+                },
+                "pyExpr": "status == \"none\""
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 16,
+                "column": 5
+              },
+              "end": {
+                "line": 18
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 16,
+                  "column": 5
+                },
+                "end": {
+                  "line": 16,
+                  "column": 21
+                }
+              },
+              "code": "status = \"booked\""
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 18,
+          "column": 1
+        },
+        "end": {
+          "line": 22
+        }
+      },
+      "name": "Cancel",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "sourceInfo": {
+          "start": {
+            "line": 18,
+            "column": 8
+          },
+          "end": {
+            "line": 18,
+            "column": 11
+          }
+        },
+        "level": "FAIRNESS_LEVEL_WEAK"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 19,
+            "column": 5
+          },
+          "end": {
+            "line": 22
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 19,
+                "column": 5
+              },
+              "end": {
+                "line": 20,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 19,
+                  "column": 5
+                },
+                "end": {
+                  "line": 19,
+                  "column": 30
+                }
+              },
+              "condition": "status == \"booked\"",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 19,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 19,
+                    "column": 30
+                  }
+                },
+                "pyExpr": "status == \"booked\""
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 20,
+                "column": 5
+              },
+              "end": {
+                "line": 22
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 20,
+                  "column": 5
+                },
+                "end": {
+                  "line": 20,
+                  "column": 24
+                }
+              },
+              "code": "status = \"cancelled\""
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 22,
+          "column": 1
+        },
+        "end": {
+          "line": 26
+        }
+      },
+      "name": "Rebook",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "sourceInfo": {
+          "start": {
+            "line": 22,
+            "column": 8
+          },
+          "end": {
+            "line": 22,
+            "column": 11
+          }
+        },
+        "level": "FAIRNESS_LEVEL_WEAK"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 23,
+            "column": 5
+          },
+          "end": {
+            "line": 26
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 23,
+                "column": 5
+              },
+              "end": {
+                "line": 24,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 23,
+                  "column": 5
+                },
+                "end": {
+                  "line": 23,
+                  "column": 33
+                }
+              },
+              "condition": "status == \"cancelled\"",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 23,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 23,
+                    "column": 33
+                  }
+                },
+                "pyExpr": "status == \"cancelled\""
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 24,
+                "column": 5
+              },
+              "end": {
+                "line": 26
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 24,
+                  "column": 5
+                },
+                "end": {
+                  "line": 24,
+                  "column": 19
+                }
+              },
+              "code": "status = \"none\""
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 26,
+          "column": 1
+        },
+        "end": {
+          "line": 30
+        }
+      },
+      "name": "Fly",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "sourceInfo": {
+          "start": {
+            "line": 26,
+            "column": 8
+          },
+          "end": {
+            "line": 26,
+            "column": 19
+          }
+        },
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 27,
+            "column": 5
+          },
+          "end": {
+            "line": 30
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 27,
+                "column": 5
+              },
+              "end": {
+                "line": 28,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 27,
+                  "column": 5
+                },
+                "end": {
+                  "line": 27,
+                  "column": 30
+                }
+              },
+              "condition": "status == \"booked\"",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 27,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 27,
+                    "column": 30
+                  }
+                },
+                "pyExpr": "status == \"booked\""
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 28,
+                "column": 5
+              },
+              "end": {
+                "line": 30
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 28,
+                  "column": 5
+                },
+                "end": {
+                  "line": 28,
+                  "column": 20
+                }
+              },
+              "code": "status = \"flown\""
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 30,
+          "column": 1
+        },
+        "end": {
+          "line": 35
+        }
+      },
+      "name": "Detour",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 31,
+            "column": 5
+          },
+          "end": {
+            "line": 35
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 31,
+                "column": 5
+              },
+              "end": {
+                "line": 32,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 31,
+                  "column": 5
+                },
+                "end": {
+                  "line": 31,
+                  "column": 45
+                }
+              },
+              "condition": "status == \"booked\" and not detour",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 31,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 31,
+                    "column": 45
+                  }
+                },
+                "pyExpr": "status == \"booked\" and not detour"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 32,
+                "column": 5
+              },
+              "end": {
+                "line": 35
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 32,
+                  "column": 5
+                },
+                "end": {
+                  "line": 32,
+                  "column": 17
+                }
+              },
+              "code": "detour = True"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "frontMatter": {
+    "yaml": "\ndeadlock_detection: false\noptions:\n  crash_on_yield: false\n"
+  }
+}

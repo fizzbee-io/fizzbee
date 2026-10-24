@@ -1,0 +1,20 @@
+Model checking examples/references/09-16-possibly/Booking.json
+configFileName: examples/references/09-16-possibly/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}  deadlock_detection:false
+Nodes: 8, queued: 0, elapsed: 2.661864ms
+Time taken for model checking: 2.686753ms
+Writen graph dotfile: examples/references/09-16-possibly/out/run_2026-10-24_00-40-25/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/09-16-possibly/out/run_2026-10-24_00-40-25/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 8 Unique states: 8
+Checking formula CanCancel
+Checking formula CanUpgrade
+Checking formula CanBookThenFly
+Checking formula FlyingIsFinal
+Checking formula EventuallyDone
+Checking formula CanFly
+IsLive: true
+Time taken to check liveness: 338.019µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/09-16-possibly/out/run_2026-10-24_00-40-25
