@@ -228,6 +228,21 @@ type Process struct {
 
 	topLevelVars []string
 
+	// Lazy cloning (see lazyclone.go). lazyClone turns it on for this
+	// process and its forks. reach is the source's reachability result
+	// (which values are shared and which roots reach them); cloneRefs maps
+	// each shared value this process has cloned to its clone; roleByRef
+	// maps a role to this process's copy; frozen is set once the process
+	// has been forked from, after which nothing may execute on it.
+	// lazyReach caches the reachability pass for forks of this process.
+	// None are copied by CloneWithRefs.
+	lazyClone bool
+	reach     *lazyReach
+	cloneRefs map[starlark.Value]starlark.Value
+	roleByRef map[roleKey]*lib.Role
+	frozen    bool
+	lazyReach *lazyReach
+
 	// baseEnv caches the constant part of the statement environment; see
 	// baseEnvironment. Never copied by Fork or CloneWithRefs.
 	baseEnv starlark.StringDict
@@ -371,6 +386,9 @@ func (p *Process) IsYieldNode() bool {
 }
 
 func (p *Process) Fork() *Process {
+	if p.lazyClone {
+		return p.forkLazy()
+	}
 	refs := make(map[starlark.Value]starlark.Value)
 
 	p2 := &Process{
@@ -449,6 +467,11 @@ func (p *Process) CloneWithRefs(permutations map[*lib.SymmetricValue][]*lib.Symm
 	returnsCopy := make(starlark.StringDict, len(p.Returns))
 	for k, v := range p.Returns {
 		returnsCopy[k] = v
+	}
+	if p.lazyClone && p.roleByRef != nil {
+		// Containers of a lazy process may hold older copies of its roles;
+		// the clone gets the current one for each (see roleResolver).
+		refs[roleResolverKey] = &roleResolver{p: p, eager: true}
 	}
 	p2 := &Process{
 		Name:      p.Name,
@@ -752,7 +775,7 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 	CopyDict(frame.vars, dict, roleRefs, nil, 0)
 	frame.scope.getAllVisibleVariablesResolveRoles(dict, roleRefs)
 	dict["deepcopy"] = starlark.NewBuiltin("deepcopy", DeepCopyBuiltIn)
-	dict["resolve_role"] = lib.CreateResolveRoleBuiltIn(&p.Roles)
+	dict["resolve_role"] = lib.CreateResolveRoleBuiltInWithOwner(&p.Roles, p.currentRole)
 	maps.Copy(dict, p.Modules)
 
 	for _, file := range p.Files {
@@ -857,7 +880,7 @@ func (p *Process) baseEnvironment() starlark.StringDict {
 	dict := maps.Clone(lib.Builtins)
 	maps.Copy(dict, p.Heap.globals)
 	dict["deepcopy"] = deepcopyBuiltin
-	dict["resolve_role"] = lib.CreateResolveRoleBuiltIn(&p.Roles)
+	dict["resolve_role"] = lib.CreateResolveRoleBuiltInWithOwner(&p.Roles, p.currentRole)
 	maps.Copy(dict, p.Modules)
 	for _, file := range p.Files {
 		for _, role := range file.Roles {
@@ -886,6 +909,9 @@ func (p *Process) createSymmetryContext() *lib.SymmetryContext {
 		ctx = lib.NewSymmetryContext(scanner)
 	}
 	ctx.FizzCall = p.fizzCall
+	if p.reach != nil {
+		ctx.OwnNames = p.ownNames
+	}
 	return ctx
 }
 
@@ -1325,6 +1351,10 @@ type Processor struct {
 	// startProcessedQueue for the loop that drives this mode. Off by default.
 	experimentalProcessedQueue bool
 
+	// experimentalLazyClone: forks share values with the process they were
+	// forked from and clone on first reference; see lazyclone.go.
+	experimentalLazyClone bool
+
 	// experimentalNoGraph: when true (and experimentalProcessedQueue must
 	// also be true), the model checker skips dedup, skips Outbound link
 	// tracking, drops heavy Process fields (Heap/Threads/Roles/Channels)
@@ -1450,6 +1480,12 @@ func (p *Processor) GetEarlyDeadlock() *Node {
 // queue-of-processed-nodes path. Must be called before Start.
 func (p *Processor) SetExperimentalProcessedQueue(v bool) {
 	p.experimentalProcessedQueue = v
+}
+
+// SetExperimentalLazyClone makes forks share state with their source and
+// clone a value only when a statement names it. Must be called before Start.
+func (p *Processor) SetExperimentalLazyClone(v bool) {
+	p.experimentalLazyClone = v
 }
 
 // SetExperimentalNoGraph enables the no-graph memory mode. Must be called
@@ -1642,6 +1678,7 @@ func (p *Processor) GetVisitedNodesCount() int {
 func (p *Processor) InitializeNode() (*Node, *Node, error) {
 	process := NewProcess("init", p.Files, nil)
 	process.durabilitySpec = p.durabilitySpec
+	process.lazyClone = p.experimentalLazyClone
 	if p.guidedTrace == nil {
 		process.guidedTrace = GuidedTrace{}
 	} else {
@@ -3493,6 +3530,7 @@ func (p *Processor) YieldNode(node *Node) {
 		p.scheduleRoleActions(node, nil)
 	}
 
+	node.Process.dropLazyCache()
 }
 
 func (p *Processor) scheduleRoleActions(node *Node, process *Process) {
@@ -3544,6 +3582,7 @@ func (p *Processor) YieldFork(node *Node, process *Process) {
 	if len(node.Roles) > 0 {
 		p.scheduleRoleActions(node, process)
 	}
+	process.dropLazyCache()
 }
 
 func (p *Processor) scheduleChannelMessages(node *Node) {
@@ -3834,6 +3873,7 @@ func (p *Processor) ResetEphemeralVariables(node *Node, oldRole *lib.Role) {
 	if role == nil {
 		return
 	}
+	role = node.Process.currentRole(role)
 	for _, fieldName := range role.InitValues.AttrNames() {
 		attr, _ := role.InitValues.Attr(fieldName)
 		role.Fields.SetField(fieldName, attr)

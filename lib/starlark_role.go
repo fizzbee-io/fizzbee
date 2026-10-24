@@ -245,6 +245,13 @@ func fizz_func_always_error(t *starlark.Thread, b *starlark.Builtin, args starla
 // CreateResolveRoleBuiltIn returns a builtin resolve_role, when called with a role's __id__ (GetId()), returns
 // the Role object in the roles array with the given id.
 func CreateResolveRoleBuiltIn(roles *[]*Role) *starlark.Builtin {
+	return CreateResolveRoleBuiltInWithOwner(roles, nil)
+}
+
+// CreateResolveRoleBuiltInWithOwner is CreateResolveRoleBuiltIn with a hook
+// that is given the resolved role before it is returned, so a process that
+// shares roles with its parent can hand out its own copy.
+func CreateResolveRoleBuiltInWithOwner(roles *[]*Role, owner func(*Role) *Role) *starlark.Builtin {
 	return starlark.NewBuiltin("resolve_role", func(t *starlark.Thread, b *starlark.Builtin,
 		args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		if len(args) != 1 {
@@ -256,6 +263,9 @@ func CreateResolveRoleBuiltIn(roles *[]*Role) *starlark.Builtin {
 		}
 		for _, role := range *roles {
 			if role.GetId().String() == idValue.String() {
+				if owner != nil {
+					return owner(role), nil
+				}
 				return role, nil
 			}
 		}

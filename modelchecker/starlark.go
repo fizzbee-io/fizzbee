@@ -3,6 +3,7 @@ package modelchecker
 import (
 	ast "fizz/proto"
 	"fmt"
+	"sync"
 
 	"github.com/fizzbee-io/fizzbee/lib"
 	"github.com/golang/glog"
@@ -24,6 +25,9 @@ func (e *Evaluator) EvalPyExprWithContext(filename string, src interface{}, prev
 		if symCtx.FizzCall != nil {
 			thread.SetLocal(lib.FizzCallKey, symCtx.FizzCall)
 		}
+	}
+	if symCtx != nil && symCtx.OwnNames != nil {
+		symCtx.OwnNames(exprRefs(filename, src), prevState)
 	}
 	value, err := starlark.EvalOptions(e.options, thread, filename, src, prevState)
 	if err != nil {
@@ -77,6 +81,11 @@ func (e *Evaluator) ExecPyStmtAssigned(filename string, stmt *ast.PyStmt, prevSt
 		return nil, err
 	}
 	assigned := assignedNames(f.Stmts, nil)
+	if symCtx != nil && symCtx.OwnNames != nil {
+		refs := analyzeRefs(f.Stmts)
+		refs.MayMutate = true
+		symCtx.OwnNames(refs, prevState)
+	}
 	thread := &starlark.Thread{
 		Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
 	}
@@ -138,4 +147,127 @@ func assignedNames(stmts []syntax.Stmt, names []string) []string {
 		}
 	}
 	return names
+}
+
+// pureBuiltins are builtins that never change their arguments.
+var pureBuiltins = map[string]bool{
+	"len": true, "range": true, "str": true, "int": true, "float": true, "bool": true,
+	"min": true, "max": true, "sorted": true, "reversed": true, "any": true, "all": true,
+	"list": true, "tuple": true, "set": true, "dict": true, "abs": true, "enumerate": true,
+	"zip": true, "hash": true, "type": true, "repr": true, "print": true, "getattr": true,
+	"hasattr": true, "dir": true, "chr": true, "ord": true, "record": true, "bag": true,
+	"genericset": true, "genericmap": true, "struct": true, "sum": true, "isinstance": true,
+	"fail": true, "frozenset": true,
+}
+
+// pureMethods are methods of the built-in types that never change their
+// receiver or arguments.
+var pureMethods = map[string]bool{
+	"keys": true, "values": true, "items": true, "get": true, "index": true, "count": true,
+	"startswith": true, "endswith": true, "split": true, "join": true, "strip": true,
+	"lower": true, "upper": true, "format": true, "replace": true, "find": true,
+	"issubset": true, "issuperset": true, "union": true, "intersection": true,
+	"difference": true, "symmetric_difference": true, "isdisjoint": true, "copy": true,
+	"rfind": true, "lstrip": true, "rstrip": true, "title": true, "capitalize": true,
+	"elems": true, "codepoints": true, "isalpha": true, "isdigit": true, "isspace": true,
+	"partition": true, "rpartition": true, "splitlines": true, "rsplit": true,
+}
+
+// analyzeRefs walks statements and returns what they reference by name:
+// identifiers, the attributes used on each identifier, attributes used on
+// other expressions, and the identifiers called. MayMutate is set when a
+// call could change a value: a method that is not known to be pure, or
+// a function other than a pure builtin.
+func analyzeRefs(stmts []syntax.Stmt) *lib.NameRefs {
+	refs := &lib.NameRefs{}
+	seen := map[string]bool{}
+	attrSeen := map[string]bool{}
+	looseSeen := map[string]bool{}
+	var walk func(n syntax.Node) bool
+	walk = func(n syntax.Node) bool {
+		switch n := n.(type) {
+		case *syntax.Ident:
+			if !seen[n.Name] {
+				seen[n.Name] = true
+				refs.Names = append(refs.Names, n.Name)
+			}
+		case *syntax.DotExpr:
+			if id, ok := n.X.(*syntax.Ident); ok {
+				k := id.Name + "." + n.Name.Name
+				if !attrSeen[k] {
+					attrSeen[k] = true
+					if refs.Attrs == nil {
+						refs.Attrs = map[string][]string{}
+					}
+					refs.Attrs[id.Name] = append(refs.Attrs[id.Name], n.Name.Name)
+				}
+			} else if !looseSeen[n.Name.Name] {
+				looseSeen[n.Name.Name] = true
+				refs.LooseAttrs = append(refs.LooseAttrs, n.Name.Name)
+			}
+			syntax.Walk(n.X, walk)
+			return false
+		case *syntax.CallExpr:
+			switch fn := n.Fn.(type) {
+			case *syntax.Ident:
+				if !pureBuiltins[fn.Name] {
+					refs.MayMutate = true
+					refs.CallIdents = append(refs.CallIdents, fn.Name)
+				}
+			case *syntax.DotExpr:
+				if !pureMethods[fn.Name.Name] {
+					refs.MayMutate = true
+				}
+			default:
+				refs.MayMutate = true
+				refs.CallIdents = append(refs.CallIdents, "")
+			}
+		}
+		return true
+	}
+	for _, st := range stmts {
+		syntax.Walk(st, walk)
+	}
+	return refs
+}
+
+// exprRefsCache memoizes exprRefs per expression text: the same
+// expression is evaluated many times across states.
+var exprRefsCache = struct {
+	mu sync.RWMutex
+	m  map[string]*lib.NameRefs
+}{m: make(map[string]*lib.NameRefs)}
+
+// exprRefs returns analyzeRefs for an expression source as passed to
+// starlark.EvalOptions (a string, []byte or syntax.FilePortion). An
+// expression that does not parse gets empty refs; evaluation reports the
+// error.
+func exprRefs(filename string, src interface{}) *lib.NameRefs {
+	var text string
+	switch x := src.(type) {
+	case string:
+		text = x
+	case []byte:
+		text = string(x)
+	case syntax.FilePortion:
+		text = string(x.Content)
+	default:
+		return &lib.NameRefs{}
+	}
+	exprRefsCache.mu.RLock()
+	refs, ok := exprRefsCache.m[text]
+	exprRefsCache.mu.RUnlock()
+	if ok {
+		return refs
+	}
+	expr, err := syntax.ParseExpr(filename, text, 0)
+	if err == nil {
+		refs = analyzeRefs([]syntax.Stmt{&syntax.ExprStmt{X: expr}})
+	} else {
+		refs = &lib.NameRefs{}
+	}
+	exprRefsCache.mu.Lock()
+	exprRefsCache.m[text] = refs
+	exprRefsCache.mu.Unlock()
+	return refs
 }

@@ -98,6 +98,31 @@ type SymmetryContext struct {
 	// FizzCall, when set, lets fizz funcs be called inside expressions.
 	// Only predicate contexts (assertions) set it; see FizzCallKey.
 	FizzCall FizzCallFunc
+
+	// OwnNames, when set, is called before a statement or expression runs
+	// with the names it references and the environment it runs in. A
+	// process that shares values with its parent uses it to copy those
+	// values before the code can mutate them (see Process.ownNames).
+	OwnNames func(refs *NameRefs, env starlark.StringDict)
+}
+
+// NameRefs describes what a statement or expression can reach by name.
+type NameRefs struct {
+	// Names are the identifiers mentioned, in first-use order.
+	Names []string
+	// Attrs maps an identifier to the attribute names used on it
+	// (x.attr), for owning a role's fields one at a time.
+	Attrs map[string][]string
+	// LooseAttrs are attribute names used on expressions that are not a
+	// plain identifier (a[i].attr, f().attr).
+	LooseAttrs []string
+	// CallIdents are the identifiers called as functions, other than
+	// known pure builtins; a Starlark function among them can mutate
+	// anything it closes over.
+	CallIdents []string
+	// MayMutate is false when the code is an expression with no call that
+	// could change a value: it then only needs to read current values.
+	MayMutate bool
 }
 
 // FizzCallFunc runs fizz func name synchronously. recv is the role for a role

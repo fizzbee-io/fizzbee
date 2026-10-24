@@ -177,8 +177,8 @@ func (p *Process) callFizzFunc(_ *starlark.Thread, recv *lib.Role, name string, 
 	// containers are copied, so changing them can't reach the caller's state.
 	back := make(map[starlark.Value]starlark.Value)
 	for orig, cloned := range refs {
-		if _, isRole := orig.(*lib.Role); isRole {
-			back[cloned] = orig
+		if role, isRole := orig.(*lib.Role); isRole {
+			back[cloned] = p.currentRole(role)
 		}
 	}
 	result, err = deepCloneStarlarkValue(v, back)

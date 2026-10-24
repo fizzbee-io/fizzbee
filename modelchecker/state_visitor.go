@@ -90,18 +90,26 @@ func (c *UsedSymmetricValuesCollector) GetAllUsedIDs() map[string][]int64 {
 	return result
 }
 
+// visitSet tracks the values a traversal has seen. roles, when set, maps a
+// role reference to the process's current copy (lazy cloning), so that an
+// older copy met inside a container is read through the current one.
+type visitSet struct {
+	seen  map[starlark.Value]bool
+	roles map[roleKey]*lib.Role
+}
+
 // visitStarlarkValue recursively traverses a starlark value and calls visitor for each SymmetricValue found
-func visitStarlarkValue(value starlark.Value, visitor StateVisitor, visited map[starlark.Value]bool) {
+func visitStarlarkValue(value starlark.Value, visitor StateVisitor, visited *visitSet) {
 	if value == nil {
 		return
 	}
 
 	// Check if already visited to avoid infinite loops
 	if isPointerType(value) {
-		if visited[value] {
+		if visited.seen[value] {
 			return
 		}
-		visited[value] = true
+		visited.seen[value] = true
 	}
 
 	switch value.Type() {
@@ -182,6 +190,12 @@ func visitStarlarkValue(value starlark.Value, visitor StateVisitor, visited map[
 
 	case "role":
 		role := value.(*lib.Role)
+		if cur, ok := visited.roles[keyOfRole(role)]; ok && cur != role {
+			// An older copy of a role of a lazily cloned process: its
+			// current copy has the fields.
+			visitStarlarkValue(cur, visitor, visited)
+			return
+		}
 		if role.IsSymmetric() {
 			roleId := lib.NewSymmetricValue(role.Name, role.GetRef())
 			visitor.VisitSymmetricValue(roleId) // roleId is already a pointer now
@@ -206,7 +220,7 @@ func isPointerType(value starlark.Value) bool {
 }
 
 // visitStringDict visits all values in a starlark.StringDict
-func visitStringDict(dict starlark.StringDict, visitor StateVisitor, visited map[starlark.Value]bool) {
+func visitStringDict(dict starlark.StringDict, visitor StateVisitor, visited *visitSet) {
 	for _, value := range dict {
 		visitStarlarkValue(value, visitor, visited)
 	}
@@ -214,7 +228,7 @@ func visitStringDict(dict starlark.StringDict, visitor StateVisitor, visited map
 
 // AcceptVisitor traverses the entire process state calling visitor for each SymmetricValue
 func (p *Process) AcceptVisitor(visitor StateVisitor) {
-	visited := make(map[starlark.Value]bool)
+	visited := &visitSet{seen: make(map[starlark.Value]bool), roles: p.roleByRef}
 
 	visitStringDict(p.Heap.state, visitor, visited)
 
@@ -249,7 +263,7 @@ func (p *Process) AcceptVisitor(visitor StateVisitor) {
 	visitStringDict(p.Returns, visitor, visited)
 }
 
-func visitScope(scope *Scope, visitor StateVisitor, visited map[starlark.Value]bool) {
+func visitScope(scope *Scope, visitor StateVisitor, visited *visitSet) {
 	if scope == nil {
 		return
 	}
