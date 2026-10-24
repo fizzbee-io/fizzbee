@@ -260,7 +260,9 @@ func (d *SymmetryDomain) AttrNames() []string {
 // With include_points=True, each existing value is also returned as a point segment,
 // interleaved in rank order: (-inf,a1) [a1,a1] (a1,a2) ... [an,an] (an,+inf).
 // Bounds: gt/ge (lower, exclusive/inclusive), lt/le (upper, exclusive/inclusive).
-// after/before are aliases of gt/lt.
+// after/before are aliases of gt/lt. A bound is compared by position and need
+// not be active; a gap is only returned when all of it is in range, so an
+// empty or reversed range returns an empty list.
 // Usage: domain.segments(include_points=False, gt=None, ge=None, lt=None, le=None, after=None, before=None)
 func (d *SymmetryDomain) segments(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var after, before, gt, ge, lt, le starlark.Value
@@ -342,7 +344,11 @@ func (d *SymmetryDomain) segments(thread *starlark.Thread, _ *starlark.Builtin, 
 	var segments []starlark.Value
 
 	if len(used) == 0 {
-		segments = append(segments, &Segment{Domain: d, IsHead: true, IsTail: true})
+		// The single gap (-inf, +inf) is both the head and the tail, so like
+		// them it is only in range when there is no bound on that side.
+		if !hasLower && !hasUpper {
+			segments = append(segments, &Segment{Domain: d, IsHead: true, IsTail: true})
+		}
 		return starlark.NewList(segments), nil
 	}
 

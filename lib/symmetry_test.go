@@ -52,6 +52,11 @@ func TestOrdinalSegmentsIncludePoints(t *testing.T) {
 		{"TIMES.segments(include_points=True, after=b)", []string{"(20, 30)", "[30, 30]", "(30, +inf)"}},
 		{"TIMES.segments(include_points=True, le=a)", []string{"(-inf, 10)", "[10, 10]"}},
 		{"TIMES.segments(after=a, before=c)", []string{"(10, 20)", "(20, 30)"}},
+		// Single-point and empty or reversed ranges.
+		{"TIMES.segments(include_points=True, ge=a, le=a)", []string{"[10, 10]"}},
+		{"TIMES.segments(include_points=True, gt=a, le=a)", nil},
+		{"TIMES.segments(include_points=True, gt=c, lt=a)", nil},
+		{"TIMES.segments(gt=c, lt=a)", nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.expr, func(t *testing.T) {
@@ -68,6 +73,27 @@ func TestOrdinalSegmentsEmptyDomain(t *testing.T) {
 	d := &SymmetryDomain{Name: "ts", Limit: 2, Kind: SymmetryKindOrdinal}
 	got := evalSegments(t, newOrdinalThread(), d, "TIMES.segments(include_points=True)")
 	assert.Equal(t, []string{"<segment ts (-inf, +inf)>"}, got)
+
+	// A bound that is no longer active: the single gap spans both sides of it,
+	// so it is not entirely in range.
+	assert.Empty(t, evalSegments(t, newOrdinalThread(), d, "TIMES.segments(include_points=True, gt=a)", 10))
+	assert.Empty(t, evalSegments(t, newOrdinalThread(), d, "TIMES.segments(before=a)", 10))
+}
+
+func TestOrdinalSegmentsInactiveBound(t *testing.T) {
+	// Bounds are compared by position. 15 is not active; it lies inside (10, 20),
+	// so that gap straddles the bound and is excluded.
+	d := &SymmetryDomain{Name: "ts", Limit: 5, Kind: SymmetryKindOrdinal}
+	thread := newOrdinalThread(10, 20, 30)
+	env := starlark.StringDict{"TIMES": d, "x": NewSymmetricValueWithKind("ts", 15, SymmetryKindOrdinal)}
+	v, err := starlark.Eval(thread, "test", "TIMES.segments(include_points=True, gt=x)", env)
+	require.NoError(t, err)
+	list := v.(*starlark.List)
+	var got []string
+	for i := 0; i < list.Len(); i++ {
+		got = append(got, list.Index(i).String())
+	}
+	assert.Equal(t, []string{"<segment ts [20, 20]>", "<segment ts (20, 30)>", "<segment ts [30, 30]>", "<segment ts (30, +inf)>"}, got)
 }
 
 func TestOrdinalSegmentsBoundConflicts(t *testing.T) {

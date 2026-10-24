@@ -45,6 +45,7 @@ go_test(
     name = "modelchecker_test",
     srcs = [
         "checker_test.go",
+        "clone_segment_test.go",
         "formula_test.go",
         "graph_test.go",
         "invariants_test.go",

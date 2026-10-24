@@ -1978,7 +1978,7 @@ atomic action Observe:
 - With N active values this gives 2N+1 choices: N points and N+1 gaps.
 - `value()` on a gap allocates once; calling it again on the same segment returns the same value. At the limit it disables the transition, like `fresh()`.
 - `seg.is_point` tells points from gaps. `fresh()` on a point is an error.
-- Bounds: `gt`/`lt` exclude the bound, `ge`/`le` include it, and the bound must be a value from the same domain. `after`/`before` are aliases of `gt`/`lt`. For example, `segments(include_points=True, ge=t_start, lt=t_end)` offers `t_start`, every value up to `t_end`, and every gap between them.
+- Bounds: `gt`/`lt` exclude the bound, `ge`/`le` include it, and the bound must be a value from the same domain (it need not still be active). Only gaps that lie entirely in range are returned, so an empty or reversed range returns an empty list, and `oneof` over it disables the transition. `after`/`before` are aliases of `gt`/`lt`. For example, `segments(include_points=True, ge=t_start, lt=t_end)` offers `t_start`, every value up to `t_end`, and every gap between them.
 - Resolve a segment in the action that selected it. If other values are inserted into its gap before `value()` runs, the new value still lands between the segment's endpoints, but its position relative to those newer values is arbitrary.
 
 **Reference**: [16-14-ordinal-segment-points](16-14-ordinal-segment-points/)
