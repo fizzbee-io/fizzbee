@@ -236,6 +236,22 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 		return newBag, nil
 	case "role":
 		r := value.(*lib.Role)
+		if res, ok := refs[roleResolverKey].(*roleResolver); ok {
+			cur, clone := res.resolve(r)
+			if !clone {
+				refs[value] = cur
+				refs[cur] = cur
+				return cur, nil
+			}
+			if cur != r {
+				if cached, ok := refs[cur]; ok {
+					refs[value] = cached
+					return cached, nil
+				}
+				value = cur
+				r = cur
+			}
+		}
 		prefix := r.Name
 		id := r.GetId() // Get the ID object directly
 		if r.IsSymmetric() {

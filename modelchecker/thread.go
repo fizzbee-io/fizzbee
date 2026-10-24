@@ -1343,6 +1343,7 @@ func (t *Thread) executeEndOfBlock() ([]*Process, bool) {
 }
 
 func (t *Thread) CopyInitValuesForEphemeralFields(oldFrame *CallFrame) {
+	oldFrame.obj = t.Process.currentRole(oldFrame.obj)
 	fields := oldFrame.obj.Fields
 	fieldsCloned, err := deepCloneStarlarkValue(fields, nil)
 	if err != nil {

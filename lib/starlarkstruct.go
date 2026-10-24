@@ -106,6 +106,27 @@ func (s *Struct) AppendSortedField(name string, v starlark.Value) {
 // Len returns the number of fields.
 func (s *Struct) Len() int { return len(s.entries) }
 
+// ShallowCopy returns a struct with the same fields, sharing their values.
+func (s *Struct) ShallowCopy() *Struct {
+	if s == nil {
+		return nil
+	}
+	c := &Struct{constructor: s.constructor, entries: make(entries, len(s.entries))}
+	copy(c.entries, s.entries)
+	return c
+}
+
+// ReplaceField sets the value of an existing field; a missing name is
+// ignored.
+func (s *Struct) ReplaceField(name string, v starlark.Value) {
+	for i, e := range s.entries {
+		if e.name == name {
+			s.entries[i].value = v
+			return
+		}
+	}
+}
+
 // EachField calls fn for every field in sorted name order.
 func (s *Struct) EachField(fn func(name string, v starlark.Value)) {
 	for _, e := range s.entries {

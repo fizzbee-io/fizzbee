@@ -40,6 +40,7 @@ var traceExtend int
 
 var isTest bool
 var experimentalProcessedQueue bool
+var experimentalLazyClone bool
 var experimentalNoGraph bool
 var experimentalNoStateReturns bool
 var noSymmetryReduction bool
@@ -706,6 +707,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 
 		p1 = modelchecker.NewProcessor([]*ast.File{f}, stateConfig, simulation, seed, dirPath, explorationStrategy, isTest, hashes, guidedTrace, preinitHookContentResolved)
 		p1.SetExperimentalProcessedQueue(experimentalProcessedQueue)
+		p1.SetExperimentalLazyClone(experimentalLazyClone)
 		p1.SetExperimentalNoGraph(experimentalNoGraph)
 		p1.SetExperimentalNoStateReturns(experimentalNoStateReturns)
 		p1.SetDisableSymmetryReduction(noSymmetryReduction)
@@ -1172,6 +1174,7 @@ func parseFlags() []string {
 	flag.StringVar(&preinitHook, "preinit-hook", "", "Starlark code as a string to execute after preinit but before freezing globals (multiline supported)")
 	flag.BoolVar(&isTest, "test", false, "Testing mode (prevents printing timestamps and other non-deterministic behavior. Default=false")
 	flag.BoolVar(&experimentalProcessedQueue, "experimental_processed_queue", false, "EXPERIMENTAL: queue holds processed (yield-point) nodes instead of unprocessed action-starts. Dedupes successors before they enter the queue, reducing peak queue memory (~10x on BFS, ~3x on DFS). State space and assertion outcomes are identical under BFS. Under DFS/Random combined with max_actions, the changed exploration order may prune a different subset of states than the default path within the bound — raise max_actions above the spec's natural diameter to avoid the divergence. Default=false.")
+	flag.BoolVar(&experimentalLazyClone, "experimental_lazy_clone", false, "EXPERIMENTAL: a fork shares its state with the process it was forked from and copies a value only when a statement names it, instead of deep-copying the whole state on every fork. State space and assertion outcomes are identical. Default=false.")
 	flag.BoolVar(&experimentalNoGraph, "experimental_no_graph", false, "EXPERIMENTAL: drops the in-memory state graph after processing each yield-point. Keeps symmetry reduction, dedup, unique-state count, and safety/transition assertions. Does NOT support liveness assertions — refuses to run if any are present. Auto-enables --experimental_processed_queue. Massive RSS reduction at the cost of trace replayability (only a lightweight action-name chain is kept for failure reporting). Default=false.")
 	flag.BoolVar(&experimentalNoStateReturns, "experimental_no_state_returns", false, "EXPERIMENTAL: omit Process.Returns from HashCode, JSON state, and dot-file state labels. Returns remain available on Link.Returns (the per-transition field). Use this to verify downstream consumers (graph, MBT, explorer) have migrated to reading return values from links. Planned to become the default. Default=false.")
 	flag.BoolVar(&noSymmetryReduction, "no-symmetry-reduction", false, "Disable symmetry reduction: dedup uses only the plain state hash, so every persisted state keeps its concrete symmetric values/role identities (no canonical renaming). Larger state space. Required when generating state graphs for MBT replay from specs that use symmetric roles or symmetry values. Default=false.")
