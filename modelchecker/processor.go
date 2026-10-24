@@ -22,6 +22,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"slices"
 	"sort"
@@ -227,6 +228,14 @@ type Process struct {
 
 	topLevelVars []string
 
+	// baseEnv caches the constant part of the statement environment; see
+	// baseEnvironment. Never copied by Fork or CloneWithRefs.
+	baseEnv starlark.StringDict
+	// baseEnvGlobals and baseEnvModules identify the globals and modules
+	// maps baseEnv was built from.
+	baseEnvGlobals uintptr
+	baseEnvModules uintptr
+
 	// assertionBindings holds, for each assertion instance a `for` header
 	// expanded to, the values its clause names are bound to.
 	assertionBindings map[string]starlark.StringDict
@@ -287,7 +296,6 @@ func NewProcess(name string, files []*ast.File, parent *Process) *Process {
 	for i, file := range files {
 		p.Witness[i] = make([]bool, len(file.Invariants))
 	}
-	p.Children = append(p.Children, p)
 	p.Channels = make(map[int]*lib.Channel)
 	p.ChannelMessages = make(map[int][]*ChannelMessage)
 	return p
@@ -391,7 +399,9 @@ func (p *Process) Fork() *Process {
 		p2.Witness[i] = make([]bool, len(file.Invariants))
 	}
 
-	p.Children = append(p.Children, p2)
+	// Children is deliberately not populated: nothing reads it, and the
+	// back-reference would keep every fork (dedup'd ones included) alive
+	// for as long as its parent is.
 	clonedThreads := make([]*Thread, len(p.Threads))
 	for i, thread := range p.Threads {
 		if thread == nil {
@@ -756,8 +766,8 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
 	// Resolution precedence: builtins < globals < state < self < locals.
 	// See GetAllVariables for the full rationale.
-	dict := maps.Clone(lib.Builtins)
-	maps.Copy(dict, p.Heap.globals)
+	base := p.baseEnvironment()
+	dict := maps.Clone(base)
 
 	maps.Copy(dict, p.Heap.state)
 	frame := p.currentThread().currentFrame()
@@ -767,10 +777,50 @@ func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
 	maps.Copy(dict, frame.vars)
 	frame.scope.getAllVisibleVariablesToDictNoCopy(dict)
 
-	dict["deepcopy"] = starlark.NewBuiltin("deepcopy", DeepCopyBuiltIn)
+	// These were historically added after the state and locals, so they
+	// win over a user variable of the same name. Re-assert them from the
+	// base so that order still holds.
+	dict["deepcopy"] = base["deepcopy"]
+	dict["resolve_role"] = base["resolve_role"]
+	for k, v := range p.Modules {
+		dict[k] = v
+	}
+	for _, file := range p.Files {
+		for _, role := range file.Roles {
+			dict[role.Name] = base[role.Name]
+		}
+	}
+	dict["Channel"] = base["Channel"]
+	p.addPredicateFuncs(dict)
+	return dict
+}
+
+// deepcopyBuiltin is shared by every environment; it holds no state.
+var deepcopyBuiltin = starlark.NewBuiltin("deepcopy", DeepCopyBuiltIn)
+
+// baseEnvironment returns the part of the statement environment that is
+// the same for every statement this process runs: builtins, globals,
+// modules and the constructor builtins, which close over this process's
+// role list and channel map. Built on first use and reused for the life of
+// the process; a fork starts with none and builds its own, since its
+// closures must point at its own roles and channels.
+func (p *Process) baseEnvironment() starlark.StringDict {
+	// Heap.globals is replaced once, when preinit finishes (processPreInit
+	// builds the map in a local and assigns it), and is otherwise never
+	// written. A cache built from the earlier, empty map must be rebuilt
+	// once the real one is in place, so key the cache on the map's identity.
+	globalsID := reflect.ValueOf(p.Heap.globals).Pointer()
+	modulesID := reflect.ValueOf(p.Modules).Pointer()
+	if p.baseEnv != nil && p.baseEnvGlobals == globalsID && p.baseEnvModules == modulesID {
+		return p.baseEnv
+	}
+	p.baseEnvGlobals = globalsID
+	p.baseEnvModules = modulesID
+	dict := maps.Clone(lib.Builtins)
+	maps.Copy(dict, p.Heap.globals)
+	dict["deepcopy"] = deepcopyBuiltin
 	dict["resolve_role"] = lib.CreateResolveRoleBuiltIn(&p.Roles)
 	maps.Copy(dict, p.Modules)
-
 	for _, file := range p.Files {
 		for _, role := range file.Roles {
 			symmetric := slices.Contains(role.Modifiers, "symmetric")
@@ -778,7 +828,7 @@ func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
 		}
 	}
 	dict["Channel"] = lib.CreateChannelBuiltin(p.Channels)
-	p.addPredicateFuncs(dict)
+	p.baseEnv = dict
 	return dict
 }
 
@@ -1259,6 +1309,9 @@ type Processor struct {
 	// after expansion) and for coverage warnings in simulation mode.
 	// Indexed [fileIndex][invariantIndex]; lazily sized on first use.
 	existsWitness [][]bool
+
+	// usesSymmetry caches specUsesSymmetry's answer; nil until first asked.
+	usesSymmetry *bool
 }
 
 // accumulateExistsWitness ORs a just-checked process's Witness flags into
@@ -2726,10 +2779,80 @@ func (p *Processor) findVisitedSymmetric(node *Node) (*Node, bool, string) {
 		other, ok := p.visited[hash]
 		return other, ok, hash
 	}
+	if !p.specUsesSymmetry(node.Process) {
+		// Nothing to permute: the one translation getSymmetryTranslations
+		// would produce is the state's own hash with roles in canonical
+		// order. Compute that directly instead of cloning the state.
+		hash := node.canonicalHashWithoutSymmetry()
+		other, ok := p.visited[hash]
+		return other, ok, hash
+	}
 	hashes := node.getSymmetryTranslations()
 	minHash := node.minHashCode(hashes)
 	other, ok := p.visited[minHash]
 	return other, ok, minHash
+}
+
+// specUsesSymmetry reports whether the spec can hold a symmetric value at
+// all: a role declared symmetric, or a symmetric_values / symmetry domain
+// definition among the globals or the initial state. Computed once per
+// run; when false, findVisitedSymmetric skips the clone-and-permute path.
+func (p *Processor) specUsesSymmetry(process *Process) bool {
+	if p.usesSymmetry != nil {
+		return *p.usesSymmetry
+	}
+	uses := false
+	for _, file := range p.Files {
+		for _, role := range file.Roles {
+			if slices.Contains(role.Modifiers, "symmetric") {
+				uses = true
+			}
+		}
+	}
+	isSymmetryDef := func(v starlark.Value) bool {
+		switch v.(type) {
+		case lib.SymmetricValues, *lib.SymmetricValues, *lib.SymmetryDomain:
+			return true
+		}
+		return false
+	}
+	if !uses && process != nil && process.Heap != nil {
+		for _, v := range process.Heap.globals {
+			if isSymmetryDef(v) {
+				uses = true
+			}
+		}
+		for _, v := range process.Heap.state {
+			if isSymmetryDef(v) {
+				uses = true
+			}
+		}
+	}
+	p.usesSymmetry = &uses
+	return uses
+}
+
+// canonicalHashWithoutSymmetry is the hash getSymmetryTranslations yields
+// for a state with no symmetric values: HashCode with the roles sorted by
+// name and ref (step 5 of symmetricHashWithoutClone), computed on the
+// state itself. The role order and the hash cache are restored afterwards
+// so HashCode keeps returning the unsorted-order value elsewhere.
+func (p *Process) canonicalHashWithoutSymmetry() string {
+	origRoles := make([]*lib.Role, len(p.Roles))
+	copy(origRoles, p.Roles)
+	sort.Slice(p.Roles, func(i, j int) bool {
+		if p.Roles[i].Name != p.Roles[j].Name {
+			return p.Roles[i].Name < p.Roles[j].Name
+		}
+		return p.Roles[i].GetRef() < p.Roles[j].GetRef()
+	})
+	p.CachedHashCode = ""
+	hash := p.HashCode()
+	copy(p.Roles, origRoles)
+	// Leave the canonical value cached: Node.Duplicate calls HashCode on
+	// both nodes of a dedup hit only to populate CachedThreadHashes, and a
+	// cleared cache would make it redo the whole hash.
+	return hash
 }
 
 func (p *Process) symmetricHash(permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) string {

@@ -122,9 +122,39 @@ func GetFieldByPath(msg proto.Message, path string) *reflect.Value {
 	return &v //.Interface()
 }
 
+// nextPathCache memoizes GetNextFieldPath's string result per (AST, path).
+// The AST is read-only after parsing, so the answer for a path never
+// changes; without the cache every statement re-splits the path and walks
+// the proto by reflection to find its successor.
+var nextPathCache = struct {
+	mu sync.RWMutex
+	m  map[proto.Message]map[string]string
+}{m: make(map[proto.Message]map[string]string)}
+
 func GetNextFieldPath(msg proto.Message, path string) (string, *reflect.Value) {
-	v := reflect.ValueOf(msg).Elem()
-	_ = v
+	nextPathCache.mu.RLock()
+	if inner, ok := nextPathCache.m[msg]; ok {
+		if next, hit := inner[path]; hit {
+			nextPathCache.mu.RUnlock()
+			return next, nil
+		}
+	}
+	nextPathCache.mu.RUnlock()
+
+	next, field := getNextFieldPath(msg, path)
+
+	nextPathCache.mu.Lock()
+	inner, ok := nextPathCache.m[msg]
+	if !ok {
+		inner = make(map[string]string)
+		nextPathCache.m[msg] = inner
+	}
+	inner[path] = next
+	nextPathCache.mu.Unlock()
+	return next, field
+}
+
+func getNextFieldPath(msg proto.Message, path string) (string, *reflect.Value) {
 	parts := strings.Split(path, ".")
 	for i := len(parts) - 1; i >= 0; i-- {
 		part := parts[i]
