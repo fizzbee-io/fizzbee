@@ -16,6 +16,7 @@ go_library(
         "starlark_role.go",
         "starlark_types.go",
         "starlarkstruct.go",
+        "statehash.go",
         "symmetry.go",
         "tri_state.go",
         "yaml.go",
@@ -37,7 +38,10 @@ go_library(
 
 go_test(
     name = "lib_test",
-    srcs = ["jsonmarshaller_test.go"],
+    srcs = [
+        "jsonmarshaller_test.go",
+        "statehash_test.go",
+    ],
     embed = [":lib"],
     deps = [
         "@com_github_stretchr_testify//assert",
