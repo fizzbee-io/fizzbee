@@ -12,6 +12,16 @@ import (
 type Evaluator struct {
 	options *syntax.FileOptions
 	thread  *starlark.Thread
+
+	// fixedEnv holds the names every statement environment asserts after
+	// the user's own: deepcopy, resolve_role, the modules, the role
+	// constructors and Channel. The builtins find the running process
+	// through thread locals, so one map serves every process; it is keyed
+	// on the modules map it was built from. fizzFuncs are the shared
+	// builtins for top-level fizz funcs (predicate calls).
+	fixedEnv        starlark.StringDict
+	fixedEnvModules uintptr
+	fizzFuncs       map[string]*starlark.Builtin
 }
 
 func NewEvaluator(options *syntax.FileOptions, thread *starlark.Thread) *Evaluator {

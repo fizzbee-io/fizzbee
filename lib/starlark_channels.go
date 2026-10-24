@@ -83,6 +83,25 @@ func (c *Channel) AttrNames() []string {
 func CreateChannelBuiltin(channels map[int]*Channel) *starlark.Builtin {
     return starlark.NewBuiltin("Channel", func(t *starlark.Thread, b *starlark.Builtin,
         args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+        return newChannel(channels, args, kwargs)
+    })
+}
+
+// CreateChannelBuiltinFromThread is CreateChannelBuiltin over the channel
+// map in the thread local ChannelsKey.
+func CreateChannelBuiltinFromThread() *starlark.Builtin {
+    return starlark.NewBuiltin("Channel", func(t *starlark.Thread, b *starlark.Builtin,
+        args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+        channels, ok := t.Local(ChannelsKey).(map[int]*Channel)
+        if !ok || channels == nil {
+            return nil, fmt.Errorf("Channel called outside a process")
+        }
+        return newChannel(channels, args, kwargs)
+    })
+}
+
+func newChannel(channels map[int]*Channel, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+    {
         var ordering, delivery, blocking string
 
         if err := starlark.UnpackArgs("Channel", args, kwargs,
@@ -100,7 +119,7 @@ func CreateChannelBuiltin(channels map[int]*Channel) *starlark.Builtin {
         channels[nextChannelId] = newChannel
         nextChannelId++
         return newChannel, nil
-    })
+    }
 }
 
 // RoleStub wraps an existing Role and associates it with a Channel
