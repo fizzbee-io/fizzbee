@@ -44,3 +44,14 @@ go_test(
         "@net_starlark_go//starlark",
     ],
 )
+
+go_test(
+    name = "symmetry_test",
+    srcs = ["symmetry_test.go"],
+    embed = [":lib"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@net_starlark_go//starlark",
+    ],
+)

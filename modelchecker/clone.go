@@ -162,12 +162,25 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 			}
 		}
 
+		newResolvedID := s.ResolvedID
+		if permutations != nil && s.Resolved {
+			for oldSV, newSVs := range permutations {
+				if oldSV.GetPrefix() == s.Domain.Name && oldSV.GetId() == s.ResolvedID {
+					newResolvedID = newSVs[alt].GetId()
+					break
+				}
+			}
+		}
+
 		newSegment := &lib.Segment{
-			Domain: s.Domain,
-			Left:   newLeft,
-			Right:  newRight,
-			IsHead: s.IsHead,
-			IsTail: s.IsTail,
+			Domain:     s.Domain,
+			Left:       newLeft,
+			Right:      newRight,
+			IsHead:     s.IsHead,
+			IsTail:     s.IsTail,
+			IsPoint:    s.IsPoint,
+			Resolved:   s.Resolved,
+			ResolvedID: newResolvedID,
 		}
 		return newSegment, nil
 	case "genericset":
