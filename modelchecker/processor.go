@@ -14,6 +14,8 @@
 package modelchecker
 
 import (
+	"runtime"
+	"sync"
 	"crypto/sha256"
 	ast "fizz/proto"
 	"fmt"
@@ -23,7 +25,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"slices"
 	"sort"
 	"strings"
@@ -239,6 +240,44 @@ type Process struct {
 	// assertionBindings holds, for each assertion instance a `for` header
 	// expanded to, the values its clause names are bound to.
 	assertionBindings map[string]starlark.StringDict
+
+	// State release (Processor.experimentalDropStates): a process's heap,
+	// threads, roles and channels are dropped once its own node and every
+	// process forked from it have been processed, since nothing reads them
+	// after that. isNode says a Node wraps this process; processed says
+	// that node was processed (or discarded); pendingForks counts forks
+	// whose processes have not finished; finished says this process has
+	// counted down its parent.
+	isNode       bool
+	processed    bool
+	finished     bool
+	pendingForks int
+	// released is set once the heavy fields were dropped. releasedThreads
+	// keeps the thread count and releasedJson the state's JSON for the
+	// final dump, when that is wanted.
+	released        bool
+	releasedThreads int
+	releasedJson    string
+	// releasedPc and releasedObj keep what the liveness pass reads of the
+	// current thread (see fairnessLinkName): its program counter and the
+	// role it runs on, "" when none.
+	releasedPc  string
+	releasedObj string
+}
+
+// currentPcAndObj returns the current thread's program counter and the
+// reference of the role it runs on ("" when none), from the thread or from
+// what was kept when the state was released.
+func (p *Process) currentPcAndObj() (string, string) {
+	if p.released {
+		return p.releasedPc, p.releasedObj
+	}
+	frame := p.currentThread().currentFrame()
+	obj := ""
+	if frame.obj != nil {
+		obj = frame.obj.RefStringShort()
+	}
+	return frame.pc, obj
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
@@ -343,9 +382,40 @@ func (p *Process) GetThreads() []*Thread {
 	return activeThreads
 }
 
+// sameStateAs says whether p and other hash to the same state. A released
+// state that was never hashed can't be hashed any more; it then counts as
+// the same state only when it is the same process. The one reader is the
+// communication summary, which skips self-transitions.
+func (p *Process) sameStateAs(other *Process) bool {
+	if p == other {
+		return true
+	}
+	if (p.released && p.CachedHashCode == "") || (other.released && other.CachedHashCode == "") {
+		return false
+	}
+	return p.HashCode() == other.HashCode()
+}
+
+// threadHashes returns the hash of each thread slot ("" for a removed
+// thread). A live state computes them afresh, as HashCode does, since a
+// cached slice may predate the last step; a released state keeps the ones
+// computed at its release.
+func (p *Process) threadHashes() []string {
+	if !p.released {
+		p.CachedThreadHashes = make([]string, len(p.Threads))
+		for i, thread := range p.Threads {
+			p.CachedThreadHashes[i] = thread.HashCode()
+		}
+	}
+	return p.CachedThreadHashes
+}
+
 func (p *Process) GetThreadsCount() int {
 	if p == nil {
 		return 0
+	}
+	if p.released {
+		return p.releasedThreads
 	}
 	return len(p.GetThreads())
 }
@@ -393,6 +463,7 @@ func (p *Process) Fork() *Process {
 	if p.Stats.TotalActions <= 1 {
 		p2.topLevelVars = slices.Clone(p.topLevelVars)
 	}
+	p.pendingForks++
 
 	p2.Witness = make([][]bool, len(p.Files))
 	for i, file := range p.Files {
@@ -573,7 +644,20 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 }
 
 func (n *Node) GetJsonString() string {
-	bytes, err := lib.MarshalJSON(n.Process)
+	return n.Process.jsonString()
+}
+
+// jsonString is the state as the final dump writes it, or the copy kept
+// when the state was released.
+func (p *Process) jsonString() string {
+	if p.released {
+		return p.releasedJson
+	}
+	return p.marshalState()
+}
+
+func (p *Process) marshalState() string {
+	bytes, err := lib.MarshalJSON(p)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return ""
@@ -1087,6 +1171,7 @@ func (l *Link) HasFailedInvariants() bool {
 	return false
 }
 func NewNode(process *Process) *Node {
+	process.isNode = true
 	return &Node{
 		Process:     process,
 		Inbound:     make([]*Link, 0, 10),
@@ -1134,15 +1219,12 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 func (n *Node) CreateNewToOldThreadIndexMap(other *Node) map[int]int {
 	// Create a threads map to map the thread index of the original node to the thread index of the new node
 	// based on the node.Process.CachedThreadHashCode order
-	// Ensure CachedThreadHashes are populated before building the index map
-	n.HashCode()
-	other.HashCode()
 	threadsMap := make(map[int]int)
 	oldThreadHashToIndex := make(map[string][]int)
-	for i, hash := range n.Process.CachedThreadHashes {
+	for i, hash := range n.Process.threadHashes() {
 		oldThreadHashToIndex[hash] = append(oldThreadHashToIndex[hash], i)
 	}
-	for i, hash := range other.Process.CachedThreadHashes {
+	for i, hash := range other.Process.threadHashes() {
 		if hash == "" {
 			continue
 		}
@@ -1198,6 +1280,7 @@ func (n *Node) ForkForAction(process *Process, role *lib.Role, action *ast.Actio
 		forkDepth:   n.forkDepth + 1,
 		stacktrace:  captureStackTrace(),
 	}
+	forkNode.Process.isNode = true
 	forkNode.Process.Name = actionName
 	forkNode.Inbound = append(forkNode.Inbound, &Link{Node: n, Type: "action", Name: actionName})
 	forkNode.Process.Stats.Increment(actionName)
@@ -1205,7 +1288,7 @@ func (n *Node) ForkForAction(process *Process, role *lib.Role, action *ast.Actio
 }
 
 func (n *Node) ForkForAlternatePaths(process *Process, name string) *Node {
-
+	process.isNode = true
 	forkNode := &Node{
 		Process:     process,
 		Inbound:     make([]*Link, 0, 10),
@@ -1253,6 +1336,20 @@ type Processor struct {
 	// at startup. The failure path (parent pointer chain via Inbound[0])
 	// remains intact so a failure trace can be reconstructed on demand.
 	experimentalNoGraph bool
+
+	// experimentalDropStates releases each process's state (heap, threads,
+	// roles, channels) once its node and every fork of it have been
+	// processed. The graph, hashes, witnesses and thread counts stay, so
+	// liveness still runs; failure traces are replayed from the action
+	// names. dropStatesKeepJson keeps each state's JSON for the final
+	// dump. releasedStates counts the releases, for the run summary.
+	experimentalDropStates bool
+	dropStatesKeepJson     bool
+	releasedStates         int
+	// releaseJobs feeds released states to the goroutines that write their
+	// JSON off the checking thread; releaseWg waits for them at the end.
+	releaseJobs chan *releaseJob
+	releaseWg   sync.WaitGroup
 
 	// disableSymmetryReduction: when true, visited-set dedup uses only the
 	// plain state hash — no symmetry permutations, so no canonical renaming
@@ -1375,6 +1472,139 @@ func (p *Processor) SetExperimentalProcessedQueue(v bool) {
 // experimentalProcessedQueue and for refusing specs with liveness assertions.
 func (p *Processor) SetExperimentalNoGraph(v bool) {
 	p.experimentalNoGraph = v
+}
+
+// SetExperimentalDropStates turns state release on; keepJson keeps each
+// released state's JSON so the final dump still has it. Must be called
+// before Start.
+func (p *Processor) SetExperimentalDropStates(v bool, keepJson bool) {
+	p.experimentalDropStates = v
+	p.dropStatesKeepJson = keepJson
+}
+
+// markProcessed records that the node wrapping proc was processed (or
+// discarded) and releases the states that no longer have a reader: proc
+// itself once its forks are done, then its ancestors, which the counting
+// reaches when their last fork finishes. A fork that never became a node
+// (an intermediate of an action) finishes with its own forks.
+func (p *Processor) markProcessed(proc *Process) {
+	if proc == nil {
+		return
+	}
+	proc.processed = true
+	p.finish(proc)
+}
+
+func (p *Processor) finish(proc *Process) {
+	for proc != nil {
+		if proc.finished || proc.pendingForks != 0 {
+			return
+		}
+		if proc.isNode && !proc.processed {
+			return
+		}
+		proc.finished = true
+		p.releaseState(proc)
+		parent := proc.Parent
+		if parent == nil {
+			return
+		}
+		parent.pendingForks--
+		if parent.finished {
+			// A fork made after the parent finished: a crash variant
+			// added when a later path reached a crash node.
+			if parent.pendingForks == 0 {
+				p.releaseState(parent)
+			}
+			return
+		}
+		proc = parent
+	}
+}
+
+// releaseJob carries a shallow copy of a released process, which keeps its
+// state alive until a worker has written the JSON into proc.releasedJson.
+// The worker reads only the copy, so the checking thread can clear proc.
+type releaseJob struct {
+	proc   *Process
+	shadow Process
+}
+
+// startReleaseWorkers starts the goroutines that write released states'
+// JSON, when the final dump wants it. Marshalling is as expensive as the
+// check's own work per state, and the checking thread is single, so this
+// uses the cores the collector leaves idle.
+func (p *Processor) startReleaseWorkers() {
+	if !p.experimentalDropStates || !p.dropStatesKeepJson || p.releaseJobs != nil {
+		return
+	}
+	workers := runtime.GOMAXPROCS(0) - 1
+	if workers < 1 {
+		workers = 1
+	}
+	if workers > 3 {
+		workers = 3
+	}
+	p.releaseJobs = make(chan *releaseJob, 4096)
+	for i := 0; i < workers; i++ {
+		p.releaseWg.Add(1)
+		go func() {
+			defer p.releaseWg.Done()
+			for job := range p.releaseJobs {
+				job.proc.releasedJson = job.shadow.marshalState()
+			}
+		}()
+	}
+}
+
+// stopReleaseWorkers waits for every queued state's JSON to be written.
+// Called when the check ends, before anything reads the released states.
+func (p *Processor) stopReleaseWorkers() {
+	if p.releaseJobs == nil {
+		return
+	}
+	close(p.releaseJobs)
+	p.releaseWg.Wait()
+	p.releaseJobs = nil
+}
+
+// releaseState drops the heavy fields of a finished process. The hash,
+// witnesses, atoms, enabled flag and thread count stay, so the liveness
+// pass and the graph see what they saw before.
+func (p *Processor) releaseState(proc *Process) {
+	if !p.experimentalDropStates || proc.released || proc.Heap == nil {
+		return
+	}
+	// A state reached only by a crash so far forks crash variants of its
+	// threads when a regular path reaches it later (see crashThread), so
+	// it keeps its state until that rename.
+	if proc.Name == "crash" {
+		return
+	}
+	if proc.isNode {
+		// Thread hashes are what a later duplicate of this node maps its
+		// threads with (CreateNewToOldThreadIndexMap); keep them.
+		proc.threadHashes()
+		if p.dropStatesKeepJson {
+			if p.releaseJobs != nil {
+				p.releaseJobs <- &releaseJob{proc: proc, shadow: *proc}
+			} else {
+				proc.releasedJson = proc.marshalState()
+			}
+		}
+	}
+	proc.releasedThreads = proc.GetThreadsCount()
+	if proc.Current >= 0 && proc.Current < len(proc.Threads) && proc.Threads[proc.Current] != nil && proc.Threads[proc.Current].Stack.Len() > 0 {
+		proc.releasedPc, proc.releasedObj = proc.currentPcAndObj()
+	}
+	proc.released = true
+	proc.Heap = nil
+	proc.Threads = nil
+	proc.Roles = nil
+	proc.Channels = nil
+	proc.ChannelMessages = nil
+	proc.Children = nil
+	p.releasedStates++
 }
 
 // SetDisableSymmetryReduction turns off symmetry-permutation dedup so every
@@ -1632,6 +1862,8 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 	}
 
 	p.addToProcessingQueue(p.Init)
+	p.startReleaseWorkers()
+	defer p.stopReleaseWorkers()
 	prevCount := 0
 	for p.queue.Len() != 0 && !p.stopped {
 		node, found := p.queue.Remove()
@@ -1641,6 +1873,7 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 
 		if node.actionDepth > int(p.config.Options.MaxActions) {
 			// Add a node to indicate why this node was not processed
+			p.markProcessed(node.Process)
 			continue
 		}
 
@@ -1674,6 +1907,9 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 		fmt.Printf("Nodes: %d, queued: %d\n", len(p.visited), p.queue.Len())
 	} else {
 		fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
+	}
+	if p.experimentalDropStates {
+		fmt.Printf("Released states: %d\n", p.releasedStates)
 	}
 	p.printPeakSummary()
 
@@ -1711,6 +1947,9 @@ func (p *Processor) expandToYield(node *Node, startTime time.Time, prevCount *in
 			}
 			*prevCount = len(p.visited)
 		}
+		// Duplicate() clears finalNode.Process, so keep the process for
+		// the release accounting below.
+		proc := finalNode.Process
 		invariantFailure, symmetryFound = p.processNode(finalNode)
 		if p.guidedTrace != nil {
 			p.visited = make(map[string]*Node)
@@ -1730,6 +1969,12 @@ func (p *Processor) expandToYield(node *Node, startTime time.Time, prevCount *in
 				break
 			}
 		}
+		if finalNode.DuplicateOf != nil {
+			// Merged into an existing node: not in the graph, so no
+			// hash or JSON to keep for it.
+			proc.isNode = false
+		}
+		p.markProcessed(proc)
 		if p.intermediateStates.Len() == 0 {
 			break
 		}
@@ -1945,6 +2190,9 @@ func (p *Processor) printRunSummary(startTime time.Time) {
 	} else {
 		fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
 	}
+	if p.experimentalDropStates {
+		fmt.Printf("Released states: %d\n", p.releasedStates)
+	}
 	p.printPeakSummary()
 }
 
@@ -2027,6 +2275,7 @@ func (p *Processor) probeNextStates(process *Process) []*NextTransition {
 	defer lib.RestoreGlobalRefs(snapshot)
 
 	// Temp wrapper node; ForkForAction/ForkForAlternatePaths only read it.
+	process.isNode = true
 	base := &Node{Process: process}
 
 	type probeStart struct {
@@ -2527,6 +2776,11 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 				}
 			}
 			node.Duplicate(other, yield)
+			// Duplicate may have renamed a crash node; release it if it
+			// was only waiting for that.
+			if other.Process != nil && other.Process.finished && other.Process.pendingForks == 0 {
+				p.releaseState(other.Process)
+			}
 			// Count this as a "live successor" signal for the early
 			// deadlock detector in startProcessedQueue Phase 2. A dedup
 			// hit means an action-start reached a previously visited

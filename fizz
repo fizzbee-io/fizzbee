@@ -197,6 +197,13 @@ usage() {
   echo "        state labels. Returns remain available on the per-transition"
   echo "        Link.Returns field. Use to verify downstream consumers (graph,"
   echo "        MBT, explorer) have migrated to reading from links."
+  echo "    --experimental_drop_states"
+  echo "        Releases each state's heap, threads, roles and channels once"
+  echo "        its node and every fork of it have been processed. Keeps the"
+  echo "        graph, hashes, witnesses and thread counts, so dedup, symmetry,"
+  echo "        safety and liveness checks are unchanged; a failure trace is"
+  echo "        replayed from its action names. Ignored in the playground, in"
+  echo "        simulation and with a trace."
   exit 1
 }
 
@@ -217,6 +224,7 @@ preinit_hook_string=""
 experimental_processed_queue=false
 experimental_no_graph=false
 experimental_no_state_returns=false
+experimental_drop_states=false
 no_symmetry_reduction=false
 parallel=1
 
@@ -345,6 +353,10 @@ while [[ "$1" =~ ^- ]]; do
       experimental_no_state_returns=true
       shift
       ;;
+    --experimental_drop_states )
+      experimental_drop_states=true
+      shift
+      ;;
     --no-symmetry-reduction )
       no_symmetry_reduction=true
       shift
@@ -418,6 +430,9 @@ if [ "$experimental_no_graph" = true ]; then
 fi
 if [ "$experimental_no_state_returns" = true ]; then
   args+=("--experimental_no_state_returns")
+fi
+if [ "$experimental_drop_states" = true ]; then
+  args+=("--experimental_drop_states")
 fi
 if [ "$no_symmetry_reduction" = true ]; then
   args+=("--no-symmetry-reduction")
