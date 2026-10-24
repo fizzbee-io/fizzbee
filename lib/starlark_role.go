@@ -3,6 +3,7 @@ package lib
 import (
 	ast "fizz/proto"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"go.starlark.net/starlark"
@@ -140,11 +141,13 @@ func (r *Role) String() string {
 
 func (r *Role) MarshalJSON() ([]byte, error) {
 	b := strings.Builder{}
-	b.WriteString("{")
-	b.WriteString(fmt.Sprintf("\"name\": \"%s\",", r.Name))
-	b.WriteString(fmt.Sprintf("\"ref\": %d,", r.GetRef()))
-	b.WriteString(fmt.Sprintf("\"ref_string\": \"%s\",", r.RefStringShort()))
-	b.WriteString("\"params\": ")
+	b.WriteString("{\"name\": \"")
+	b.WriteString(r.Name)
+	b.WriteString("\",\"ref\": ")
+	b.WriteString(strconv.FormatInt(r.GetRef(), 10))
+	b.WriteString(",\"ref_string\": \"")
+	b.WriteString(r.RefStringShort())
+	b.WriteString("\",\"params\": ")
 	params, err := r.Params.MarshalJSON()
 	if err != nil {
 		return nil, err

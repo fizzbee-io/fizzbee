@@ -972,6 +972,30 @@ func NewBag(elems []starlark.Value) *Bag {
 	return &Bag{elems: sortAsString(elems)}
 }
 
+// BagFromSortedSlice wraps elems without sorting them. The caller
+// guarantees they are already in the bag's string order, as they are when
+// copied from another bag's iteration.
+func BagFromSortedSlice(elems []starlark.Value) *Bag {
+	return &Bag{elems: elems}
+}
+
+// GenericMapFromEntries wraps entries without checking the keys for
+// duplicates. The caller guarantees the keys are distinct, as they are when
+// copied from another genericmap or genericset.
+func GenericMapFromEntries(entries []starlark.Tuple) *GenericMap {
+	return &GenericMap{entries: entries}
+}
+
+// GenericSetFromDistinct wraps keys without checking them for duplicates.
+// See GenericMapFromEntries.
+func GenericSetFromDistinct(keys []starlark.Value) *GenericSet {
+	entries := make([]starlark.Tuple, len(keys))
+	for i, k := range keys {
+		entries[i] = starlark.Tuple{k, starlark.None}
+	}
+	return &GenericSet{dict: &GenericMap{entries: entries}}
+}
+
 type Bag struct {
 	elems []starlark.Value
 }

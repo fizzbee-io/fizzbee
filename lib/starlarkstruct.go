@@ -81,6 +81,38 @@ func FromStringDict(constructor starlark.Value, d starlark.StringDict) *Struct {
 	return s
 }
 
+// NewEmptyStruct returns a struct with no fields and room for capacity of
+// them. The caller fills it with AppendSortedField. It exists so a deep
+// clone can register the new struct in its refs map before cloning the
+// field values (needed for cyclic references) without going through a
+// StringDict and a sort.
+func NewEmptyStruct(constructor starlark.Value, capacity int) *Struct {
+	if constructor == nil {
+		panic("nil constructor")
+	}
+	return &Struct{
+		constructor: constructor,
+		entries:     make(entries, 0, capacity),
+	}
+}
+
+// AppendSortedField appends a field. The caller guarantees that name sorts
+// after every field already present, which holds when fields are copied
+// from another struct in EachField order.
+func (s *Struct) AppendSortedField(name string, v starlark.Value) {
+	s.entries = append(s.entries, entry{name, v})
+}
+
+// Len returns the number of fields.
+func (s *Struct) Len() int { return len(s.entries) }
+
+// EachField calls fn for every field in sorted name order.
+func (s *Struct) EachField(fn func(name string, v starlark.Value)) {
+	for _, e := range s.entries {
+		fn(e.name, e.value)
+	}
+}
+
 func (s *Struct) ReplaceEntriesFromStringDict(d starlark.StringDict) {
 	values := make(entries, 0, len(d))
 	for k, v := range d {
@@ -177,31 +209,23 @@ func (s *Struct) String() string {
 func (s *Struct) MarshalJSON() ([]byte, error) {
 	buf := new(strings.Builder)
 	buf.WriteString("{")
-	sortedEntries := make([]string, 0, len(s.entries))
-	// sort the entries by name to ensure deterministic output
-	entriesMap := make(map[string]starlark.Value, len(s.entries))
-	for _, e := range s.entries {
-		sortedEntries = append(sortedEntries, e.name)
-		entriesMap[e.name] = e.value
-	}
-	sort.Strings(sortedEntries)
-
-	for i, e := range sortedEntries {
+	// entries is kept sorted by name, so walking it in order gives the
+	// deterministic output the hash needs without a second sort.
+	for i, e := range s.entries {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		buf.WriteString(fmt.Sprintf("\"%s\"", e))
-		buf.WriteString(" : ")
-		marshalled, err := MarshalJSONStarlarkValue(entriesMap[e], 0)
+		buf.WriteString("\"")
+		buf.WriteString(e.name)
+		buf.WriteString("\" : ")
+		marshalled, err := MarshalJSONStarlarkValue(e.value, 0)
 		if err != nil {
 			return nil, err
 		}
 		buf.Write(marshalled)
 	}
 	buf.WriteString("}")
-	s2 := buf.String()
-	//fmt.Println("struct.MarshalJSON: ", s2)
-	return []byte(s2), nil
+	return []byte(buf.String()), nil
 }
 
 // Constructor returns the constructor used to create this struct.
