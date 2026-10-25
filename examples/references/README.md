@@ -27,7 +27,7 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **08**: Data Types (9) - Collections, enums, records
 - **09**: Assertions (5) - Safety and liveness properties
 - **10**: Fairness (3) - Unfair, weak fair, strong fair
-- **11**: Roles (8) - Role basics and management
+- **11**: Roles (9) - Role basics and management
 - **12**: Advanced (6) - Nesting, config, best practices
 - **13**: Patterns (19) - Distributed systems patterns
   - **13-01**: Locking (4) - Mutex, RW lock, distributed lock
@@ -436,6 +436,12 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: Dynamic `Role()` creation, removal by `__id__`, lifecycle management (hire → work → fire)
 - **Status**: ✅ PASSED
 - **Note**: Non-symmetric version requires `MAX_HIRES` cap because each Worker#N is distinct. Compare with 16-13 for symmetric version.
+
+### 11-09-roles-in-one-statement: Roles Created in One Statement
+- **State space**: 9 nodes, 9 unique states
+- **Purpose**: Several role instances created by a single statement (a list literal here; a comprehension works the same way), each Init running in creation order before the statement completes
+- **Key concepts**: Multiple `Role()` calls per statement, role Init chaining (issue 76)
+- **Status**: PASSED
 
 ### 12-01-nested-flow-modifiers: Nested Flow Modifiers
 - **State space**: 5206 nodes, 5200 unique states

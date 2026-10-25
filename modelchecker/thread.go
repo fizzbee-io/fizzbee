@@ -1031,16 +1031,24 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 	}
 
 	if len(t.Process.Roles) > oldRolesCount {
-		if len(t.Process.Roles)-oldRolesCount > 1 {
-			panic("Creating multiple roles in single step is not supported yet")
-		}
-		newRole := t.Process.Roles[len(t.Process.Roles)-1]
-		fileIndex, nextPc := findRoleInitAction(t.Process, newRole)
-		if nextPc != "" {
+		// One statement can create several roles (a list of Role() calls, a
+		// comprehension). Push an Init frame per role, last created first, so
+		// the Init actions run in creation order; executeEndOfBlock chains from
+		// one Init frame to the next before resuming this statement.
+		pushed := false
+		newRoles := t.Process.Roles[oldRolesCount:]
+		for i := len(newRoles) - 1; i >= 0; i-- {
+			fileIndex, nextPc := findRoleInitAction(t.Process, newRoles[i])
+			if nextPc == "" {
+				continue
+			}
 			newFrame := &CallFrame{FileIndex: fileIndex, pc: nextPc, Name: "Init"}
 			newFrame.vars = starlark.StringDict{}
-			newFrame.obj = newRole
+			newFrame.obj = newRoles[i]
 			t.pushFrame(newFrame)
+			pushed = true
+		}
+		if pushed {
 			return nil, false
 		}
 	}
@@ -1297,6 +1305,11 @@ func (t *Thread) executeEndOfBlock() ([]*Process, bool) {
 					}
 					if isRole && isInitAction {
 						t.CopyInitValuesForEphemeralFields(oldFrame)
+						if frame.scope == nil {
+							// A frame that has not entered its block yet is the
+							// Init of another role created by the same statement.
+							return nil, false
+						}
 					}
 
 					returnedVars := starlark.StringDict{}
