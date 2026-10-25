@@ -42,6 +42,7 @@ var isTest bool
 var experimentalProcessedQueue bool
 var experimentalNoGraph bool
 var experimentalNoStateReturns bool
+var experimentalLazyFork bool
 var noSymmetryReduction bool
 
 func main() {
@@ -708,6 +709,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		p1.SetExperimentalProcessedQueue(experimentalProcessedQueue)
 		p1.SetExperimentalNoGraph(experimentalNoGraph)
 		p1.SetExperimentalNoStateReturns(experimentalNoStateReturns)
+		p1.SetExperimentalLazyFork(experimentalLazyFork && !simulation && !experimentalNoGraph && guidedTrace == nil)
 		p1.SetDisableSymmetryReduction(noSymmetryReduction)
 		holder.Store(p1)
 
@@ -1174,6 +1176,7 @@ func parseFlags() []string {
 	flag.BoolVar(&experimentalProcessedQueue, "experimental_processed_queue", false, "EXPERIMENTAL: queue holds processed (yield-point) nodes instead of unprocessed action-starts. Dedupes successors before they enter the queue, reducing peak queue memory (~10x on BFS, ~3x on DFS). State space and assertion outcomes are identical under BFS. Under DFS/Random combined with max_actions, the changed exploration order may prune a different subset of states than the default path within the bound — raise max_actions above the spec's natural diameter to avoid the divergence. Default=false.")
 	flag.BoolVar(&experimentalNoGraph, "experimental_no_graph", false, "EXPERIMENTAL: drops the in-memory state graph after processing each yield-point. Keeps symmetry reduction, dedup, unique-state count, and safety/transition assertions. Does NOT support liveness assertions — refuses to run if any are present. Auto-enables --experimental_processed_queue. Massive RSS reduction at the cost of trace replayability (only a lightweight action-name chain is kept for failure reporting). Default=false.")
 	flag.BoolVar(&experimentalNoStateReturns, "experimental_no_state_returns", false, "EXPERIMENTAL: omit Process.Returns from HashCode, JSON state, and dot-file state labels. Returns remain available on Link.Returns (the per-transition field). Use this to verify downstream consumers (graph, MBT, explorer) have migrated to reading return values from links. Planned to become the default. Default=false.")
+	flag.BoolVar(&experimentalLazyFork, "experimental_lazy_fork", false, "EXPERIMENTAL: fork the state for an action when the action start is dequeued instead of when it is scheduled, and reuse the clone of an action that was disabled without writing to the state for the next action of the same state. Same states and verdicts; less cloning and a smaller queue. Ignored in simulation, no-graph and trace modes. Default=false.")
 	flag.BoolVar(&noSymmetryReduction, "no-symmetry-reduction", false, "Disable symmetry reduction: dedup uses only the plain state hash, so every persisted state keeps its concrete symmetric values/role identities (no canonical renaming). Larger state space. Required when generating state graphs for MBT replay from specs that use symmetric roles or symmetry values. Default=false.")
 	flag.Parse()
 
