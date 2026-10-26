@@ -26,7 +26,9 @@ import (
 // expanding it. Crash nodes are the exception: when a later state turns out
 // to be a duplicate of one, processNode renames it (to yield, or to the
 // action's name), which changes how it is labeled, and may add a crash link
-// to it. So crash nodes always count as open. An explorer that adds links in
+// to it. So a node counts as open while it is named crash. Both changes need
+// that name, so once renamed the node can't change again, and from then on
+// it is closed like any other node. An explorer that adds links in
 // any other way, such as startProcessedQueue or simulation, must not run
 // these checks without its own tracking; main.go refuses those modes, and
 // the dfs and random strategies too, since there a closed node may only be
@@ -90,7 +92,8 @@ func (p *Processor) trackDone(parent *Node) {
 }
 
 // isOpen reports whether some links or the labels of node are not final
-// yet. A crash node can still be renamed by a later duplicate.
+// yet. A node named crash can still be renamed by a later duplicate; one
+// renamed already can't be again.
 func (p *Processor) isOpen(node *Node) bool {
 	return p.pendingActions[node] > 0 || node.Name == "crash"
 }

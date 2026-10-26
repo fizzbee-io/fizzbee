@@ -31,7 +31,10 @@ func partialVerdicts(t *testing.T, s *sccGraph, file *ast.File) map[string]bool 
 // TestIncrementalLivenessIsSound checks liveness on the closed part of the
 // graph after every step of the exploration. Every assertion that fails on
 // a partial graph must fail on the full graph, and once the exploration is
-// done the partial graph must give the full graph's verdicts. Each spec is
+// done the partial graph must give the full graph's verdicts. A node a
+// partial check used must not change after: no new links, and no rename,
+// as a crash node gets when a later state is a duplicate of it (CrashRename
+// covers that). Each spec is
 // also run with its actions declared in reverse, for another exploration
 // order.
 func TestIncrementalLivenessIsSound(t *testing.T) {
@@ -41,7 +44,7 @@ func TestIncrementalLivenessIsSound(t *testing.T) {
 	}
 	specs := []string{
 		"formulas/Counter", "formulas/Fairness", "formulas/Stutter", "formulas/SoftKeywords",
-		"formulas/WeakUntil", "formulas/Possibly", "formulas/PossiblyCrash", "liveness/WeakAcrossChoice", "liveness/EarlyViolation",
+		"formulas/WeakUntil", "formulas/Possibly", "formulas/PossiblyCrash", "liveness/WeakAcrossChoice", "liveness/EarlyViolation", "liveness/CrashRename",
 	}
 	early := 0
 	for _, spec := range specs {
@@ -65,14 +68,26 @@ func TestIncrementalLivenessIsSound(t *testing.T) {
 				}
 				noDeadlock := false
 				stateConfig := &ast.StateSpaceOptions{
-					Options:           &ast.Options{MaxActions: 10, MaxConcurrentActions: 1, CrashOnYield: &crashOnYield},
+					Options:           &ast.Options{MaxActions: 10, MaxConcurrentActions: 2, CrashOnYield: &crashOnYield},
 					DeadlockDetection: &noDeadlock,
 				}
 				p := NewProcessor([]*ast.File{file}, stateConfig, false, 0, "", "", true, nil, nil, "")
 				p.SetIncrementalLiveness(true)
 				p.incrementalEvery, p.nextIncrementalCheck = 1, 0
 				seenEarly := map[string]bool{}
+				// What a partial check saw of each node: its name, which
+				// liveness labels depend on, and how many links it had.
+				type seen struct {
+					name  string
+					links int
+				}
+				firstSeen := map[*Node]seen{}
 				p.partialCheckHook = func(s *sccGraph) {
+					for _, n := range s.nodes {
+						if _, ok := firstSeen[n]; !ok {
+							firstSeen[n] = seen{n.Name, len(n.Outbound)}
+						}
+					}
 					for name := range partialVerdicts(t, s, file) {
 						if len(p.pendingActions) > 0 {
 							seenEarly[name] = true
@@ -83,6 +98,9 @@ func TestIncrementalLivenessIsSound(t *testing.T) {
 				require.Nil(t, err)
 				require.Nil(t, failed)
 				assert.Empty(t, p.pendingActions, "every queued action is done")
+				for n, was := range firstSeen {
+					assert.Equal(t, was, seen{n.Name, len(n.Outbound)}, "a node changed after a partial check used it")
+				}
 
 				final := partialVerdicts(t, p.partialSccGraph(), file)
 				nodes, _, _, _ := GetAllNodes(root, 10)
