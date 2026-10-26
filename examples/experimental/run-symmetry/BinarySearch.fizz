@@ -68,8 +68,9 @@ atomic func right_of(r, mid, size):
     low_range = oneof VALS.segments(include_points=True, gt=mid, lt=r.hi)
     return record(lo=low_range.value(), hi=r.hi)
 
-# Could a discarded part, of abstract size `size` with all elements in
-# [a, b], have contained target?
+# Could a discarded half, of abstract size `size` with all elements in
+# [a, b], have contained target? mid is one end of [a, b]; the caller
+# checks mid separately.
 atomic func may_contain(size, a, b):
     if size == "0":
         return False
@@ -94,12 +95,12 @@ atomic fair action Step:
         result = "FOUND"
         run = record(lo=mid, hi=mid)
     elif target < mid:
-        dropped = mid == target or may_contain(sizes[1], mid, run.hi)
-        target_discarded = target_discarded or dropped
+        dropped = may_contain(sizes[1], mid, run.hi)
+        target_discarded = target_discarded or dropped or mid == target
         run = left_of(run, mid, sizes[0])
     else:
-        dropped = mid == target or may_contain(sizes[0], run.lo, mid)
-        target_discarded = target_discarded or dropped
+        dropped = may_contain(sizes[0], run.lo, mid)
+        target_discarded = target_discarded or dropped or mid == target
         run = right_of(run, mid, sizes[1])
 
 always assertion FoundIsCorrect:
