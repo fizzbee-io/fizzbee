@@ -1,0 +1,112 @@
+---
+deadlock_detection: false
+---
+# Index-based binary search over a sorted array of ANY length, checking the
+# classic overflow bug in  mid = (lo + hi) / 2  with fixed-width integers.
+#
+# Indices are ordinals with three fixed reference values ZERO < HALF < MAX,
+# where MAX is the largest int and HALF = MAX // 2. The array length can be
+# anything up to MAX, so lo and hi can both end up above HALF.
+#
+# Overflow of lo + hi (lo, hi >= 0) is decided by HALF:
+#   either is ZERO -> no overflow
+#   both <= HALF   -> no overflow
+#   both >  HALF   -> overflow (the sum wraps negative, a[mid] is out of bounds)
+#   otherwise      -> either
+#
+# No element values: the array is strictly ascending, so a[i] < a[j] iff
+# i < j. Only the target's position matters:
+#   present: a[pos] == target
+#   absent:  pos is the insertion point (a[pos - 1] < target < a[pos])
+#
+# mid + 1 and mid - 1 are the next index above or below mid: either the
+# adjacent existing index, or a new one in the gap next to mid.
+
+SAFE_MID = True     # False: mid = (lo + hi) / 2, which can overflow
+
+IDX = symmetry.ordinal(name="i", limit=8)
+
+# The last index, n - 1. Anything below zero means the array is empty.
+# (Init's variables are not visible to funcs until Init ends, so the
+# reference values are passed in.)
+atomic func any_last(max_idx):
+    last_range = oneof IDX.segments(include_points=True, lt=max_idx)
+    return last_range.value()
+
+atomic func any_pos(present, zero, last):
+    if present:
+        pos_range = oneof IDX.segments(include_points=True, ge=zero, le=last)
+    else:
+        pos_range = oneof IDX.segments(include_points=True, ge=zero)
+    return pos_range.value()
+
+atomic action Init:
+    ZERO = IDX.fresh()
+    HALF = IDX.fresh()
+    MAX = IDX.fresh()
+    lo = ZERO
+    hi = any_last(MAX)
+    present = False
+    if hi >= ZERO:
+        present = oneof [True, False]
+    pos = any_pos(present, ZERO, hi)
+    result = None
+    found = None
+
+atomic func overflows(a, b):
+    if a == ZERO or b == ZERO:
+        return False
+    if a <= HALF and b <= HALF:
+        return False
+    if a > HALF and b > HALF:
+        return True
+    o = oneof [False, True]
+    return o
+
+# A mid in [lo, hi), or lo when lo == hi: floor of the average.
+atomic func average():
+    if lo == hi:
+        return lo
+    mid_range = fair<strong> oneof IDX.segments(include_points=True, ge=lo, lt=hi)
+    return mid_range.value()
+
+atomic func successor(i):
+    above = IDX.segments(include_points=True, gt=i)
+    succ_range = fair<strong> oneof above[:2]   # gap (i, next) or point next
+    return succ_range.value()
+
+atomic func predecessor(i):
+    below = IDX.segments(include_points=True, lt=i)
+    pred_range = fair<strong> oneof below[-2:]  # point prev or gap (prev, i)
+    return pred_range.value()
+
+atomic fair action Step:
+    require result == None
+    if lo > hi:
+        result = "NOT_FOUND"
+        return
+    if not SAFE_MID:
+        o = overflows(lo, hi)
+        if o:
+            result = "CRASH"    # (lo + hi) wrapped negative: a[mid] out of bounds
+            return
+    mid = average()
+    if mid < pos:
+        lo = successor(mid)     # a[mid] < target
+    elif mid > pos or not present:
+        hi = predecessor(mid)   # a[mid] > target
+    else:
+        result = "FOUND"
+        found = mid
+
+always assertion NoOverflow:
+    return result != "CRASH"
+
+always assertion FoundIsCorrect:
+    return result != "FOUND" or (present and found == pos)
+
+always assertion NotFoundIsCorrect:
+    return result != "NOT_FOUND" or not present
+
+eventually always assertion Terminates:
+    return result != None
