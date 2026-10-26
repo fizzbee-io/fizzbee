@@ -1,0 +1,69 @@
+---
+deadlock_detection: false
+---
+# Linear search over a sorted array of ANY length.
+#
+# Assumes strictly ascending elements (no duplicates). That is what lets the
+# abstract length be implied by the bounds instead of stored:
+#   None     -> 0 elements
+#   lo == hi -> 1 element
+#   lo <  hi -> 2 or more
+# With duplicates, lo == hi no longer means one element, so the run needs an
+# explicit length field (see LinearSearchDuplicates.fizz).
+#
+# The unsearched suffix is a Run: record(lo, hi), or None when empty.
+# Dropping the head picks the next head anywhere in (head, hi]. Picking the
+# point hi means one element is left; picking a gap means two or more.
+# Strong fairness on that choice says the array is finite.
+
+VALS = symmetry.ordinal(name="v", limit=4)
+
+atomic func any_run():
+    size = oneof ["empty", "one", "many"]
+    if size == "empty":
+        return None
+    low_range = oneof VALS.segments(include_points=True)
+    lo = low_range.value()
+    if size == "one":
+        return record(lo=lo, hi=lo)
+    high_range = oneof VALS.segments(include_points=True, gt=lo)
+    return record(lo=lo, hi=high_range.value())
+
+atomic func drop_head(r):
+    if r.lo == r.hi:
+        return None
+    next_head_range = fair<strong> oneof VALS.segments(include_points=True, gt=r.lo, le=r.hi)
+    return record(lo=next_head_range.value(), hi=r.hi)
+
+atomic action Init:
+    target = VALS.fresh()
+    run = any_run()
+    result = None
+
+atomic fair action Step:
+    require result == None
+    if run == None:
+        result = "NOT_FOUND"
+    elif run.lo == target:
+        result = "FOUND"        # run.lo is the match
+    elif run.lo > target:
+        result = "NOT_FOUND"    # sorted: everything left is > target
+    else:
+        run = drop_head(run)
+
+always assertion FoundIsCorrect:
+    return result != "FOUND" or (run != None and run.lo == target)
+
+always assertion NotFoundIsCorrect:
+    # No element still unsearched can be target.
+    return result != "NOT_FOUND" or run == None or target < run.lo
+
+transition assertion OnlyDropsSmallerHeads(before, after):
+    # A step that continues the search must have dropped a head below target,
+    # so every dropped element is != target.
+    if before.result != None or before.run == None or before.run.lo < before.target:
+        return True
+    return after.result != None
+
+eventually always assertion Terminates:
+    return result != None
