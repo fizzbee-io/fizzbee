@@ -100,3 +100,58 @@ func TestOrdinalRespaceHeldSegment(t *testing.T) {
 		}
 	}
 }
+
+// TestOrdinalRespaceStructAndReturns covers references to ordinal values
+// outside plain variables. StructField keeps a value inside a struct, and
+// ReturnValue returns the inserted value from each step; the return
+// recorded on the transition must match the respaced state.
+func TestOrdinalRespaceStructAndReturns(t *testing.T) {
+	base := "."
+	if dir := os.Getenv("RUNFILES_DIR"); dir != "" {
+		base = filepath.Join(dir, "_main", "modelchecker")
+	}
+	defaultGap := lib.OrdinalRespaceMinGap
+	defer func() { lib.OrdinalRespaceMinGap = defaultGap }()
+
+	for _, spec := range []string{"StructField", "ReturnValue"} {
+		for _, gap := range []int64{defaultGap, 1 << 61} {
+			t.Run(fmt.Sprintf("%s/gap=%d", spec, gap), func(t *testing.T) {
+				lib.OrdinalRespaceMinGap = gap
+				file, err := readAstFromFile(filepath.Join(base, "testdata", "ordinal_respace", spec+".json"))
+				require.Nil(t, err)
+				noDeadlock := false
+				stateConfig := &ast.StateSpaceOptions{
+					Options:           &ast.Options{MaxActions: 100, MaxConcurrentActions: 1},
+					DeadlockDetection: &noDeadlock,
+				}
+				p := NewProcessor([]*ast.File{file}, stateConfig, false, 0, "", "", false, nil, nil, "")
+				root, failed, err := p.Start()
+				require.Nil(t, err)
+				require.NotNil(t, root)
+				assert.Nil(t, failed)
+
+				maxCount := 0
+				returns := 0
+				for _, node := range p.visited {
+					if count, ok := node.Process.Heap.state["count"].(starlark.Int); ok {
+						c, _ := count.Int64()
+						maxCount = max(maxCount, int(c))
+					}
+					for _, link := range node.Inbound {
+						ret, ok := link.Returns["InsertBefore"].(*lib.SymmetricValue)
+						if !ok {
+							continue
+						}
+						returns++
+						cur := node.Process.Heap.state["t"].(*lib.SymmetricValue)
+						assert.Equal(t, cur.GetId(), ret.GetId(), "returned %v, state has %v", ret, cur)
+					}
+				}
+				assert.Equal(t, 80, maxCount)
+				if spec == "ReturnValue" {
+					assert.Positive(t, returns)
+				}
+			})
+		}
+	}
+}

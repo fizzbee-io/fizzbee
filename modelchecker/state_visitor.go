@@ -6,6 +6,7 @@ import (
 
 	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 )
 
 // StateVisitor defines the interface for visiting state elements during traversal
@@ -112,13 +113,22 @@ func visitStarlarkValue(value starlark.Value, visitor StateVisitor, visited map[
 
 	switch value.Type() {
 	case "NoneType", "int", "float", "bool", "string", "bytes", "function",
-		"builtin_function_or_method", "range", "struct", "symmetric_values",
+		"builtin_function_or_method", "range", "symmetric_values",
 		"model_value", "Channel":
 		return
 
 	case "symmetric_value":
 		sv := value.(*lib.SymmetricValue)
 		visitor.VisitSymmetricValue(sv)
+
+	case "struct":
+		if st, ok := value.(*starlarkstruct.Struct); ok {
+			for _, name := range st.AttrNames() {
+				if field, err := st.Attr(name); err == nil {
+					visitStarlarkValue(field, visitor, visited)
+				}
+			}
+		}
 
 	case "symmetry_segment":
 		if sv, ok := visitor.(SegmentVisitor); ok {

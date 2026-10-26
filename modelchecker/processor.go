@@ -2397,6 +2397,14 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	if node.ThreadProgress {
 		node.Enable()
 	}
+	// Respace ordinal IDs before the state is stored, so repeated midpoint
+	// allocation into one gap never runs out of room. This runs before the
+	// returns are copied to the inbound link, so the link and the state
+	// agree on IDs. Skipped when symmetry reduction is disabled, since those
+	// states must keep concrete identities.
+	if !p.disableSymmetryReduction && node.Process.respaceOrdinalIDs() {
+		node.CachedHashCode = ""
+	}
 	// Add the labels from the process to the inbound links
 	// This must be done even for duplicate nodes
 	// The labels for the outbound links are added when the node is merged/attached
@@ -2450,13 +2458,6 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 			// Prune this path silently — this is not a verification failure.
 			return false, true
 		}
-	}
-
-	// Respace ordinal IDs before the state is stored, so repeated midpoint
-	// allocation into one gap never runs out of room. Skipped when symmetry
-	// reduction is disabled, since those states must keep concrete identities.
-	if !p.disableSymmetryReduction && node.Process.respaceOrdinalIDs() {
-		node.CachedHashCode = ""
 	}
 
 	other, found, canonicalHash := p.findVisitedSymmetric(node)
