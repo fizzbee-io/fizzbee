@@ -18,6 +18,19 @@ import (
 // closed nodes is then final, so a fair lasso through closed nodes is a
 // counterexample in the full graph too. Formulas with possibly are left to
 // the final check, since a later state can make a possibly true.
+//
+// This relies on how Start's default queue adds links. A node's links are
+// added either while the node itself is processed (steps inside an action
+// run inline in expandToYield) or when a queued action it scheduled runs;
+// enqueueScheduled counts those, and Start marks each one done after
+// expanding it. Crash nodes are the exception: when a later state turns out
+// to be a duplicate of one, processNode renames it (to yield, or to the
+// action's name), which changes how it is labeled, and may add a crash link
+// to it. So crash nodes always count as open. An explorer that adds links in
+// any other way, such as startProcessedQueue or simulation, must not run
+// these checks without its own tracking; main.go refuses those modes, and
+// the dfs and random strategies too, since there a closed node may only be
+// reachable through open ones.
 
 // incrementalLivenessFirstCheck is the visited count of the first partial
 // check. Later checks run each time the count doubles.
@@ -76,9 +89,10 @@ func (p *Processor) trackDone(parent *Node) {
 	}
 }
 
-// isOpen reports whether some links of node are not known yet.
+// isOpen reports whether some links or the labels of node are not final
+// yet. A crash node can still be renamed by a later duplicate.
 func (p *Processor) isOpen(node *Node) bool {
-	return p.pendingActions[node] > 0
+	return p.pendingActions[node] > 0 || node.Name == "crash"
 }
 
 // maybeCheckLivenessIncrementally runs a partial check when the visited
