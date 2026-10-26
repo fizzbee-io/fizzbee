@@ -370,6 +370,12 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: `always possibly`, counterexample note for `possibly`
 - **Status**: ❌ FAILED (expected)
 
+### 09-18-weak-until: Weak Until
+- **State space**: 7 nodes, 7 unique states
+- **Purpose**: `unless` says P holds until Q, or forever if Q never happens
+- **Key concepts**: `unless` (weak until), `unless` versus `until`, `always (P implies (P unless Q))`
+- **Status**: ✅ PASSED
+
 ### 10-01-unfair-action: Unfair Action (Default)
 - **State space**: 108 nodes, 46 unique states
 - **Purpose**: Unfair actions have no fairness guarantees
