@@ -721,6 +721,18 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: `segments(include_points=True)`, `segment.value()`, `is_point`, `gt`/`ge`/`lt`/`le` bounds
 - **Status**: ✅ PASSED
 
+### 16-15-ordinal-repeated-head-insert: Repeated Ordinal Gap Insertion
+- **State space**: 201 nodes, 101 unique states
+- **Purpose**: Regression test for inserting into the same ordinal gap 100 times along one path
+- **Key concepts**: `segments(before=...)`, ordinal ID respacing
+- **Status**: ✅ PASSED
+
+### 16-16-ordinal-repeated-append: Repeated Ordinal Append
+- **State space**: 101 nodes, 101 unique states
+- **Purpose**: Regression test for appending with `fresh()` 100 times along one path
+- **Key concepts**: ordinal `fresh()`, ordinal ID respacing
+- **Status**: ✅ PASSED
+
 ### 99-01-checkpoints: Visualization Checkpoints
 - **State space**: 12 nodes, 10 unique states
 - **Purpose**: Using backtick labels to create visualization breakpoints

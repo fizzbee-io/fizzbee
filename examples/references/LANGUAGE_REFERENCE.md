@@ -1966,7 +1966,7 @@ atomic action InsertBetween:
     t = gap.fresh()  # guaranteed: t_start < t < t_end
 ```
 
-With N active values, `segments()` returns N+1 gaps: a head gap (before first), body gaps (between consecutive pairs), and a tail gap (after last). Ordinal gaps are always non-empty since the domain is dense (infinitely divisible in theory).
+With N active values, `segments()` returns N+1 gaps: a head gap (before first), body gaps (between consecutive pairs), and a tail gap (after last). Ordinal gaps are always non-empty since the domain is dense. You can insert into the same gap as many times as you like along a path: the model checker respaces the stored values by rank when a gap gets too small, which keeps their order.
 
 **Reference**: [16-07-ordinal-segments](16-07-ordinal-segments/)
 
