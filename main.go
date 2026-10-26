@@ -43,6 +43,7 @@ var experimentalProcessedQueue bool
 var experimentalNoGraph bool
 var experimentalNoStateReturns bool
 var noSymmetryReduction bool
+var experimentalIncrementalLiveness bool
 
 func main() {
 	args := parseFlags()
@@ -58,6 +59,19 @@ func main() {
 	if experimentalNoGraph && !experimentalProcessedQueue {
 		fmt.Println("Note: --experimental_no_graph auto-enables --experimental_processed_queue.")
 		experimentalProcessedQueue = true
+	}
+
+	if experimentalIncrementalLiveness {
+		switch {
+		case simulation:
+			refuseIncrementalLiveness("simulation mode explores one path at a time")
+		case experimentalProcessedQueue:
+			refuseIncrementalLiveness("it works with the default queue only, not --experimental_processed_queue or --experimental_no_graph")
+		case explorationStrategy != "bfs":
+			refuseIncrementalLiveness("it needs the default bfs exploration strategy")
+		case os.Getenv("FIZZ_LIVENESS_ENGINE") != "":
+			refuseIncrementalLiveness("it uses the default liveness engine, but FIZZ_LIVENESS_ENGINE is set")
+		}
 	}
 
 	// Get the input JSON file name from command line argument
@@ -708,6 +722,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		p1.SetExperimentalNoGraph(experimentalNoGraph)
 		p1.SetExperimentalNoStateReturns(experimentalNoStateReturns)
 		p1.SetDisableSymmetryReduction(noSymmetryReduction)
+		p1.SetIncrementalLiveness(experimentalIncrementalLiveness && guidedTrace == nil && isStrictLiveness(stateConfig))
 		holder.Store(p1)
 
 		rootNode, failedNode, endTime, err := startModelChecker(p1)
@@ -769,6 +784,15 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			} else {
 				dumpFailedNode(sourceFileName, earlyDead, rootNode, outDir)
 			}
+			return nil
+		}
+
+		if err := p1.IncrementalLivenessError(); err != nil {
+			printTraceAndExit(fmt.Errorf("incremental liveness check: %w", err))
+		}
+		if path, pos := p1.IncrementalLivenessFailure(); pos != nil {
+			fmt.Printf("Liveness violation found after exploring %d nodes; exploration stopped early\n", p1.GetVisitedNodesCount())
+			reportLivenessFailure(f, sourceFileName, path, pos, outDir)
 			return nil
 		}
 
@@ -883,7 +907,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 				}
 			}
 			if !simulation && !p1.Stopped() && guidedTrace == nil {
-				if stateConfig.GetLiveness() == "" || stateConfig.GetLiveness() == "enabled" || stateConfig.GetLiveness() == "true" || stateConfig.GetLiveness() == "strict" || stateConfig.GetLiveness() == "strict/bfs" {
+				if isStrictLiveness(stateConfig) {
 					// FIZZ_LIVENESS_ENGINE=cycles falls back to the old cycle finder,
 					// and "shadow" runs both and reports how they compare.
 					// "formula" checks the prefixed always-eventually and
@@ -938,22 +962,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 				}
 				return rootNode
 			} else if failedInvariant != nil {
-				fmt.Println("FAILED: Liveness check failed")
-				if failedInvariant.FileIndex > 0 {
-					fmt.Printf("Only one file expected. Got %d\n", failedInvariant.FileIndex)
-				} else {
-					fmt.Printf("Invariant: %s\n", f.Invariants[failedInvariant.InvariantIndex].Name)
-				}
-				if failedInvariant.Note != "" {
-					for _, note := range strings.Split(failedInvariant.Note, "\n") {
-						fmt.Println("Note:", note)
-					}
-				}
-				GenerateFailurePath(sourceFileName, failurePath, failedInvariant, outDir)
-				_, _, err = modelchecker.GenerateErrorPathProtoOfJson(failurePath, outDir+"/")
-				if err != nil {
-					fmt.Println("Error writing files", err)
-				}
+				reportLivenessFailure(f, sourceFileName, failurePath, failedInvariant, outDir)
 				return nil
 			}
 
@@ -1173,6 +1182,7 @@ func parseFlags() []string {
 	flag.BoolVar(&experimentalProcessedQueue, "experimental_processed_queue", false, "EXPERIMENTAL: queue holds processed (yield-point) nodes instead of unprocessed action-starts. Dedupes successors before they enter the queue, reducing peak queue memory (~10x on BFS, ~3x on DFS). State space and assertion outcomes are identical under BFS. Under DFS/Random combined with max_actions, the changed exploration order may prune a different subset of states than the default path within the bound — raise max_actions above the spec's natural diameter to avoid the divergence. Default=false.")
 	flag.BoolVar(&experimentalNoGraph, "experimental_no_graph", false, "EXPERIMENTAL: drops the in-memory state graph after processing each yield-point. Keeps symmetry reduction, dedup, unique-state count, and safety/transition assertions. Does NOT support liveness assertions — refuses to run if any are present. Auto-enables --experimental_processed_queue. Massive RSS reduction at the cost of trace replayability (only a lightweight action-name chain is kept for failure reporting). Default=false.")
 	flag.BoolVar(&experimentalNoStateReturns, "experimental_no_state_returns", false, "EXPERIMENTAL: omit Process.Returns from HashCode, JSON state, and dot-file state labels. Returns remain available on Link.Returns (the per-transition field). Use this to verify downstream consumers (graph, MBT, explorer) have migrated to reading return values from links. Planned to become the default. Default=false.")
+	flag.BoolVar(&experimentalIncrementalLiveness, "experimental_incremental_liveness", false, "EXPERIMENTAL: check liveness assertions on the part of the state graph explored so far, each time the explored node count doubles, and stop at the first violation instead of waiting for the full exploration. A passing run still ends with the usual full liveness check, so verdicts are unchanged; only a failure can come early. Formulas with possibly are checked at the end only. Needs the default bfs strategy and strict liveness. Default=false.")
 	flag.BoolVar(&noSymmetryReduction, "no-symmetry-reduction", false, "Disable symmetry reduction: dedup uses only the plain state hash, so every persisted state keeps its concrete symmetric values/role identities (no canonical renaming). Larger state space. Required when generating state graphs for MBT replay from specs that use symmetric roles or symmetry values. Default=false.")
 	flag.Parse()
 
@@ -1530,4 +1540,39 @@ func createOutputDir(dirPath string, testing bool) (string, error) {
 	// So, all the output logs will still point to the newDirPath.
 	// This reduces issues when multiple executions are run in parallel.
 	return newDirPath, nil
+}
+
+func refuseIncrementalLiveness(reason string) {
+	fmt.Printf("--experimental_incremental_liveness refused: %s.\n", reason)
+	os.Exit(1)
+}
+
+// reportLivenessFailure prints a liveness counterexample and writes its files.
+func reportLivenessFailure(f *ast.File, sourceFileName string, failurePath []*modelchecker.Link, failedInvariant *modelchecker.InvariantPosition, outDir string) {
+	fmt.Println("FAILED: Liveness check failed")
+	if failedInvariant.FileIndex > 0 {
+		fmt.Printf("Only one file expected. Got %d\n", failedInvariant.FileIndex)
+	} else {
+		fmt.Printf("Invariant: %s\n", f.Invariants[failedInvariant.InvariantIndex].Name)
+	}
+	if failedInvariant.Note != "" {
+		for _, note := range strings.Split(failedInvariant.Note, "\n") {
+			fmt.Println("Note:", note)
+		}
+	}
+	GenerateFailurePath(sourceFileName, failurePath, failedInvariant, outDir)
+	_, _, err := modelchecker.GenerateErrorPathProtoOfJson(failurePath, outDir+"/")
+	if err != nil {
+		fmt.Println("Error writing files", err)
+	}
+}
+
+// isStrictLiveness reports whether liveness is checked by the default strict
+// engine.
+func isStrictLiveness(stateConfig *ast.StateSpaceOptions) bool {
+	switch stateConfig.GetLiveness() {
+	case "", "enabled", "true", "strict", "strict/bfs":
+		return true
+	}
+	return false
 }

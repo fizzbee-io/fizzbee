@@ -48,4 +48,4 @@ jobs:
         run: |
           bazel test --test_output=errors //modelchecker/liveness/... //parser/... //lib:symmetry_test
           bazel test --test_output=errors //modelchecker:modelchecker_test \
-            --test_filter='^(TestFormula|TestExpandAssertionHeaderErrors|TestSccLivenessMatchesCycleFinder|TestPredicateCall|TestModelErrorStackTraceShowsCause|TestCloneSegment)'
+            --test_filter='^(TestFormula|TestIncrementalLiveness|TestExpandAssertionHeaderErrors|TestSccLivenessMatchesCycleFinder|TestPredicateCall|TestModelErrorStackTraceShowsCause|TestCloneSegment)'

@@ -376,6 +376,12 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: `unless` (weak until), `unless` versus `until`, `always (P implies (P unless Q))`
 - **Status**: ✅ PASSED
 
+### 09-19-incremental-liveness: Incremental Liveness Checking
+- **State space**: 3,782 unique states, stops after exploring 1,000 nodes
+- **Purpose**: `--experimental_incremental_liveness` (in `flags.txt`) reports a liveness violation before the whole state space is explored
+- **Key concepts**: partial liveness checks as the node count doubles, early stop, unchanged verdicts
+- **Status**: ❌ FAILED (expected)
+
 ### 10-01-unfair-action: Unfair Action (Default)
 - **State space**: 108 nodes, 46 unique states
 - **Purpose**: Unfair actions have no fairness guarantees
