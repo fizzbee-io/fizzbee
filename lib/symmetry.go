@@ -23,6 +23,41 @@ func midpoint(lo, hi int64) (int64, error) {
 	return lo + (hi-lo)/2, nil
 }
 
+// OrdinalRespaceMinGap is the smallest gap the model checker tolerates between
+// adjacent live ordinal IDs, or between an ID and either end of the ID range.
+// Midpoint allocation halves a gap on every insertion, so repeated insertion
+// into the same gap would exhaust the int64 range after about 60 steps. When
+// a gap falls below this size, the checker respaces the domain's IDs evenly
+// by rank (see OrdinalRespacedIDs), which preserves their order. The margin
+// leaves room for about 30 more insertions into one gap within a single step.
+// Tests raise it to force respacing on every state.
+var OrdinalRespaceMinGap int64 = 1 << 32
+
+// OrdinalNeedsRespace reports whether the sorted, live IDs of an ordinal
+// domain have a gap smaller than OrdinalRespaceMinGap.
+func OrdinalNeedsRespace(sortedIDs []int64) bool {
+	prev := int64(0)
+	for _, id := range sortedIDs {
+		if id-prev < OrdinalRespaceMinGap {
+			return true
+		}
+		prev = id
+	}
+	return ordinalMax-prev < OrdinalRespaceMinGap
+}
+
+// OrdinalRespacedIDs returns n IDs spread evenly over (0, ordinalMax), in
+// increasing order. The ID of rank i is replaced by the i-th returned ID.
+// A single value lands on ordinalMid, the ID fresh() gives an empty domain.
+func OrdinalRespacedIDs(n int) []int64 {
+	step := ordinalMax / int64(n+1)
+	ids := make([]int64, n)
+	for i := range ids {
+		ids[i] = step * int64(i+1)
+	}
+	return ids
+}
+
 // SymmetryKind represents the type of symmetry for a domain.
 // Different kinds have different operations and canonicalization strategies.
 type SymmetryKind string

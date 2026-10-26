@@ -1,0 +1,31 @@
+# The held segment's value() result is memoized on the segment and, between
+# two calls, stored nowhere else in the state. Respacing must move the memo
+# with the other values instead of dropping it.
+TIMES = symmetry.ordinal(name="ts", limit=4)
+
+action Init:
+    lo = TIMES.fresh()
+    hi = TIMES.fresh()
+    gaps = TIMES.segments(after=lo, before=hi)
+    g = oneof gaps
+    mid = g.fresh()
+    gaps = []
+    g = None
+    top = None
+    v = None
+    count = 0
+
+action Squeeze:
+    require count < 80
+    gaps = TIMES.segments(after=mid, before=hi)
+    seg = oneof gaps
+    gaps = []
+    v = seg.value()
+    v = None
+    top = TIMES.fresh()
+    top = None
+    mid = seg.value()
+    count += 1
+
+always assertion Ordered:
+    return lo < mid and mid < hi
