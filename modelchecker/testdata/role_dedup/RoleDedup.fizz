@@ -1,0 +1,33 @@
+# Two ordinary (non-symmetric) roles whose balances move independently.
+# Many paths reach the same state, so most edges end in a dedup hit on the
+# no-symmetry fast path. Zed is created before Account so that the
+# creation order of p.Roles differs from the canonical (name-sorted) order.
+
+role Zed:
+    action Init:
+        self.balance = 0
+
+    atomic action Deposit:
+        require self.balance < 2
+        self.balance = self.balance + 1
+
+    atomic action Withdraw:
+        require self.balance > 0
+        self.balance = self.balance - 1
+
+role Account:
+    action Init:
+        self.balance = 0
+
+    atomic action Deposit:
+        require self.balance < 2
+        self.balance = self.balance + 1
+
+    atomic action Withdraw:
+        require self.balance > 0
+        self.balance = self.balance - 1
+
+action Init:
+    z = Zed()
+    a = Account()
+    accounts = [z, a]

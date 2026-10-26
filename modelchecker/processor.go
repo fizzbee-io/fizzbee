@@ -1310,7 +1310,8 @@ type Processor struct {
 	// Indexed [fileIndex][invariantIndex]; lazily sized on first use.
 	existsWitness [][]bool
 
-	// usesSymmetry caches specUsesSymmetry's answer; nil until first asked.
+	// usesSymmetry caches specUsesSymmetry's answer once it is true; nil
+	// or false means ask again.
 	usesSymmetry *bool
 }
 
@@ -1521,6 +1522,7 @@ func NewProcessorWithVisitedTracking(files []*ast.File, options *ast.StateSpaceO
 		intermediateStates = lib.NewQueue[*Node]()
 	}
 	lib.ClearRoleRefs()
+	lib.ResetSymmetryUsed()
 	durabilitySpec := &DurabilitySpec{RoleDurabilitySpec: make(map[string]RoleDurabilitySpec)}
 	mc := NewModelChecker("example")
 	for _, file := range files {
@@ -2793,38 +2795,28 @@ func (p *Processor) findVisitedSymmetric(node *Node) (*Node, bool, string) {
 	return other, ok, minHash
 }
 
-// specUsesSymmetry reports whether the spec can hold a symmetric value at
-// all: a role declared symmetric, or a symmetric_values / symmetry domain
-// definition among the globals or the initial state. Computed once per
-// run; when false, findVisitedSymmetric skips the clone-and-permute path.
+// specUsesSymmetry reports whether the run can hold a symmetric value at
+// all. Every symmetric value originates from one of three places: a role
+// declared symmetric, the symmetric_values builtin, or a symmetry domain
+// constructor; clones, arithmetic and canonicalization only derive new
+// values from existing ones. The first is visible in the AST; the other two
+// set lib.SymmetryUsed when they run, wherever that happens (top level,
+// preinit hook, or inside an action), so this needs no scan of the state.
+// A true answer is cached; a false one is re-checked against the flag each
+// time, since an action run later may still create the first value. When
+// false, findVisitedSymmetric skips the clone-and-permute path, which is
+// only an optimization: a missed symmetry costs states, never a verdict.
 func (p *Processor) specUsesSymmetry(process *Process) bool {
-	if p.usesSymmetry != nil {
-		return *p.usesSymmetry
+	if p.usesSymmetry != nil && *p.usesSymmetry {
+		return true
 	}
-	uses := false
-	for _, file := range p.Files {
-		for _, role := range file.Roles {
-			if slices.Contains(role.Modifiers, "symmetric") {
-				uses = true
-			}
-		}
-	}
-	isSymmetryDef := func(v starlark.Value) bool {
-		switch v.(type) {
-		case lib.SymmetricValues, *lib.SymmetricValues, *lib.SymmetryDomain:
-			return true
-		}
-		return false
-	}
-	if !uses && process != nil && process.Heap != nil {
-		for _, v := range process.Heap.globals {
-			if isSymmetryDef(v) {
-				uses = true
-			}
-		}
-		for _, v := range process.Heap.state {
-			if isSymmetryDef(v) {
-				uses = true
+	uses := lib.SymmetryUsed()
+	if !uses {
+		for _, file := range p.Files {
+			for _, role := range file.Roles {
+				if slices.Contains(role.Modifiers, "symmetric") {
+					uses = true
+				}
 			}
 		}
 	}
@@ -2835,8 +2827,16 @@ func (p *Processor) specUsesSymmetry(process *Process) bool {
 // canonicalHashWithoutSymmetry is the hash getSymmetryTranslations yields
 // for a state with no symmetric values: HashCode with the roles sorted by
 // name and ref (step 5 of symmetricHashWithoutClone), computed on the
-// state itself. The role order and the hash cache are restored afterwards
-// so HashCode keeps returning the unsorted-order value elsewhere.
+// state itself. The role order is restored afterwards.
+//
+// Invariant on return: CachedHashCode holds the canonical hash, the key
+// this state has in the visited map, and CachedThreadHashes holds the
+// per-thread hashes, which do not depend on role order. HashCode therefore
+// keeps returning the canonical value for the rest of the node's life.
+// Nothing downstream needs the unsorted-order hash: Node.Duplicate only
+// reads CachedThreadHashes, and findVisitedSymmetric clears the cache
+// before hashing. Restoring the old value instead would force a full
+// rehash on every dedup hit, which is most edges.
 func (p *Process) canonicalHashWithoutSymmetry() string {
 	origRoles := make([]*lib.Role, len(p.Roles))
 	copy(origRoles, p.Roles)
@@ -2849,9 +2849,6 @@ func (p *Process) canonicalHashWithoutSymmetry() string {
 	p.CachedHashCode = ""
 	hash := p.HashCode()
 	copy(p.Roles, origRoles)
-	// Leave the canonical value cached: Node.Duplicate calls HashCode on
-	// both nodes of a dedup hit only to populate CachedThreadHashes, and a
-	// cleared cache would make it redo the whole hash.
 	return hash
 }
 

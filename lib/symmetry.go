@@ -738,6 +738,7 @@ func makeNominal(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 	if name == "" {
 		return nil, fmt.Errorf("nominal: name cannot be empty")
 	}
+	MarkSymmetryUsed()
 	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindNominal, Materialize: materialize}, nil
 }
 
@@ -757,6 +758,7 @@ func makeOrdinal(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 	if name == "" {
 		return nil, fmt.Errorf("ordinal: name cannot be empty")
 	}
+	MarkSymmetryUsed()
 	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindOrdinal, Reflection: reflection, Materialize: materialize}, nil
 }
 
@@ -822,6 +824,7 @@ func makeInterval(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 		return nil, fmt.Errorf("interval: divergence must be >= 0, got %d", divergenceInt)
 	}
 
+	MarkSymmetryUsed()
 	return &SymmetryDomain{
 		Name:        name,
 		Limit:       limitInt,
@@ -849,6 +852,7 @@ func makeRotational(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 	if name == "" {
 		return nil, fmt.Errorf("rotational: name cannot be empty")
 	}
+	MarkSymmetryUsed()
 	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindRotational, Materialize: materialize, Reflection: reflection}, nil
 }
 
