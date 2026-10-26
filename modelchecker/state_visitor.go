@@ -219,7 +219,7 @@ func visitStarlarkValue(value starlark.Value, visitor StateVisitor, visited map[
 // isPointerType returns true if the value is a pointer type that could cause cycles
 func isPointerType(value starlark.Value) bool {
 	switch value.Type() {
-	case "list", "set", "dict", "bag", "genericset", "genericmap", "record", "role", "RoleStub":
+	case "list", "set", "dict", "bag", "genericset", "genericmap", "record", "role", "RoleStub", "struct":
 		return true
 	default:
 		return false

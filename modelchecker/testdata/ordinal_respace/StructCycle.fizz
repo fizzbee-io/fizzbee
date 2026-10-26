@@ -1,0 +1,21 @@
+# A struct inside a cycle: the list holds the struct that holds the list.
+# Visiting, cloning and respacing must terminate and keep every copy of the
+# value in step.
+TIMES = symmetry.ordinal(name="ts", limit=3)
+
+action Init:
+    first = TIMES.fresh()
+    t = first
+    items = [first]
+    snapshot = struct(items=items)
+    items.append(snapshot)
+    count = 0
+
+atomic action InsertBefore:
+    require count < 80
+    gap = oneof TIMES.segments(before=t)
+    t = gap.fresh()
+    count += 1
+
+always assertion CopiesMatch:
+    return snapshot.items[0] == first and snapshot.items[1].items[0] == first and t <= first

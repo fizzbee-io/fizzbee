@@ -37,6 +37,11 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 		// A struct is immutable, but its fields may hold symmetric values or
 		// mutable containers, which must be cloned (and permuted) like any
 		// other. A struct with nothing to clone is shared as is.
+		//
+		// The struct can't be registered in refs before its fields are cloned,
+		// so a cycle through it (a list holding the struct that holds the
+		// list) is cut at the container, which is registered first. The inner
+		// reference then gets its own copy of the struct, equal in value.
 		v, ok := value.(*starlarkstruct.Struct)
 		if !ok {
 			return value, nil

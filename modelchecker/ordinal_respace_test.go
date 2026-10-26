@@ -102,8 +102,8 @@ func TestOrdinalRespaceHeldSegment(t *testing.T) {
 }
 
 // TestOrdinalRespaceStructAndReturns covers references to ordinal values
-// outside plain variables. StructField keeps a value inside a struct, and
-// ReturnValue returns the inserted value from each step; the return
+// outside plain variables. StructField keeps a value inside a struct,
+// StructCycle does so in a struct that is part of a cycle, and ReturnValue returns the inserted value from each step; the return
 // recorded on the transition must match the respaced state.
 func TestOrdinalRespaceStructAndReturns(t *testing.T) {
 	base := "."
@@ -113,7 +113,7 @@ func TestOrdinalRespaceStructAndReturns(t *testing.T) {
 	defaultGap := lib.OrdinalRespaceMinGap
 	defer func() { lib.OrdinalRespaceMinGap = defaultGap }()
 
-	for _, spec := range []string{"StructField", "ReturnValue"} {
+	for _, spec := range []string{"StructField", "StructCycle", "ReturnValue"} {
 		for _, gap := range []int64{defaultGap, 1 << 61} {
 			t.Run(fmt.Sprintf("%s/gap=%d", spec, gap), func(t *testing.T) {
 				lib.OrdinalRespaceMinGap = gap
