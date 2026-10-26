@@ -32,8 +32,8 @@ atomic func any_run():
 atomic func drop_head(r):
     if r.lo == r.hi:
         return None
-    next_head_range = fair<strong> oneof VALS.segments(include_points=True, gt=r.lo, le=r.hi)
-    return record(lo=next_head_range.value(), hi=r.hi)
+    next_low_range = fair<strong> oneof VALS.segments(include_points=True, gt=r.lo, le=r.hi)
+    return record(lo=next_low_range.value(), hi=r.hi)
 
 atomic action Init:
     target = VALS.fresh()

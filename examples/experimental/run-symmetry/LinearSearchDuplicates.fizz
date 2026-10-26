@@ -32,8 +32,8 @@ atomic func drop_head(r):
     many = fair<strong> oneof [True, False]
     if not many:
         return record(lo=r.hi, hi=r.hi, many=False)
-    next_head_range = oneof VALS.segments(include_points=True, ge=r.lo, le=r.hi)
-    return record(lo=next_head_range.value(), hi=r.hi, many=True)
+    next_low_range = oneof VALS.segments(include_points=True, ge=r.lo, le=r.hi)
+    return record(lo=next_low_range.value(), hi=r.hi, many=True)
 
 atomic action Init:
     target = VALS.fresh()

@@ -1,0 +1,115 @@
+---
+deadlock_detection: false
+---
+# Binary search over a sorted array of ANY length.
+#
+# Assumes strictly ascending elements (no duplicates), so as in
+# LinearSearch.fizz the abstract length is implied by the bounds:
+#   None     -> 0 elements
+#   lo == hi -> 1 element
+#   lo <  hi -> 2 or more
+#
+# The search range is a Run: record(lo, hi), or None when empty.
+# Splitting a run at its middle element gives (left, mid, right) where the
+# two halves differ in size by at most one. As abstract sizes:
+#   1 element   -> (0, 0)
+#   2 elements  -> (0, 1) or (1, 0)
+#   3 elements  -> (1, 1)
+#   4 elements  -> (1, MANY) or (MANY, 1)
+#   5 or more   -> (MANY, MANY)
+# Strong fairness on the split choice says the array is finite.
+#
+# Only the kept half needs its inner bound, so at most 5 ordinals are live:
+# target, lo, hi, mid and the new bound. A lower limit panics with
+# "symmetry limit reached" rather than silently pruning.
+
+VALS = symmetry.ordinal(name="v", limit=5)
+
+atomic func any_run():
+    size = oneof ["empty", "one", "many"]
+    if size == "empty":
+        return None
+    low_range = oneof VALS.segments(include_points=True)
+    lo = low_range.value()
+    if size == "one":
+        return record(lo=lo, hi=lo)
+    high_range = oneof VALS.segments(include_points=True, gt=lo)
+    return record(lo=lo, hi=high_range.value())
+
+atomic func split_sizes(r):
+    if r.lo == r.hi:
+        return ("0", "0")
+    sizes = fair<strong> oneof [("0", "1"), ("1", "0"), ("1", "1"), ("1", "MANY"), ("MANY", "1"), ("MANY", "MANY")]
+    return sizes
+
+atomic func pick_mid(r, sizes):
+    if sizes[0] == "0":
+        return r.lo
+    if sizes[1] == "0":
+        return r.hi
+    mid_range = oneof VALS.segments(include_points=True, gt=r.lo, lt=r.hi)
+    return mid_range.value()
+
+# The part of r strictly below mid, with abstract size `size`.
+atomic func left_of(r, mid, size):
+    if size == "0":
+        return None
+    if size == "1":
+        return record(lo=r.lo, hi=r.lo)
+    high_range = oneof VALS.segments(include_points=True, gt=r.lo, lt=mid)
+    return record(lo=r.lo, hi=high_range.value())
+
+# The part of r strictly above mid, with abstract size `size`.
+atomic func right_of(r, mid, size):
+    if size == "0":
+        return None
+    if size == "1":
+        return record(lo=r.hi, hi=r.hi)
+    low_range = oneof VALS.segments(include_points=True, gt=mid, lt=r.hi)
+    return record(lo=low_range.value(), hi=r.hi)
+
+# Could a discarded part, of abstract size `size` with all elements in
+# [a, b], have contained target?
+atomic func may_contain(size, a, b):
+    if size == "0":
+        return False
+    if size == "1":
+        return target == a or target == b
+    return a <= target and target <= b
+
+atomic action Init:
+    target = VALS.fresh()
+    run = any_run()
+    result = None
+    target_discarded = False    # ghost: a discarded part could have held target
+
+atomic fair action Step:
+    require result == None
+    if run == None:
+        result = "NOT_FOUND"
+        return
+    sizes = split_sizes(run)
+    mid = pick_mid(run, sizes)
+    if mid == target:
+        result = "FOUND"
+        run = record(lo=mid, hi=mid)
+    elif target < mid:
+        dropped = mid == target or may_contain(sizes[1], mid, run.hi)
+        target_discarded = target_discarded or dropped
+        run = left_of(run, mid, sizes[0])
+    else:
+        dropped = mid == target or may_contain(sizes[0], run.lo, mid)
+        target_discarded = target_discarded or dropped
+        run = right_of(run, mid, sizes[1])
+
+always assertion FoundIsCorrect:
+    return result != "FOUND" or (run != None and run.lo == target)
+
+always assertion NotFoundIsCorrect:
+    return result != "NOT_FOUND" or run == None
+
+always assertion TargetNeverDiscarded:
+    return not target_discarded
+
+eventually always assertion Terminates:
+    return result != None
