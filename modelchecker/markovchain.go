@@ -555,7 +555,7 @@ func traverseBFS(rootNode *Node, maxActions int64) ([]*Node, []string, *Node, in
 			})
 
 			if link.Type == "action" {
-				if node == link.Node || node.HashCode() == link.Node.HashCode() {
+				if node == link.Node || node.Process.sameStateAs(link.Node.Process) {
 					continue
 				}
 				messageKey := link.Name

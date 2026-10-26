@@ -42,6 +42,14 @@ var isTest bool
 var experimentalProcessedQueue bool
 var experimentalNoGraph bool
 var experimentalNoStateReturns bool
+var experimentalDropStates bool
+
+// dropStatesActive says the running check releases states (see
+// --experimental_drop_states), so a failure trace is replayed from its
+// action names instead of read from the graph. dropStatesJsonFile is the
+// spec the replay runs.
+var dropStatesActive bool
+var dropStatesJsonFile string
 var noSymmetryReduction bool
 
 func main() {
@@ -552,6 +560,32 @@ func addToJoinHashes(joinHashes modelchecker.JoinHashes, i int, from, to *modelc
 	joinHashes[key][i][pair] = true
 }
 
+// replayFailurePath prints the link names of a failure path whose states
+// were released and replays them for the full per-step report, the way
+// no-graph mode does. As there, the trace lists the actions and choices
+// but not the thread interleaving, so the replay reports the first
+// failure along that sequence, which can be a different interleaving. A
+// liveness path ends in a "stutter" pseudo-link, which is printed but not
+// replayed; the replay then shows the states along the sequence only.
+func replayFailurePath(failurePath []*modelchecker.Link, outDir string) {
+	path := make([]string, 0, len(failurePath))
+	for i, link := range failurePath {
+		if i == 0 || strings.HasPrefix(link.Name, "thread-") {
+			continue
+		}
+		path = append(path, link.Name)
+	}
+	fmt.Printf("Trace (%d steps):\n", len(path))
+	for _, step := range path {
+		fmt.Printf("  %s\n", step)
+	}
+	if len(path) > 0 && path[len(path)-1] == "stutter" {
+		path = path[:len(path)-1]
+		fmt.Println("(states were released during the check; the replay below follows the action sequence and cannot show the cycle)")
+	}
+	replayTraceWithFullState(path, outDir, dropStatesJsonFile)
+}
+
 // replayTraceWithFullState writes the action-name path to a trace file
 // (so the user has it on disk too) and re-execs the binary with
 // --trace-file pointing at it. The replay runs in default mode (with
@@ -709,6 +743,17 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		p1.SetExperimentalNoGraph(experimentalNoGraph)
 		p1.SetExperimentalNoStateReturns(experimentalNoStateReturns)
 		p1.SetDisableSymmetryReduction(noSymmetryReduction)
+		dropStatesActive = false
+		if experimentalDropStates && !simulation && !experimentalProcessedQueue && guidedTrace == nil {
+			switch {
+			case isPlayground:
+				fmt.Println("Note: --experimental_drop_states is ignored in the playground, which reads the states after the run.")
+			default:
+				dropStatesActive = true
+				dropStatesJsonFile = jsonFilename
+				p1.SetExperimentalDropStates(true, saveStates || !isPlayground)
+			}
+		}
 		holder.Store(p1)
 
 		rootNode, failedNode, endTime, err := startModelChecker(p1)
@@ -950,6 +995,10 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 						fmt.Println("Note:", note)
 					}
 				}
+				if dropStatesActive {
+					replayFailurePath(failurePath, outDir)
+					return nil
+				}
 				GenerateFailurePath(sourceFileName, failurePath, failedInvariant, outDir)
 				_, _, err = modelchecker.GenerateErrorPathProtoOfJson(failurePath, outDir+"/")
 				if err != nil {
@@ -1042,6 +1091,10 @@ func printTraceAndExit(err error) {
 // "last result" graph.dot used by the model-check path.
 func writeDotFileIfNeeded(p1 *modelchecker.Processor, rootNode *modelchecker.Node, outDir string, fileName string) bool {
 	if p1.GetVisitedNodesCount() < 250 || (simulation && p1.GetVisitedNodesCount() < 1000) {
+		if dropStatesActive {
+			// The dot file prints each state, which was released.
+			return false
+		}
 		dotString := modelchecker.GenerateDotFile(rootNode, make(map[*modelchecker.Node]bool))
 		dotFileName := filepath.Join(outDir, fileName)
 		// Write the content to the file
@@ -1172,6 +1225,7 @@ func parseFlags() []string {
 	flag.StringVar(&preinitHook, "preinit-hook", "", "Starlark code as a string to execute after preinit but before freezing globals (multiline supported)")
 	flag.BoolVar(&isTest, "test", false, "Testing mode (prevents printing timestamps and other non-deterministic behavior. Default=false")
 	flag.BoolVar(&experimentalProcessedQueue, "experimental_processed_queue", false, "EXPERIMENTAL: queue holds processed (yield-point) nodes instead of unprocessed action-starts. Dedupes successors before they enter the queue, reducing peak queue memory (~10x on BFS, ~3x on DFS). State space and assertion outcomes are identical under BFS. Under DFS/Random combined with max_actions, the changed exploration order may prune a different subset of states than the default path within the bound — raise max_actions above the spec's natural diameter to avoid the divergence. Default=false.")
+	flag.BoolVar(&experimentalDropStates, "experimental_drop_states", false, "EXPERIMENTAL: releases each state's heap, threads, roles and channels once its node and every fork of it have been processed. Keeps the graph, hashes, witnesses and thread counts, so dedup, symmetry, safety and liveness checks are unchanged; a failure trace is replayed from its action names. Ignored in the playground, in simulation and with a trace. Default=false.")
 	flag.BoolVar(&experimentalNoGraph, "experimental_no_graph", false, "EXPERIMENTAL: drops the in-memory state graph after processing each yield-point. Keeps symmetry reduction, dedup, unique-state count, and safety/transition assertions. Does NOT support liveness assertions — refuses to run if any are present. Auto-enables --experimental_processed_queue. Massive RSS reduction at the cost of trace replayability (only a lightweight action-name chain is kept for failure reporting). Default=false.")
 	flag.BoolVar(&experimentalNoStateReturns, "experimental_no_state_returns", false, "EXPERIMENTAL: omit Process.Returns from HashCode, JSON state, and dot-file state labels. Returns remain available on Link.Returns (the per-transition field). Use this to verify downstream consumers (graph, MBT, explorer) have migrated to reading return values from links. Planned to become the default. Default=false.")
 	flag.BoolVar(&noSymmetryReduction, "no-symmetry-reduction", false, "Disable symmetry reduction: dedup uses only the plain state hash, so every persisted state keeps its concrete symmetric values/role identities (no canonical renaming). Larger state space. Required when generating state graphs for MBT replay from specs that use symmetric roles or symmetry values. Default=false.")
@@ -1238,6 +1292,10 @@ func startHeapProfile() {
 func dumpFailedNode(srcFileName string, failedNode *modelchecker.Node, rootNode *modelchecker.Node, outDir string) {
 
 	failurePath := modelchecker.ExtractFailurePath(failedNode, rootNode)
+	if dropStatesActive {
+		replayFailurePath(failurePath, outDir)
+		return
+	}
 	GenerateFailurePath(srcFileName, failurePath, nil, outDir)
 	_, _, err := modelchecker.GenerateErrorPathProtoOfJson(failurePath, outDir+"/")
 	if err != nil {

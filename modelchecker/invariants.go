@@ -829,16 +829,11 @@ func fairnessLinkName(node *Node, outLink *Link) (string, ast.FairnessLevel, boo
 	isChoiceLink := strings.HasPrefix(linkName, "Any:")
 	isThreadLink := strings.HasPrefix(linkName, "thread-")
 	fairness := outLink.Fairness
-	if isChoiceLink {
-		linkName = linkName + "|" + node.currentThread().currentPc()
-		if node.currentThread().currentFrame().obj != nil {
-			linkName = linkName + "|" + node.currentThread().currentFrame().obj.RefStringShort()
-		}
-		fairness = ast.FairnessLevel_FAIRNESS_LEVEL_STRONG
-	} else if isThreadLink {
-		linkName = linkName + "|" + node.currentThread().currentPc()
-		if node.currentThread().currentFrame().obj != nil {
-			linkName = linkName + "|" + node.currentThread().currentFrame().obj.RefStringShort()
+	if isChoiceLink || isThreadLink {
+		pc, obj := node.currentPcAndObj()
+		linkName = linkName + "|" + pc
+		if obj != "" {
+			linkName = linkName + "|" + obj
 		}
 		fairness = ast.FairnessLevel_FAIRNESS_LEVEL_STRONG
 	}
