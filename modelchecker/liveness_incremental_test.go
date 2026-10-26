@@ -3,6 +3,7 @@ package modelchecker
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	ast "fizz/proto"
@@ -30,7 +31,9 @@ func partialVerdicts(t *testing.T, s *sccGraph, file *ast.File) map[string]bool 
 // TestIncrementalLivenessIsSound checks liveness on the closed part of the
 // graph after every step of the exploration. Every assertion that fails on
 // a partial graph must fail on the full graph, and once the exploration is
-// done the partial graph must give the full graph's verdicts.
+// done the partial graph must give the full graph's verdicts. Each spec is
+// also run with its actions declared in reverse, for another exploration
+// order.
 func TestIncrementalLivenessIsSound(t *testing.T) {
 	base := "."
 	if dir := os.Getenv("RUNFILES_DIR"); dir != "" {
@@ -42,14 +45,24 @@ func TestIncrementalLivenessIsSound(t *testing.T) {
 	}
 	early := 0
 	for _, spec := range specs {
-		for _, crashOnYield := range []bool{false, true} {
+		for _, variant := range []struct{ crashOnYield, reversed bool }{{false, false}, {true, false}, {false, true}} {
+			crashOnYield := variant.crashOnYield
 			name := spec
 			if crashOnYield {
 				name += "/crash"
 			}
+			if variant.reversed {
+				name += "/reversed"
+			}
 			t.Run(name, func(t *testing.T) {
 				file, err := readAstFromFile(filepath.Join(base, "testdata", spec+".json"))
 				require.Nil(t, err)
+				if variant.reversed {
+					// Declaring the actions in reverse order explores the
+					// graph in another order, so other nodes are open at
+					// each step. Init stays first.
+					slices.Reverse(file.Actions[1:])
+				}
 				noDeadlock := false
 				stateConfig := &ast.StateSpaceOptions{
 					Options:           &ast.Options{MaxActions: 10, MaxConcurrentActions: 1, CrashOnYield: &crashOnYield},
