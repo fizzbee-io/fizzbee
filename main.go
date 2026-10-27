@@ -76,6 +76,13 @@ func main() {
 		}
 	}
 
+	// Collapse was validated on BFS only; dfs, random and simulation run the
+	// same loop with a different queue, so turn it off there explicitly.
+	if experimentalCollapseSteps && (simulation || explorationStrategy != "bfs") {
+		fmt.Println("Note: --experimental_collapse_steps is ignored: it needs the default bfs exploration strategy, without simulation.")
+		experimentalCollapseSteps = false
+	}
+
 	// Get the input JSON file name from command line argument
 	jsonFilename := args[0]
 	dirPath := filepath.Dir(jsonFilename)
@@ -1198,7 +1205,7 @@ func parseFlags() []string {
 	//  - mergeCollapsedLink replaces, not merges, FailedInvariants per file,
 	//    and the transition-invariant check later assigns over it; only
 	//    visible with continue_path_on_invariant_failures.
-	flag.BoolVar(&experimentalCollapseSteps, "experimental_collapse_steps", false, "EXPERIMENTAL: do not store mid-action steps that are neither yield points nor fair `any` choices. Once an action's internal steps are explored to the next yield point, that yield point links directly from the previous one. Same unique states and assertion outcomes; far fewer stored nodes. Ignored with --trace, refinements, simulation, --experimental_processed_queue and --experimental_no_graph. Default=false.")
+	flag.BoolVar(&experimentalCollapseSteps, "experimental_collapse_steps", false, "EXPERIMENTAL: do not store mid-action steps that are neither yield points nor fair `any` choices. Once an action's internal steps are explored to the next yield point, that yield point links directly from the previous one. Same unique states and assertion outcomes; far fewer stored nodes. Ignored with --trace, refinements, simulation, a non-bfs --exploration_strategy, --experimental_processed_queue and --experimental_no_graph. Default=false.")
 	flag.BoolVar(&noSymmetryReduction, "no-symmetry-reduction", false, "Disable symmetry reduction: dedup uses only the plain state hash, so every persisted state keeps its concrete symmetric values/role identities (no canonical renaming). Larger state space. Required when generating state graphs for MBT replay from specs that use symmetric roles or symmetry values. Default=false.")
 	flag.Parse()
 
