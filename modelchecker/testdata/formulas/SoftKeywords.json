@@ -2,22 +2,22 @@
   "sourceInfo": {
     "fileName": "SoftKeywords.fizz",
     "start": {
-      "line": 7,
+      "line": 8,
       "column": 1
     },
     "end": {
-      "line": 35
+      "line": 40
     }
   },
   "invariants": [
     {
       "sourceInfo": {
         "start": {
-          "line": 26,
+          "line": 28,
           "column": 1
         },
         "end": {
-          "line": 29
+          "line": 31
         }
       },
       "name": "PassUsesNames",
@@ -27,11 +27,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 27,
+            "line": 29,
             "column": 5
           },
           "end": {
-            "line": 29
+            "line": 31
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -39,52 +39,52 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 27,
+                "line": 29,
                 "column": 5
               },
               "end": {
-                "line": 29
+                "line": 31
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 27,
+                  "line": 29,
                   "column": 5
                 },
                 "end": {
-                  "line": 27,
-                  "column": 85
+                  "line": 29,
+                  "column": 103
                 }
               },
-              "pyExpr": "implies(True, False) and leadsto(1) == 2 and P.implies == 3 and until == 1",
+              "pyExpr": "implies(True, False) and leadsto(1) == 2 and P.implies == 3 and P.unless == 4 and until == 1",
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 27,
+                    "line": 29,
                     "column": 12
                   },
                   "end": {
-                    "line": 27,
-                    "column": 85
+                    "line": 29,
+                    "column": 103
                   }
                 },
-                "pyExpr": "implies(True, False) and leadsto(1) == 2 and P.implies == 3 and until == 1"
+                "pyExpr": "implies(True, False) and leadsto(1) == 2 and P.implies == 3 and P.unless == 4 and until == 1"
               }
             }
           }
         ]
       },
-      "pyCode": "def PassUsesNames():\n    return implies(True, False) and leadsto(1) == 2 and P.implies == 3 and until == 1\n\n"
+      "pyCode": "def PassUsesNames():\n    return implies(True, False) and leadsto(1) == 2 and P.implies == 3 and P.unless == 4 and until == 1\n\n"
     },
     {
       "sourceInfo": {
         "start": {
-          "line": 29,
+          "line": 31,
           "column": 1
         },
         "end": {
-          "line": 33
+          "line": 35
         }
       },
       "name": "PassUsesNamesInBlock",
@@ -94,11 +94,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 30,
+            "line": 32,
             "column": 5
           },
           "end": {
-            "line": 33
+            "line": 35
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -106,22 +106,22 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 30,
+                "line": 32,
                 "column": 5
               },
               "end": {
-                "line": 31,
+                "line": 33,
                 "column": 4
               }
             },
             "callStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 30,
+                  "line": 32,
                   "column": 5
                 },
                 "end": {
-                  "line": 30,
+                  "line": 32,
                   "column": 22
                 }
               },
@@ -133,11 +133,11 @@
                 {
                   "sourceInfo": {
                     "start": {
-                      "line": 30,
+                      "line": 32,
                       "column": 17
                     },
                     "end": {
-                      "line": 30,
+                      "line": 32,
                       "column": 21
                     }
                   },
@@ -145,11 +145,11 @@
                   "expr": {
                     "sourceInfo": {
                       "start": {
-                        "line": 30,
+                        "line": 32,
                         "column": 17
                       },
                       "end": {
-                        "line": 30,
+                        "line": 32,
                         "column": 21
                       }
                     },
@@ -162,21 +162,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 31,
+                "line": 33,
                 "column": 5
               },
               "end": {
-                "line": 33
+                "line": 35
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 31,
+                  "line": 33,
                   "column": 5
                 },
                 "end": {
-                  "line": 31,
+                  "line": 33,
                   "column": 39
                 }
               },
@@ -184,11 +184,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 31,
+                    "line": 33,
                     "column": 12
                   },
                   "end": {
-                    "line": 31,
+                    "line": 33,
                     "column": 39
                   }
                 },
@@ -203,22 +203,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 33,
+          "line": 35,
           "column": 1
         },
         "end": {
-          "line": 35
+          "line": 38
         }
       },
       "name": "PassFormulaWithNames",
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 34,
+            "line": 36,
             "column": 5
           },
           "end": {
-            "line": 35
+            "line": 38
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -226,21 +226,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 34,
+                "line": 36,
                 "column": 5
               },
               "end": {
-                "line": 35
+                "line": 38
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 34,
+                  "line": 36,
                   "column": 5
                 },
                 "end": {
-                  "line": 34,
+                  "line": 36,
                   "column": 91
                 }
               },
@@ -248,11 +248,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 34,
+                    "line": 36,
                     "column": 5
                   },
                   "end": {
-                    "line": 34,
+                    "line": 36,
                     "column": 91
                   }
                 },
@@ -262,15 +262,15 @@
           }
         ]
       },
-      "pyCode": "def PassFormulaWithNames():\n    return (implies(True, False) and P.leadsto == 2) implies eventually leadsto(until) == 2\n",
+      "pyCode": "def PassFormulaWithNames():\n    return (implies(True, False) and P.leadsto == 2) implies eventually leadsto(until) == 2\n\n",
       "formula": {
         "sourceInfo": {
           "start": {
-            "line": 34,
+            "line": 36,
             "column": 12
           },
           "end": {
-            "line": 34,
+            "line": 36,
             "column": 91
           }
         },
@@ -279,11 +279,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 34,
+                "line": 36,
                 "column": 13
               },
               "end": {
-                "line": 34,
+                "line": 36,
                 "column": 51
               }
             },
@@ -292,11 +292,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 34,
+                "line": 36,
                 "column": 62
               },
               "end": {
-                "line": 34,
+                "line": 36,
                 "column": 91
               }
             },
@@ -305,11 +305,11 @@
               {
                 "sourceInfo": {
                   "start": {
-                    "line": 34,
+                    "line": 36,
                     "column": 73
                   },
                   "end": {
-                    "line": 34,
+                    "line": 36,
                     "column": 91
                   }
                 },
@@ -320,17 +320,123 @@
           }
         ]
       }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 38,
+          "column": 1
+        },
+        "end": {
+          "line": 40
+        }
+      },
+      "name": "PassUnlessWithNames",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 39,
+            "column": 5
+          },
+          "end": {
+            "line": 40
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 39,
+                "column": 5
+              },
+              "end": {
+                "line": 40
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 39,
+                  "column": 5
+                },
+                "end": {
+                  "line": 39,
+                  "column": 51
+                }
+              },
+              "pyExpr": "[bool(P.unless == 4), bool(leadsto(until) == 3)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 39,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 39,
+                    "column": 51
+                  }
+                },
+                "pyExpr": "[bool(P.unless == 4), bool(leadsto(until) == 3)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassUnlessWithNames():\n    return P.unless == 4 unless leadsto(until) == 3\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 39,
+            "column": 12
+          },
+          "end": {
+            "line": 39,
+            "column": 51
+          }
+        },
+        "op": "WEAK_UNTIL",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 39,
+                "column": 12
+              },
+              "end": {
+                "line": 39,
+                "column": 24
+              }
+            },
+            "op": "ATOM"
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 39,
+                "column": 33
+              },
+              "end": {
+                "line": 39,
+                "column": 51
+              }
+            },
+            "op": "ATOM",
+            "atom": 1
+          }
+        ]
+      }
     }
   ],
   "actions": [
     {
       "sourceInfo": {
         "start": {
-          "line": 16,
+          "line": 17,
           "column": 1
         },
         "end": {
-          "line": 21
+          "line": 22
         }
       },
       "name": "Init",
@@ -341,11 +447,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 17,
+            "line": 18,
             "column": 5
           },
           "end": {
-            "line": 21
+            "line": 22
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -353,22 +459,22 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 17,
+                "line": 18,
                 "column": 5
               },
               "end": {
-                "line": 18,
+                "line": 19,
                 "column": 4
               }
             },
             "callStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 17,
+                  "line": 18,
                   "column": 5
                 },
                 "end": {
-                  "line": 17,
+                  "line": 18,
                   "column": 28
                 }
               },
@@ -380,11 +486,11 @@
                 {
                   "sourceInfo": {
                     "start": {
-                      "line": 17,
+                      "line": 18,
                       "column": 17
                     },
                     "end": {
-                      "line": 17,
+                      "line": 18,
                       "column": 20
                     }
                   },
@@ -392,11 +498,11 @@
                   "expr": {
                     "sourceInfo": {
                       "start": {
-                        "line": 17,
+                        "line": 18,
                         "column": 17
                       },
                       "end": {
-                        "line": 17,
+                        "line": 18,
                         "column": 20
                       }
                     },
@@ -406,11 +512,11 @@
                 {
                   "sourceInfo": {
                     "start": {
-                      "line": 17,
+                      "line": 18,
                       "column": 23
                     },
                     "end": {
-                      "line": 17,
+                      "line": 18,
                       "column": 27
                     }
                   },
@@ -418,11 +524,11 @@
                   "expr": {
                     "sourceInfo": {
                       "start": {
-                        "line": 17,
+                        "line": 18,
                         "column": 23
                       },
                       "end": {
-                        "line": 17,
+                        "line": 18,
                         "column": 27
                       }
                     },
@@ -435,22 +541,22 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 18,
+                "line": 19,
                 "column": 5
               },
               "end": {
-                "line": 19,
+                "line": 20,
                 "column": 4
               }
             },
             "callStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 18,
+                  "line": 19,
                   "column": 5
                 },
                 "end": {
-                  "line": 18,
+                  "line": 19,
                   "column": 18
                 }
               },
@@ -462,11 +568,11 @@
                 {
                   "sourceInfo": {
                     "start": {
-                      "line": 18,
+                      "line": 19,
                       "column": 17
                     },
                     "end": {
-                      "line": 18,
+                      "line": 19,
                       "column": 17
                     }
                   },
@@ -474,11 +580,11 @@
                   "expr": {
                     "sourceInfo": {
                       "start": {
-                        "line": 18,
+                        "line": 19,
                         "column": 17
                       },
                       "end": {
-                        "line": 18,
+                        "line": 19,
                         "column": 17
                       }
                     },
@@ -491,21 +597,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 19,
+                "line": 20,
                 "column": 5
               },
               "end": {
-                "line": 21
+                "line": 22
               }
             },
             "pyStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 19,
+                  "line": 20,
                   "column": 5
                 },
                 "end": {
-                  "line": 19,
+                  "line": 20,
                   "column": 33
                 }
               },
@@ -518,11 +624,11 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 21,
+          "line": 22,
           "column": 1
         },
         "end": {
-          "line": 26
+          "line": 28
         }
       },
       "name": "Step",
@@ -533,11 +639,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 22,
+            "line": 23,
             "column": 5
           },
           "end": {
-            "line": 26
+            "line": 28
           }
         },
         "flow": "FLOW_ATOMIC",
@@ -545,22 +651,22 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 22,
+                "line": 23,
                 "column": 5
               },
               "end": {
-                "line": 23,
+                "line": 24,
                 "column": 4
               }
             },
             "callStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 22,
+                  "line": 23,
                   "column": 5
                 },
                 "end": {
-                  "line": 22,
+                  "line": 23,
                   "column": 17
                 }
               },
@@ -569,11 +675,11 @@
                 {
                   "sourceInfo": {
                     "start": {
-                      "line": 22,
+                      "line": 23,
                       "column": 13
                     },
                     "end": {
-                      "line": 22,
+                      "line": 23,
                       "column": 13
                     }
                   },
@@ -581,11 +687,11 @@
                   "expr": {
                     "sourceInfo": {
                       "start": {
-                        "line": 22,
+                        "line": 23,
                         "column": 13
                       },
                       "end": {
-                        "line": 22,
+                        "line": 23,
                         "column": 13
                       }
                     },
@@ -595,11 +701,11 @@
                 {
                   "sourceInfo": {
                     "start": {
-                      "line": 22,
+                      "line": 23,
                       "column": 16
                     },
                     "end": {
-                      "line": 22,
+                      "line": 23,
                       "column": 16
                     }
                   },
@@ -607,11 +713,11 @@
                   "expr": {
                     "sourceInfo": {
                       "start": {
-                        "line": 22,
+                        "line": 23,
                         "column": 16
                       },
                       "end": {
-                        "line": 22,
+                        "line": 23,
                         "column": 16
                       }
                     },
@@ -624,22 +730,22 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 23,
+                "line": 24,
                 "column": 5
               },
               "end": {
-                "line": 24,
+                "line": 25,
                 "column": 4
               }
             },
             "callStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 23,
+                  "line": 24,
                   "column": 5
                 },
                 "end": {
-                  "line": 23,
+                  "line": 24,
                   "column": 22
                 }
               },
@@ -651,11 +757,11 @@
                 {
                   "sourceInfo": {
                     "start": {
-                      "line": 23,
+                      "line": 24,
                       "column": 17
                     },
                     "end": {
-                      "line": 23,
+                      "line": 24,
                       "column": 21
                     }
                   },
@@ -663,11 +769,11 @@
                   "expr": {
                     "sourceInfo": {
                       "start": {
-                        "line": 23,
+                        "line": 24,
                         "column": 17
                       },
                       "end": {
-                        "line": 23,
+                        "line": 24,
                         "column": 21
                       }
                     },
@@ -680,25 +786,50 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 24,
+                "line": 25,
                 "column": 5
               },
               "end": {
-                "line": 26
+                "line": 26,
+                "column": 4
               }
             },
             "pyStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 24,
+                  "line": 25,
                   "column": 5
                 },
                 "end": {
-                  "line": 24,
-                  "column": 18
+                  "line": 25,
+                  "column": 14
                 }
               },
-              "code": "z = [until, w]"
+              "code": "unless = w"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 26,
+                "column": 5
+              },
+              "end": {
+                "line": 28
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 26,
+                  "column": 5
+                },
+                "end": {
+                  "line": 26,
+                  "column": 23
+                }
+              },
+              "code": "z = [until, unless]"
             }
           }
         ]
@@ -709,11 +840,11 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 10,
+          "line": 11,
           "column": 1
         },
         "end": {
-          "line": 13
+          "line": 14
         }
       },
       "name": "implies",
@@ -722,11 +853,11 @@
         {
           "sourceInfo": {
             "start": {
-              "line": 10,
+              "line": 11,
               "column": 14
             },
             "end": {
-              "line": 10,
+              "line": 11,
               "column": 14
             }
           },
@@ -735,11 +866,11 @@
         {
           "sourceInfo": {
             "start": {
-              "line": 10,
+              "line": 11,
               "column": 17
             },
             "end": {
-              "line": 10,
+              "line": 11,
               "column": 17
             }
           },
@@ -749,11 +880,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 11,
+            "line": 12,
             "column": 5
           },
           "end": {
-            "line": 13
+            "line": 14
           }
         },
         "flow": "FLOW_SERIAL",
@@ -761,21 +892,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 11,
+                "line": 12,
                 "column": 5
               },
               "end": {
-                "line": 13
+                "line": 14
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 11,
+                  "line": 12,
                   "column": 5
                 },
                 "end": {
-                  "line": 11,
+                  "line": 12,
                   "column": 12
                 }
               },
@@ -783,11 +914,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 11,
+                    "line": 12,
                     "column": 12
                   },
                   "end": {
-                    "line": 11,
+                    "line": 12,
                     "column": 12
                   }
                 },
@@ -801,11 +932,11 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 13,
+          "line": 14,
           "column": 1
         },
         "end": {
-          "line": 16
+          "line": 17
         }
       },
       "name": "leadsto",
@@ -814,11 +945,11 @@
         {
           "sourceInfo": {
             "start": {
-              "line": 13,
+              "line": 14,
               "column": 14
             },
             "end": {
-              "line": 13,
+              "line": 14,
               "column": 14
             }
           },
@@ -828,11 +959,11 @@
       "block": {
         "sourceInfo": {
           "start": {
-            "line": 14,
+            "line": 15,
             "column": 5
           },
           "end": {
-            "line": 16
+            "line": 17
           }
         },
         "flow": "FLOW_SERIAL",
@@ -840,21 +971,21 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 14,
+                "line": 15,
                 "column": 5
               },
               "end": {
-                "line": 16
+                "line": 17
               }
             },
             "returnStmt": {
               "sourceInfo": {
                 "start": {
-                  "line": 14,
+                  "line": 15,
                   "column": 5
                 },
                 "end": {
-                  "line": 14,
+                  "line": 15,
                   "column": 20
                 }
               },
@@ -862,11 +993,11 @@
               "expr": {
                 "sourceInfo": {
                   "start": {
-                    "line": 14,
+                    "line": 15,
                     "column": 12
                   },
                   "end": {
-                    "line": 14,
+                    "line": 15,
                     "column": 20
                   }
                 },
@@ -882,21 +1013,21 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 7,
+          "line": 8,
           "column": 1
         },
         "end": {
-          "line": 8
+          "line": 9
         }
       },
       "pyStmt": {
         "sourceInfo": {
           "start": {
-            "line": 7,
+            "line": 8,
             "column": 1
           },
           "end": {
-            "line": 7,
+            "line": 8,
             "column": 9
           }
         },
@@ -906,22 +1037,22 @@
     {
       "sourceInfo": {
         "start": {
-          "line": 8,
+          "line": 9,
           "column": 1
         },
         "end": {
-          "line": 10
+          "line": 11
         }
       },
       "callStmt": {
         "sourceInfo": {
           "start": {
-            "line": 8,
+            "line": 9,
             "column": 1
           },
           "end": {
-            "line": 8,
-            "column": 32
+            "line": 9,
+            "column": 42
           }
         },
         "vars": [
@@ -932,11 +1063,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 8,
+                "line": 9,
                 "column": 12
               },
               "end": {
-                "line": 8,
+                "line": 9,
                 "column": 20
               }
             },
@@ -944,11 +1075,11 @@
             "expr": {
               "sourceInfo": {
                 "start": {
-                  "line": 8,
+                  "line": 9,
                   "column": 12
                 },
                 "end": {
-                  "line": 8,
+                  "line": 9,
                   "column": 20
                 }
               },
@@ -958,11 +1089,11 @@
           {
             "sourceInfo": {
               "start": {
-                "line": 8,
+                "line": 9,
                 "column": 23
               },
               "end": {
-                "line": 8,
+                "line": 9,
                 "column": 31
               }
             },
@@ -970,15 +1101,41 @@
             "expr": {
               "sourceInfo": {
                 "start": {
-                  "line": 8,
+                  "line": 9,
                   "column": 23
                 },
                 "end": {
-                  "line": 8,
+                  "line": 9,
                   "column": 31
                 }
               },
               "pyExpr": "implies=3"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 9,
+                "column": 34
+              },
+              "end": {
+                "line": 9,
+                "column": 41
+              }
+            },
+            "pyExpr": "unless=4",
+            "expr": {
+              "sourceInfo": {
+                "start": {
+                  "line": 9,
+                  "column": 34
+                },
+                "end": {
+                  "line": 9,
+                  "column": 41
+                }
+              },
+              "pyExpr": "unless=4"
             }
           }
         ]

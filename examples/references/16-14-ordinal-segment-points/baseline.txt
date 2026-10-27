@@ -1,0 +1,14 @@
+Model checking examples/references/16-14-ordinal-segment-points/OrdinalSegmentPoints.json
+configFileName: examples/references/16-14-ordinal-segment-points/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}  deadlock_detection:false
+Nodes: 6, queued: 0, elapsed: 1.711105ms
+Time taken for model checking: 1.743606ms
+Writen graph dotfile: examples/references/16-14-ordinal-segment-points/out/run_2026-10-24_07-08-17/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/16-14-ordinal-segment-points/out/run_2026-10-24_07-08-17/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 6 Unique states: 4
+IsLive: true
+Time taken to check liveness: 348.211µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/16-14-ordinal-segment-points/out/run_2026-10-24_07-08-17

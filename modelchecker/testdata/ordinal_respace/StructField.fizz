@@ -1,0 +1,18 @@
+# A struct keeps a copy of the first value. Respacing must update the copy
+# inside the struct together with the other references to the value.
+TIMES = symmetry.ordinal(name="ts", limit=3)
+
+action Init:
+    first = TIMES.fresh()
+    t = first
+    snapshot = struct(t=first)
+    count = 0
+
+atomic action InsertBefore:
+    require count < 80
+    gap = oneof TIMES.segments(before=t)
+    t = gap.fresh()
+    count += 1
+
+always assertion SnapshotMatches:
+    return snapshot.t == first and t <= first

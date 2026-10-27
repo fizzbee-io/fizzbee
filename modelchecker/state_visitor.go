@@ -6,11 +6,18 @@ import (
 
 	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 )
 
 // StateVisitor defines the interface for visiting state elements during traversal
 type StateVisitor interface {
 	VisitSymmetricValue(sv *lib.SymmetricValue)
+}
+
+// SegmentVisitor is implemented by state visitors that also want the ordinal
+// segments held in the state.
+type SegmentVisitor interface {
+	VisitSegment(s *lib.Segment)
 }
 
 // UsedSymmetricValuesCollector collects all SymmetricValue instances in the current state
@@ -106,13 +113,27 @@ func visitStarlarkValue(value starlark.Value, visitor StateVisitor, visited map[
 
 	switch value.Type() {
 	case "NoneType", "int", "float", "bool", "string", "bytes", "function",
-		"builtin_function_or_method", "range", "struct", "symmetric_values",
+		"builtin_function_or_method", "range", "symmetric_values",
 		"model_value", "Channel":
 		return
 
 	case "symmetric_value":
 		sv := value.(*lib.SymmetricValue)
 		visitor.VisitSymmetricValue(sv)
+
+	case "struct":
+		if st, ok := value.(*starlarkstruct.Struct); ok {
+			for _, name := range st.AttrNames() {
+				if field, err := st.Attr(name); err == nil {
+					visitStarlarkValue(field, visitor, visited)
+				}
+			}
+		}
+
+	case "symmetry_segment":
+		if sv, ok := visitor.(SegmentVisitor); ok {
+			sv.VisitSegment(value.(*lib.Segment))
+		}
 
 	case "list":
 		list := value.(*starlark.List)
@@ -198,7 +219,7 @@ func visitStarlarkValue(value starlark.Value, visitor StateVisitor, visited map[
 // isPointerType returns true if the value is a pointer type that could cause cycles
 func isPointerType(value starlark.Value) bool {
 	switch value.Type() {
-	case "list", "set", "dict", "bag", "genericset", "genericmap", "record", "role", "RoleStub":
+	case "list", "set", "dict", "bag", "genericset", "genericmap", "record", "role", "RoleStub", "struct":
 		return true
 	default:
 		return false

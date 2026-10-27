@@ -1,0 +1,14 @@
+# Each step returns the value it inserted, and keeps it in the state. The
+# return value recorded on the transition must match the respaced state.
+TIMES = symmetry.ordinal(name="ts", limit=2)
+
+action Init:
+    t = TIMES.fresh()
+    count = 0
+
+atomic action InsertBefore:
+    require count < 80
+    gap = oneof TIMES.segments(before=t)
+    t = gap.fresh()
+    count += 1
+    return t

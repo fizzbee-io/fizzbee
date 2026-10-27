@@ -370,6 +370,12 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: `always possibly`, counterexample note for `possibly`
 - **Status**: ❌ FAILED (expected)
 
+### 09-18-weak-until: Weak Until
+- **State space**: 7 nodes, 7 unique states
+- **Purpose**: `unless` says P holds until Q, or forever if Q never happens
+- **Key concepts**: `unless` (weak until), `unless` versus `until`, `always (P implies (P unless Q))`
+- **Status**: ✅ PASSED
+
 ### 10-01-unfair-action: Unfair Action (Default)
 - **State space**: 108 nodes, 46 unique states
 - **Purpose**: Unfair actions have no fairness guarantees
@@ -708,6 +714,24 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: `symmetric role` + `bag()`, dynamic creation, removal by `__id__`, unlimited lifecycle with symmetry
 - **Status**: ✅ PASSED
 - **Note**: Compare with 11-08 (non-symmetric, 113 nodes / 70 states). Symmetric version needs no hire cap — removed nodes get replaced by fresh ones that map to the same canonical states.
+
+### 16-14-ordinal-segment-points: Ordinal Segment Points (existing or new value)
+- **State space**: 6 nodes, 4 unique states
+- **Purpose**: Choosing an existing ordinal value or a new one in any position
+- **Key concepts**: `segments(include_points=True)`, `segment.value()`, `is_point`, `gt`/`ge`/`lt`/`le` bounds
+- **Status**: ✅ PASSED
+
+### 16-15-ordinal-repeated-head-insert: Repeated Ordinal Gap Insertion
+- **State space**: 201 nodes, 101 unique states
+- **Purpose**: Regression test for inserting into the same ordinal gap 100 times along one path
+- **Key concepts**: `segments(before=...)`, ordinal ID respacing
+- **Status**: ✅ PASSED
+
+### 16-16-ordinal-repeated-append: Repeated Ordinal Append
+- **State space**: 101 nodes, 101 unique states
+- **Purpose**: Regression test for appending with `fresh()` 100 times along one path
+- **Key concepts**: ordinal `fresh()`, ordinal ID respacing
+- **Status**: ✅ PASSED
 
 ### 99-01-checkpoints: Visualization Checkpoints
 - **State space**: 12 nodes, 10 unique states
