@@ -1259,6 +1259,20 @@ type Processor struct {
 	// after expansion) and for coverage warnings in simulation mode.
 	// Indexed [fileIndex][invariantIndex]; lazily sized on first use.
 	existsWitness [][]bool
+
+	// incrementalLiveness: when true, Start checks liveness on the closed
+	// part of the graph each time the visited count doubles, and stops at
+	// the first violation. See liveness_incremental.go. Off by default.
+	incrementalLiveness bool
+	// pendingActions counts, per node, the actions it scheduled that are
+	// still queued. A node with a count is open.
+	pendingActions             map[*Node]int
+	nextIncrementalCheck       int
+	incrementalEvery           int             // tests: check after each node popped once this many more are visited, instead of doubling
+	partialCheckHook           func(*sccGraph) // tests: replaces the partial check
+	incrementalFailurePath     []*Link
+	incrementalFailedInvariant *InvariantPosition
+	incrementalErr             error
 }
 
 // accumulateExistsWitness ORs a just-checked process's Witness flags into
@@ -1429,6 +1443,7 @@ func (p *Processor) enqueueScheduled(node *Node) {
 		}
 		return
 	}
+	p.trackScheduled(node)
 	p.addToProcessingQueue(node)
 }
 
@@ -1586,12 +1601,15 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 			panic("queue should not be empty")
 		}
 
+		scheduledBy := p.scheduledBy(node)
 		if node.actionDepth > int(p.config.Options.MaxActions) {
 			// Add a node to indicate why this node was not processed
+			p.trackDone(scheduledBy)
 			continue
 		}
 
 		invariantFailure, symmetryFound, crashFailedNode, finalNode := p.expandToYield(node, startTime, &prevCount)
+		p.trackDone(scheduledBy)
 
 		if crashFailedNode != nil && failedNode == nil {
 			failedNode = crashFailedNode
@@ -1605,6 +1623,9 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 			failedNode = finalNode
 		}
 		if invariantFailure && !p.config.ContinueOnInvariantFailures {
+			break
+		}
+		if failedNode == nil && p.maybeCheckLivenessIncrementally() {
 			break
 		}
 		//if node.Process != nil && *p.config.Options.CrashOnYield && node.Enabled {
