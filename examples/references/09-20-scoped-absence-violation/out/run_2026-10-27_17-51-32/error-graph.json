@@ -1,0 +1,206 @@
+[
+  {
+    "Node": {
+      "channel_messages": {},
+      "channels": {},
+      "current": 0,
+      "failedInvariants": null,
+      "name": "Init",
+      "returns": "{}",
+      "roles": null,
+      "state": {},
+      "stats": {
+        "totalActions": 0,
+        "counts": {}
+      },
+      "threads": [
+        {
+          "id": 1,
+          "stack": [
+            {
+              "fileIndex": 0,
+              "name": "Init",
+              "pc": "Actions[0].Block.Stmts[0].any",
+              "scope": {
+                "loopRange": null,
+                "parent": null,
+                "skipstmts": null,
+                "vars": "{}"
+              },
+              "vars": "{}"
+            }
+          ],
+          "fairness": 3
+        }
+      ],
+      "witness": [
+        [
+          false,
+          false
+        ]
+      ]
+    },
+    "Type": "",
+    "Name": "Init",
+    "Labels": [],
+    "Fairness": 3,
+    "ChoiceFairness": 0,
+    "Messages": null,
+    "ReqId": 0,
+    "ThreadsMap": null,
+    "FailedInvariants": null,
+    "Returns": null
+  },
+  {
+    "Node": {
+      "channel_messages": {},
+      "channels": {},
+      "current": 0,
+      "failedInvariants": null,
+      "name": "yield",
+      "returns": "{}",
+      "roles": [],
+      "state": {
+        "cabin": "basic",
+        "refunded": false,
+        "status": "booked"
+      },
+      "stats": {
+        "totalActions": 0,
+        "counts": {}
+      },
+      "threads": [],
+      "witness": [
+        [
+          false,
+          false
+        ]
+      ]
+    },
+    "Type": "",
+    "Name": "Any:cabin=\"basic\"",
+    "Labels": null,
+    "Fairness": 3,
+    "ChoiceFairness": 0,
+    "Messages": null,
+    "ReqId": 0,
+    "ThreadsMap": null,
+    "FailedInvariants": null,
+    "Returns": null
+  },
+  {
+    "Node": {
+      "channel_messages": {},
+      "channels": {},
+      "current": 0,
+      "failedInvariants": null,
+      "name": "yield",
+      "returns": "{}",
+      "roles": [],
+      "state": {
+        "cabin": "premium",
+        "refunded": false,
+        "status": "booked"
+      },
+      "stats": {
+        "totalActions": 0,
+        "counts": {}
+      },
+      "threads": [],
+      "witness": [
+        [
+          false,
+          false
+        ]
+      ]
+    },
+    "Type": "action",
+    "Name": "Upgrade",
+    "Labels": null,
+    "Fairness": 1,
+    "ChoiceFairness": 0,
+    "Messages": null,
+    "ReqId": 0,
+    "ThreadsMap": {},
+    "FailedInvariants": null,
+    "Returns": null
+  },
+  {
+    "Node": {
+      "channel_messages": {},
+      "channels": {},
+      "current": 0,
+      "failedInvariants": null,
+      "name": "yield",
+      "returns": "{}",
+      "roles": [],
+      "state": {
+        "cabin": "premium",
+        "refunded": true,
+        "status": "cancelled"
+      },
+      "stats": {
+        "totalActions": 1,
+        "counts": {
+          "Cancel": 1
+        }
+      },
+      "threads": [],
+      "witness": [
+        [
+          false,
+          false
+        ]
+      ]
+    },
+    "Type": "action",
+    "Name": "Cancel",
+    "Labels": null,
+    "Fairness": 1,
+    "ChoiceFairness": 0,
+    "Messages": null,
+    "ReqId": 0,
+    "ThreadsMap": null,
+    "FailedInvariants": null,
+    "Returns": null
+  },
+  {
+    "Node": {
+      "channel_messages": {},
+      "channels": {},
+      "current": 0,
+      "failedInvariants": null,
+      "name": "yield",
+      "returns": "{}",
+      "roles": [],
+      "state": {
+        "cabin": "premium",
+        "refunded": true,
+        "status": "cancelled"
+      },
+      "stats": {
+        "totalActions": 1,
+        "counts": {
+          "Cancel": 1
+        }
+      },
+      "threads": [],
+      "witness": [
+        [
+          false,
+          false
+        ]
+      ]
+    },
+    "Type": "",
+    "Name": "stutter",
+    "Labels": null,
+    "Fairness": 0,
+    "ChoiceFairness": 0,
+    "Messages": null,
+    "ReqId": 0,
+    "ThreadsMap": null,
+    "FailedInvariants": null,
+    "Returns": null
+  }
+]

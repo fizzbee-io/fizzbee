@@ -123,6 +123,20 @@ After the frontmatter (or at the start if no frontmatter), the FizzBee specifica
 - `always eventually` - Progress property (always makes progress)
 - `transition` - Property about state transitions
 
+### Temporal Formula Keywords
+
+Used in the `return` of an `assertion` with no prefix (see
+[Temporal Formulas](#temporal-formulas)):
+
+- `always`, `eventually` - Prefix temporal operators
+- `until`, `unless` - Strong and weak until
+- `leadsto` - `P leadsto Q` is `always (P implies eventually Q)`
+- `implies` - Logical implication
+- `possibly` - Some path reaches a state (`exists eventually` is another spelling)
+
+`until`, `unless`, `leadsto`, `implies` and `possibly` are keywords only in
+an assertion's return, so they can still be used as names elsewhere.
+
 ### Control Flow
 
 - `if`, `elif`, `else` - Conditional branching
@@ -429,6 +443,17 @@ result = value + 10
 **Reason**: Fizz function calls create yield points and must be tracked separately by the model checker.
 
 **Note**: Standard Python/Starlark functions (built-ins like `len()`, `str()`, etc.) have no restrictions.
+
+**Exception: assertions.** Inside an assertion, fizz funcs can be called
+anywhere in an expression: in a condition, a list comprehension, a temporal
+formula or an `invariants:` line. Each call runs on its own copy of the
+state, so it can't change the model, and it must be deterministic (no
+`oneof`, `any` or parallel blocks). See `09-13`.
+
+```python
+always assertion AllDone:
+    return all([c.done() for c in consumers]) or total_received() < MAX
+```
 
 ---
 
@@ -1005,6 +1030,13 @@ assertion Replicated for k in KEYS for r in REPLICAS if r != PRIMARY:
     return written[k] leadsto r in copies[k]
 ```
 
+A `for` clause also works on prefixed assertions:
+
+```python
+always eventually assertion Copied for k in KEYS for r in REPLICAS if r != PRIMARY:
+    return r in copies[k]
+```
+
 `return always P`, `return always eventually P` and
 `return eventually always P` (with P free of temporal operators) are the
 same checks as the prefixed `always`, `always eventually` and
@@ -1057,6 +1089,25 @@ assertion ByMode:
 | Constrained response | `always (requested implies (requested until served))` | once requested, stays requested until served |
 | Held until released | `always (held implies (held unless released))` | once held, stays held until released, or forever |
 | Conditional | `(always eventually requested) implies (always eventually served)` | if requested infinitely often, served infinitely often |
+| Absence after | `always (basic implies always not refunded)` | once basic, never refunded, whatever happens next |
+
+**Properties that start from a condition.** `always (P implies F)` checks
+the formula F from every state where P holds: a precondition for the
+property. It replaces a history variable in the model. For example, a basic
+ticket can't be refunded, but it can be upgraded to premium, which can. The
+invariant `not (cabin == "basic" and refunded)` misses the
+upgrade-then-cancel loophole, because the ticket is premium by the time it
+is refunded. The formula talks about every basic ticket's future instead:
+
+```python
+assertion BasicNeverRefunded:
+    return always (cabin == "basic" implies always not refunded)
+```
+
+It fails, and the counterexample is the loophole: buy basic, `Upgrade`,
+`Cancel`. F can be any formula: `always Q` (safety after P),
+`eventually Q` (that is `P leadsto Q`), `possibly Q`, or `Q unless R`.
+See `09-20`.
 
 `until` is strong and `unless` is weak: `P unless Q` means
 `(P until Q) or always P`. Like any formula, a bare `P unless Q` is judged
@@ -1126,7 +1177,29 @@ assertion WillLeave:
 - There is no release operator (LTL R). `P R Q` is `Q unless (P and Q)`.
 - Reference examples: `09-14` (passing) and `09-15` (a violation);
   for `possibly`, `09-16` (passing) and `09-17` (a violation); for
-  `unless`, `09-18`.
+  `unless`, `09-18`; for a property that starts from a condition, `09-20`;
+  for `for` clauses, `09-21`.
+
+### Incremental Liveness Checking (experimental)
+
+By default, liveness assertions and formulas are checked once the whole
+state space is explored. With `--experimental_incremental_liveness`, the
+checker also checks the part explored so far each time the explored node
+count doubles, and stops at the first violation:
+
+```bash
+./fizz --experimental_incremental_liveness spec.fizz
+```
+
+- It never changes a verdict. A violation found early is a real one, and a
+  run with no violation still ends with the usual full check. Only *when* a
+  failure is reported changes.
+- It helps most on large models where the bad run sits close to `Init`.
+- Formulas with `possibly` are checked at the end only.
+- It needs the default BFS exploration and strict liveness. It is refused
+  with simulation, `--experimental_processed_queue` and
+  `--experimental_no_graph`, and has no effect with `liveness: eventual`.
+- Reference example: `09-19` (the flag is in its `flags.txt`).
 
 ---
 
@@ -2597,7 +2670,7 @@ always assertion ServerValuePositive:
     return True
 ```
 
-**For complex expressions with fizz functions**: Extract to variables first (see Function Call Syntax Limitations)
+**For complex expressions with fizz functions**: Extract to variables first (see Function Call Syntax Limitations). Assertions are the exception: they can call fizz funcs anywhere.
 
 **For generic collections in state**: Use regular collections with hashable types, or restructure to keep generic collections in local scope
 
@@ -2612,7 +2685,7 @@ always assertion ServerValuePositive:
 
 ## See Also
 
-- [Example Reference](README.md) - 100 runnable examples
+- [Example Reference](README.md) - 123 runnable examples
 - [Performance Guide](PERFORMANCE_GUIDE.md) - Tips for reducing state space and runtime
 - [Gotchas and Common Issues](GOTCHAS.md) - Known pitfalls and workarounds
 - [Verification Guide](VERIFICATION_GUIDE.md) - Simulation, guided traces, and debugging

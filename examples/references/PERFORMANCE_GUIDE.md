@@ -269,6 +269,25 @@ the model checker).
 
 ---
 
+## 7. Get Liveness Failures Early (Experimental)
+
+Liveness assertions and formulas are normally checked only after the whole
+state space is explored, so a failing liveness check on a large model can
+take as long as a passing one. `--experimental_incremental_liveness` also
+checks the graph explored so far each time the node count doubles, and
+stops at the first violation:
+
+```bash
+./fizz --experimental_incremental_liveness spec.fizz
+```
+
+Verdicts don't change: a passing run still ends with the full check. It
+needs the default BFS exploration. See
+[Incremental Liveness Checking](LANGUAGE_REFERENCE.md#incremental-liveness-checking-experimental)
+and example `09-19`.
+
+---
+
 ## Summary: Impact Ranking
 
 | Technique | Impact | Type |
@@ -279,3 +298,4 @@ the model checker).
 | List comprehensions over loops | ~35-45% nodes | Constant multiplier |
 | Reduce statement count | ~10-30% nodes | Constant multiplier |
 | `max_concurrent_actions: 1` | Large | Configuration |
+| `--experimental_incremental_liveness` | Earlier liveness failures; no change to passing runs | Flag |

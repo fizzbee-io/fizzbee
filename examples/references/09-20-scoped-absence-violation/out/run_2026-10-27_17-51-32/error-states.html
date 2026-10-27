@@ -1,0 +1,274 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error States Comparison</title>
+</head>
+<style>
+/* styles.css */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body, html {
+  height: 100%;
+  font-family: Arial, sans-serif;
+}
+
+.container {
+  display: flex;
+  height: 100vh;
+  padding: 10px;
+}
+
+.content {
+  flex: 1;
+  padding-right: 20px;
+}
+.content td, .content th {
+  padding: 4px 8px;
+}
+.code-container {
+  width: 50%;
+  position: relative;
+  overflow: hidden;
+}
+
+.code {
+  counter-reset: lineNumber;
+  overflow-y: auto;
+  height: 100%;
+  white-space: nowrap;
+  padding-top: 10px;
+}
+
+.code-line-numbers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding-top: 10px;
+  padding-right: 10px;
+  text-align: right;
+  font-family: monospace;
+  background-color: #f4f4f4;
+  color: #888;
+  user-select: none;
+}
+.line-number {
+  line-height: 1.6;
+}
+.line-num:hover {
+    cursor: pointer;
+}
+.code pre {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  font-family: monospace;
+  line-height: 1.6;
+  padding-left: 3em;
+  position: relative;
+}
+.code pre:before {
+    counter-increment: lineNumber;
+    content: counter(lineNumber) " ";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 2.5em;
+    text-align: right;
+    color: #888;
+    background-color: #f4f4f4;
+    user-select: none;
+    font-family: monospace;
+}
+
+code {
+  display: block;
+}
+
+.highlight {
+  background-color: yellow;
+  animation: highlight 1s ease-out;
+}
+
+@keyframes highlight {
+  0% {
+    background-color: yellow;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+</style>
+<body>
+<div class="container">
+  <!-- Main content area (left) -->
+  <div class="content">
+    <h1>Error States Diff</h1>
+    <table border="1">
+        <tr>
+            <th>Row</th><th>Thread 0</th>
+            <th>Yield?</th>
+            <th style="min-width:6em; text-align:center;">Diff Link</th>
+            <th style="min-width:6em; text-align:center;">Yield Diff</th>
+        </tr>
+
+<tr>
+	<td>1</td>
+	 
+		<td>Init</td>
+	
+	<td></td>
+	<td style="min-width:6em; text-align:center;"></td>
+	<td style="min-width:6em; text-align:center;"></td>
+</tr>
+
+<tr>
+	<td>2</td>
+	 
+		<td>Any:cabin="basic"<br><span style="color: gray; font-weight: 100;">(thread ended)</span></td>
+	
+	<td>yield</td>
+	<td style="min-width:6em; text-align:center;"><a href="https://jsondiff.com/#left=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJJbml0IiwicmV0dXJucyI6Int9Iiwicm9sZXMiOm51bGwsInN0YXRlIjp7fSwic3RhdHMiOnsidG90YWxBY3Rpb25zIjowLCJjb3VudHMiOnt9fSwidGhyZWFkcyI6W3siaWQiOjEsInN0YWNrIjpbeyJmaWxlSW5kZXgiOjAsIm5hbWUiOiJJbml0IiwicGMiOiJBY3Rpb25zWzBdLkJsb2NrLlN0bXRzWzBdLmFueSIsInNjb3BlIjp7Imxvb3BSYW5nZSI6bnVsbCwicGFyZW50IjpudWxsLCJza2lwc3RtdHMiOm51bGwsInZhcnMiOiJ7fSJ9LCJ2YXJzIjoie30ifV0sImZhaXJuZXNzIjozfV0sIndpdG5lc3MiOltbZmFsc2UsZmFsc2VdXX0sIlR5cGUiOiIiLCJOYW1lIjoiSW5pdCIsIkxhYmVscyI6bnVsbCwiRmFpcm5lc3MiOjMsIkNob2ljZUZhaXJuZXNzIjowLCJNZXNzYWdlcyI6bnVsbCwiUmVxSWQiOjAsIlRocmVhZHNNYXAiOm51bGwsIkZhaWxlZEludmFyaWFudHMiOm51bGwsIlJldHVybnMiOm51bGx9&amp;right=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbXSwic3RhdGUiOnsiY2FiaW4iOiJiYXNpYyIsInJlZnVuZGVkIjpmYWxzZSwic3RhdHVzIjoiYm9va2VkIn0sInN0YXRzIjp7InRvdGFsQWN0aW9ucyI6MCwiY291bnRzIjp7fX0sInRocmVhZHMiOltdLCJ3aXRuZXNzIjpbW2ZhbHNlLGZhbHNlXV19LCJUeXBlIjoiIiwiTmFtZSI6IkFueTpjYWJpbj1cImJhc2ljXCIiLCJMYWJlbHMiOm51bGwsIkZhaXJuZXNzIjozLCJDaG9pY2VGYWlybmVzcyI6MCwiTWVzc2FnZXMiOm51bGwsIlJlcUlkIjowLCJUaHJlYWRzTWFwIjpudWxsLCJGYWlsZWRJbnZhcmlhbnRzIjpudWxsLCJSZXR1cm5zIjpudWxsfQ==" target="_blank">Show diff</a></td>
+	<td style="min-width:6em; text-align:center;"></td>
+</tr>
+
+<tr>
+	<td>3</td>
+	 
+		<td>Upgrade</td>
+	
+	<td>yield</td>
+	<td style="min-width:6em; text-align:center;"><a href="https://jsondiff.com/#left=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbXSwic3RhdGUiOnsiY2FiaW4iOiJiYXNpYyIsInJlZnVuZGVkIjpmYWxzZSwic3RhdHVzIjoiYm9va2VkIn0sInN0YXRzIjp7InRvdGFsQWN0aW9ucyI6MCwiY291bnRzIjp7fX0sInRocmVhZHMiOltdLCJ3aXRuZXNzIjpbW2ZhbHNlLGZhbHNlXV19LCJUeXBlIjoiIiwiTmFtZSI6IkFueTpjYWJpbj1cImJhc2ljXCIiLCJMYWJlbHMiOm51bGwsIkZhaXJuZXNzIjozLCJDaG9pY2VGYWlybmVzcyI6MCwiTWVzc2FnZXMiOm51bGwsIlJlcUlkIjowLCJUaHJlYWRzTWFwIjpudWxsLCJGYWlsZWRJbnZhcmlhbnRzIjpudWxsLCJSZXR1cm5zIjpudWxsfQ==&amp;right=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbXSwic3RhdGUiOnsiY2FiaW4iOiJwcmVtaXVtIiwicmVmdW5kZWQiOmZhbHNlLCJzdGF0dXMiOiJib29rZWQifSwic3RhdHMiOnsidG90YWxBY3Rpb25zIjowLCJjb3VudHMiOnt9fSwidGhyZWFkcyI6W10sIndpdG5lc3MiOltbZmFsc2UsZmFsc2VdXX0sIlR5cGUiOiJhY3Rpb24iLCJOYW1lIjoiVXBncmFkZSIsIkxhYmVscyI6bnVsbCwiRmFpcm5lc3MiOjEsIkNob2ljZUZhaXJuZXNzIjowLCJNZXNzYWdlcyI6bnVsbCwiUmVxSWQiOjAsIlRocmVhZHNNYXAiOnt9LCJGYWlsZWRJbnZhcmlhbnRzIjpudWxsLCJSZXR1cm5zIjpudWxsfQ==" target="_blank">Show diff</a></td>
+	<td style="min-width:6em; text-align:center;"><a href="https://jsondiff.com/#left=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbXSwic3RhdGUiOnsiY2FiaW4iOiJiYXNpYyIsInJlZnVuZGVkIjpmYWxzZSwic3RhdHVzIjoiYm9va2VkIn0sInN0YXRzIjp7InRvdGFsQWN0aW9ucyI6MCwiY291bnRzIjp7fX0sInRocmVhZHMiOltdLCJ3aXRuZXNzIjpbW2ZhbHNlLGZhbHNlXV19LCJUeXBlIjoiIiwiTmFtZSI6IkFueTpjYWJpbj1cImJhc2ljXCIiLCJMYWJlbHMiOm51bGwsIkZhaXJuZXNzIjozLCJDaG9pY2VGYWlybmVzcyI6MCwiTWVzc2FnZXMiOm51bGwsIlJlcUlkIjowLCJUaHJlYWRzTWFwIjpudWxsLCJGYWlsZWRJbnZhcmlhbnRzIjpudWxsLCJSZXR1cm5zIjpudWxsfQ==&amp;right=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbXSwic3RhdGUiOnsiY2FiaW4iOiJwcmVtaXVtIiwicmVmdW5kZWQiOmZhbHNlLCJzdGF0dXMiOiJib29rZWQifSwic3RhdHMiOnsidG90YWxBY3Rpb25zIjowLCJjb3VudHMiOnt9fSwidGhyZWFkcyI6W10sIndpdG5lc3MiOltbZmFsc2UsZmFsc2VdXX0sIlR5cGUiOiJhY3Rpb24iLCJOYW1lIjoiVXBncmFkZSIsIkxhYmVscyI6bnVsbCwiRmFpcm5lc3MiOjEsIkNob2ljZUZhaXJuZXNzIjowLCJNZXNzYWdlcyI6bnVsbCwiUmVxSWQiOjAsIlRocmVhZHNNYXAiOnt9LCJGYWlsZWRJbnZhcmlhbnRzIjpudWxsLCJSZXR1cm5zIjpudWxsfQ==" target="_blank">Show yield diff</a></td>
+</tr>
+
+<tr>
+	<td>4</td>
+	 
+		<td>Cancel</td>
+	
+	<td>yield</td>
+	<td style="min-width:6em; text-align:center;"><a href="https://jsondiff.com/#left=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbXSwic3RhdGUiOnsiY2FiaW4iOiJwcmVtaXVtIiwicmVmdW5kZWQiOmZhbHNlLCJzdGF0dXMiOiJib29rZWQifSwic3RhdHMiOnsidG90YWxBY3Rpb25zIjowLCJjb3VudHMiOnt9fSwidGhyZWFkcyI6W10sIndpdG5lc3MiOltbZmFsc2UsZmFsc2VdXX0sIlR5cGUiOiJhY3Rpb24iLCJOYW1lIjoiVXBncmFkZSIsIkxhYmVscyI6bnVsbCwiRmFpcm5lc3MiOjEsIkNob2ljZUZhaXJuZXNzIjowLCJNZXNzYWdlcyI6bnVsbCwiUmVxSWQiOjAsIlRocmVhZHNNYXAiOnt9LCJGYWlsZWRJbnZhcmlhbnRzIjpudWxsLCJSZXR1cm5zIjpudWxsfQ==&amp;right=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbXSwic3RhdGUiOnsiY2FiaW4iOiJwcmVtaXVtIiwicmVmdW5kZWQiOnRydWUsInN0YXR1cyI6ImNhbmNlbGxlZCJ9LCJzdGF0cyI6eyJ0b3RhbEFjdGlvbnMiOjEsImNvdW50cyI6eyJDYW5jZWwiOjF9fSwidGhyZWFkcyI6W10sIndpdG5lc3MiOltbZmFsc2UsZmFsc2VdXX0sIlR5cGUiOiJhY3Rpb24iLCJOYW1lIjoiQ2FuY2VsIiwiTGFiZWxzIjpudWxsLCJGYWlybmVzcyI6MSwiQ2hvaWNlRmFpcm5lc3MiOjAsIk1lc3NhZ2VzIjpudWxsLCJSZXFJZCI6MCwiVGhyZWFkc01hcCI6bnVsbCwiRmFpbGVkSW52YXJpYW50cyI6bnVsbCwiUmV0dXJucyI6bnVsbH0=" target="_blank">Show diff</a></td>
+	<td style="min-width:6em; text-align:center;"><a href="https://jsondiff.com/#left=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbXSwic3RhdGUiOnsiY2FiaW4iOiJwcmVtaXVtIiwicmVmdW5kZWQiOmZhbHNlLCJzdGF0dXMiOiJib29rZWQifSwic3RhdHMiOnsidG90YWxBY3Rpb25zIjowLCJjb3VudHMiOnt9fSwidGhyZWFkcyI6W10sIndpdG5lc3MiOltbZmFsc2UsZmFsc2VdXX0sIlR5cGUiOiJhY3Rpb24iLCJOYW1lIjoiVXBncmFkZSIsIkxhYmVscyI6bnVsbCwiRmFpcm5lc3MiOjEsIkNob2ljZUZhaXJuZXNzIjowLCJNZXNzYWdlcyI6bnVsbCwiUmVxSWQiOjAsIlRocmVhZHNNYXAiOnt9LCJGYWlsZWRJbnZhcmlhbnRzIjpudWxsLCJSZXR1cm5zIjpudWxsfQ==&amp;right=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbXSwic3RhdGUiOnsiY2FiaW4iOiJwcmVtaXVtIiwicmVmdW5kZWQiOnRydWUsInN0YXR1cyI6ImNhbmNlbGxlZCJ9LCJzdGF0cyI6eyJ0b3RhbEFjdGlvbnMiOjEsImNvdW50cyI6eyJDYW5jZWwiOjF9fSwidGhyZWFkcyI6W10sIndpdG5lc3MiOltbZmFsc2UsZmFsc2VdXX0sIlR5cGUiOiJhY3Rpb24iLCJOYW1lIjoiQ2FuY2VsIiwiTGFiZWxzIjpudWxsLCJGYWlybmVzcyI6MSwiQ2hvaWNlRmFpcm5lc3MiOjAsIk1lc3NhZ2VzIjpudWxsLCJSZXFJZCI6MCwiVGhyZWFkc01hcCI6bnVsbCwiRmFpbGVkSW52YXJpYW50cyI6bnVsbCwiUmV0dXJucyI6bnVsbH0=" target="_blank">Show yield diff</a></td>
+</tr>
+
+<tr>
+	<td>5</td>
+	 
+		<td>stutter</td>
+	
+	<td>yield</td>
+	<td style="min-width:6em; text-align:center;"><a href="https://jsondiff.com/#left=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbXSwic3RhdGUiOnsiY2FiaW4iOiJwcmVtaXVtIiwicmVmdW5kZWQiOnRydWUsInN0YXR1cyI6ImNhbmNlbGxlZCJ9LCJzdGF0cyI6eyJ0b3RhbEFjdGlvbnMiOjEsImNvdW50cyI6eyJDYW5jZWwiOjF9fSwidGhyZWFkcyI6W10sIndpdG5lc3MiOltbZmFsc2UsZmFsc2VdXX0sIlR5cGUiOiJhY3Rpb24iLCJOYW1lIjoiQ2FuY2VsIiwiTGFiZWxzIjpudWxsLCJGYWlybmVzcyI6MSwiQ2hvaWNlRmFpcm5lc3MiOjAsIk1lc3NhZ2VzIjpudWxsLCJSZXFJZCI6MCwiVGhyZWFkc01hcCI6bnVsbCwiRmFpbGVkSW52YXJpYW50cyI6bnVsbCwiUmV0dXJucyI6bnVsbH0=&amp;right=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbXSwic3RhdGUiOnsiY2FiaW4iOiJwcmVtaXVtIiwicmVmdW5kZWQiOnRydWUsInN0YXR1cyI6ImNhbmNlbGxlZCJ9LCJzdGF0cyI6eyJ0b3RhbEFjdGlvbnMiOjEsImNvdW50cyI6eyJDYW5jZWwiOjF9fSwidGhyZWFkcyI6W10sIndpdG5lc3MiOltbZmFsc2UsZmFsc2VdXX0sIlR5cGUiOiIiLCJOYW1lIjoic3R1dHRlciIsIkxhYmVscyI6bnVsbCwiRmFpcm5lc3MiOjAsIkNob2ljZUZhaXJuZXNzIjowLCJNZXNzYWdlcyI6bnVsbCwiUmVxSWQiOjAsIlRocmVhZHNNYXAiOm51bGwsIkZhaWxlZEludmFyaWFudHMiOm51bGwsIlJldHVybnMiOm51bGx9" target="_blank">Show diff</a></td>
+	<td style="min-width:6em; text-align:center;"><a href="https://jsondiff.com/#left=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbXSwic3RhdGUiOnsiY2FiaW4iOiJwcmVtaXVtIiwicmVmdW5kZWQiOnRydWUsInN0YXR1cyI6ImNhbmNlbGxlZCJ9LCJzdGF0cyI6eyJ0b3RhbEFjdGlvbnMiOjEsImNvdW50cyI6eyJDYW5jZWwiOjF9fSwidGhyZWFkcyI6W10sIndpdG5lc3MiOltbZmFsc2UsZmFsc2VdXX0sIlR5cGUiOiJhY3Rpb24iLCJOYW1lIjoiQ2FuY2VsIiwiTGFiZWxzIjpudWxsLCJGYWlybmVzcyI6MSwiQ2hvaWNlRmFpcm5lc3MiOjAsIk1lc3NhZ2VzIjpudWxsLCJSZXFJZCI6MCwiVGhyZWFkc01hcCI6bnVsbCwiRmFpbGVkSW52YXJpYW50cyI6bnVsbCwiUmV0dXJucyI6bnVsbH0=&amp;right=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbXSwic3RhdGUiOnsiY2FiaW4iOiJwcmVtaXVtIiwicmVmdW5kZWQiOnRydWUsInN0YXR1cyI6ImNhbmNlbGxlZCJ9LCJzdGF0cyI6eyJ0b3RhbEFjdGlvbnMiOjEsImNvdW50cyI6eyJDYW5jZWwiOjF9fSwidGhyZWFkcyI6W10sIndpdG5lc3MiOltbZmFsc2UsZmFsc2VdXX0sIlR5cGUiOiIiLCJOYW1lIjoic3R1dHRlciIsIkxhYmVscyI6bnVsbCwiRmFpcm5lc3MiOjAsIkNob2ljZUZhaXJuZXNzIjowLCJNZXNzYWdlcyI6bnVsbCwiUmVxSWQiOjAsIlRocmVhZHNNYXAiOm51bGwsIkZhaWxlZEludmFyaWFudHMiOm51bGwsIlJldHVybnMiOm51bGx9" target="_blank">Show yield diff</a></td>
+</tr>
+
+    </table>
+  </div>
+    <!-- Code block area (right) -->
+    <div class="code-container">
+      <div class="code-line-numbers" id="line-numbers">
+        <!-- Line numbers will be added dynamically here -->
+      </div>
+      <div class="code" id="code"><pre><code># Example 0122: Scoped Absence Violation</code></pre>
+<pre><code># A property about what happens after a condition, which a state invariant can&#39;t express</code></pre>
+<pre><code># Demonstrates: always (P implies always Q), why an invariant misses it, counterexample</code></pre>
+<pre><code>&nbsp;</code></pre>
+<pre><code>---</code></pre>
+<pre><code>deadlock_detection: false</code></pre>
+<pre><code>---</code></pre>
+<pre><code># Basic economy tickets can&#39;t be refunded. Premium tickets get a full</code></pre>
+<pre><code># refund on cancel. A basic ticket can be upgraded to premium.</code></pre>
+<pre><code>#</code></pre>
+<pre><code># The loophole: buy basic, upgrade, then cancel for a full refund. The</code></pre>
+<pre><code># invariant NoBasicRefund can&#39;t see it, because once upgraded the ticket</code></pre>
+<pre><code># is premium, and a refund on a premium ticket is fine. The formula</code></pre>
+<pre><code># BasicNeverRefunded talks about the future of every basic ticket: once</code></pre>
+<pre><code># basic, never refunded, whatever happens after. It fails, and the</code></pre>
+<pre><code># counterexample is the loophole. Without formulas this needs a history</code></pre>
+<pre><code># variable that remembers the original cabin.</code></pre>
+<pre><code>&nbsp;</code></pre>
+<pre><code>action Init:</code></pre>
+<pre><code>    cabin = oneof [&#34;basic&#34;, &#34;premium&#34;]</code></pre>
+<pre><code>    status = &#34;booked&#34;</code></pre>
+<pre><code>    refunded = False</code></pre>
+<pre><code>&nbsp;</code></pre>
+<pre><code>atomic action Upgrade:</code></pre>
+<pre><code>    require status == &#34;booked&#34; and cabin == &#34;basic&#34;</code></pre>
+<pre><code>    cabin = &#34;premium&#34;</code></pre>
+<pre><code>&nbsp;</code></pre>
+<pre><code>atomic action Cancel:</code></pre>
+<pre><code>    require status == &#34;booked&#34;</code></pre>
+<pre><code>    status = &#34;cancelled&#34;</code></pre>
+<pre><code>    if cabin == &#34;premium&#34;:</code></pre>
+<pre><code>        refunded = True</code></pre>
+<pre><code>&nbsp;</code></pre>
+<pre><code>atomic action Fly:</code></pre>
+<pre><code>    require status == &#34;booked&#34;</code></pre>
+<pre><code>    status = &#34;flown&#34;</code></pre>
+<pre><code>&nbsp;</code></pre>
+<pre><code># Passes: no state is both basic and refunded.</code></pre>
+<pre><code>always assertion NoBasicRefund:</code></pre>
+<pre><code>    return not (cabin == &#34;basic&#34; and refunded)</code></pre>
+<pre><code>&nbsp;</code></pre>
+<pre><code># Fails: Upgrade then Cancel refunds a ticket that was bought as basic.</code></pre>
+<pre><code>assertion BasicNeverRefunded:</code></pre>
+<pre><code>    return always (cabin == &#34;basic&#34; implies always not refunded)</code></pre>
+<pre><code>&nbsp;</code></pre>
+
+      </div>
+    </div>
+</div>
+</body>
+<script>
+// script.js
+
+document.addEventListener("DOMContentLoaded", function() {
+  const codeLines = document.querySelectorAll("#code pre");
+  //const lineNumbers = document.getElementById("line-numbers");
+  const codeDiv = document.getElementById("code");
+  
+  //// Function to create line numbers and assign them as clickable
+  //codeLines.forEach((line, index) => {
+  //  const lineNumber = document.createElement("div");
+  //  lineNumber.textContent = index + 1; // Line numbers are 1-indexed
+  //  lineNumber.classList.add("line-number");
+  //  lineNumber.addEventListener("click", () => highlightLine(index));
+  //  lineNumbers.appendChild(lineNumber);
+  //});
+
+  // Function to highlight a line in the code block
+  function highlightLine(lineIndex) {
+    // Remove existing highlight
+    const highlighted = codeDiv.querySelector(".highlight");
+    if (highlighted) {
+      highlighted.classList.remove("highlight");
+    }
+  
+    // Add highlight to clicked line
+    const targetLine = codeLines[lineIndex];
+    if (!targetLine) return;
+    targetLine.classList.add("highlight");
+  
+    // Scroll the code block to the target line
+    targetLine.scrollIntoView({ behavior: "auto",  block: "center" });
+  }
+
+  // Scroll the code block to make a specific line visible when a reference in content is clicked
+  document.querySelectorAll("[id^='line-']").forEach(element => {
+    element.addEventListener("click", function() {
+      const lineNumber = parseInt(this.id.split('-')[1], 10) - 1; // Get line number from ID
+      highlightLine(lineNumber);
+    });
+  });
+});
+
+</script>
+</html>
