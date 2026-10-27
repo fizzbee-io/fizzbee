@@ -34,9 +34,8 @@ func partialVerdicts(t *testing.T, s *sccGraph, file *ast.File) map[string]bool 
 // done the partial graph must give the full graph's verdicts. A node a
 // partial check used must not change after: no new links, and no rename,
 // as a crash node gets when a later state is a duplicate of it (CrashRename
-// covers that). Each spec is
-// also run with its actions declared in reverse, for another exploration
-// order.
+// covers that). Each spec is also run with its actions declared in
+// reverse, for another exploration order.
 func TestIncrementalLivenessIsSound(t *testing.T) {
 	base := "."
 	if dir := os.Getenv("RUNFILES_DIR"); dir != "" {
@@ -74,7 +73,10 @@ func TestIncrementalLivenessIsSound(t *testing.T) {
 				p := NewProcessor([]*ast.File{file}, stateConfig, false, 0, "", "", true, nil, nil, "")
 				p.SetIncrementalLiveness(true)
 				p.incrementalEvery, p.nextIncrementalCheck = 1, 0
-				seenEarly := map[string]bool{}
+				// Every assertion a partial check failed, and those it failed
+				// while the queue still had work, before the exploration was
+				// done.
+				failedPartial, failedEarly := map[string]bool{}, map[string]bool{}
 				// What a partial check saw of each node: its name, which
 				// liveness labels depend on, and how many links it had.
 				type seen struct {
@@ -89,8 +91,9 @@ func TestIncrementalLivenessIsSound(t *testing.T) {
 						}
 					}
 					for name := range partialVerdicts(t, s, file) {
-						if len(p.pendingActions) > 0 {
-							seenEarly[name] = true
+						failedPartial[name] = true
+						if p.queue.Len() > 0 {
+							failedEarly[name] = true
 						}
 					}
 				}
@@ -106,10 +109,10 @@ func TestIncrementalLivenessIsSound(t *testing.T) {
 				nodes, _, _, _ := GetAllNodes(root, 10)
 				full := partialVerdicts(t, newSccGraph(root, nodes), file)
 				assert.Equal(t, full, final, "the partial graph of a finished exploration gives other verdicts")
-				for name := range seenEarly {
+				for name := range failedPartial {
 					assert.True(t, full[name], "%s fails on a partial graph but holds on the full one", name)
 				}
-				early += len(seenEarly)
+				early += len(failedEarly)
 			})
 		}
 	}
