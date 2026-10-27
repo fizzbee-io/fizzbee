@@ -163,12 +163,26 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 		return newDict, nil
 	case "record":
 		v := value.(*lib.Struct)
-		dict := starlark.StringDict{}
-		newVal := lib.FromStringDict(v.Constructor(), dict)
+		// Copy the fields in place rather than via a StringDict round
+		// trip: the source is already sorted by name, so the clone needs
+		// no sort and no intermediate map.
+		newVal := lib.NewEmptyStruct(v.Constructor(), v.Len())
 		refs[value] = newVal
-		v.ToStringDict(dict)
-		newDict := CloneDict(dict, refs, permutations, alt)
-		newVal.ReplaceEntriesFromStringDict(newDict)
+		var fieldErr error
+		v.EachField(func(name string, fv starlark.Value) {
+			if fieldErr != nil {
+				return
+			}
+			cloned, err := deepCloneStarlarkValueWithPermutations(fv, refs, permutations, alt)
+			if err != nil {
+				fieldErr = err
+				return
+			}
+			newVal.AppendSortedField(name, cloned)
+		})
+		if fieldErr != nil {
+			return nil, fieldErr
+		}
 		return newVal, nil
 	case "RoleStub":
 		// TODO(jp): Should this also reuse cached refs?
@@ -233,26 +247,26 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 		refs[value] = newSegment
 		return newSegment, nil
 	case "genericset":
+		// The source keys are distinct and a permutation renames IDs
+		// bijectively, so the clones are distinct too: append them
+		// without the per-insert equality scan (which made this
+		// quadratic in the set size).
 		s := value.(*lib.GenericSet)
-		newSet := lib.NewGenericSet()
+		newSet := lib.GenericSetFromDistinct(nil)
 		refs[value] = newSet
-		iter := s.Iterate()
-		defer iter.Done()
-		var x starlark.Value
-		for iter.Next(&x) {
-			clonedElem, err := deepCloneStarlarkValueWithPermutations(x, refs, permutations, alt)
-			if err != nil {
-				return nil, err
-			}
-			PanicOnError(err)
-			newSet.Insert(clonedElem)
+		keys, err := deepCloneIterableToList(s, refs, permutations, alt)
+		if err != nil {
+			return nil, err
 		}
+		*newSet = *lib.GenericSetFromDistinct(keys)
 		return newSet, nil
 	case "genericmap":
 		m := value.(*lib.GenericMap)
-		newMap := lib.NewGenericMap()
+		newMap := lib.GenericMapFromEntries(nil)
 		refs[value] = newMap
-		for _, tuple := range m.Items() {
+		items := m.Items()
+		entries := make([]starlark.Tuple, 0, len(items))
+		for _, tuple := range items {
 			key, value := tuple[0], tuple[1]
 			clonedKey, err := deepCloneStarlarkValueWithPermutations(key, refs, permutations, alt)
 			if err != nil {
@@ -262,23 +276,24 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 			if err != nil {
 				return nil, err
 			}
-			newMap.SetKey(clonedKey, clonedValue)
+			entries = append(entries, starlark.Tuple{clonedKey, clonedValue})
 		}
+		*newMap = *lib.GenericMapFromEntries(entries)
 		return newMap, nil
 	case "bag":
 		b := value.(*lib.Bag)
 		newBag := lib.NewBag(nil)
 		refs[value] = newBag
-		iter := b.Iterate()
-		defer iter.Done()
-		var x starlark.Value
-		for iter.Next(&x) {
-			clonedElem, err := deepCloneStarlarkValueWithPermutations(x, refs, permutations, alt)
-			if err != nil {
-				return nil, err
-			}
-			PanicOnError(err)
-			newBag.Insert(clonedElem)
+		elems, err := deepCloneIterableToList(b, refs, permutations, alt)
+		if err != nil {
+			return nil, err
+		}
+		if permutations == nil {
+			// Cloning keeps each element's string form, so the source's
+			// sorted order carries over: skip the per-insert sort.
+			*newBag = *lib.BagFromSortedSlice(elems)
+		} else {
+			*newBag = *lib.NewBag(elems)
 		}
 		return newBag, nil
 	case "role":

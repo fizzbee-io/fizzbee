@@ -54,7 +54,10 @@ platform(
 
 go_library(
     name = "fizzbee_lib",
-    srcs = ["main.go"],
+    srcs = [
+        "gc.go",
+        "main.go",
+    ],
     data = ["//examples/ast"],
     importpath = "github.com/fizzbee-io/fizzbee",
     visibility = ["//visibility:private"],

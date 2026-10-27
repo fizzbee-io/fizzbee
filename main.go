@@ -46,6 +46,7 @@ var noSymmetryReduction bool
 var experimentalIncrementalLiveness bool
 
 func main() {
+	tuneGC()
 	args := parseFlags()
 	// Check if the correct number of arguments is provided
 	if len(args) != 1 {

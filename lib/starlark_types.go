@@ -152,6 +152,7 @@ func MakeSymmetricValues(thread *starlark.Thread, fn *starlark.Builtin, args sta
 	if err != nil {
 		return nil, fmt.Errorf("symmetric_values(int) or symmetric_values(string, int) expected. %v", err)
 	}
+	MarkSymmetryUsed()
 	values := SymmetricValues{}
 	for i := 0; i < count; i++ {
 		values.Tuple = append(values.Tuple, NewSymmetricValue(prefix, int64(i)))
@@ -970,6 +971,30 @@ func MakeBag(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 
 func NewBag(elems []starlark.Value) *Bag {
 	return &Bag{elems: sortAsString(elems)}
+}
+
+// BagFromSortedSlice wraps elems without sorting them. The caller
+// guarantees they are already in the bag's string order, as they are when
+// copied from another bag's iteration.
+func BagFromSortedSlice(elems []starlark.Value) *Bag {
+	return &Bag{elems: elems}
+}
+
+// GenericMapFromEntries wraps entries without checking the keys for
+// duplicates. The caller guarantees the keys are distinct, as they are when
+// copied from another genericmap or genericset.
+func GenericMapFromEntries(entries []starlark.Tuple) *GenericMap {
+	return &GenericMap{entries: entries}
+}
+
+// GenericSetFromDistinct wraps keys without checking them for duplicates.
+// See GenericMapFromEntries.
+func GenericSetFromDistinct(keys []starlark.Value) *GenericSet {
+	entries := make([]starlark.Tuple, len(keys))
+	for i, k := range keys {
+		entries[i] = starlark.Tuple{k, starlark.None}
+	}
+	return &GenericSet{dict: &GenericMap{entries: entries}}
 }
 
 type Bag struct {
