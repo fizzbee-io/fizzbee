@@ -1,0 +1,36 @@
+---
+deadlock_detection: false
+---
+# Two symmetric workers pass a token back and forth. A worker's fair Work is
+# enabled only while it holds the token, so passing forever enables each
+# worker's Work every other step, never continuously, and weak fairness does
+# not force it. Done is violated on that path.
+#
+# With symmetry reduction the two token states are one stored state, and Pass
+# is a self loop that swaps the workers. The liveness check sees the worker
+# named Worker#0 hold the token in every state of the loop, so it judges
+# Worker#0.Work continuously enabled and the loop unfair.
+
+symmetric role Worker:
+    action Init:
+        self.has_token = False
+
+    atomic fair action Work:
+        require self.has_token and not done
+        done = True
+
+action Init:
+    workers = bag()
+    for i in range(2):
+        workers.add(Worker())
+    done = False
+    any w in workers:
+        w.has_token = True
+
+atomic action Pass:
+    require not done
+    for w in workers:
+        w.has_token = not w.has_token
+
+eventually always assertion Done:
+    return done
