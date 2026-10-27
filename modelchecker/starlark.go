@@ -98,6 +98,9 @@ func (c *compiledExpr) matches(env starlark.StringDict) bool {
 }
 
 type exprKey struct {
+	// The dialect options change how an expression resolves and compiles,
+	// so evaluators with different options never share a program.
+	opts     syntax.FileOptions
 	filename string
 	src      string
 	line     int32
@@ -111,6 +114,9 @@ var exprCache = struct {
 
 func (e *Evaluator) compiledExpr(filename string, src string, line int32, col int32, env starlark.StringDict) (*starlark.Program, error) {
 	key := exprKey{filename: filename, src: src, line: line, col: col}
+	if e.options != nil {
+		key.opts = *e.options
+	}
 	exprCache.mu.RLock()
 	for _, c := range exprCache.m[key] {
 		if c.matches(env) {
