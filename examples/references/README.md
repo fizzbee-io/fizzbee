@@ -18,16 +18,16 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 ### Sections
 
 - **01**: Basics (5 examples) - Foundation concepts
-- **02**: Flow Modifiers (4) - atomic, serial, parallel, oneof
+- **02**: Flow Modifiers (5) - atomic, serial, parallel, oneof
 - **03**: Conditionals (3) - if/else statements
 - **04**: Loops (5) - for/while/break/continue
 - **05**: Nondeterminism (3) - any statement variations
-- **06**: Functions (5) - Function definitions and modifiers
-- **07**: Guards (3) - require/pass statements
+- **06**: Functions (10) - Function definitions and modifiers
+- **07**: Guards (4) - require/pass statements
 - **08**: Data Types (9) - Collections, enums, records
-- **09**: Assertions (5) - Safety and liveness properties
+- **09**: Assertions (21) - Safety, liveness, `next_states()`, temporal formulas, `possibly`
 - **10**: Fairness (3) - Unfair, weak fair, strong fair
-- **11**: Roles (8) - Role basics and management
+- **11**: Roles (7) - Role basics and management
 - **12**: Advanced (6) - Nesting, config, best practices
 - **13**: Patterns (19) - Distributed systems patterns
   - **13-01**: Locking (4) - Mutex, RW lock, distributed lock
@@ -39,10 +39,10 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
   - **13-07**: Data/Events (2) - WAL, event sourcing
 - **14**: Fault Injection (4) - Crash and message loss
 - **15**: Configuration (2) - Action-level config, coordination
-- **16**: Symmetry Reduction (13) - State space optimization (old API + symmetry module)
+- **16**: Symmetry Reduction (16) - State space optimization (old API + symmetry module)
 - **99**: Miscellaneous (1) - Checkpoints and other utilities
 
-**Total: 100 examples across 17 sections**
+**Total: 123 examples across 17 sections**
 
 ## Examples Created
 
@@ -346,6 +346,53 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: `always eventually`, strong fairness, progress
 - **Status**: ✅ PASSED
 
+### 09-06-next-states-restorable: One-Step Reachability with `next_states()`
+- **State space**: 37 nodes, 15 unique states
+- **Purpose**: Every trashed item can be restored in one step
+- **Key concepts**: `next_states()`, one-step reachability
+- **Status**: ✅ PASSED
+
+### 09-07-next-states-violation: Detecting Unrestorable States
+- **State space**: stops at the first violation
+- **Purpose**: A stack-based trash makes only the newest item restorable, so the `next_states()` assertion fails
+- **Key concepts**: `next_states()`, counterexample
+- **Status**: ❌ FAILED (expected)
+
+### 09-08-next-states-concurrency-cap: `next_states()` Ignores the Concurrency Cap
+- **State space**: 55 nodes, 43 unique states
+- **Purpose**: The probe sees enabled transitions even when `max_concurrent_actions` is used up
+- **Key concepts**: `next_states()`, `max_concurrent_actions`, serial actions
+- **Status**: ✅ PASSED
+
+### 09-09-next-states-role-id: Matching `next_states()` Transitions to Roles
+- **State space**: 3 nodes, 3 unique states
+- **Purpose**: Use `role_id` and `action_name` to match transitions to a role instance
+- **Key concepts**: `next_states()`, `role_id`, symmetric roles
+- **Status**: ✅ PASSED
+
+### 09-10-exists-no-graph-unreachable: Exists in No-Graph Mode (Unsatisfiable)
+- **State space**: 4 nodes
+- **Purpose**: An unsatisfiable `exists` fails under `--experimental_no_graph`, as in full-graph mode
+- **Key concepts**: `exists assertion`, `--experimental_no_graph`
+- **Status**: ❌ FAILED (expected)
+
+### 09-11-exists-no-graph-reachable: Exists in No-Graph Mode (Satisfiable)
+- **State space**: 4 nodes
+- **Purpose**: A satisfiable `exists` passes under `--experimental_no_graph`
+- **Key concepts**: `exists assertion`, `--experimental_no_graph`, witness detection
+- **Status**: ✅ PASSED
+
+### 09-12-exists-simulation-warning: Exists Coverage Warning in Simulation
+- **Purpose**: In simulation mode an unwitnessed `exists` gives a warning, not a failure
+- **Key concepts**: `exists assertion`, simulation mode, coverage warning
+- **Status**: ⚠️ warning (expected)
+
+### 09-13-func-calls-in-assertions: Func Calls in Assertions
+- **State space**: 9 nodes, 9 unique states
+- **Purpose**: Fizz funcs can be called anywhere in an assertion expression
+- **Key concepts**: role funcs and top-level funcs inside conditions, list comprehensions and `invariants:` lines; each call runs on its own copy of the state
+- **Status**: ✅ PASSED
+
 ### 09-14-temporal-formulas: Temporal Formulas
 - **State space**: 58 nodes, 26 unique states
 - **Purpose**: LTL formulas in assertion returns
@@ -381,6 +428,18 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Purpose**: `--experimental_incremental_liveness` (in `flags.txt`) reports a liveness violation before the whole state space is explored
 - **Key concepts**: partial liveness checks as the node count doubles, early stop, unchanged verdicts
 - **Status**: ❌ FAILED (expected)
+
+### 09-20-scoped-absence-violation: Scoped Absence Violation
+- **State space**: 7 nodes, 6 unique states
+- **Purpose**: The airline refund loophole: a basic ticket upgraded then cancelled gets a full refund. A state invariant misses it, `always (basic implies always not refunded)` catches it
+- **Key concepts**: `always (P implies always Q)` ("absence after P"), no history variable needed, counterexample
+- **Status**: ❌ FAILED (expected)
+
+### 09-21-assertion-for-clauses: Assertion For Clauses
+- **State space**: 80 nodes, 25 unique states
+- **Purpose**: One assertion header checks one property per value
+- **Key concepts**: `for` clauses on prefixed and formula assertions, `if` filters, nested clauses, tuple targets, instance names like `Copied[a, 1]`
+- **Status**: ✅ PASSED
 
 ### 10-01-unfair-action: Unfair Action (Default)
 - **State space**: 108 nodes, 46 unique states
