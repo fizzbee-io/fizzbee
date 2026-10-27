@@ -11,7 +11,10 @@ deadlock_detection: false
 # Locals before the return are recomputed in every state too.
 #
 # A server starts, then answers its clients' requests. Each client sends at
-# most two requests. Start and Respond are fair, so every request is answered.
+# most two requests, one at a time. Start and Respond are fair, so each
+# pending request is eventually answered.
+# Respond's oneof isn't fair, but the bound keeps it from serving one client
+# forever: once a client is done, only the other is left to pick.
 
 NUM_CLIENTS = 2
 

@@ -123,6 +123,20 @@ After the frontmatter (or at the start if no frontmatter), the FizzBee specifica
 - `always eventually` - Progress property (always makes progress)
 - `transition` - Property about state transitions
 
+### Temporal Formula Keywords
+
+Used in the `return` of an `assertion` with no prefix (see
+[Temporal Formulas](#temporal-formulas)):
+
+- `always`, `eventually` - Prefix temporal operators
+- `until`, `unless` - Strong and weak until
+- `leadsto` - `P leadsto Q` is `always (P implies eventually Q)`
+- `implies` - Logical implication
+- `possibly` - Some path reaches a state (`exists eventually` is another spelling)
+
+`until`, `unless`, `leadsto`, `implies` and `possibly` are keywords only in
+an assertion's return, so they can still be used as names elsewhere.
+
 ### Control Flow
 
 - `if`, `elif`, `else` - Conditional branching
@@ -429,6 +443,17 @@ result = value + 10
 **Reason**: Fizz function calls create yield points and must be tracked separately by the model checker.
 
 **Note**: Standard Python/Starlark functions (built-ins like `len()`, `str()`, etc.) have no restrictions.
+
+**Exception: assertions.** Inside an assertion, fizz funcs can be called
+anywhere in an expression: in a condition, a list comprehension, a temporal
+formula or an `invariants:` line. Each call runs on its own copy of the
+state, so it can't change the model, and it must be deterministic (no
+`oneof`, `any` or parallel blocks). See `09-13`.
+
+```python
+always assertion AllDone:
+    return all([c.done() for c in consumers]) or total_received() < MAX
+```
 
 ---
 
@@ -943,6 +968,7 @@ assertion StaysStarted:
 | `always P` | □P or G P | `[]P` | P holds in every state |
 | `eventually P` | ◇P or F P | `<>P` | P holds in some state, now or later |
 | `P until Q` | P U Q | none built in | Q holds in some state, and P in every state before it |
+| `P unless Q` | P W Q | none built in | P holds in every state before the first where Q holds; if Q never holds, in every state |
 | `P leadsto Q` | □(P → ◇Q) | `P ~> Q` | every state where P holds is followed, now or later, by one where Q holds |
 | `P implies Q` | P → Q | `P => Q` | P is false or Q holds |
 | `not`, `and`, `or` | ¬, ∧, ∨ | `~`, `/\`, `\/` | as usual |
@@ -959,7 +985,7 @@ Operator precedence, from tightest to loosest binding:
 | 2 | `not P`, `always P`, `eventually P`, `possibly P` | prefix |
 | 3 | `P and Q` | |
 | 4 | `P or Q` | |
-| 5 | `P implies Q`, `P until Q`, `P leadsto Q` | need parentheses to combine |
+| 5 | `P implies Q`, `P until Q`, `P unless Q`, `P leadsto Q` | need parentheses to combine |
 
 `and` and `or` chain (`P and Q and R`). The level 5 operators don't: write
 `(P until Q) until R` or `P until (Q until R)`; `P until Q until R` is an
@@ -967,9 +993,13 @@ error, and so is mixing two of them without parentheses.
 
 - `P until Q`: Q eventually holds, and P holds in every state before it
   (strong until).
+- `P unless Q`: weak until. `P until Q` requires Q to happen. `P unless Q`
+  does not: if Q never happens, P must hold forever. Once Q happens,
+  neither operator constrains P afterward. It is not "P if not Q": in
+  `x == 0 unless done`, a state with `x == 1` before `done` fails it.
 - `P leadsto Q`: `always (P implies eventually Q)`.
-- `implies`, `until`, `leadsto` and `possibly` are keywords only in an
-  assertion's return, so they can still be used as names elsewhere.
+- `implies`, `until`, `unless`, `leadsto` and `possibly` are keywords only in
+  an assertion's return, so they can still be used as names elsewhere.
 
 **Atoms.** Each largest part of the formula with no temporal operator is an
 ordinary expression (it may call funcs), evaluated in every state.
@@ -998,6 +1028,13 @@ assertion Answered for c in range(NUM_CLIENTS):
 
 assertion Replicated for k in KEYS for r in REPLICAS if r != PRIMARY:
     return written[k] leadsto r in copies[k]
+```
+
+A `for` clause also works on prefixed assertions:
+
+```python
+always eventually assertion Copied for k in KEYS for r in REPLICAS if r != PRIMARY:
+    return r in copies[k]
 ```
 
 `return always P`, `return always eventually P` and
@@ -1044,16 +1081,39 @@ assertion ByMode:
 | Absence | `always not (served and not requested)` | the bad state never occurs |
 | Existence | `eventually served` | served at some point |
 | Response | `requested leadsto served` | every request is eventually served |
-| Precedence | `((not served) until requested) or always (not served)` | not served before it's requested (weak until) |
+| Precedence | `(not served) unless requested` | not served before it's requested; it may never be requested |
 | Strict precedence | `(not served) until requested` | requested at some point, and not served before then |
 | Stays true | `always (served implies always served)` | once served, served forever |
 | Stability | `eventually always served` | eventually settles with served true |
 | Recurrence | `always eventually served` | served infinitely often |
 | Constrained response | `always (requested implies (requested until served))` | once requested, stays requested until served |
+| Held until released | `always (held implies (held unless released))` | once held, stays held until released, or forever |
 | Conditional | `(always eventually requested) implies (always eventually served)` | if requested infinitely often, served infinitely often |
+| Absence after | `always (basic implies always not refunded)` | once basic, never refunded, whatever happens next |
 
-`until` is strong. For weak until (P holds until Q, or forever if Q never
-does), write `(P until Q) or always P`, as in the precedence pattern.
+**Properties that start from a condition.** `always (P implies F)` checks
+the formula F from every state where P holds: a precondition for the
+property. It replaces a history variable in the model. For example, a basic
+ticket can't be refunded, but it can be upgraded to premium, which can. The
+invariant `not (cabin == "basic" and refunded)` misses the
+upgrade-then-cancel loophole, because the ticket is premium by the time it
+is refunded. The formula talks about every basic ticket's future instead:
+
+```python
+assertion BasicNeverRefunded:
+    return always (cabin == "basic" implies always not refunded)
+```
+
+It fails, and the counterexample is the loophole: buy basic, `Upgrade`,
+`Cancel`. F can be any formula: `always Q` (safety after P),
+`eventually Q` (that is `P leadsto Q`), `possibly Q`, or `Q unless R`.
+See `09-20`.
+
+`until` is strong and `unless` is weak: `P unless Q` means
+`(P until Q) or always P`. Like any formula, a bare `P unless Q` is judged
+from the first state only; to check it from every state where P starts,
+write `always (start implies (P unless Q))`, as in the held-until-released
+pattern.
 
 **Possibility.** The other operators are linear-time, as in LTL: they
 describe each fair run. `possibly` is the one branching-time operator,
@@ -1114,8 +1174,32 @@ assertion WillLeave:
 - Only one `return`, at the end (see below).
 - Temporal operators and `implies` can't be stored in locals.
 - `for` clauses can't iterate over symmetric domains yet.
+- There is no release operator (LTL R). `P R Q` is `Q unless (P and Q)`.
 - Reference examples: `09-14` (passing) and `09-15` (a violation);
-  for `possibly`, `09-16` (passing) and `09-17` (a violation).
+  for `possibly`, `09-16` (passing) and `09-17` (a violation); for
+  `unless`, `09-18`; for a property that starts from a condition, `09-20`;
+  for `for` clauses, `09-21`.
+
+### Incremental Liveness Checking (experimental)
+
+By default, liveness assertions and formulas are checked once the whole
+state space is explored. With `--experimental_incremental_liveness`, the
+checker also checks the part explored so far each time the explored node
+count doubles, and stops at the first violation:
+
+```bash
+./fizz --experimental_incremental_liveness spec.fizz
+```
+
+- It never changes a verdict. A violation found early is a real one, and a
+  run with no violation still ends with the usual full check. Only *when* a
+  failure is reported changes.
+- It helps most on large models where the bad run sits close to `Init`.
+- Formulas with `possibly` are checked at the end only.
+- It needs the default BFS exploration and strict liveness. It is refused
+  with simulation, `--experimental_processed_queue` and
+  `--experimental_no_graph`, and has no effect with `liveness: eventual`.
+- Reference example: `09-19` (the flag is in its `flags.txt`).
 
 ---
 
@@ -1891,7 +1975,7 @@ symmetry.rotational(name, limit, materialize=False, reflection=False)
 | `choices()` | Y | - | - | Y | `values()` + one `fresh()` |
 | `min()` | - | Y | Y | - | Smallest active value or fresh |
 | `max()` | - | Y | Y | - | Largest active value or fresh |
-| `segments(after?, before?)` | - | Y | - | - | Gaps between active values |
+| `segments(after?, before?, include_points?, gt?, ge?, lt?, le?)` | - | Y | - | - | Gaps between active values, optionally with existing values as points |
 
 #### Nominal Symmetry
 
@@ -1955,9 +2039,33 @@ atomic action InsertBetween:
     t = gap.fresh()  # guaranteed: t_start < t < t_end
 ```
 
-With N active values, `segments()` returns N+1 gaps: a head gap (before first), body gaps (between consecutive pairs), and a tail gap (after last). Ordinal gaps are always non-empty since the domain is dense (infinitely divisible in theory).
+With N active values, `segments()` returns N+1 gaps: a head gap (before first), body gaps (between consecutive pairs), and a tail gap (after last). Ordinal gaps are always non-empty since the domain is dense. You can insert into the same gap as many times as you like along a path: the model checker respaces the stored values by rank when a gap gets too small, which keeps their order.
 
 **Reference**: [16-07-ordinal-segments](16-07-ordinal-segments/)
+
+##### Choosing an Existing or New Ordinal Value
+
+`segments(include_points=True)` also returns each existing value as a point segment, interleaved with the gaps in rank order. `value()` resolves the chosen segment: a point returns its existing value, and a gap allocates a new value in that position.
+
+```python
+TIMES = symmetry.ordinal(name="ts", limit=3)
+
+action Init:
+    deadline = TIMES.fresh()
+
+atomic action Observe:
+    # (-inf, deadline)  [deadline]  (deadline, +inf)
+    seg = oneof TIMES.segments(include_points=True)
+    t = seg.value()   # t < deadline, t == deadline, or t > deadline
+```
+
+- With N active values this gives 2N+1 choices: N points and N+1 gaps.
+- `value()` on a gap allocates once; calling it again on the same segment returns the same value. At the limit it disables the transition, like `fresh()`.
+- `seg.is_point` tells points from gaps. `fresh()` on a point is an error.
+- Bounds: `gt`/`lt` exclude the bound, `ge`/`le` include it, and the bound must be a value from the same domain (it need not still be active). Only gaps that lie entirely in range are returned, so an empty or reversed range returns an empty list, and `oneof` over it disables the transition. `after`/`before` are aliases of `gt`/`lt`. For example, `segments(include_points=True, ge=t_start, lt=t_end)` offers `t_start`, every value up to `t_end`, and every gap between them.
+- Resolve a segment in the action that selected it. If other values are inserted into its gap before `value()` runs, the new value still lands between the segment's endpoints, but its position relative to those newer values is arbitrary.
+
+**Reference**: [16-14-ordinal-segment-points](16-14-ordinal-segment-points/)
 
 #### Interval Symmetry
 
@@ -2562,7 +2670,7 @@ always assertion ServerValuePositive:
     return True
 ```
 
-**For complex expressions with fizz functions**: Extract to variables first (see Function Call Syntax Limitations)
+**For complex expressions with fizz functions**: Extract to variables first (see Function Call Syntax Limitations). Assertions are the exception: they can call fizz funcs anywhere.
 
 **For generic collections in state**: Use regular collections with hashable types, or restructure to keep generic collections in local scope
 
@@ -2577,7 +2685,7 @@ always assertion ServerValuePositive:
 
 ## See Also
 
-- [Example Reference](README.md) - 100 runnable examples
+- [Example Reference](README.md) - 123 runnable examples
 - [Performance Guide](PERFORMANCE_GUIDE.md) - Tips for reducing state space and runtime
 - [Gotchas and Common Issues](GOTCHAS.md) - Known pitfalls and workarounds
 - [Verification Guide](VERIFICATION_GUIDE.md) - Simulation, guided traces, and debugging
