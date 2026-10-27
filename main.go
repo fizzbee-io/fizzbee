@@ -1186,6 +1186,18 @@ func parseFlags() []string {
 	flag.BoolVar(&experimentalNoGraph, "experimental_no_graph", false, "EXPERIMENTAL: drops the in-memory state graph after processing each yield-point. Keeps symmetry reduction, dedup, unique-state count, and safety/transition assertions. Does NOT support liveness assertions — refuses to run if any are present. Auto-enables --experimental_processed_queue. Massive RSS reduction at the cost of trace replayability (only a lightweight action-name chain is kept for failure reporting). Default=false.")
 	flag.BoolVar(&experimentalNoStateReturns, "experimental_no_state_returns", false, "EXPERIMENTAL: omit Process.Returns from HashCode, JSON state, and dot-file state labels. Returns remain available on Link.Returns (the per-transition field). Use this to verify downstream consumers (graph, MBT, explorer) have migrated to reading return values from links. Planned to become the default. Default=false.")
 	flag.BoolVar(&experimentalIncrementalLiveness, "experimental_incremental_liveness", false, "EXPERIMENTAL: check liveness assertions on the part of the state graph explored so far, each time the explored node count doubles, and stop at the first violation instead of waiting for the full exploration. A passing run still ends with the usual full liveness check, so verdicts are unchanged; only a failure can come early. Formulas with possibly are checked at the end only. Needs the default bfs strategy and strict liveness. Default=false.")
+	// Known gaps before collapse can become the default (validated against
+	// uncollapsed runs on all references, 27 Oct 2026):
+	//  - Link weights: collapsed links multiply 1/forks along the path and
+	//    normalise only at the kept node, while uncollapsed graphs normalise
+	//    at every branch over the children that survive (require, dedup), so
+	//    probabilities can differ. The performance tool also sums labels on
+	//    merged links. Run performance models without this flag.
+	//  - Failure traces skip the collapsed steps, so a choice made inside an
+	//    action is not shown (link Choices has it; the printer ignores it).
+	//  - mergeCollapsedLink replaces, not merges, FailedInvariants per file,
+	//    and the transition-invariant check later assigns over it; only
+	//    visible with continue_path_on_invariant_failures.
 	flag.BoolVar(&experimentalCollapseSteps, "experimental_collapse_steps", false, "EXPERIMENTAL: do not store mid-action steps that are neither yield points nor fair `any` choices. Once an action's internal steps are explored to the next yield point, that yield point links directly from the previous one. Same unique states and assertion outcomes; far fewer stored nodes. Ignored with --trace, refinements, simulation, --experimental_processed_queue and --experimental_no_graph. Default=false.")
 	flag.BoolVar(&noSymmetryReduction, "no-symmetry-reduction", false, "Disable symmetry reduction: dedup uses only the plain state hash, so every persisted state keeps its concrete symmetric values/role identities (no canonical renaming). Larger state space. Required when generating state graphs for MBT replay from specs that use symmetric roles or symmetry values. Default=false.")
 	flag.Parse()
