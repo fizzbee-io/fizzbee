@@ -115,6 +115,16 @@ func TestFormulaSoftKeywords(t *testing.T) {
 	checkFormulaSpec(t, "SoftKeywords")
 }
 
+// P unless Q is weak until: Q needn't happen, but P must hold until it does.
+func TestFormulaWeakUntil(t *testing.T) {
+	file := checkFormulaSpec(t, "WeakUntil")
+	for _, inv := range file.Invariants {
+		if inv.Name == "PassRightAway" {
+			assert.Equal(t, ast.Formula_WEAK_UNTIL, inv.Formula.Op)
+		}
+	}
+}
+
 // possibly Q holds where some path, of zero or more steps over fair and
 // unfair links, reaches Q. The surrounding operators keep their fair-run
 // meaning.

@@ -1,0 +1,41 @@
+# Example 0123: Assertion For Clauses
+# One assertion header checks one property per value, with filters, nesting and tuples
+# Demonstrates: for clauses on prefixed and formula assertions, if filters, several clauses, tuple targets
+
+---
+deadlock_detection: false
+---
+# A primary holds every key, and a fair Copy action copies a key to one
+# more replica at a time.
+#
+# A `for` clause on the assertion header checks one instance per value,
+# named like Copied[a, 1]. It works on prefixed assertions (always,
+# always eventually, eventually always) as well as on formula assertions.
+# Iterables and filters may use only constants and builtins: they are
+# evaluated once, before Init.
+
+KEYS = ["a", "b"]
+REPLICAS = [0, 1, 2]
+PRIMARY = 0
+WATCHED = [("a", 1), ("b", 2)]
+
+action Init:
+    copies = {k: [PRIMARY] for k in KEYS}
+
+atomic fair action Copy:
+    k = oneof KEYS
+    r = oneof [r for r in REPLICAS if r not in copies[k]]
+    copies[k] = copies[k] + [r]
+
+# One safety check per key: Bounded[a] and Bounded[b].
+always assertion Bounded for k in KEYS:
+    return len(copies[k]) <= len(REPLICAS)
+
+# Several clauses nest in order, and `if` filters the values: one check
+# per key and non-primary replica, four in all.
+always eventually assertion Copied for k in KEYS for r in REPLICAS if r != PRIMARY:
+    return r in copies[k]
+
+# With several targets, each value is a tuple of that length.
+assertion StaysCopied for k, r in WATCHED:
+    return always (r in copies[k] implies always r in copies[k])

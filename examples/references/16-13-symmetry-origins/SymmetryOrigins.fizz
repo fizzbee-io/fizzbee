@@ -1,0 +1,33 @@
+# Example: Symmetry origins the checker must notice
+# Symmetric values that are not top-level globals: a domain stored inside a
+# list, and symmetric_values() called inside an action and kept in a list.
+# Demonstrates: symmetry reduction still applies wherever the values are born
+
+---
+deadlock_detection: false
+---
+
+# The domain is an element of a list, not a global of its own.
+DOMAINS = [symmetry.nominal(name="k", limit=3, materialize=True)]
+
+action Init:
+    switches = {}
+    for k in DOMAINS[0].values():
+        switches[k] = 'OFF'
+    # Created at runtime inside an action, not at the top level.
+    marks = set()
+    tokens = symmetric_values('t', 2)
+
+atomic action TurnOn:
+    key = oneof DOMAINS[0].values()
+    if switches[key] == 'OFF':
+        switches[key] = 'ON'
+
+atomic action Mark:
+    tok = oneof tokens
+    marks.add(tok)
+
+# 3 switches (4 classes up to permutation) x 2 tokens (3 classes) = 12
+# unique states under symmetry; 8 x 4 = 32 without it.
+always assertion Bounded:
+    return len(marks) <= 2

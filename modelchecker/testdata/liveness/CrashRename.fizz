@@ -1,0 +1,43 @@
+---
+deadlock_detection: false
+---
+# Write is serial, so a crash may happen after each step. A crash state can
+# later be reached again without a crash, and the explorer then renames it
+# from crash to yield or to the step's name, which changes how liveness
+# labels it (see liveness_incremental_test.go).
+
+action Init:
+    a = False
+    b = False
+    done = False
+
+fair action Write:
+    require not done
+    a = True
+    b = True
+    done = True
+
+atomic fair action Reset:
+    require done
+    a = False
+    b = False
+    done = False
+
+atomic action Partial:
+    require not a
+    a = True
+
+always eventually assertion DoneOften:
+    return done
+
+always eventually assertion NotAOften:
+    return not a
+
+eventually always assertion SettlesDone:
+    return done
+
+assertion AImpliesEventuallyDone:
+    return always (a implies eventually done)
+
+assertion EventuallyAlwaysB:
+    return eventually always b

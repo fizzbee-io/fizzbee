@@ -1,0 +1,58 @@
+---
+deadlock_detection: false
+---
+
+# Example 0120: Ordinal Segment Points
+# Choose an existing ordinal value or a new one in any position with segments(include_points=True)
+# Demonstrates: include_points=True, segment.value(), is_point, gt/ge/lt/le bounds
+
+# segments(include_points=True) returns the existing values as point segments,
+# interleaved with the gaps between them. With values [a, b]:
+#   (-inf, a)  [a, a]  (a, b)  [b, b]  (b, +inf)
+#
+# seg.value() resolves the chosen segment:
+#   point -> the existing value
+#   gap   -> a new value in that gap (allocated once; later calls return the same value)
+# At the limit, value() on a gap disables the transition, just like fresh().
+#
+# Bounds: gt/lt exclude the bound, ge/le include it. after/before are aliases of gt/lt.
+#
+# Use case: an observed time compared with a deadline can be <, == or >.
+# Gaps alone give < and >; points add ==.
+
+TIMES = symmetry.ordinal(name="ts", limit=3)
+
+action Init:
+    deadline = TIMES.fresh()
+    status = None
+    t = None
+
+atomic action Observe:
+    require status == None
+    seg = oneof TIMES.segments(include_points=True)
+    t = seg.value()
+    if t < deadline:
+        status = "early"
+    elif t == deadline:
+        status = "on_time"
+    else:
+        status = "late"
+
+atomic action ObserveNotEarly:
+    # Only the deadline itself or anything after it.
+    require status == None
+    seg = oneof TIMES.segments(include_points=True, ge=deadline)
+    t = seg.value()
+    if seg.is_point:
+        status = "on_time"
+    else:
+        status = "late"
+
+always assertion StatusMatchesTime:
+    if status == "early":
+        return t < deadline
+    if status == "on_time":
+        return t == deadline
+    if status == "late":
+        return t > deadline
+    return True
