@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "counter.go",
         "jsonmarshaller.go",
+        "jsonstring.go",
         "linear_collection.go",
         "pair.go",
         "permutations.go",
@@ -17,6 +18,7 @@ go_library(
         "starlark_types.go",
         "starlarkstruct.go",
         "symmetry.go",
+        "symmetry_used.go",
         "tri_state.go",
         "yaml.go",
     ],
@@ -37,10 +39,24 @@ go_library(
 
 go_test(
     name = "lib_test",
-    srcs = ["jsonmarshaller_test.go"],
+    srcs = [
+        "jsonmarshaller_test.go",
+        "jsonstring_test.go",
+    ],
     embed = [":lib"],
     deps = [
         "@com_github_stretchr_testify//assert",
+        "@net_starlark_go//starlark",
+    ],
+)
+
+go_test(
+    name = "symmetry_test",
+    srcs = ["symmetry_test.go"],
+    embed = [":lib"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
         "@net_starlark_go//starlark",
     ],
 )

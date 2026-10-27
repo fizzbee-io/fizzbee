@@ -1,5 +1,5 @@
-"""Tests for how assertion formulas parse: possibly as a soft keyword, its
-operand rules and the atom limit."""
+"""Tests for how assertion formulas parse: possibly and unless as soft
+keywords, possibly's operand rules and the atom limit."""
 import contextlib
 import io
 import unittest
@@ -55,6 +55,9 @@ class PossiblyTest(unittest.TestCase):
             "always (x == 0 and (possibly x == 1) or x == 2)": "ALWAYS(OR(AND(a0, POSSIBLY(a1)), a2))",
             "possibly (x == 0 and possibly x == 1)": "POSSIBLY(AND(a0, POSSIBLY(a1)))",
             "(possibly x == 1) until x == 1": "UNTIL(POSSIBLY(a0), a0)",
+            "x == 0 unless x == 1": "WEAK_UNTIL(a0, a1)",
+            "always (x == 0 implies (x == 0 unless x == 1))": "ALWAYS(IMPLIES(a0, WEAK_UNTIL(a0, a1)))",
+            "(possibly x == 1) unless x == 0 and x == 1": "WEAK_UNTIL(POSSIBLY(a0), a1)",
             # Line breaks inside parentheses don't end the return.
             "always (x == 0 implies\n        possibly(x == 1))": "ALWAYS(IMPLIES(a0, POSSIBLY(a1)))",
         }.items():
@@ -104,6 +107,10 @@ always assertion Nested:
             "assertion A:\n    return possibly x == 1 and x == 2\n": "`possibly` here applies only to `x == 1`",
             "func f():\n    return (possibly(x)) implies x\n": "can only be used in the return of an assertion",
             "func f():\n    return always possibly(x)\n": "can only be used in the return of an assertion",
+            "func f():\n    return x unless x\n": "can only be used in the return of an assertion",
+            "assertion A:\n    return possibly (x == 0 unless x == 1)\n": "can't contain always, eventually, until, unless",
+            "assertion A:\n    return x == 0 until x == 1 unless x == 2\n": "combine until and unless; they don't chain",
+            "assertion A:\n    return always x == 0 unless x == 1\n": "`always` here applies only to `x == 0`",
         }.items():
             with self.subTest(code):
                 self.assertIn(want, self.error(code))

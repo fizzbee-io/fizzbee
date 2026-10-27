@@ -35,6 +35,10 @@ message Link {
   // returned value (e.g. `"x"` for a string, `42` for an int, `[1, 2]`
   // for a list). Sorted by name for deterministic output.
   repeated NameValue returns = 10;
+  // With --experimental_collapse_steps, the names of the mid-action steps
+  // this link stands for, in order (Any:x=v, Stmt:N, thread-N, ...), so
+  // the choices made inside the action survive the collapse.
+  repeated string choices = 11;
 }
 
 message Links {

@@ -1,0 +1,41 @@
+# Example 0120: Weak Until
+# P unless Q: P holds until Q happens, or forever if Q never happens
+# Demonstrates: unless, unless versus until, unless under always
+
+---
+deadlock_detection: false
+---
+# `P until Q` requires Q to happen. `P unless Q` does not: if Q never
+# happens, P must hold forever. Once Q happens, neither says anything more
+# about P.
+#
+# A client may take a lease, and renews it while it works. It may hand the
+# lease back, but nothing forces it to, so a run may keep the lease forever.
+# Only handing it back ends the lease.
+
+action Init:
+    leased = False
+    returned = False
+    renewals = 0
+
+atomic action Take:
+    require not leased and not returned
+    leased = True
+
+atomic fair action Renew:
+    require leased and renewals < 2
+    renewals += 1
+
+atomic action Return:
+    require leased
+    leased = False
+    returned = True
+
+# Once taken, the lease stays held until it is handed back, or forever.
+assertion HeldUntilReturned:
+    return always (leased implies (leased unless returned))
+
+# The lease is never handed back before it is taken. Taking it isn't fair,
+# so a run may never take it, and until would fail here.
+assertion NotReturnedBeforeTaken:
+    return (not returned) unless leased

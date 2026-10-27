@@ -26,10 +26,46 @@ func tuneGC() {
 		debug.SetGCPercent(200)
 	}
 	if os.Getenv("GOMEMLIMIT") == "" {
-		if total := physicalMemoryBytes(); total > 0 {
+		if total := availableMemoryBytes(); total > 0 {
 			debug.SetMemoryLimit(int64(float64(total) * 0.8))
 		}
 	}
+}
+
+// availableMemoryBytes is the memory this process can actually use: the
+// machine's RAM, capped by the cgroup limit when one is set. Inside a
+// container /proc/meminfo reports the host, so RAM alone would overshoot.
+func availableMemoryBytes() uint64 {
+	total := physicalMemoryBytes()
+	if limit := cgroupMemoryLimitBytes(); limit > 0 && (total == 0 || limit < total) {
+		return limit
+	}
+	return total
+}
+
+// cgroupMemoryLimitBytes returns the cgroup v2 or v1 memory limit, or 0
+// when there is none (no cgroup, or an unlimited one).
+func cgroupMemoryLimitBytes() uint64 {
+	for _, path := range []string{"/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes"} {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		text := strings.TrimSpace(string(data))
+		if text == "max" {
+			return 0
+		}
+		limit, err := strconv.ParseUint(text, 10, 64)
+		if err != nil {
+			continue
+		}
+		// cgroup v1 reports "no limit" as a huge number near 2^63.
+		if limit == 0 || limit >= 1<<62 {
+			return 0
+		}
+		return limit
+	}
+	return 0
 }
 
 // physicalMemoryBytes returns the machine's RAM from /proc/meminfo, or 0

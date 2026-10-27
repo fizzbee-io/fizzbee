@@ -215,9 +215,8 @@ func (s *Struct) MarshalJSON() ([]byte, error) {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		buf.WriteString("\"")
-		buf.WriteString(e.name)
-		buf.WriteString("\" : ")
+		WriteJSONString(buf, e.name)
+		buf.WriteString(" : ")
 		marshalled, err := MarshalJSONStarlarkValue(e.value, 0)
 		if err != nil {
 			return nil, err

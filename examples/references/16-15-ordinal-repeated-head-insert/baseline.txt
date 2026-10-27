@@ -1,0 +1,15 @@
+Model checking examples/references/16-15-ordinal-repeated-head-insert/RepeatedHeadInsert.json
+configFileName: examples/references/16-15-ordinal-repeated-head-insert/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 201, queued: 0, elapsed: 13.983823ms
+Time taken for model checking: 14.030938ms
+Writen graph dotfile: examples/references/16-15-ordinal-repeated-head-insert/out/run_2026-10-24_08-44-18/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/16-15-ordinal-repeated-head-insert/out/run_2026-10-24_08-44-18/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 201 Unique states: 101
+Checking always eventually ReachesHundred
+IsLive: true
+Time taken to check liveness: 10.066025ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/16-15-ordinal-repeated-head-insert/out/run_2026-10-24_08-44-18

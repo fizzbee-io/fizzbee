@@ -1,0 +1,1643 @@
+{
+  "sourceInfo": {
+    "fileName": "WeakUntil.fizz",
+    "start": {
+      "line": 8,
+      "column": 1
+    },
+    "end": {
+      "line": 61
+    }
+  },
+  "invariants": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 36,
+          "column": 1
+        },
+        "end": {
+          "line": 40
+        }
+      },
+      "name": "PassHeldUnlessReleased",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 37,
+            "column": 5
+          },
+          "end": {
+            "line": 40
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 37,
+                "column": 5
+              },
+              "end": {
+                "line": 40
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 37,
+                  "column": 5
+                },
+                "end": {
+                  "line": 37,
+                  "column": 55
+                }
+              },
+              "pyExpr": "[bool(held), bool(released)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 37,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 37,
+                    "column": 55
+                  }
+                },
+                "pyExpr": "[bool(held), bool(released)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassHeldUnlessReleased():\n    return always (held implies (held unless released))\n\n# until also needs the release to happen, and a run may never release.\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 37,
+            "column": 12
+          },
+          "end": {
+            "line": 37,
+            "column": 55
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 37,
+                "column": 20
+              },
+              "end": {
+                "line": 37,
+                "column": 54
+              }
+            },
+            "op": "IMPLIES",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 37,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 37,
+                    "column": 23
+                  }
+                },
+                "op": "ATOM"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 37,
+                    "column": 34
+                  },
+                  "end": {
+                    "line": 37,
+                    "column": 53
+                  }
+                },
+                "op": "WEAK_UNTIL",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 37,
+                        "column": 34
+                      },
+                      "end": {
+                        "line": 37,
+                        "column": 37
+                      }
+                    },
+                    "op": "ATOM"
+                  },
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 37,
+                        "column": 46
+                      },
+                      "end": {
+                        "line": 37,
+                        "column": 53
+                      }
+                    },
+                    "op": "ATOM",
+                    "atom": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 40,
+          "column": 1
+        },
+        "end": {
+          "line": 44
+        }
+      },
+      "name": "FailHeldUntilReleased",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 41,
+            "column": 5
+          },
+          "end": {
+            "line": 44
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 41,
+                "column": 5
+              },
+              "end": {
+                "line": 44
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 41,
+                  "column": 5
+                },
+                "end": {
+                  "line": 41,
+                  "column": 54
+                }
+              },
+              "pyExpr": "[bool(held), bool(released)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 41,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 41,
+                    "column": 54
+                  }
+                },
+                "pyExpr": "[bool(held), bool(released)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailHeldUntilReleased():\n    return always (held implies (held until released))\n\n# The written-out form means the same.\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 41,
+            "column": 12
+          },
+          "end": {
+            "line": 41,
+            "column": 54
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 41,
+                "column": 20
+              },
+              "end": {
+                "line": 41,
+                "column": 53
+              }
+            },
+            "op": "IMPLIES",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 41,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 41,
+                    "column": 23
+                  }
+                },
+                "op": "ATOM"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 41,
+                    "column": 34
+                  },
+                  "end": {
+                    "line": 41,
+                    "column": 52
+                  }
+                },
+                "op": "UNTIL",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 41,
+                        "column": 34
+                      },
+                      "end": {
+                        "line": 41,
+                        "column": 37
+                      }
+                    },
+                    "op": "ATOM"
+                  },
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 41,
+                        "column": 45
+                      },
+                      "end": {
+                        "line": 41,
+                        "column": 52
+                      }
+                    },
+                    "op": "ATOM",
+                    "atom": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 44,
+          "column": 1
+        },
+        "end": {
+          "line": 48
+        }
+      },
+      "name": "PassWrittenOut",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 45,
+            "column": 5
+          },
+          "end": {
+            "line": 48
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 45,
+                "column": 5
+              },
+              "end": {
+                "line": 48
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 45,
+                  "column": 5
+                },
+                "end": {
+                  "line": 45,
+                  "column": 71
+                }
+              },
+              "pyExpr": "[bool(held), bool(released)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 45,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 45,
+                    "column": 71
+                  }
+                },
+                "pyExpr": "[bool(held), bool(released)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassWrittenOut():\n    return always (held implies ((held until released) or always held))\n\n# Eviction ends the hold before any commit, so both fail.\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 45,
+            "column": 12
+          },
+          "end": {
+            "line": 45,
+            "column": 71
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 45,
+                "column": 20
+              },
+              "end": {
+                "line": 45,
+                "column": 70
+              }
+            },
+            "op": "IMPLIES",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 45,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 45,
+                    "column": 23
+                  }
+                },
+                "op": "ATOM"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 45,
+                    "column": 34
+                  },
+                  "end": {
+                    "line": 45,
+                    "column": 69
+                  }
+                },
+                "op": "OR",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 45,
+                        "column": 35
+                      },
+                      "end": {
+                        "line": 45,
+                        "column": 53
+                      }
+                    },
+                    "op": "UNTIL",
+                    "args": [
+                      {
+                        "sourceInfo": {
+                          "start": {
+                            "line": 45,
+                            "column": 35
+                          },
+                          "end": {
+                            "line": 45,
+                            "column": 38
+                          }
+                        },
+                        "op": "ATOM"
+                      },
+                      {
+                        "sourceInfo": {
+                          "start": {
+                            "line": 45,
+                            "column": 46
+                          },
+                          "end": {
+                            "line": 45,
+                            "column": 53
+                          }
+                        },
+                        "op": "ATOM",
+                        "atom": 1
+                      }
+                    ]
+                  },
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 45,
+                        "column": 59
+                      },
+                      "end": {
+                        "line": 45,
+                        "column": 69
+                      }
+                    },
+                    "op": "ALWAYS",
+                    "args": [
+                      {
+                        "sourceInfo": {
+                          "start": {
+                            "line": 45,
+                            "column": 66
+                          },
+                          "end": {
+                            "line": 45,
+                            "column": 69
+                          }
+                        },
+                        "op": "ATOM"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 48,
+          "column": 1
+        },
+        "end": {
+          "line": 51
+        }
+      },
+      "name": "FailCacheUnlessCommitted",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 49,
+            "column": 5
+          },
+          "end": {
+            "line": 51
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 49,
+                "column": 5
+              },
+              "end": {
+                "line": 51
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 49,
+                  "column": 5
+                },
+                "end": {
+                  "line": 49,
+                  "column": 69
+                }
+              },
+              "pyExpr": "[bool(cache == 1), bool(cache == 2)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 49,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 49,
+                    "column": 69
+                  }
+                },
+                "pyExpr": "[bool(cache == 1), bool(cache == 2)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailCacheUnlessCommitted():\n    return always (cache == 1 implies (cache == 1 unless cache == 2))\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 49,
+            "column": 12
+          },
+          "end": {
+            "line": 49,
+            "column": 69
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 49,
+                "column": 20
+              },
+              "end": {
+                "line": 49,
+                "column": 68
+              }
+            },
+            "op": "IMPLIES",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 49,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 49,
+                    "column": 29
+                  }
+                },
+                "op": "ATOM"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 49,
+                    "column": 40
+                  },
+                  "end": {
+                    "line": 49,
+                    "column": 67
+                  }
+                },
+                "op": "WEAK_UNTIL",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 49,
+                        "column": 40
+                      },
+                      "end": {
+                        "line": 49,
+                        "column": 49
+                      }
+                    },
+                    "op": "ATOM"
+                  },
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 49,
+                        "column": 58
+                      },
+                      "end": {
+                        "line": 49,
+                        "column": 67
+                      }
+                    },
+                    "op": "ATOM",
+                    "atom": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 51,
+          "column": 1
+        },
+        "end": {
+          "line": 55
+        }
+      },
+      "name": "FailCacheUntilCommitted",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 52,
+            "column": 5
+          },
+          "end": {
+            "line": 55
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 52,
+                "column": 5
+              },
+              "end": {
+                "line": 55
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 52,
+                  "column": 5
+                },
+                "end": {
+                  "line": 52,
+                  "column": 68
+                }
+              },
+              "pyExpr": "[bool(cache == 1), bool(cache == 2)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 52,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 52,
+                    "column": 68
+                  }
+                },
+                "pyExpr": "[bool(cache == 1), bool(cache == 2)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def FailCacheUntilCommitted():\n    return always (cache == 1 implies (cache == 1 until cache == 2))\n\n# Q holding now satisfies it, whatever P does.\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 52,
+            "column": 12
+          },
+          "end": {
+            "line": 52,
+            "column": 68
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 52,
+                "column": 20
+              },
+              "end": {
+                "line": 52,
+                "column": 67
+              }
+            },
+            "op": "IMPLIES",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 52,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 52,
+                    "column": 29
+                  }
+                },
+                "op": "ATOM"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 52,
+                    "column": 40
+                  },
+                  "end": {
+                    "line": 52,
+                    "column": 66
+                  }
+                },
+                "op": "UNTIL",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 52,
+                        "column": 40
+                      },
+                      "end": {
+                        "line": 52,
+                        "column": 49
+                      }
+                    },
+                    "op": "ATOM"
+                  },
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 52,
+                        "column": 57
+                      },
+                      "end": {
+                        "line": 52,
+                        "column": 66
+                      }
+                    },
+                    "op": "ATOM",
+                    "atom": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 55,
+          "column": 1
+        },
+        "end": {
+          "line": 59
+        }
+      },
+      "name": "PassRightAway",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 56,
+            "column": 5
+          },
+          "end": {
+            "line": 59
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 56,
+                "column": 5
+              },
+              "end": {
+                "line": 59
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 56,
+                  "column": 5
+                },
+                "end": {
+                  "line": 56,
+                  "column": 33
+                }
+              },
+              "pyExpr": "[bool(held), bool(cache == 0)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 56,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 56,
+                    "column": 33
+                  }
+                },
+                "pyExpr": "[bool(held), bool(cache == 0)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassRightAway():\n    return held unless cache == 0\n\n# Neither side needs to be a plain condition.\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 56,
+            "column": 12
+          },
+          "end": {
+            "line": 56,
+            "column": 33
+          }
+        },
+        "op": "WEAK_UNTIL",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 56,
+                "column": 12
+              },
+              "end": {
+                "line": 56,
+                "column": 15
+              }
+            },
+            "op": "ATOM"
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 56,
+                "column": 24
+              },
+              "end": {
+                "line": 56,
+                "column": 33
+              }
+            },
+            "op": "ATOM",
+            "atom": 1
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 59,
+          "column": 1
+        },
+        "end": {
+          "line": 61
+        }
+      },
+      "name": "PassNested",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 60,
+            "column": 5
+          },
+          "end": {
+            "line": 61
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 60,
+                "column": 5
+              },
+              "end": {
+                "line": 61
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 60,
+                  "column": 5
+                },
+                "end": {
+                  "line": 60,
+                  "column": 56
+                }
+              },
+              "pyExpr": "[bool((not (released))), bool(cache != 1)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 60,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 60,
+                    "column": 56
+                  }
+                },
+                "pyExpr": "[bool((not (released))), bool(cache != 1)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def PassNested():\n    return (not released) unless (eventually cache != 1)\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 60,
+            "column": 12
+          },
+          "end": {
+            "line": 60,
+            "column": 56
+          }
+        },
+        "op": "WEAK_UNTIL",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 60,
+                "column": 13
+              },
+              "end": {
+                "line": 60,
+                "column": 24
+              }
+            },
+            "op": "ATOM"
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 60,
+                "column": 35
+              },
+              "end": {
+                "line": 60,
+                "column": 55
+              }
+            },
+            "op": "EVENTUALLY",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 60,
+                    "column": 46
+                  },
+                  "end": {
+                    "line": 60,
+                    "column": 55
+                  }
+                },
+                "op": "ATOM",
+                "atom": 1
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 8,
+          "column": 1
+        },
+        "end": {
+          "line": 13
+        }
+      },
+      "name": "Init",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 9,
+            "column": 5
+          },
+          "end": {
+            "line": 13
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 9,
+                "column": 5
+              },
+              "end": {
+                "line": 10,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 9,
+                  "column": 5
+                },
+                "end": {
+                  "line": 9,
+                  "column": 16
+                }
+              },
+              "code": "held = False"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 10,
+                "column": 5
+              },
+              "end": {
+                "line": 11,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 10,
+                  "column": 5
+                },
+                "end": {
+                  "line": 10,
+                  "column": 20
+                }
+              },
+              "code": "released = False"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 11,
+                "column": 5
+              },
+              "end": {
+                "line": 13
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 11,
+                  "column": 5
+                },
+                "end": {
+                  "line": 11,
+                  "column": 13
+                }
+              },
+              "code": "cache = 0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 13,
+          "column": 1
+        },
+        "end": {
+          "line": 17
+        }
+      },
+      "name": "Acquire",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "sourceInfo": {
+          "start": {
+            "line": 13,
+            "column": 8
+          },
+          "end": {
+            "line": 13,
+            "column": 11
+          }
+        },
+        "level": "FAIRNESS_LEVEL_WEAK"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 14,
+            "column": 5
+          },
+          "end": {
+            "line": 17
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 14,
+                "column": 5
+              },
+              "end": {
+                "line": 15,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 14,
+                  "column": 5
+                },
+                "end": {
+                  "line": 14,
+                  "column": 37
+                }
+              },
+              "condition": "not held and not released",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 14,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 14,
+                    "column": 37
+                  }
+                },
+                "pyExpr": "not held and not released"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 15,
+                "column": 5
+              },
+              "end": {
+                "line": 17
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 15,
+                  "column": 5
+                },
+                "end": {
+                  "line": 15,
+                  "column": 15
+                }
+              },
+              "code": "held = True"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 17,
+          "column": 1
+        },
+        "end": {
+          "line": 22
+        }
+      },
+      "name": "Release",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 18,
+            "column": 5
+          },
+          "end": {
+            "line": 22
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 18,
+                "column": 5
+              },
+              "end": {
+                "line": 19,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 18,
+                  "column": 5
+                },
+                "end": {
+                  "line": 18,
+                  "column": 16
+                }
+              },
+              "condition": "held",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 18,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 18,
+                    "column": 16
+                  }
+                },
+                "pyExpr": "held"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 19,
+                "column": 5
+              },
+              "end": {
+                "line": 20,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 19,
+                  "column": 5
+                },
+                "end": {
+                  "line": 19,
+                  "column": 16
+                }
+              },
+              "code": "held = False"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 20,
+                "column": 5
+              },
+              "end": {
+                "line": 22
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 20,
+                  "column": 5
+                },
+                "end": {
+                  "line": 20,
+                  "column": 19
+                }
+              },
+              "code": "released = True"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 22,
+          "column": 1
+        },
+        "end": {
+          "line": 26
+        }
+      },
+      "name": "Fill",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "sourceInfo": {
+          "start": {
+            "line": 22,
+            "column": 8
+          },
+          "end": {
+            "line": 22,
+            "column": 11
+          }
+        },
+        "level": "FAIRNESS_LEVEL_WEAK"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 23,
+            "column": 5
+          },
+          "end": {
+            "line": 26
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 23,
+                "column": 5
+              },
+              "end": {
+                "line": 24,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 23,
+                  "column": 5
+                },
+                "end": {
+                  "line": 23,
+                  "column": 22
+                }
+              },
+              "condition": "cache == 0",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 23,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 23,
+                    "column": 22
+                  }
+                },
+                "pyExpr": "cache == 0"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 24,
+                "column": 5
+              },
+              "end": {
+                "line": 26
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 24,
+                  "column": 5
+                },
+                "end": {
+                  "line": 24,
+                  "column": 13
+                }
+              },
+              "code": "cache = 1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 26,
+          "column": 1
+        },
+        "end": {
+          "line": 30
+        }
+      },
+      "name": "Commit",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 27,
+            "column": 5
+          },
+          "end": {
+            "line": 30
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 27,
+                "column": 5
+              },
+              "end": {
+                "line": 28,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 27,
+                  "column": 5
+                },
+                "end": {
+                  "line": 27,
+                  "column": 22
+                }
+              },
+              "condition": "cache == 1",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 27,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 27,
+                    "column": 22
+                  }
+                },
+                "pyExpr": "cache == 1"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 28,
+                "column": 5
+              },
+              "end": {
+                "line": 30
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 28,
+                  "column": 5
+                },
+                "end": {
+                  "line": 28,
+                  "column": 13
+                }
+              },
+              "code": "cache = 2"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 30,
+          "column": 1
+        },
+        "end": {
+          "line": 36
+        }
+      },
+      "name": "Evict",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 31,
+            "column": 5
+          },
+          "end": {
+            "line": 36
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 31,
+                "column": 5
+              },
+              "end": {
+                "line": 32,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 31,
+                  "column": 5
+                },
+                "end": {
+                  "line": 31,
+                  "column": 22
+                }
+              },
+              "condition": "cache == 1",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 31,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 31,
+                    "column": 22
+                  }
+                },
+                "pyExpr": "cache == 1"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 32,
+                "column": 5
+              },
+              "end": {
+                "line": 36
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 32,
+                  "column": 5
+                },
+                "end": {
+                  "line": 32,
+                  "column": 13
+                }
+              },
+              "code": "cache = 3"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "frontMatter": {
+    "yaml": "\ndeadlock_detection: false\n"
+  }
+}

@@ -1,0 +1,927 @@
+{
+  "sourceInfo": {
+    "fileName": "CrashRename.fizz",
+    "start": {
+      "line": 9,
+      "column": 1
+    },
+    "end": {
+      "line": 44
+    }
+  },
+  "invariants": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 30,
+          "column": 1
+        },
+        "end": {
+          "line": 33
+        }
+      },
+      "name": "DoneOften",
+      "temporalOperators": [
+        "always",
+        "eventually"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 31,
+            "column": 5
+          },
+          "end": {
+            "line": 33
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 31,
+                "column": 5
+              },
+              "end": {
+                "line": 33
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 31,
+                  "column": 5
+                },
+                "end": {
+                  "line": 31,
+                  "column": 15
+                }
+              },
+              "pyExpr": "done",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 31,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 31,
+                    "column": 15
+                  }
+                },
+                "pyExpr": "done"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def DoneOften():\n    return done\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 33,
+          "column": 1
+        },
+        "end": {
+          "line": 36
+        }
+      },
+      "name": "NotAOften",
+      "temporalOperators": [
+        "always",
+        "eventually"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 34,
+            "column": 5
+          },
+          "end": {
+            "line": 36
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 34,
+                "column": 5
+              },
+              "end": {
+                "line": 36
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 34,
+                  "column": 5
+                },
+                "end": {
+                  "line": 34,
+                  "column": 16
+                }
+              },
+              "pyExpr": "not a",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 34,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 34,
+                    "column": 16
+                  }
+                },
+                "pyExpr": "not a"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def NotAOften():\n    return not a\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 36,
+          "column": 1
+        },
+        "end": {
+          "line": 39
+        }
+      },
+      "name": "SettlesDone",
+      "temporalOperators": [
+        "eventually",
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 37,
+            "column": 5
+          },
+          "end": {
+            "line": 39
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 37,
+                "column": 5
+              },
+              "end": {
+                "line": 39
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 37,
+                  "column": 5
+                },
+                "end": {
+                  "line": 37,
+                  "column": 15
+                }
+              },
+              "pyExpr": "done",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 37,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 37,
+                    "column": 15
+                  }
+                },
+                "pyExpr": "done"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def SettlesDone():\n    return done\n\n"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 39,
+          "column": 1
+        },
+        "end": {
+          "line": 42
+        }
+      },
+      "name": "AImpliesEventuallyDone",
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 40,
+            "column": 5
+          },
+          "end": {
+            "line": 42
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 40,
+                "column": 5
+              },
+              "end": {
+                "line": 42
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 40,
+                  "column": 5
+                },
+                "end": {
+                  "line": 40,
+                  "column": 45
+                }
+              },
+              "pyExpr": "[bool(a), bool(done)]",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 40,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 40,
+                    "column": 45
+                  }
+                },
+                "pyExpr": "[bool(a), bool(done)]"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def AImpliesEventuallyDone():\n    return always (a implies eventually done)\n\n",
+      "formula": {
+        "sourceInfo": {
+          "start": {
+            "line": 40,
+            "column": 12
+          },
+          "end": {
+            "line": 40,
+            "column": 45
+          }
+        },
+        "op": "ALWAYS",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 40,
+                "column": 20
+              },
+              "end": {
+                "line": 40,
+                "column": 44
+              }
+            },
+            "op": "IMPLIES",
+            "args": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 40,
+                    "column": 20
+                  },
+                  "end": {
+                    "line": 40,
+                    "column": 20
+                  }
+                },
+                "op": "ATOM"
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 40,
+                    "column": 30
+                  },
+                  "end": {
+                    "line": 40,
+                    "column": 44
+                  }
+                },
+                "op": "EVENTUALLY",
+                "args": [
+                  {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 40,
+                        "column": 41
+                      },
+                      "end": {
+                        "line": 40,
+                        "column": 44
+                      }
+                    },
+                    "op": "ATOM",
+                    "atom": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 42,
+          "column": 1
+        },
+        "end": {
+          "line": 44
+        }
+      },
+      "name": "EventuallyAlwaysB",
+      "temporalOperators": [
+        "eventually",
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 43,
+            "column": 5
+          },
+          "end": {
+            "line": 44
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 43,
+                "column": 5
+              },
+              "end": {
+                "line": 44
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 43,
+                  "column": 5
+                },
+                "end": {
+                  "line": 43,
+                  "column": 30
+                }
+              },
+              "pyExpr": "b",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 43,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 43,
+                    "column": 30
+                  }
+                },
+                "pyExpr": "b"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def EventuallyAlwaysB():\n    return eventually always b\n"
+    }
+  ],
+  "actions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 9,
+          "column": 1
+        },
+        "end": {
+          "line": 14
+        }
+      },
+      "name": "Init",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 10,
+            "column": 5
+          },
+          "end": {
+            "line": 14
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 10,
+                "column": 5
+              },
+              "end": {
+                "line": 11,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 10,
+                  "column": 5
+                },
+                "end": {
+                  "line": 10,
+                  "column": 13
+                }
+              },
+              "code": "a = False"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 11,
+                "column": 5
+              },
+              "end": {
+                "line": 12,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 11,
+                  "column": 5
+                },
+                "end": {
+                  "line": 11,
+                  "column": 13
+                }
+              },
+              "code": "b = False"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 12,
+                "column": 5
+              },
+              "end": {
+                "line": 14
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 12,
+                  "column": 5
+                },
+                "end": {
+                  "line": 12,
+                  "column": 16
+                }
+              },
+              "code": "done = False"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 14,
+          "column": 1
+        },
+        "end": {
+          "line": 20
+        }
+      },
+      "name": "Write",
+      "flow": "FLOW_SERIAL",
+      "fairness": {
+        "sourceInfo": {
+          "start": {
+            "line": 14,
+            "column": 1
+          },
+          "end": {
+            "line": 14,
+            "column": 4
+          }
+        },
+        "level": "FAIRNESS_LEVEL_WEAK"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 15,
+            "column": 5
+          },
+          "end": {
+            "line": 20
+          }
+        },
+        "flow": "FLOW_SERIAL",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 15,
+                "column": 5
+              },
+              "end": {
+                "line": 16,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 15,
+                  "column": 5
+                },
+                "end": {
+                  "line": 15,
+                  "column": 20
+                }
+              },
+              "condition": "not done",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 15,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 15,
+                    "column": 20
+                  }
+                },
+                "pyExpr": "not done"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 16,
+                "column": 5
+              },
+              "end": {
+                "line": 17,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 16,
+                  "column": 5
+                },
+                "end": {
+                  "line": 16,
+                  "column": 12
+                }
+              },
+              "code": "a = True"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 17,
+                "column": 5
+              },
+              "end": {
+                "line": 18,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 17,
+                  "column": 5
+                },
+                "end": {
+                  "line": 17,
+                  "column": 12
+                }
+              },
+              "code": "b = True"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 18,
+                "column": 5
+              },
+              "end": {
+                "line": 20
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 18,
+                  "column": 5
+                },
+                "end": {
+                  "line": 18,
+                  "column": 15
+                }
+              },
+              "code": "done = True"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 20,
+          "column": 1
+        },
+        "end": {
+          "line": 26
+        }
+      },
+      "name": "Reset",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "sourceInfo": {
+          "start": {
+            "line": 20,
+            "column": 8
+          },
+          "end": {
+            "line": 20,
+            "column": 11
+          }
+        },
+        "level": "FAIRNESS_LEVEL_WEAK"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 21,
+            "column": 5
+          },
+          "end": {
+            "line": 26
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 21,
+                "column": 5
+              },
+              "end": {
+                "line": 22,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 21,
+                  "column": 5
+                },
+                "end": {
+                  "line": 21,
+                  "column": 16
+                }
+              },
+              "condition": "done",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 21,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 16
+                  }
+                },
+                "pyExpr": "done"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 22,
+                "column": 5
+              },
+              "end": {
+                "line": 23,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 22,
+                  "column": 5
+                },
+                "end": {
+                  "line": 22,
+                  "column": 13
+                }
+              },
+              "code": "a = False"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 23,
+                "column": 5
+              },
+              "end": {
+                "line": 24,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 23,
+                  "column": 5
+                },
+                "end": {
+                  "line": 23,
+                  "column": 13
+                }
+              },
+              "code": "b = False"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 24,
+                "column": 5
+              },
+              "end": {
+                "line": 26
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 24,
+                  "column": 5
+                },
+                "end": {
+                  "line": 24,
+                  "column": 16
+                }
+              },
+              "code": "done = False"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 26,
+          "column": 1
+        },
+        "end": {
+          "line": 30
+        }
+      },
+      "name": "Partial",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 27,
+            "column": 5
+          },
+          "end": {
+            "line": 30
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 27,
+                "column": 5
+              },
+              "end": {
+                "line": 28,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 27,
+                  "column": 5
+                },
+                "end": {
+                  "line": 27,
+                  "column": 17
+                }
+              },
+              "condition": "not a",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 27,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 27,
+                    "column": 17
+                  }
+                },
+                "pyExpr": "not a"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 28,
+                "column": 5
+              },
+              "end": {
+                "line": 30
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 28,
+                  "column": 5
+                },
+                "end": {
+                  "line": 28,
+                  "column": 12
+                }
+              },
+              "code": "a = True"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "frontMatter": {
+    "yaml": "\ndeadlock_detection: false\n"
+  }
+}

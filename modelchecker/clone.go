@@ -6,6 +6,7 @@ import (
 
 	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 )
 
 func deepCloneStarlarkValue(value starlark.Value, refs map[starlark.Value]starlark.Value) (starlark.Value, error) {
@@ -25,12 +26,50 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 	// "builtin_function_or_method".
 	switch value.Type() {
 
-	case "NoneType", "int", "float", "bool", "string", "bytes", "function", "range", "struct", "symmetric_values", "Channel", "symmetry_domain":
+	case "NoneType", "int", "float", "bool", "string", "bytes", "function", "range", "symmetric_values", "Channel", "symmetry_domain":
 		//case starlark.Bool, starlark.String, starlark.Int:
 		// For simple values, just return a copy
 		// Also starlark struct is immutable
 		// symmetry_domain is stateless configuration (Name, Limit, DomainType)
 		return value, nil
+
+	case "struct":
+		// A struct is immutable, but its fields may hold symmetric values or
+		// mutable containers, which must be cloned (and permuted) like any
+		// other. A struct with nothing to clone is shared as is.
+		//
+		// The struct can't be registered in refs before its fields are cloned,
+		// so a cycle through it (a list holding the struct that holds the
+		// list) is cut at the container, which is registered first. The inner
+		// reference then gets its own copy of the struct, equal in value.
+		v, ok := value.(*starlarkstruct.Struct)
+		if !ok {
+			return value, nil
+		}
+		fields := make(starlark.StringDict)
+		changed := false
+		for _, name := range v.AttrNames() {
+			field, err := v.Attr(name)
+			if err != nil {
+				return nil, err
+			}
+			cloned, err := deepCloneStarlarkValueWithPermutations(field, refs, permutations, alt)
+			if err != nil {
+				return nil, err
+			}
+			fields[name] = cloned
+			switch field.Type() {
+			case "NoneType", "int", "float", "bool", "string", "bytes", "function", "range", "symmetric_values", "Channel", "symmetry_domain":
+			default:
+				changed = true
+			}
+		}
+		if !changed {
+			return value, nil
+		}
+		newVal := starlarkstruct.FromStringDict(v.Constructor(), fields)
+		refs[value] = newVal
+		return newVal, nil
 
 	case "model_value":
 		// ModelValue is now a pointer type - clone it as a reference
@@ -176,13 +215,36 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 			}
 		}
 
-		newSegment := &lib.Segment{
-			Domain: s.Domain,
-			Left:   newLeft,
-			Right:  newRight,
-			IsHead: s.IsHead,
-			IsTail: s.IsTail,
+		newResolved := s.Resolved
+		newResolvedID := s.ResolvedID
+		if permutations != nil && s.Resolved {
+			// The memoized value only has a counterpart in the permuted state
+			// while the value itself is still in the state. Otherwise drop the
+			// memo: a later value() allocates afresh in the (remapped) gap,
+			// which is equivalent under ordinal symmetry.
+			newResolved = false
+			newResolvedID = 0
+			for oldSV, newSVs := range permutations {
+				if oldSV.GetPrefix() == s.Domain.Name && oldSV.GetId() == s.ResolvedID {
+					newResolved = true
+					newResolvedID = newSVs[alt].GetId()
+					break
+				}
+			}
 		}
+
+		newSegment := &lib.Segment{
+			Domain:     s.Domain,
+			Left:       newLeft,
+			Right:      newRight,
+			IsHead:     s.IsHead,
+			IsTail:     s.IsTail,
+			IsPoint:    s.IsPoint,
+			Resolved:   newResolved,
+			ResolvedID: newResolvedID,
+		}
+		// value() memoizes into the segment, so aliases must stay shared.
+		refs[value] = newSegment
 		return newSegment, nil
 	case "genericset":
 		// The source keys are distinct and a permutation renames IDs

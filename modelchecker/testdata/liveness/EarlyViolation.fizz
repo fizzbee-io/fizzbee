@@ -1,0 +1,26 @@
+---
+deadlock_detection: false
+---
+# Toggle is fair and can run forever while x is 0, but Grow isn't fair, so
+# a run may toggle forever and never reach the end. That violation sits
+# next to Init, while Grow builds a long chain of states, so an incremental
+# check finds it before the chain is explored (see
+# liveness_incremental_test.go).
+
+action Init:
+    x = 0
+    flag = False
+
+atomic action Grow:
+    require x < 8
+    x += 1
+
+atomic fair action Toggle:
+    require x == 0
+    flag = not flag
+
+always eventually assertion FailReachesEnd:
+    return x == 8
+
+assertion FailFormulaReachesEnd:
+    return eventually x == 8

@@ -1,0 +1,200 @@
+package lib
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.starlark.net/starlark"
+)
+
+// newOrdinalThread returns a thread with a symmetry context whose state holds
+// the given ordinal IDs for domain "ts".
+func newOrdinalThread(ids ...int64) *starlark.Thread {
+	thread := &starlark.Thread{Name: "test"}
+	thread.SetLocal(SymmetryContextKey, NewSymmetryContext(func() map[string][]int64 {
+		return map[string][]int64{"ts": ids}
+	}))
+	return thread
+}
+
+// evalSegments runs expr with TIMES, a, b, c bound and returns the segments as strings.
+func evalSegments(t *testing.T, thread *starlark.Thread, d *SymmetryDomain, expr string, vals ...int64) []string {
+	t.Helper()
+	env := starlark.StringDict{"TIMES": d}
+	for i, id := range vals {
+		env[string(rune('a'+i))] = NewSymmetricValueWithKind("ts", id, SymmetryKindOrdinal)
+	}
+	v, err := starlark.Eval(thread, "test", expr, env)
+	require.NoError(t, err)
+	list := v.(*starlark.List)
+	var out []string
+	for i := 0; i < list.Len(); i++ {
+		out = append(out, list.Index(i).String())
+	}
+	return out
+}
+
+func TestOrdinalSegmentsIncludePoints(t *testing.T) {
+	d := &SymmetryDomain{Name: "ts", Limit: 5, Kind: SymmetryKindOrdinal}
+	ids := []int64{10, 20, 30}
+
+	tests := []struct {
+		expr string
+		want []string
+	}{
+		{"TIMES.segments()", []string{"(-inf, 10)", "(10, 20)", "(20, 30)", "(30, +inf)"}},
+		{"TIMES.segments(include_points=True)", []string{"(-inf, 10)", "[10, 10]", "(10, 20)", "[20, 20]", "(20, 30)", "[30, 30]", "(30, +inf)"}},
+		{"TIMES.segments(include_points=True, ge=a, lt=c)", []string{"[10, 10]", "(10, 20)", "[20, 20]", "(20, 30)"}},
+		{"TIMES.segments(include_points=True, gt=a, lt=c)", []string{"(10, 20)", "[20, 20]", "(20, 30)"}},
+		{"TIMES.segments(include_points=True, gt=b, le=c)", []string{"(20, 30)", "[30, 30]"}},
+		{"TIMES.segments(include_points=True, after=b)", []string{"(20, 30)", "[30, 30]", "(30, +inf)"}},
+		{"TIMES.segments(include_points=True, le=a)", []string{"(-inf, 10)", "[10, 10]"}},
+		{"TIMES.segments(after=a, before=c)", []string{"(10, 20)", "(20, 30)"}},
+		// Single-point and empty or reversed ranges.
+		{"TIMES.segments(include_points=True, ge=a, le=a)", []string{"[10, 10]"}},
+		{"TIMES.segments(include_points=True, gt=a, le=a)", nil},
+		{"TIMES.segments(include_points=True, gt=c, lt=a)", nil},
+		{"TIMES.segments(gt=c, lt=a)", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.expr, func(t *testing.T) {
+			got := evalSegments(t, newOrdinalThread(ids...), d, tt.expr, ids...)
+			for i := range got {
+				got[i] = strings.TrimSuffix(strings.TrimPrefix(got[i], "<segment ts "), ">")
+			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestOrdinalSegmentsEmptyDomain(t *testing.T) {
+	d := &SymmetryDomain{Name: "ts", Limit: 2, Kind: SymmetryKindOrdinal}
+	got := evalSegments(t, newOrdinalThread(), d, "TIMES.segments(include_points=True)")
+	assert.Equal(t, []string{"<segment ts (-inf, +inf)>"}, got)
+
+	// A bound that is no longer active: the single gap spans both sides of it,
+	// so it is not entirely in range.
+	assert.Empty(t, evalSegments(t, newOrdinalThread(), d, "TIMES.segments(include_points=True, gt=a)", 10))
+	assert.Empty(t, evalSegments(t, newOrdinalThread(), d, "TIMES.segments(before=a)", 10))
+}
+
+func TestOrdinalSegmentsInactiveBound(t *testing.T) {
+	// Bounds are compared by position. 15 is not active; it lies inside (10, 20),
+	// so that gap straddles the bound and is excluded.
+	d := &SymmetryDomain{Name: "ts", Limit: 5, Kind: SymmetryKindOrdinal}
+	thread := newOrdinalThread(10, 20, 30)
+	env := starlark.StringDict{"TIMES": d, "x": NewSymmetricValueWithKind("ts", 15, SymmetryKindOrdinal)}
+	v, err := starlark.Eval(thread, "test", "TIMES.segments(include_points=True, gt=x)", env)
+	require.NoError(t, err)
+	list := v.(*starlark.List)
+	var got []string
+	for i := 0; i < list.Len(); i++ {
+		got = append(got, list.Index(i).String())
+	}
+	assert.Equal(t, []string{"<segment ts [20, 20]>", "<segment ts (20, 30)>", "<segment ts [30, 30]>", "<segment ts (30, +inf)>"}, got)
+}
+
+func TestOrdinalSegmentsBoundConflicts(t *testing.T) {
+	d := &SymmetryDomain{Name: "ts", Limit: 5, Kind: SymmetryKindOrdinal}
+	env := starlark.StringDict{"TIMES": d, "a": NewSymmetricValueWithKind("ts", 10, SymmetryKindOrdinal)}
+	for _, expr := range []string{
+		"TIMES.segments(gt=a, ge=a)",
+		"TIMES.segments(after=a, gt=a)",
+		"TIMES.segments(lt=a, le=a)",
+		"TIMES.segments(before=a, le=a)",
+		"TIMES.segments(gt=1)",
+	} {
+		_, err := starlark.Eval(newOrdinalThread(10), "test", expr, env)
+		assert.Error(t, err, expr)
+	}
+}
+
+func TestOrdinalSegmentValue(t *testing.T) {
+	d := &SymmetryDomain{Name: "ts", Limit: 3, Kind: SymmetryKindOrdinal}
+	thread := newOrdinalThread(10, 20)
+	segs, err := starlark.Eval(thread, "test", "TIMES.segments(include_points=True)", starlark.StringDict{"TIMES": d})
+	require.NoError(t, err)
+	list := segs.(*starlark.List)
+	require.Equal(t, 5, list.Len())
+
+	call := func(s starlark.Value, method string) (starlark.Value, error) {
+		fn, err := s.(*Segment).Attr(method)
+		require.NoError(t, err)
+		return starlark.Call(thread, fn, nil, nil)
+	}
+
+	// Point: returns the existing value, allocates nothing, fresh() is an error.
+	point := list.Index(1)
+	isPoint, _ := point.(*Segment).Attr("is_point")
+	assert.Equal(t, starlark.True, isPoint)
+	v, err := call(point, "value")
+	require.NoError(t, err)
+	assert.Equal(t, int64(10), v.(*SymmetricValue).GetId())
+	_, err = call(point, "fresh")
+	assert.Error(t, err)
+
+	// Gap (10, 20): allocates strictly inside, and is memoized.
+	gap := list.Index(2)
+	v1, err := call(gap, "value")
+	require.NoError(t, err)
+	id := v1.(*SymmetricValue).GetId()
+	assert.True(t, id > 10 && id < 20, "id %d not in (10, 20)", id)
+	v2, err := call(gap, "value")
+	require.NoError(t, err)
+	assert.Equal(t, id, v2.(*SymmetricValue).GetId())
+
+	// The domain is now at its limit: another gap disables the transition.
+	_, err = call(list.Index(4), "value")
+	assert.True(t, IsDisableTransitionError(err), "got %v", err)
+}
+
+func TestOrdinalPointValueRestoresDroppedValue(t *testing.T) {
+	d := &SymmetryDomain{Name: "ts", Limit: 2, Kind: SymmetryKindOrdinal}
+	thread := newOrdinalThread(10, 20)
+	segs, err := starlark.Eval(thread, "test", "TIMES.segments(include_points=True)", starlark.StringDict{"TIMES": d})
+	require.NoError(t, err)
+	point := segs.(*starlark.List).Index(1).(*Segment)
+	require.True(t, point.IsPoint)
+	valueFn, _ := point.Attr("value")
+	cache := thread.Local(SymmetryContextKey).(*SymmetryContext).Cache["ts"]
+
+	// The point's value was dropped from the state before value() ran: it is
+	// brought back and counted again.
+	delete(cache, 10)
+	v, err := starlark.Call(thread, valueFn, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, int64(10), v.(*SymmetricValue).GetId())
+	assert.True(t, cache[10])
+
+	// If its slot was taken in the meantime, bringing it back would exceed the limit.
+	delete(cache, 10)
+	cache[15] = true
+	_, err = starlark.Call(thread, valueFn, nil, nil)
+	assert.True(t, IsDisableTransitionError(err), "got %v", err)
+}
+
+func TestOrdinalRespacedIDs(t *testing.T) {
+	// One value lands where fresh() puts the first value of an empty domain.
+	assert.Equal(t, []int64{ordinalMid}, OrdinalRespacedIDs(1))
+
+	for _, n := range []int{1, 2, 3, 10, 1000} {
+		ids := OrdinalRespacedIDs(n)
+		assert.Len(t, ids, n)
+		assert.False(t, OrdinalNeedsRespace(ids), "respaced ids for n=%d need respacing", n)
+		for i := 1; i < n; i++ {
+			assert.Less(t, ids[i-1], ids[i])
+		}
+	}
+}
+
+func TestOrdinalNeedsRespace(t *testing.T) {
+	assert.False(t, OrdinalNeedsRespace(nil))
+	assert.False(t, OrdinalNeedsRespace([]int64{ordinalMid}))
+	// Gap at the head, between values, and at the tail.
+	assert.True(t, OrdinalNeedsRespace([]int64{OrdinalRespaceMinGap - 1, ordinalMid}))
+	assert.True(t, OrdinalNeedsRespace([]int64{ordinalMid, ordinalMid + 1}))
+	assert.True(t, OrdinalNeedsRespace([]int64{ordinalMid, ordinalMax - 1}))
+	assert.False(t, OrdinalNeedsRespace([]int64{OrdinalRespaceMinGap, ordinalMax - OrdinalRespaceMinGap}))
+}
