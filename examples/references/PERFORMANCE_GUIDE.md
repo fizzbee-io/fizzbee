@@ -269,7 +269,7 @@ the model checker).
 
 ---
 
-## 7. Get Liveness Failures Early (Experimental)
+## 7. Incremental Liveness (Experimental)
 
 Liveness assertions and formulas are normally checked only after the whole
 state space is explored, so a failing liveness check on a large model can
