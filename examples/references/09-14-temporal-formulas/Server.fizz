@@ -12,6 +12,8 @@ deadlock_detection: false
 #
 # A server starts, then answers its clients' requests. Each client sends at
 # most two requests. Start and Respond are fair, so every request is answered.
+# Respond's oneof isn't fair, but the bound keeps it from serving one client
+# forever: once a client is done, only the other is left to pick.
 
 NUM_CLIENTS = 2
 
