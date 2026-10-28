@@ -1,0 +1,24 @@
+#!/bin/sh
+# Runs the fizzbee parser on the system python3 (docker image only).
+#
+# The release tarball's parser/parser_bin is a bazel bootstrap script that
+# hardcodes the hermetic python toolchain bundled in its runfiles. The
+# docker image strips that toolchain (see Dockerfile) and instead executes
+# the same parser sources and pip dependencies on the Debian base image's
+# python3, which dpkg tracks and the monthly rebuild patches.
+#
+# The import path is assembled from the runfiles tree by shape rather than
+# by bazel repository name, so it survives rules_python / protobuf renames:
+#   _main                  the fizzbee sources (parser/, proto/)
+#   */site-packages        pip-installed deps (antlr4-python3-runtime)
+#   protobuf*/python       google.protobuf from the bazel protobuf module
+set -eu
+HERE="$(dirname "$(readlink -f "$0")")"
+RUNFILES="$HERE/parser/parser_bin.runfiles"
+PP="$RUNFILES/_main"
+for d in "$RUNFILES"/*/site-packages "$RUNFILES"/protobuf*/python; do
+  [ -d "$d" ] && PP="$PP:$d"
+done
+# -P: never put the current directory on sys.path, so a user's workspace
+# containing e.g. a parser/ directory cannot shadow the fizzbee modules.
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PP" exec python3 -P -m parser.main "$@"
