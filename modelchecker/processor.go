@@ -706,7 +706,9 @@ func (p *Process) createSymmetryContext() *lib.SymmetryContext {
 }
 
 // fixedEnvironment returns the shared map of names asserted after the
-// user's own in every environment; see Evaluator.fixedEnv.
+// user's own in every environment; see Evaluator.fixedEnv. The map is built
+// on the first call and cached on the Evaluator, which every process of the
+// run shares; later calls only compare the modules map and return it.
 func (p *Process) fixedEnvironment() starlark.StringDict {
 	e := p.Evaluator
 	modulesID := reflect.ValueOf(p.Modules).Pointer()
@@ -735,7 +737,12 @@ func (p *Process) fixedEnvironment() starlark.StringDict {
 // globals, the top-level fizz funcs (when predicate calls are on) and the
 // builtins.
 func (p *Process) lookupName(name string) (starlark.Value, bool) {
-	if v, ok := p.fixedEnvironment()[name]; ok {
+	return p.lookupNameIn(p.fixedEnvironment(), name)
+}
+
+// lookupNameIn is lookupName with the fixed environment already fetched.
+func (p *Process) lookupNameIn(fixed starlark.StringDict, name string) (starlark.Value, bool) {
+	if v, ok := fixed[name]; ok {
 		return v, true
 	}
 	// A top-level fizz func named like a fizz builtin (lib.Builtins) wins
@@ -801,8 +808,9 @@ func (p *Process) fizzFuncBuiltin(name string) *starlark.Builtin {
 // every builtin, global, state variable and local for every statement.
 func (p *Process) envForNames(names []string) starlark.StringDict {
 	dict := make(starlark.StringDict, len(names)+2)
+	fixed := p.fixedEnvironment()
 	for _, name := range names {
-		if v, ok := p.lookupName(name); ok {
+		if v, ok := p.lookupNameIn(fixed, name); ok {
 			dict[name] = v
 		}
 	}
