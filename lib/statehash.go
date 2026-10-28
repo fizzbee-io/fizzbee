@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strconv"
 	"sync"
 
 	"go.starlark.net/starlark"
@@ -26,6 +25,8 @@ import (
 //   - a list/tuple/range and a set/bag with the same elements no longer
 //     share an encoding (JSON rendered both as a sorted-or-not array).
 //   - a RoleStub no longer shares an encoding with anything else.
+//   - a non-string dict key no longer shares an encoding with the string of
+//     its text (JSON spelled an int key 1 and a string key "1" alike).
 //
 // Deliberately kept identical to the JSON partition:
 //   - list, tuple and range encode alike; set, genericset and bag encode
@@ -34,8 +35,6 @@ import (
 //   - a role in value position encodes as its reference string, a
 //     model/symmetric value as its full string, so each still collides with
 //     the string of the same text.
-//   - dict keys are encoded as their JSON key text, so an int key 1 and a
-//     string key "1" still collide.
 type StateEncoder struct {
 	buf     []byte
 	scratch []byte
@@ -304,7 +303,7 @@ func (e *StateEncoder) writeByType(v starlark.Value, depth int) {
 		e.buf = binary.AppendUvarint(e.buf, uint64(len(items)))
 		e.sortedEntries(len(items), func(emit func()) {
 			for _, item := range items {
-				e.writeDictKey(item[0])
+				e.writeDictKey(item[0], depth+1)
 				e.WriteValue(item[1], depth+1)
 				emit()
 			}
@@ -342,46 +341,17 @@ func collect(v starlark.Value) []starlark.Value {
 	return elems
 }
 
-// writeDictKey writes a dict key as the JSON key text the state JSON used,
-// so key collisions are unchanged (an int key 1 and a string key "1" both
-// spell "1").
-func (e *StateEncoder) writeDictKey(k starlark.Value) {
-	switch x := k.(type) {
-	case starlark.String:
+// writeDictKey writes a string key as its quoted text, the same as a string
+// dict key or struct field, and any other key as a 0 byte and its typed
+// encoding. A quoted key's length prefix is at least 2, so the two never
+// collide: an int key 1 and a string key "1" are different states.
+func (e *StateEncoder) writeDictKey(k starlark.Value, depth int) {
+	if x, ok := k.(starlark.String); ok {
 		e.writeQuoted(string(x))
 		return
-	case starlark.Int:
-		// JSON: non-string keys are stringified then quoted; small ints
-		// stringify as decimal.
-		e.buf = binary.AppendUvarint(e.buf, uint64(len(x.String())+2))
-		e.buf = append(e.buf, '"')
-		e.buf = append(e.buf, x.String()...)
-		e.buf = append(e.buf, '"')
-		return
 	}
-	var kb []byte
-	var err error
-	if marshaler, ok := k.(json.Marshaler); ok {
-		kb, err = marshaler.MarshalJSON()
-		if err != nil {
-			panic(err)
-		}
-		if len(kb) > 0 && kb[0] != '"' {
-			kb = []byte(strconv.Quote(string(kb)))
-		}
-	} else {
-		if k.Type() != "string" {
-			k = starlark.String(k.String())
-		}
-		kb, err = MarshalJSONStarlarkValue(k, 0)
-		if err != nil {
-			panic(err)
-		}
-		if len(kb) > 0 && kb[0] != '"' {
-			kb = []byte(strconv.Quote(string(kb)))
-		}
-	}
-	e.WriteBytes(kb)
+	e.buf = append(e.buf, 0)
+	e.WriteValue(k, depth)
 }
 
 // writeQuoted writes json.Marshal(s) with a length prefix; the fast path
