@@ -738,6 +738,14 @@ func (p *Process) lookupName(name string) (starlark.Value, bool) {
 	if v, ok := p.fixedEnvironment()[name]; ok {
 		return v, true
 	}
+	// A top-level fizz func named like a fizz builtin (lib.Builtins) wins
+	// over every binding of that name, as addPredicateFuncs did on the full
+	// environment.
+	if lib.Builtins[name] != nil {
+		if b := p.fizzFuncBuiltin(name); b != nil {
+			return b, true
+		}
+	}
 	frame := p.currentThread().currentFrame()
 	for s := frame.scope; s != nil; s = s.parent {
 		if v, ok := s.vars[name]; ok {
@@ -756,24 +764,35 @@ func (p *Process) lookupName(name string) (starlark.Value, bool) {
 	if v, ok := p.Heap.globals[name]; ok {
 		return v, true
 	}
-	if p.fizzCall != nil {
-		if def, ok := p.SymbolTable[name]; ok && def.DefType == Function && def.roleName == "" {
-			e := p.Evaluator
-			if e.fizzFuncs == nil {
-				e.fizzFuncs = make(map[string]*starlark.Builtin)
-			}
-			b, ok := e.fizzFuncs[name]
-			if !ok {
-				b = lib.FizzFuncBuiltin(name)
-				e.fizzFuncs[name] = b
-			}
-			return b, true
-		}
+	if b := p.fizzFuncBuiltin(name); b != nil {
+		return b, true
 	}
 	if v, ok := lib.Builtins[name]; ok {
 		return v, true
 	}
 	return nil, false
+}
+
+// fizzFuncBuiltin returns the shared builtin that calls the top-level fizz
+// func name, or nil when predicate calls are off or name is not one.
+func (p *Process) fizzFuncBuiltin(name string) *starlark.Builtin {
+	if p.fizzCall == nil {
+		return nil
+	}
+	def, ok := p.SymbolTable[name]
+	if !ok || def.DefType != Function || def.roleName != "" {
+		return nil
+	}
+	e := p.Evaluator
+	if e.fizzFuncs == nil {
+		e.fizzFuncs = make(map[string]*starlark.Builtin)
+	}
+	b, ok := e.fizzFuncs[name]
+	if !ok {
+		b = lib.FizzFuncBuiltin(name)
+		e.fizzFuncs[name] = b
+	}
+	return b
 }
 
 // envForNames builds the environment for code that references names:
