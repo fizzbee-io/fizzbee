@@ -1,7 +1,6 @@
 package modelchecker
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	ast "fizz/proto"
 	"fmt"
@@ -9,7 +8,6 @@ import (
 	"github.com/fizzbee-io/fizzbee/lib"
 	"github.com/golang/glog"
 
-	"hash"
 	"maps"
 	"slices"
 	"sort"
@@ -100,17 +98,6 @@ func (h *Heap) String() string {
 	return h.ToJson()
 }
 
-// HashCode returns a string hash of the global state.
-func (h *Heap) HashCode() string {
-	if h.CachedHashCode != "" {
-		return h.CachedHashCode
-	}
-	hashBuf := sha256.New()
-	hashBuf.Write([]byte(h.ToJson()))
-	h.CachedHashCode = fmt.Sprintf("%x", hashBuf.Sum(nil))
-	return h.CachedHashCode
-}
-
 func (h *Heap) update(k string, v starlark.Value) bool {
 	if _, ok := h.state[k]; ok {
 		h.state[k] = v
@@ -188,26 +175,6 @@ func (s *Scope) SetFlow(flow ast.Flow) {
 	if flow != ast.Flow_FLOW_UNKNOWN {
 		s.flow = flow
 	}
-}
-
-func (s *Scope) Hash() hash.Hash {
-	var h hash.Hash
-	if s == nil {
-		return sha256.New()
-	}
-	if s.parent != nil {
-		h = s.parent.Hash()
-	} else {
-		h = sha256.New()
-	}
-	vars, err := StringDictToJson(s.vars)
-	if err != nil {
-		panic(err)
-	}
-	h.Write(vars)
-	h.Write([]byte(fmt.Sprintln(sortedCopy(s.skipstmts))))
-	h.Write([]byte(fmt.Sprintln(s.loopRange)))
-	return h
 }
 
 func sortedCopy(slice []int) []int {
@@ -301,17 +268,6 @@ func (c *CallFrame) MarshalJSON() ([]byte, error) {
 
 }
 
-func (c *CallFrame) HashCode() string {
-	// Hash the scope and append the pc to it.
-	// This is to ensure that the same scoped variables are not treated the same
-	// if program counter is at different stmts.
-	h := c.scope.Hash()
-	h.Write([]byte(c.pc))
-	if c.obj != nil {
-		h.Write([]byte(c.obj.RefString()))
-	}
-	return fmt.Sprintf("%x", h.Sum(nil))
-}
 func (c *CallFrame) Clone(refs map[starlark.Value]starlark.Value, permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) (*CallFrame, error) {
 	obj := c.obj
 	if c.obj != nil {
@@ -362,19 +318,6 @@ func (s *CallStack) Clone(refs map[starlark.Value]starlark.Value, permutations m
 	return newStack
 }
 
-func (s *CallStack) HashCode() string {
-	if s == nil {
-		return ""
-	}
-	arr := s.RawArray()
-	h := sha256.New()
-
-	for _, frame := range arr {
-		h.Write([]byte(frame.HashCode()))
-	}
-	return fmt.Sprintf("%x", h.Sum(nil))
-}
-
 // Thread represents a thread of execution.
 type Thread struct {
 	Id      int         `json:"id"`
@@ -392,15 +335,6 @@ func NewThread(Process *Process, files []*ast.File, fileIndex int, action string
 	t := &Thread{Id: int(nextActionId.Add(1)), Process: Process, Files: files, Stack: stack}
 	t.pushFrame(frame)
 	return t
-}
-
-func (t *Thread) HashCode() string {
-	if t == nil {
-		return ""
-	}
-	h := sha256.New()
-	h.Write([]byte(t.Stack.HashCode()))
-	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 // InsertNewScope adds a new scope to the Current stack frame and returns the newly created scope.
@@ -1390,10 +1324,10 @@ func (t *Thread) FindNextProgramCounter() string {
 		convertToBlock(protobuf)
 		return frame.pc + ".Stmts[0]"
 	case *ast.Statement:
-		path, _ := GetNextFieldPath(t.currentFileAst(), frame.pc)
+		path := GetNextFieldPath(t.currentFileAst(), frame.pc)
 		return path
 	case *ast.AnyStmt:
-		path, _ := GetNextFieldPath(t.currentFileAst(), frame.pc)
+		path := GetNextFieldPath(t.currentFileAst(), frame.pc)
 		frame.scope = frame.scope.parent
 		return path
 	case *ast.ForStmt:
@@ -1402,7 +1336,7 @@ func (t *Thread) FindNextProgramCounter() string {
 	case *ast.WhileStmt:
 		return frame.pc
 	case *ast.Branch:
-		path, _ := GetNextFieldPath(t.currentFileAst(), frame.pc)
+		path := GetNextFieldPath(t.currentFileAst(), frame.pc)
 		return path
 	}
 	return ""

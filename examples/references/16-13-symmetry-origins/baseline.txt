@@ -1,0 +1,14 @@
+Model checking examples/references/16-13-symmetry-origins/SymmetryOrigins.json
+configFileName: examples/references/16-13-symmetry-origins/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}  deadlock_detection:false
+Nodes: 36, queued: 0, elapsed: 8.168087ms
+Time taken for model checking: 8.208952ms
+Writen graph dotfile: examples/references/16-13-symmetry-origins/out/run_2026-10-27_21-55-05/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/16-13-symmetry-origins/out/run_2026-10-27_21-55-05/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 33 Unique states: 12
+IsLive: true
+Time taken to check liveness: 1.21531ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/16-13-symmetry-origins/out/run_2026-10-27_21-55-05

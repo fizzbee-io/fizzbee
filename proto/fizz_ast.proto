@@ -259,6 +259,7 @@ message Formula {
     UNTIL = 8;    // strong until
     LEADSTO = 9;  // always (a implies eventually b)
     POSSIBLY = 10;  // EF: some path from this state reaches a state where args[0] holds
+    WEAK_UNTIL = 11;  // args[0] holds until args[1] does, or forever; args[1] needn't happen
   }
   SourceInfo source_info = 1;
   Op op = 2;

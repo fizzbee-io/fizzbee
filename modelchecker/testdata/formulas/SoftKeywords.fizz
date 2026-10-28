@@ -1,11 +1,12 @@
 ---
 deadlock_detection: false
 ---
-# The words until, leadsto and implies are operators only inside a formula,
-# so they can still name constants, funcs and fields (see formula_test.go).
+# The words until, unless, leadsto and implies are operators only inside a
+# formula, so they can still name constants, funcs, fields and locals (see
+# formula_test.go).
 
 until = 1
-P = record(leadsto=2, implies=3)
+P = record(leadsto=2, implies=3, unless=4)
 
 func implies(a, b):
     return a
@@ -21,10 +22,11 @@ action Init:
 atomic action Step:
     implies(1, 2)
     w = leadsto(until)
-    z = [until, w]
+    unless = w
+    z = [until, unless]
 
 always assertion PassUsesNames:
-    return implies(True, False) and leadsto(1) == 2 and P.implies == 3 and until == 1
+    return implies(True, False) and leadsto(1) == 2 and P.implies == 3 and P.unless == 4 and until == 1
 
 always assertion PassUsesNamesInBlock:
     v = leadsto(until)
@@ -32,3 +34,6 @@ always assertion PassUsesNamesInBlock:
 
 assertion PassFormulaWithNames:
     return (implies(True, False) and P.leadsto == 2) implies eventually leadsto(until) == 2
+
+assertion PassUnlessWithNames:
+    return P.unless == 4 unless leadsto(until) == 3

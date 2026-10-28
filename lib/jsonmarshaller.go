@@ -114,7 +114,7 @@ func MarshalJSONStarlarkValue(m starlark.Value, depth int) ([]byte, error) {
 		return json.Marshal(string(m.(starlark.Bytes)))
 	case "int", "float":
 		return []byte(m.String()), nil
-	case "list", "range", "tuple":
+	case "list", "range", "tuple", "symmetric_values":
 		iter := m.(starlark.Iterable).Iterate()
 		defer iter.Done()
 		var x starlark.Value
