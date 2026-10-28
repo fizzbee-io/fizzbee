@@ -2657,6 +2657,8 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		// in no_graph mode we don't keep the existing Node to compare.
 		if found {
 			// Pure dedup hit; the current node won't be retained either.
+			// Still a live successor for early deadlock detection.
+			p.dedupHitsInExpansion++
 			return false, false
 		}
 		p.visited[canonicalHash] = nil
