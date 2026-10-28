@@ -1,4 +1,5 @@
-load("@pypi//:requirements.bzl", "requirement")
+load("@fizzbee_pypi//:requirements.bzl", "requirement")
+load("@rules_python//python:defs.bzl", "py_library", "py_binary", "py_test")
 
 py_library(
     name = "fizz",
