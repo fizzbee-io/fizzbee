@@ -18,10 +18,11 @@ import (
 // JSON text of the state (lib.MarshalJSON) and hashing that: the encoding is
 // written straight into one reusable buffer, with no per-value strings.
 //
-// The encoding partitions values the same way the JSON text did, so two
-// states hash equal with this encoder exactly when their JSON forms were
-// equal, with these documented exceptions where it is strictly finer (it
-// never merges states that the JSON text kept apart):
+// The guarantee is that equal states encode to equal bytes. Every string and
+// map key is length-prefixed, so the encoding itself is unambiguous and needs
+// no escaping. Which values count as equal is kept close to the JSON text on
+// purpose (changing it would change state counts), except where it is
+// strictly finer, which never merges states that the JSON text kept apart:
 //   - a list/tuple/range and a set/bag with the same elements no longer
 //     share an encoding (JSON rendered both as a sorted-or-not array).
 //   - a RoleStub no longer shares an encoding with anything else.
