@@ -8,10 +8,15 @@ class Metrics:
         self.histogram = []
 
     def add_histogram(self, percentile, counters):
+        # Plain python floats: numpy >= 2 reprs scalars as np.float64(x),
+        # which would leak into the printed Metrics.
         new_counters = {}
         for counter in counters:
-            new_counters[counter] = counters[counter]
-        self.histogram.append((percentile, new_counters))
+            new_counters[counter] = float(counters[counter])
+        self.histogram.append((float(percentile), new_counters))
+
+    def set_mean(self, counters):
+        self.mean = {counter: float(value) for counter, value in counters.items()}
 
     def __str__(self):
         return f"Metrics(mean={self.mean}, histogram={self.histogram})"
@@ -267,7 +272,7 @@ def analyze(matrix, cost_matrices, initial_distribution, num_iterations=2000, to
     if change >= tolerance:
         print(f"Convergence not reached after {num_iterations} iterations.")
 
-    metrics.mean = mean_counters
+    metrics.set_mean(mean_counters)
     return dist,metrics
 
 
@@ -292,6 +297,10 @@ def analyze_sparse(matrix, cost_matrices, initial_distribution, num_iterations=2
     :return:
     """
     n = matrix.shape[0]
+    # Explicit (1, n) row vectors. scipy < 1.13 silently promoted a 1-D
+    # input to a 2-D row; scipy >= 1.13 sparse arrays keep it 1-D, which
+    # breaks the [0, j] indexing and the .toarray()[0] return below.
+    initial_distribution = np.atleast_2d(initial_distribution)
     dist = sp.coo_array(initial_distribution)
     alt_dist = sp.coo_array(initial_distribution)
     # print("matrix\n", matrix)
@@ -377,7 +386,7 @@ def analyze_sparse(matrix, cost_matrices, initial_distribution, num_iterations=2
     if change >= tolerance:
         print(f"Convergence not reached after {num_iterations} iterations.")
 
-    metrics.mean = mean_counters
+    metrics.set_mean(mean_counters)
     return dist.toarray()[0], metrics
 
 
