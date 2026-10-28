@@ -1542,6 +1542,12 @@ func (p *Processor) publishYieldPoint(yp *Node, forks []*Process) {
 	// Only called for NEW (not dedup-skipped) yield-points — processNode
 	// short-circuits before reaching the publish step on dedup hits.
 	p.uniqueYieldCount++
+	if p.experimentalNoGraph {
+		// The parent (often the cloned process at a oneof step) is not
+		// read again once this yield point's transition checks have run;
+		// holding it would keep a full state alive per queued yield point.
+		yp.Process.Parent = nil
+	}
 	if p.experimentalProcessedQueue {
 		yp.yieldForks = forks
 		p.expandedYieldPoints = append(p.expandedYieldPoints, yp)
