@@ -143,8 +143,8 @@ func TestCanonicalHashWithoutSymmetry(t *testing.T) {
 	assert.Equal(t, sorted.CachedThreadHashes, unsorted.CachedThreadHashes, "thread hashes do not depend on role order")
 }
 
-// The cached base environment must resolve a colliding name exactly as the
-// uncached assembly did: builtins < globals < state < self < locals, with
+// The environment built from a statement's names must resolve a colliding
+// name exactly as the full environment did: builtins < globals < state < self < locals, with
 // deepcopy, resolve_role, modules, role constructors and Channel on top.
 func TestEnvironmentShadowing(t *testing.T) {
 	file, err := parseAstFromString(ActionsWithMultipleBlocks)
@@ -170,8 +170,10 @@ func TestEnvironmentShadowing(t *testing.T) {
 	role := testRole("Node", 1)
 	frame.obj = role
 
+	names := []string{"len", "shared", "gonly", "sonly", "self", "random", "deepcopy",
+		"resolve_role", "Channel", "scoped", "bag", "undefined_name"}
 	for round := 0; round < 2; round++ { // second round is served from the cache
-		env := p.GetAllVariablesNocopy()
+		env := p.envForNames(names)
 		assert.Equal(t, starlark.String("global-len"), env["len"], "global shadows builtin")
 		assert.Equal(t, starlark.String("local"), env["shared"], "local shadows state and global")
 		assert.Equal(t, starlark.String("global"), env["gonly"])
@@ -183,21 +185,18 @@ func TestEnvironmentShadowing(t *testing.T) {
 		assert.Equal(t, "Channel", env["Channel"].(*starlark.Builtin).Name())
 		assert.Equal(t, starlark.String("scope"), env["scoped"])
 		assert.NotNil(t, env["bag"], "untouched builtins still present")
+		assert.NotContains(t, env, "undefined_name")
 	}
 
-	// Replacing globals (what preinit does) invalidates the cache.
+	// Globals are read in place, so replacing them (what preinit does) is
+	// seen at once.
 	p.Heap.globals = starlark.StringDict{"len": starlark.String("new-len")}
-	assert.Equal(t, starlark.String("new-len"), p.GetAllVariablesNocopy()["len"])
+	assert.Equal(t, starlark.String("new-len"), p.envForNames([]string{"len"})["len"])
 
-	// A fork builds its own base: its constructors must bind the fork's
-	// role slice, not the parent's.
+	// The constructors no longer bind a process, so a fork shares them.
 	fork := p.Fork()
-	assert.Nil(t, fork.baseEnv)
-	fenv := fork.GetAllVariablesNocopy()
-	assert.NotSame(t, env1(p)["Channel"], fenv["Channel"])
+	assert.Same(t, p.envForNames([]string{"Channel"})["Channel"], fork.envForNames([]string{"Channel"})["Channel"])
 }
-
-func env1(p *Process) starlark.StringDict { return p.GetAllVariablesNocopy() }
 
 // Run a spec with ordinary roles through the real dedup path and check the
 // invariant canonicalHashWithoutSymmetry leaves behind: every reachable
