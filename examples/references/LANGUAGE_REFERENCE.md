@@ -1197,8 +1197,9 @@ count doubles, and stops at the first violation:
 - It helps most on large models where the bad run sits close to `Init`.
 - Formulas with `possibly` are checked at the end only.
 - It needs the default BFS exploration and strict liveness. It is refused
-  with simulation, `--experimental_processed_queue` and
+  with simulation, an explicit `--experimental_processed_queue` and
   `--experimental_no_graph`, and has no effect with `liveness: eventual`.
+  It turns off the default processed queue.
 - Reference example: `09-19` (the flag is in its `flags.txt`).
 
 ---

@@ -39,7 +39,7 @@ Note: `fizz` is the installed binary. If building from source, use `./fizz` (wra
 | `--preinit-hook-file FILE` | — | Load preinit hook from `.cfg` file |
 | `--output-dir DIR` | auto-timestamped | Where to write output |
 | `--no-copy-ast` | off | Don't copy AST to output dir |
-| `--experimental_processed_queue` | off | EXPERIMENTAL: queue holds processed yield-points instead of unprocessed action-starts. Dedupes successors before they enter the queue → smaller peak queue memory (~10× on BFS, ~3× on DFS). State space and assertion outcomes unchanged under BFS. **Under DFS / Random with `max_actions` set, exploration order differs and may visit a different subset within the bound** — see Gotchas. |
+| `--experimental_processed_queue` | on with BFS (off with DFS/random, `--experimental_incremental_liveness`, or graph-mode `--experimental_collapse_steps`; `=false` turns it off) | EXPERIMENTAL: queue holds processed yield-points instead of unprocessed action-starts. Dedupes successors before they enter the queue → smaller peak queue memory (~10× on BFS, ~3× on DFS). State space and assertion outcomes unchanged under BFS. **Under DFS / Random with `max_actions` set, exploration order differs and may visit a different subset within the bound** — see Gotchas. |
 
 ---
 

@@ -1,12 +1,13 @@
 Model checking examples/references/02-01-atomic-block/Counter.json
 configFileName: examples/references/02-01-atomic-block/fizz.yaml
 fizz.yaml not found. Using default options
-StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
-Nodes: 2, queued: 1, elapsed: 143.125µs
-Time taken for model checking: 148µs
-Writen graph dotfile: examples/references/02-01-atomic-block/out/run_2026-03-07_23-55-13/graph.dot
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 2, queued: 0, elapsed: 530.569µs
+Peak (new): queue=1 pendingActionStarts=2
+Time taken for model checking: 544.467µs
+Writen graph dotfile: examples/references/02-01-atomic-block/out/run_2026-10-28_21-54-23/graph.dot
 To generate svg, run: 
-dot -Tsvg examples/references/02-01-atomic-block/out/run_2026-03-07_23-55-13/graph.dot -o graph.svg && open graph.svg
+dot -Tsvg examples/references/02-01-atomic-block/out/run_2026-10-28_21-54-23/graph.dot -o graph.svg && open graph.svg
 FAILED: Model checker failed. Invariant:  Consistent
 ------
 Init
@@ -17,10 +18,10 @@ IncrementSerial
 --
 state: {"a":1,"b":0}
 ------
-Writen graph json: examples/references/02-01-atomic-block/out/run_2026-03-07_23-55-13/error-graph.json
-Writen graph dotfile: examples/references/02-01-atomic-block/out/run_2026-03-07_23-55-13/error-graph.dot
+Writen graph json: examples/references/02-01-atomic-block/out/run_2026-10-28_21-54-23/error-graph.json
+Writen graph dotfile: examples/references/02-01-atomic-block/out/run_2026-10-28_21-54-23/error-graph.dot
 To generate an image file, run: 
-dot -Tsvg examples/references/02-01-atomic-block/out/run_2026-03-07_23-55-13/error-graph.dot -o error-graph.svg && open error-graph.svg
-Writen error states as html: examples/references/02-01-atomic-block/out/run_2026-03-07_23-55-13/error-states.html
+dot -Tsvg examples/references/02-01-atomic-block/out/run_2026-10-28_21-54-23/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: examples/references/02-01-atomic-block/out/run_2026-10-28_21-54-23/error-states.html
 To open: 
-open examples/references/02-01-atomic-block/out/run_2026-03-07_23-55-13/error-states.html
+open examples/references/02-01-atomic-block/out/run_2026-10-28_21-54-23/error-states.html

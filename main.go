@@ -55,6 +55,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	// The processed queue is on by default only where it is validated:
+	// BFS, without incremental liveness, and without graph-mode collapse
+	// (collapse links only work with the default queue). Under DFS/random
+	// with max_actions the changed order can prune a different subset of
+	// states. Passing the flag explicitly overrides this.
+	if !isFlagSet("experimental_processed_queue") {
+		experimentalProcessedQueue = explorationStrategy == "bfs" &&
+			!experimentalIncrementalLiveness &&
+			!(experimentalCollapseSteps && !experimentalNoGraph)
+	}
+
 	// --experimental_no_graph implies --experimental_processed_queue (the
 	// drop-graph optimization only makes sense in the queue-of-processed
 	// model). Auto-enable rather than erroring out.
@@ -1189,7 +1200,7 @@ func parseFlags() []string {
 	flag.IntVar(&traceExtend, "trace-extend", 0, "After trace ends, explore this many additional action depths (0 = stop at trace end)")
 	flag.StringVar(&preinitHook, "preinit-hook", "", "Starlark code as a string to execute after preinit but before freezing globals (multiline supported)")
 	flag.BoolVar(&isTest, "test", false, "Testing mode (prevents printing timestamps and other non-deterministic behavior. Default=false")
-	flag.BoolVar(&experimentalProcessedQueue, "experimental_processed_queue", false, "EXPERIMENTAL: queue holds processed (yield-point) nodes instead of unprocessed action-starts. Dedupes successors before they enter the queue, reducing peak queue memory (~10x on BFS, ~3x on DFS). State space and assertion outcomes are identical under BFS. Under DFS/Random combined with max_actions, the changed exploration order may prune a different subset of states than the default path within the bound — raise max_actions above the spec's natural diameter to avoid the divergence. Default=false.")
+	flag.BoolVar(&experimentalProcessedQueue, "experimental_processed_queue", false, "EXPERIMENTAL: queue holds processed (yield-point) nodes instead of unprocessed action-starts. Dedupes successors before they enter the queue, reducing peak queue memory (~10x on BFS, ~3x on DFS). State space and assertion outcomes are identical under BFS. Under DFS/Random combined with max_actions, the changed exploration order may prune a different subset of states than the default path within the bound — raise max_actions above the spec's natural diameter to avoid the divergence. Default=true with bfs, unless --experimental_incremental_liveness or --experimental_collapse_steps (without --experimental_no_graph) is set; false otherwise.")
 	flag.BoolVar(&experimentalNoGraph, "experimental_no_graph", false, "EXPERIMENTAL: drops the in-memory state graph after processing each yield-point. Keeps symmetry reduction, dedup, unique-state count, and safety/transition assertions. Does NOT support liveness assertions — refuses to run if any are present. Auto-enables --experimental_processed_queue. Massive RSS reduction at the cost of trace replayability (only a lightweight action-name chain is kept for failure reporting). Default=false.")
 	flag.BoolVar(&experimentalNoStateReturns, "experimental_no_state_returns", false, "EXPERIMENTAL: omit Process.Returns from HashCode, JSON state, and dot-file state labels. Returns remain available on Link.Returns (the per-transition field). Use this to verify downstream consumers (graph, MBT, explorer) have migrated to reading return values from links. Planned to become the default. Default=false.")
 	flag.BoolVar(&experimentalIncrementalLiveness, "experimental_incremental_liveness", false, "EXPERIMENTAL: check liveness assertions on the part of the state graph explored so far, each time the explored node count doubles, and stop at the first violation instead of waiting for the full exploration. A passing run still ends with the usual full liveness check, so verdicts are unchanged; only a failure can come early. Formulas with possibly are checked at the end only. Needs the default bfs strategy and strict liveness. Default=false.")
@@ -1205,7 +1216,7 @@ func parseFlags() []string {
 	//  - mergeCollapsedLink replaces, not merges, FailedInvariants per file,
 	//    and the transition-invariant check later assigns over it; only
 	//    visible with continue_path_on_invariant_failures.
-	flag.BoolVar(&experimentalCollapseSteps, "experimental_collapse_steps", false, "EXPERIMENTAL: do not store mid-action steps that are neither yield points nor fair `any` choices. Once an action's internal steps are explored to the next yield point, that yield point links directly from the previous one. Same unique states and assertion outcomes; far fewer stored nodes. Ignored with --trace, refinements, simulation, --experimental_processed_queue and --experimental_no_graph. Default=false.")
+	flag.BoolVar(&experimentalCollapseSteps, "experimental_collapse_steps", false, "EXPERIMENTAL: do not store mid-action steps that are neither yield points nor fair `any` choices. Once an action's internal steps are explored to the next yield point, that yield point links directly from the previous one. Same unique states and assertion outcomes; far fewer stored nodes. Ignored with --trace, refinements, simulation, --experimental_processed_queue and --experimental_no_graph. Turns off the default processed queue. Default=false.")
 	flag.BoolVar(&noSymmetryReduction, "no-symmetry-reduction", false, "Disable symmetry reduction: dedup uses only the plain state hash, so every persisted state keeps its concrete symmetric values/role identities (no canonical renaming). Larger state space. Required when generating state graphs for MBT replay from specs that use symmetric roles or symmetry values. Default=false.")
 	flag.Parse()
 
@@ -1221,6 +1232,17 @@ func parseFlags() []string {
 
 	args := flag.Args()
 	return args
+}
+
+// isFlagSet reports whether the named flag was passed on the command line.
+func isFlagSet(name string) bool {
+	set := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			set = true
+		}
+	})
+	return set
 }
 
 func startModelChecker(p1 *modelchecker.Processor) (*modelchecker.Node, *modelchecker.Node, time.Time, error) {
