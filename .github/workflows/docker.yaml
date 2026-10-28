@@ -10,9 +10,11 @@ name: Docker
 #   release.
 # - manual dispatch: optional explicit version.
 #
-# Tag policy: `latest` moves on every publish (releases AND monthly
-# rebuilds — a rebuild republishes the same fizzbee code on a refreshed
-# base). Use the semver tags to pin fizzbee versions.
+# Tag policy: `latest` moves only when the version being published IS
+# the newest GitHub release (new releases, monthly rebuilds, and manual
+# rebuilds of the newest release). A manual rebuild of an OLDER release
+# (e.g. to refresh its base image for CVE fixes) republishes only its
+# semver tag, so `latest` never regresses to older fizzbee code.
 on:
   release:
     types: [published]
@@ -41,16 +43,33 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          LATEST="$(gh release view --repo ${{ github.repository }} --json tagName --jq .tagName)"
           if [ "${{ github.event_name }}" = "release" ]; then
             VERSION="${{ github.event.release.tag_name }}"
           elif [ -n "${{ github.event.inputs.version || '' }}" ]; then
             VERSION="${{ github.event.inputs.version }}"
+            # Accept "0.5.3" as well as "v0.5.3": release tags carry the v
+            # prefix, and both the tarball URL and the latest-comparison
+            # below use the tag verbatim.
+            case "$VERSION" in v*) ;; *) VERSION="v$VERSION" ;; esac
+            # Fail here with a clear message rather than deep inside the
+            # docker build with a urlretrieve 404 traceback.
+            gh release view --repo ${{ github.repository }} "$VERSION" --json tagName >/dev/null \
+              || { echo "::error::no release tagged $VERSION in ${{ github.repository }}"; exit 1; }
           else
-            VERSION="$(gh release view --repo ${{ github.repository }} --json tagName --jq .tagName)"
+            VERSION="$LATEST"
           fi
           echo "version=$VERSION" | tee -a "$GITHUB_OUTPUT"
           # strip leading v for the semver image tags
           echo "semver=${VERSION#v}" | tee -a "$GITHUB_OUTPUT"
+          # `latest` only when this IS the newest release (see tag policy above)
+          TAGS="ghcr.io/${{ github.repository }}:${VERSION#v}"
+          if [ "$VERSION" = "$LATEST" ]; then
+            TAGS="$TAGS,ghcr.io/${{ github.repository }}:latest"
+          else
+            echo "::notice::$VERSION is older than $LATEST; publishing only the semver tag (not latest)"
+          fi
+          echo "tags=$TAGS" | tee -a "$GITHUB_OUTPUT"
 
       - name: Set up QEMU (for the arm64 smoke test)
         uses: docker/setup-qemu-action@v3
@@ -117,9 +136,7 @@ jobs:
           push: true
           build-args: |
             FIZZBEE_VERSION=${{ steps.version.outputs.version }}
-          tags: |
-            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.semver }}
-            ghcr.io/${{ github.repository }}:latest
+          tags: ${{ steps.version.outputs.tags }}
 
       - name: Verify published manifest lists both architectures
         run: |
