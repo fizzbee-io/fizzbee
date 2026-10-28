@@ -22,6 +22,7 @@ go_library(
         "processor.go",
         "protopath.go",
         "starlark.go",
+        "statehash.go",
         "state_visitor.go",
         "symmetry_check.go",
         "testconstants.go",
@@ -60,6 +61,7 @@ go_test(
         "processor_test.go",
         "protopath_test.go",
         "starlark_test.go",
+        "statehash_test.go",
         "thread_test.go",
     ],
     data = [
