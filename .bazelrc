@@ -1,0 +1,10 @@
+# Checked-in defaults. Put personal settings in user.bazelrc (git-ignored).
+common --enable_platform_specific_config
+
+# protoc (built from the protobuf module for host tools) pulls in abseil,
+# whose std::variant use needs a macOS 10.13+ deployment target; without
+# this, host-tool compilation fails on macOS with
+# "'visit<...>' is unavailable: introduced in macOS 10.13".
+build:macos --host_cxxopt=-mmacosx-version-min=10.13
+
+try-import %workspace%/user.bazelrc

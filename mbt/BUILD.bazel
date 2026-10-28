@@ -1,3 +1,4 @@
+load("@rules_python//python:defs.bzl", "py_library")
 # The `mbt` python package itself (mbt.generator lives in generator/).
 py_library(
     name = "init",
