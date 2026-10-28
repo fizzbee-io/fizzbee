@@ -3,12 +3,14 @@ load("@pypi//:requirements.bzl", "requirement")
 py_library(
     name = "performance",
     srcs = [
+        "__init__.py",
         "files.py",
         "fmt.py",
         "markov_chain.py",
     ],
     visibility = ["//visibility:public"],
     deps = [
+        "//proto:py_init",
         "//proto:ast_py_proto",
         "//proto:graph_py_proto",
         "//proto:perf_py_proto",

@@ -1,0 +1,6 @@
+# The `mbt` python package itself (mbt.generator lives in generator/).
+py_library(
+    name = "init",
+    srcs = ["__init__.py"],
+    visibility = ["//visibility:public"],
+)
