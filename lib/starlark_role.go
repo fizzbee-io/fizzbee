@@ -206,6 +206,34 @@ func CreateRoleBuiltin(astRole *ast.Role, symmetric bool, roles *[]*Role) *starl
 	name := astRole.Name
 	return starlark.NewBuiltin(name, func(t *starlark.Thread, b *starlark.Builtin,
 		args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		return newRole(astRole, symmetric, roles, kwargs)
+	})
+}
+
+// CreateRoleBuiltinFromThread is CreateRoleBuiltin for an environment
+// shared by every process: the role list to append to is the thread local
+// RolesKey, set by the evaluator for the running process.
+func CreateRoleBuiltinFromThread(astRole *ast.Role, symmetric bool) *starlark.Builtin {
+	name := astRole.Name
+	return starlark.NewBuiltin(name, func(t *starlark.Thread, b *starlark.Builtin,
+		args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		roles, ok := t.Local(RolesKey).(*[]*Role)
+		if !ok || roles == nil {
+			return nil, fmt.Errorf("%s: role constructor called outside a process", name)
+		}
+		return newRole(astRole, symmetric, roles, kwargs)
+	})
+}
+
+// FizzFuncBuiltin returns a builtin for a top-level fizz func that runs it
+// through the thread's FizzCallKey, so one builtin serves every process.
+func FizzFuncBuiltin(name string) *starlark.Builtin {
+	return starlark.NewBuiltin(name, fizz_func_always_error)
+}
+
+func newRole(astRole *ast.Role, symmetric bool, roles *[]*Role, kwargs []starlark.Tuple) (starlark.Value, error) {
+	name := astRole.Name
+	{
 		params := FromKeywords(starlark.String("params"), kwargs)
 		nextRef := roleRefs[name]
 		if roleRefs[name] > 0 {
@@ -231,7 +259,7 @@ func CreateRoleBuiltin(astRole *ast.Role, symmetric bool, roles *[]*Role) *starl
 		r := &Role{ID: id, Name: name, Symmetric: symmetric, Params: params, Fields: fields, Methods: map[string]*starlark.Function{}, RoleMethods: roleMethods, InitValues: initValues}
 		*roles = append(*roles, r)
 		return r, nil
-	})
+	}
 }
 
 func fizz_func_always_error(t *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -248,6 +276,25 @@ func fizz_func_always_error(t *starlark.Thread, b *starlark.Builtin, args starla
 func CreateResolveRoleBuiltIn(roles *[]*Role) *starlark.Builtin {
 	return starlark.NewBuiltin("resolve_role", func(t *starlark.Thread, b *starlark.Builtin,
 		args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		return resolveRole(roles, args)
+	})
+}
+
+// CreateResolveRoleBuiltInFromThread is CreateResolveRoleBuiltIn over the
+// role list in the thread local RolesKey.
+func CreateResolveRoleBuiltInFromThread() *starlark.Builtin {
+	return starlark.NewBuiltin("resolve_role", func(t *starlark.Thread, b *starlark.Builtin,
+		args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		roles, ok := t.Local(RolesKey).(*[]*Role)
+		if !ok || roles == nil {
+			return nil, fmt.Errorf("resolve_role called outside a process")
+		}
+		return resolveRole(roles, args)
+	})
+}
+
+func resolveRole(roles *[]*Role, args starlark.Tuple) (starlark.Value, error) {
+	{
 		if len(args) != 1 {
 			return nil, fmt.Errorf("resolve_role expects exactly one argument")
 		}
@@ -261,5 +308,5 @@ func CreateResolveRoleBuiltIn(roles *[]*Role) *starlark.Builtin {
 			}
 		}
 		return nil, fmt.Errorf("role with id %d not found", idValue)
-	})
+	}
 }
