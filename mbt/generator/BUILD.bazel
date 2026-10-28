@@ -3,12 +3,15 @@ load("@pypi//:requirements.bzl", "requirement")
 py_library(
     name = "generator",
     srcs = [
+        "__init__.py",
         "filenames.py",
     ],
     visibility = ["//visibility:public"],
     deps = [
+        "//mbt:init",
         "//proto:ast_py_proto",
-        "//parser:fizz"
+        "//proto:py_init",
+        "//parser:fizz",
     ],
 )
 

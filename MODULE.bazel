@@ -32,6 +32,12 @@ bazel_dep(name = "protobuf", version = "33.0")
 # Python
 bazel_dep(name = "rules_python", version = "2.4.5")
 
+# Every python package declares its own __init__.py (listed in srcs);
+# don't let rules_python fabricate them into runfiles. This is the future
+# default and silences the deprecation warning on every build.
+rules_python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
+rules_python_config.explicit_init_py(default = True)
+
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
     is_default = True,
