@@ -125,20 +125,11 @@ func (e *StateEncoder) WriteStringDict(d starlark.StringDict) {
 	e.buf = binary.AppendUvarint(e.buf, uint64(len(d)))
 	e.sortedEntries(len(d), func(emit func()) {
 		for k, v := range d {
-			e.writeMapKeyText(k)
+			e.writeQuoted(k)
 			e.WriteValue(v, 1)
 			emit()
 		}
 	})
-}
-
-// writeMapKeyText writes a string key the way the JSON text spelled it: a
-// quoted identifier. Dict keys go through writeDictKey instead.
-func (e *StateEncoder) writeMapKeyText(k string) {
-	e.buf = binary.AppendUvarint(e.buf, uint64(len(k)+2))
-	e.buf = append(e.buf, '"')
-	e.buf = append(e.buf, k...)
-	e.buf = append(e.buf, '"')
 }
 
 // sortedEntries runs fill, which writes n sibling encodings and calls emit
@@ -240,7 +231,7 @@ func (e *StateEncoder) WriteValue(v starlark.Value, depth int) {
 		e.buf = binary.AppendUvarint(e.buf, uint64(len(x.entries)))
 		e.sortedEntries(len(x.entries), func(emit func()) {
 			for _, en := range x.entries {
-				e.writeMapKeyText(en.name)
+				e.writeQuoted(en.name)
 				e.WriteValue(en.value, depth+1)
 				emit()
 			}
@@ -265,7 +256,7 @@ func (e *StateEncoder) WriteValue(v starlark.Value, depth int) {
 		e.buf = binary.AppendUvarint(e.buf, uint64(len(names)))
 		e.sortedEntries(len(names), func(emit func()) {
 			for _, name := range names {
-				e.writeMapKeyText(name)
+				e.writeQuoted(name)
 				val, err := x.Attr(name)
 				if err != nil {
 					panic(err)

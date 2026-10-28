@@ -116,8 +116,8 @@ func TestStateEncoderOrderIndependent(t *testing.T) {
 	if !bytes.Equal(encode(d1), encode(d2)) {
 		t.Errorf("dict encoding depends on insertion order")
 	}
-	sd1 := starlark.StringDict{"a": i(1), "b": str("x")}
-	sd2 := starlark.StringDict{"b": str("x"), "a": i(1)}
+	sd1 := starlark.StringDict{"a": i(1), "b": str("x"), `q"\\`: i(2)}
+	sd2 := starlark.StringDict{`q"\\`: i(2), "b": str("x"), "a": i(1)}
 	e1, e2 := NewStateEncoder(), NewStateEncoder()
 	e1.WriteStringDict(sd1)
 	e2.WriteStringDict(sd2)
@@ -125,8 +125,8 @@ func TestStateEncoderOrderIndependent(t *testing.T) {
 		t.Errorf("string dict encoding depends on map order")
 	}
 	// A StringDict and a dict with the same string keys and values encode
-	// alike, as their JSON did.
-	if !bytes.Equal(e1.Bytes(), encode(mkdict(str("a"), i(1), str("b"), str("x")))) {
+	// alike, as their JSON did, including keys that need escaping.
+	if !bytes.Equal(e1.Bytes(), encode(mkdict(str("a"), i(1), str("b"), str("x"), str(`q"\\`), i(2)))) {
 		t.Errorf("string dict and dict with the same entries encode differently")
 	}
 	e1.Release()
