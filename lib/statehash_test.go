@@ -61,19 +61,25 @@ func bigInt(s string) *big.Int {
 func i(n int64) starlark.Int       { return starlark.MakeInt64(n) }
 func str(s string) starlark.String { return starlark.String(s) }
 
-// family tells apart the one place the binary encoding is finer than the
-// JSON text: ordered sequences vs sets.
+// family tells apart the places the binary encoding is finer than the JSON
+// text: ordered sequences vs sets, and dicts with non-string keys.
 func family(v starlark.Value) string {
 	switch v.Type() {
 	case "set", "genericset", "bag":
 		return "set"
+	case "dict":
+		for _, k := range v.(*starlark.Dict).Keys() {
+			if _, ok := k.(starlark.String); !ok {
+				return "dict with non-string keys"
+			}
+		}
 	}
 	return "other"
 }
 
 // TestStateEncoderMatchesJSONPartition checks that two values get the same
 // binary encoding exactly when they had the same JSON text, except for the
-// documented list-vs-set case where the encoding is finer.
+// documented cases where the encoding is finer.
 func TestStateEncoderMatchesJSONPartition(t *testing.T) {
 	values := []starlark.Value{
 		starlark.None, starlark.True, starlark.False,
@@ -102,6 +108,12 @@ func TestStateEncoderMatchesJSONPartition(t *testing.T) {
 				t.Errorf("JSON merges %s and %s but binary encoding keeps them apart", values[a], values[b])
 			}
 		}
+	}
+}
+
+func TestStateEncoderDictKeyType(t *testing.T) {
+	if bytes.Equal(encode(mkdict(i(1), i(1))), encode(mkdict(str("1"), i(1)))) {
+		t.Errorf("an int key 1 and a string key \"1\" encode alike")
 	}
 }
 
