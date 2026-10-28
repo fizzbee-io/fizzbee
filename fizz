@@ -21,7 +21,7 @@ if [[ $# -gt 0 ]]; then
   case "$1" in
     mbt-scaffold)
       shift  # remove subcommand from $@
-      "python" "$MBT_GEN_ZIP" "$@" > "$temp_output" || {
+      "python3" "$MBT_GEN_ZIP" "$@" > "$temp_output" || {
         echo "Error: mbt-scaffold command failed"
         echo "Logs at $temp_output"
         exit 1
