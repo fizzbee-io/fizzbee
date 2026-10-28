@@ -69,6 +69,11 @@ func TestMarshalJSONStarlarkValue(t *testing.T) {
             m: dict,
             want: `{"one":1,"list":[1,"hello \"world\"",3],"str":"hello"}`,
         },
+        {
+            name: "symmetric_values",
+            m: *NewSymmetricValues([]*SymmetricValue{NewSymmetricValue("t", 0), NewSymmetricValue("t", 1)}),
+            want: `["t0","t1"]`,
+        },
 
     }
 

@@ -131,17 +131,17 @@ var nextPathCache = struct {
 	m  map[proto.Message]map[string]string
 }{m: make(map[proto.Message]map[string]string)}
 
-func GetNextFieldPath(msg proto.Message, path string) (string, *reflect.Value) {
+func GetNextFieldPath(msg proto.Message, path string) string {
 	nextPathCache.mu.RLock()
 	if inner, ok := nextPathCache.m[msg]; ok {
 		if next, hit := inner[path]; hit {
 			nextPathCache.mu.RUnlock()
-			return next, nil
+			return next
 		}
 	}
 	nextPathCache.mu.RUnlock()
 
-	next, field := getNextFieldPath(msg, path)
+	next, _ := getNextFieldPath(msg, path)
 
 	nextPathCache.mu.Lock()
 	inner, ok := nextPathCache.m[msg]
@@ -151,7 +151,7 @@ func GetNextFieldPath(msg proto.Message, path string) (string, *reflect.Value) {
 	}
 	inner[path] = next
 	nextPathCache.mu.Unlock()
-	return next, field
+	return next
 }
 
 func getNextFieldPath(msg proto.Message, path string) (string, *reflect.Value) {

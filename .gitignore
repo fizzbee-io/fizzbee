@@ -14,3 +14,7 @@
 
 # It seems some files within .idea/ can be shared. But for now ignoring all
 /.idea/
+
+# Python bytecode
+__pycache__/
+*.pyc

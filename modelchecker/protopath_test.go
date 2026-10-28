@@ -64,13 +64,17 @@ func TestGetProtoFieldByPath(t *testing.T) {
 func TestGetNextPath(t *testing.T) {
 	file, err := readFileToAst()
 	require.Nil(t, err)
-	path, v := GetNextFieldPath(file, "Actions[0].Block.Stmts[0].AnyStmt.Block.Stmts[0].IfStmt.Branches[0].Block.Stmts[0].PyStmt.Code")
-	assert.NotNil(t, v)
+	first := "Actions[0].Block.Stmts[0].AnyStmt.Block.Stmts[0].IfStmt.Branches[0].Block.Stmts[0].PyStmt.Code"
+	path := GetNextFieldPath(file, first)
 	assert.Equal(t, "Actions[0].Block.Stmts[0].AnyStmt.Block.Stmts[0].IfStmt.Branches[0].Block.Stmts[1]", path)
 
-	path, v = GetNextFieldPath(file, path)
-	assert.Nil(t, v)
+	path = GetNextFieldPath(file, path)
 	assert.Equal(t, "Actions[0].Block.Stmts[0].AnyStmt.Block.Stmts[0].IfStmt.Branches[0].Block.$", path)
+
+	// A cache hit must answer exactly like the first lookup.
+	assert.Equal(t, "Actions[0].Block.Stmts[0].AnyStmt.Block.Stmts[0].IfStmt.Branches[0].Block.Stmts[1]", GetNextFieldPath(file, first))
+	assert.Equal(t, "Actions[0].Block.Stmts[0].AnyStmt.Block.Stmts[0].IfStmt.Branches[0].Block.$",
+		GetNextFieldPath(file, "Actions[0].Block.Stmts[0].AnyStmt.Block.Stmts[0].IfStmt.Branches[0].Block.Stmts[1]"))
 }
 
 func TestEndOfBlock(t *testing.T) {

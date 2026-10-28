@@ -1326,10 +1326,10 @@ func (t *Thread) FindNextProgramCounter() string {
 		convertToBlock(protobuf)
 		return frame.pc + ".Stmts[0]"
 	case *ast.Statement:
-		path, _ := GetNextFieldPath(t.currentFileAst(), frame.pc)
+		path := GetNextFieldPath(t.currentFileAst(), frame.pc)
 		return path
 	case *ast.AnyStmt:
-		path, _ := GetNextFieldPath(t.currentFileAst(), frame.pc)
+		path := GetNextFieldPath(t.currentFileAst(), frame.pc)
 		frame.scope = frame.scope.parent
 		return path
 	case *ast.ForStmt:
@@ -1338,7 +1338,7 @@ func (t *Thread) FindNextProgramCounter() string {
 	case *ast.WhileStmt:
 		return frame.pc
 	case *ast.Branch:
-		path, _ := GetNextFieldPath(t.currentFileAst(), frame.pc)
+		path := GetNextFieldPath(t.currentFileAst(), frame.pc)
 		return path
 	}
 	return ""
