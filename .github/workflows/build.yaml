@@ -46,6 +46,6 @@ jobs:
       # own cleanup before they can join.
       - name: Unit tests
         run: |
-          bazel test --test_output=errors //modelchecker/liveness/... //parser/...
+          bazel test --test_output=errors //modelchecker/liveness/... //parser/... //lib:symmetry_test
           bazel test --test_output=errors //modelchecker:modelchecker_test \
-            --test_filter='^(TestFormula|TestExpandAssertionHeaderErrors|TestSccLivenessMatchesCycleFinder|TestPredicateCall|TestModelErrorStackTraceShowsCause)'
+            --test_filter='^(TestFormula|TestIncrementalLiveness|TestExpandAssertionHeaderErrors|TestSccLivenessMatchesCycleFinder|TestPredicateCall|TestModelErrorStackTraceShowsCause|TestCloneSegment|TestOrdinalRespace)'

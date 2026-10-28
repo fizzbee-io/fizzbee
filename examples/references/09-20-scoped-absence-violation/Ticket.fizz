@@ -1,0 +1,44 @@
+# Example 0122: Scoped Absence Violation
+# A property about what happens after a condition, which a state invariant can't express
+# Demonstrates: always (P implies always Q), why an invariant misses it, counterexample
+
+---
+deadlock_detection: false
+---
+# Basic economy tickets can't be refunded. Premium tickets get a full
+# refund on cancel. A basic ticket can be upgraded to premium.
+#
+# The loophole: buy basic, upgrade, then cancel for a full refund. The
+# invariant NoBasicRefund can't see it, because once upgraded the ticket
+# is premium, and a refund on a premium ticket is fine. The formula
+# BasicNeverRefunded talks about the future of every basic ticket: once
+# basic, never refunded, whatever happens after. It fails, and the
+# counterexample is the loophole. Without formulas this needs a history
+# variable that remembers the original cabin.
+
+action Init:
+    cabin = oneof ["basic", "premium"]
+    status = "booked"
+    refunded = False
+
+atomic action Upgrade:
+    require status == "booked" and cabin == "basic"
+    cabin = "premium"
+
+atomic action Cancel:
+    require status == "booked"
+    status = "cancelled"
+    if cabin == "premium":
+        refunded = True
+
+atomic action Fly:
+    require status == "booked"
+    status = "flown"
+
+# Passes: no state is both basic and refunded.
+always assertion NoBasicRefund:
+    return not (cabin == "basic" and refunded)
+
+# Fails: Upgrade then Cancel refunds a ticket that was bought as basic.
+assertion BasicNeverRefunded:
+    return always (cabin == "basic" implies always not refunded)

@@ -1,0 +1,22 @@
+# Squeeze repeatedly into the gap above mid. The action is not atomic, so
+# the chosen segment is held in the thread across a yield, and the state
+# can be respaced while it is held.
+TIMES = symmetry.ordinal(name="ts", limit=4)
+
+action Init:
+    lo = TIMES.fresh()
+    hi = TIMES.fresh()
+    gaps = TIMES.segments(after=lo, before=hi)
+    g = oneof gaps
+    mid = g.fresh()
+    count = 0
+
+action Squeeze:
+    require count < 80
+    gaps = TIMES.segments(after=mid, before=hi)
+    seg = oneof gaps
+    mid = seg.fresh()
+    count += 1
+
+always assertion Ordered:
+    return lo < mid and mid < hi

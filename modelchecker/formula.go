@@ -40,6 +40,8 @@ func toLivenessFormula(f *ast.Formula, derived map[*ast.Formula]int) *liveness.F
 		return liveness.Eventually(args[0])
 	case ast.Formula_UNTIL:
 		return liveness.Until(args[0], args[1])
+	case ast.Formula_WEAK_UNTIL:
+		return liveness.WeakUntil(args[0], args[1])
 	case ast.Formula_LEADSTO:
 		return liveness.LeadsTo(args[0], args[1])
 	}
