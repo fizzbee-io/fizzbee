@@ -3,7 +3,6 @@ package modelchecker
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"reflect"
 	"sort"
 
@@ -40,10 +39,14 @@ func (s *Scope) writeScopeChain(e *lib.StateEncoder, memo map[uintptr][2]int) {
 	for _, n := range skip {
 		e.WriteInt64(int64(n))
 	}
-	if len(s.loopRange) == 0 {
-		e.WriteString("")
-	} else {
-		e.WriteString(fmt.Sprintln(s.loopRange))
+	e.WriteUvarint(uint64(s.flow))
+	e.WriteUvarint(uint64(len(s.loopVars)))
+	for _, v := range s.loopVars {
+		e.WriteString(v)
+	}
+	e.WriteUvarint(uint64(len(s.loopRange)))
+	for _, v := range s.loopRange {
+		e.WriteValue(v, 1)
 	}
 }
 
@@ -51,6 +54,11 @@ func (s *Scope) writeScopeChain(e *lib.StateEncoder, memo map[uintptr][2]int) {
 // receiver role.
 func (c *CallFrame) writeFrame(e *lib.StateEncoder) {
 	memo := make(map[uintptr][2]int, 2)
+	depth := 0
+	for s := c.scope; s != nil; s = s.parent {
+		depth++
+	}
+	e.WriteUvarint(uint64(depth))
 	c.scope.writeScopeChain(e, memo)
 	e.WriteString(c.pc)
 	if c.obj != nil {
