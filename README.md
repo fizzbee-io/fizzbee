@@ -276,13 +276,35 @@ reproducibility.
 
 The image is a thin wrapper around the official release tarball — the
 exact artifact the pre-built binary installation uses — on a
-`python:3.12-slim-trixie` (Debian stable) base. The FizzBee payload is
-designed to add **no scanner findings** beyond the base image; verify
-the current state yourself:
+`debian:trixie-slim` (Debian stable) base with Debian's `python3`
+package. Two deliberate differences from the tarball keep the python
+interpreter Debian-managed, CVE-matched by scanners, and patched by the
+monthly rebuild:
+
+- The tarball's bundled hermetic python interpreter (which statically
+  links its own OpenSSL/expat/zlib and carries no package metadata, so
+  scanners cannot see it) is **not shipped**. The parser and MBT
+  generator run on Debian's `python3` via the launchers in
+  [`docker/`](docker/). The base is `debian:trixie-slim` rather than the
+  official `python:3.x-slim` image because the latter compiles CPython
+  outside dpkg, where scanners list it but match no CVEs against it.
+- No `pip` is installed (nothing in the image uses it).
+
+The parser's and generator's python dependencies (antlr4 runtime,
+jinja2, markupsafe) ship with their `.dist-info` metadata and are
+reported by scanners as pypi packages; they are pinned by the fizzbee
+release, not by Debian, so they update with fizzbee releases. The one
+component scanners cannot see is the `google.protobuf` python package,
+which comes from the bazel protobuf module without pypi metadata.
+
+So the FizzBee payload adds **no scanner findings** of its own: every
+finding in the image belongs to a Debian package (the `debian:trixie-slim`
+base plus `python3`), with a fix path through Debian. Verify the current
+state yourself:
 
 ```bash
-docker scout quickview ghcr.io/fizzbee-io/fizzbee:latest
-# the Target and Base image rows should show identical counts
+docker scout cves ghcr.io/fizzbee-io/fizzbee:latest
+# every reported package should be pkg:deb/debian/...
 ```
 
 If a scan attributes findings to the FizzBee payload itself, please
@@ -294,7 +316,7 @@ Findings inherited from the Debian base are present in every image on
 that base. Their status is tracked by the
 [Debian Security Tracker](https://security-tracker.debian.org/tracker/)
 (see the per-package pages, e.g.
-[perl](https://security-tracker.debian.org/tracker/source-package/perl)).
+[python3.13](https://security-tracker.debian.org/tracker/source-package/python3.13)).
 The monthly rebuild re-pulls the latest base image, so Debian fixes are
 picked up automatically once they become available in the base image.
 
