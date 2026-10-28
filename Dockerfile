@@ -75,7 +75,10 @@ RUN set -e; \
 # 1. parser: delete the toolchain repo from the runfiles tree. The bazel
 #    bootstrap (parser_bin) and its manifests hardcode that repo, so they
 #    go too; docker/parser-launcher runs parser.main from the remaining
-#    runfiles. The toolchain repo is matched by shape (`*python?python_3_*`
+#    runfiles, along with the bazel bootstrap's _*.venv directories (whose
+#    bin/python3 is a copy of the toolchain interpreter since rules_python
+#    2.x; the launcher sets its own import path and needs neither). The
+#    toolchain repo is matched by shape (`*python?python_3_*`
 #    covers rules_python's `++`/`~~` naming eras) and the deletion is
 #    asserted to have removed exactly one directory. A final, name-agnostic
 #    sweep fails the build if any interpreter artifact (toolchain dir,
@@ -100,8 +103,10 @@ RUN set -e; \
     [ "$N" -eq 1 ] || { echo "ERROR: expected exactly 1 bundled python toolchain in $RF, found $N" >&2; ls "$RF" >&2; exit 1; }; \
     find "$RF" -mindepth 1 -maxdepth 1 -type d -name '*python?python_3_*' -exec rm -rf {} +; \
     rm -f parser/parser_bin parser/parser_bin.repo_mapping parser/parser_bin.runfiles_manifest "$RF/MANIFEST"; \
+    find "$RF" -type d -name '_*.venv' -prune -exec rm -rf {} +; \
     python3 /tmp/unpack_mbt_gen.py mbt_gen.zip mbt_gen; \
     rm mbt_gen.zip; \
+    find mbt_gen -type d -name '_*.venv' -prune -exec rm -rf {} +; \
     python3 -m compileall -q parser mbt_gen; \
     chmod 0755 parser-launcher; \
     test -d "$RF/_main/parser"; \

@@ -38,16 +38,48 @@ for PLATFORM in "${PLATFORMS[@]}"; do
     echo "Building for $PLATFORM..."
 
     # Run Bazel build
-    bazel build --platforms=//:"$PLATFORM" //parser/... //:fizzbee //mbt/generator:generator_bin_zip
+    # venvs_use_declare_symlink=no: since rules_python 2.x py_binary builds a
+    # venv next to the runfiles whose bin/python3 is a relative symlink into
+    # the toolchain. Copying the tree with -L turns that into a copy of the
+    # interpreter, which on macOS then fails to find @rpath/libpython. With
+    # the flag off the bootstrap recreates the venv at runtime from the
+    # toolchain path instead, and the staged tree contains no symlinks.
+    bazel build --platforms=//:"$PLATFORM" \
+        --@rules_python//python/config_settings:venvs_use_declare_symlink=no \
+        //parser/... //:fizzbee //mbt/generator:generator_bin_zip
 
     # Create target directory
     TARGET_DIR="$RELEASE_DIR-$PLATFORM"
+    # Start from a clean staging dir: a previous aborted run leaves
+    # read-only bazel outputs behind that cp cannot overwrite.
+    chmod -R u+w "$TARGET_DIR" 2>/dev/null || true
+    rm -rf "$TARGET_DIR"
     mkdir -p "$TARGET_DIR"
 
-    # Copy files
-    cp -L -R bazel-bin/parser "$TARGET_DIR"
-    cp bazel-bin/fizzbee_/fizzbee "$TARGET_DIR"
-    cp bazel-bin/mbt/generator/generator_bin.zip "$TARGET_DIR/mbt_gen.zip"
+    # Copy files. The parser is copied entry by entry rather than as the
+    # whole bazel-bin/parser directory: since rules_python 2.x that
+    # directory also holds test outputs and a top-level _parser_bin.venv
+    # whose relative symlinks only resolve inside the runfiles tree (the
+    # copy in parser_bin.runfiles/_main/parser/ is the one the bootstrap
+    # uses, and -L dereferences it correctly there).
+    mkdir -p "$TARGET_DIR/parser"
+    for ENTRY in parser_bin parser_bin.repo_mapping parser_bin.runfiles_manifest parser_bin.runfiles; do
+        cp -L -R "bazel-bin/parser/$ENTRY" "$TARGET_DIR/parser/"
+    done
+    # Byte-stream copies (not cp) for the two large single files: on APFS a
+    # freshly written bazel output can report a bogus hole (SEEK_HOLE at
+    # offset 0 while reads return data), and hole-aware copiers such as
+    # macOS cp then write zeros for the first 8 MiB. Observed on macOS 14
+    # with a 130 MB generator_bin.zip; cat/dd read the real bytes.
+    cat bazel-bin/fizzbee_/fizzbee > "$TARGET_DIR/fizzbee"
+    chmod 0755 "$TARGET_DIR/fizzbee"
+    cat bazel-bin/mbt/generator/generator_bin.zip > "$TARGET_DIR/mbt_gen.zip"
+    # Fail loudly if the staged zip is not intact (the mbt-scaffold
+    # subcommand runs it with the user's python3; a corrupt zip would only
+    # surface as a user-facing traceback).
+    python3 -c 'import sys, zipfile
+bad = zipfile.ZipFile(sys.argv[1]).testzip()
+sys.exit("ERROR: corrupt member in staged mbt_gen.zip: %s" % bad if bad else 0)' "$TARGET_DIR/mbt_gen.zip"
 
     # Strip pip and ensurepip from the bundled hermetic python toolchain.
     # The parser never uses them at runtime, and the stale bundled pip is
@@ -57,7 +89,8 @@ for PLATFORM in "${PLATFORMS[@]}"; do
     # them clears the findings and shrinks the tarball.
     #
     # Name patterns are deliberately exact: the pip-INSTALLED dependency
-    # repos (rules_python++pip+pypi_312_antlr4_python3_runtime, protobuf)
+    # repos (rules_python++pip+pypi_313_antlr4_python3_runtime_<wheel>_<hash>
+    # since rules_python 2.x, formerly ...pypi_312_antlr4_python3_runtime)
     # merely contain "pip" in their names and must survive. bin/pip3*
     # (rather than a hardcoded pip3.12) keeps the strip working across
     # future python minor-version bumps.

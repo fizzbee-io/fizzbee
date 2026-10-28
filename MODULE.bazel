@@ -30,19 +30,34 @@ use_repo(
 bazel_dep(name = "protobuf", version = "33.0")
 
 # Python
-bazel_dep(name = "rules_python", version = "1.0.0")
+bazel_dep(name = "rules_python", version = "2.4.5")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
     is_default = True,
-    python_version = "3.12",
+    python_version = "3.13",
 )
 
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 pip.parse(
     hub_name = "pypi",
-    python_version = "3.12",
+    python_version = "3.13",
     requirements_lock = "//third_party:requirements.txt",
+    # Fetch wheels per TARGET platform from the index (verified against the
+    # hashes in the lock) instead of `pip download` on the host. Required
+    # for the cross-compiled release tarballs: without it rules_python >= 2
+    # only has the host's wheels and refuses to build for other platforms.
+    experimental_index_url = "https://pypi.org/simple",
+    # The platforms release/build_release.sh cross-compiles for (plus
+    # windows, defined in //:BUILD). Identifiers as in pip.default.platform.
+    target_platforms = [
+        "linux_x86_64",
+        "linux_aarch64",
+        "osx_x86_64",
+        "osx_aarch64",
+        "windows_x86_64",
+        "windows_aarch64",
+    ],
 )
 use_repo(pip, "pypi")
 
