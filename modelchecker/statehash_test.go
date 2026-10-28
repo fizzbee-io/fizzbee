@@ -25,7 +25,8 @@ func TestProcessHashCoversEveryPart(t *testing.T) {
 		p.NewThread()
 		frame := p.currentThread().currentFrame()
 		frame.pc = "Actions[0].Block.Stmts[0]"
-		frame.scope = &Scope{vars: starlark.StringDict{"x": starlark.MakeInt(1)}}
+		frame.scope = &Scope{vars: starlark.StringDict{"x": starlark.MakeInt(1)},
+			flow: ast.Flow_FLOW_SERIAL, loopVars: []string{"i"}, loopRange: []starlark.Value{starlark.MakeInt(1)}}
 		p.Roles = []*lib.Role{testRole("Node", 1)}
 		if change != nil {
 			change(p)
@@ -51,6 +52,14 @@ func TestProcessHashCoversEveryPart(t *testing.T) {
 		"skipped stmts": func(p *Process) {
 			p.currentThread().currentFrame().scope.skipstmts = []int{0}
 		},
+		"loop range value type": func(p *Process) {
+			p.currentThread().currentFrame().scope.loopRange = []starlark.Value{starlark.String("1")}
+		},
+		"loop range length": func(p *Process) {
+			p.currentThread().currentFrame().scope.loopRange = []starlark.Value{starlark.MakeInt(1), starlark.MakeInt(1)}
+		},
+		"loop vars":     func(p *Process) { p.currentThread().currentFrame().scope.loopVars = []string{"j"} },
+		"flow":          func(p *Process) { p.currentThread().currentFrame().scope.flow = ast.Flow_FLOW_PARALLEL },
 		"receiver role": func(p *Process) { p.currentThread().currentFrame().obj = p.Roles[0] },
 		"extra thread":  func(p *Process) { p.NewThread() },
 		"role field": func(p *Process) {
