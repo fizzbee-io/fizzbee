@@ -118,7 +118,15 @@ jobs:
             docker run --rm -v "$PWD/$dir":/workspace fizzbee:smoke-amd64 "$spec" | tee /tmp/smoke.out
             grep -q "PASSED: Model checker completed successfully" /tmp/smoke.out
           done
-          docker run --rm --entrypoint /opt/fizzbee/fizz fizzbee:smoke-amd64 mbt-scaffold --help > /dev/null
+          # mbt-scaffold runs the generator on the image's system python
+          # (see docker/mbt_gen_launcher.py): generate a real scaffold so
+          # the jinja2 templates and the generator's imports are exercised.
+          rm -rf /tmp/mbt && mkdir -p /tmp/mbt
+          cp examples/references/13-02-01-two-phase-commit/TwoPhaseCommit.fizz /tmp/mbt/
+          docker run --rm -v /tmp/mbt:/workspace --entrypoint /opt/fizzbee/fizz fizzbee:smoke-amd64 \
+            mbt-scaffold --lang typescript --playwright --out-dir /workspace/out --rel-root /workspace/out TwoPhaseCommit.fizz
+          test -s /tmp/mbt/out/two_phase_commit_test.ts
+          test -s /tmp/mbt/out/two_phase_commit_adapters.ts
 
       - name: Smoke test (arm64, via QEMU)
         run: |
