@@ -112,8 +112,16 @@ func TestStateEncoderMatchesJSONPartition(t *testing.T) {
 }
 
 func TestStateEncoderDictKeyType(t *testing.T) {
-	if bytes.Equal(encode(mkdict(i(1), i(1))), encode(mkdict(str("1"), i(1)))) {
-		t.Errorf("an int key 1 and a string key \"1\" encode alike")
+	pairs := [][2]starlark.Value{
+		{mkdict(i(1), i(1)), mkdict(str("1"), i(1))},
+		{mkdict(starlark.Tuple{i(1), i(2)}, i(1)), mkdict(str("(1, 2)"), i(1))},
+		{mkdict(starlark.Tuple{i(1)}, i(1)), mkdict(starlark.Tuple{str("1")}, i(1))},
+		{mkdict(str("a"), mkdict(i(1), i(1))), mkdict(str("a"), mkdict(str("1"), i(1)))},
+	}
+	for _, p := range pairs {
+		if bytes.Equal(encode(p[0]), encode(p[1])) {
+			t.Errorf("%s and %s encode alike", p[0], p[1])
+		}
 	}
 }
 
