@@ -127,6 +127,12 @@ func main() {
 		fmt.Println("WARNING: --experimental_no_graph disables crash-on-yield simulation. Crash variants will NOT be explored. Set crash_on_yield: false to silence this warning, or omit --experimental_no_graph to keep crash simulation.")
 	}
 
+	if !simulation && !noSymmetryReduction && isStrictLiveness(stateConfig) {
+		if actions := modelchecker.SymmetricFairActions(f); len(actions) > 0 {
+			fmt.Printf("WARNING: symmetry reduction can miss liveness violations that depend on the fair actions of symmetric roles (%s). Run with --no-symmetry-reduction to check liveness exactly. See https://github.com/fizzbee-io/fizzbee/issues/427\n", strings.Join(actions, ", "))
+		}
+	}
+
 	outDir, err := createOutputDir(dirPath, isTest)
 	if err != nil {
 		return
