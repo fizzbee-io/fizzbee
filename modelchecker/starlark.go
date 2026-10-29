@@ -35,6 +35,17 @@ func (e *Evaluator) EvalExpr(filename string, expr *ast.Expr, prevState starlark
 
 func (e *Evaluator) EvalExprWithContext(filename string, expr *ast.Expr, prevState starlark.StringDict, symCtx *lib.SymmetryContext) (starlark.Value, error) {
 	start := expr.GetSourceInfo().GetStart()
+	if c := e.compiledExprFunc(filename, expr.GetPyExpr(), start.GetLine(), start.GetColumn(), prevState); c != nil {
+		args := make(starlark.Tuple, len(c.params))
+		for i, name := range c.params {
+			args[i] = prevState[name]
+		}
+		v, err := starlark.Call(newEvalThread(symCtx), c.fn, args, nil)
+		if err != nil && !lib.IsDisableTransitionError(err) {
+			glog.Errorf("Error evaluating expr: %+v", err)
+		}
+		return v, err
+	}
 	prog, err := e.compiledExpr(filename, expr.GetPyExpr(), start.GetLine(), start.GetColumn(), prevState)
 	if err != nil {
 		if !lib.IsDisableTransitionError(err) {
@@ -173,6 +184,9 @@ func (e *Evaluator) ExecPyStmt(filename string, stmt *ast.PyStmt, prevState star
 
 func (e *Evaluator) ExecPyStmtWithContext(filename string, stmt *ast.PyStmt, prevState starlark.StringDict, symCtx *lib.SymmetryContext) (bool, error) {
 	start := stmt.GetSourceInfo().GetStart()
+	if c := e.compiledStmt(filename, stmt.Code, start.GetLine(), start.GetColumn(), prevState); c != nil {
+		return c.exec(newEvalThread(symCtx), prevState)
+	}
 	filePortion := syntax.FilePortion{
 		Content:   []byte(stmt.Code),
 		FirstLine: start.GetLine(),
@@ -273,4 +287,198 @@ func stmtNames(code string) []string {
 	namesCache.stmts[code] = names
 	namesCache.mu.Unlock()
 	return names
+}
+
+// stmtFuncName is the function compiledStmt wraps a statement in.
+const stmtFuncName = "_fizz_stmt_"
+
+// compiledStmt is a spec statement compiled once as a function, so that a
+// statement run once per state is not parsed, resolved and compiled each
+// time, as ExecREPLChunk does. The statement becomes the body of
+//
+//	def _fizz_stmt_(<every env name>):
+//	    <statement>
+//	    return (<every name the statement binds>,)
+//
+// Inside the function the env names are parameters, so the statement reads
+// and rebinds them as it would module globals, and the names it binds come
+// back in order. Only plain assignments and expression statements are
+// compiled this way; anything else keeps the REPL path. A statement that
+// fails stops the transition or the run, so losing its partial writes
+// (which the REPL path keeps) changes nothing.
+type compiledStmt struct {
+	fn       *starlark.Function
+	params   []string
+	assigned []string
+}
+
+func (c *compiledStmt) exec(thread *starlark.Thread, env starlark.StringDict) (bool, error) {
+	args := make(starlark.Tuple, len(c.params))
+	for i, name := range c.params {
+		args[i] = env[name]
+	}
+	res, err := starlark.Call(thread, c.fn, args, nil)
+	if err != nil {
+		if !lib.IsDisableTransitionError(err) {
+			glog.Errorf("Error executing stmt: %+v", err)
+		}
+		return false, err
+	}
+	for i, v := range res.(starlark.Tuple) {
+		env[c.assigned[i]] = v
+	}
+	return true, nil
+}
+
+type stmtKey struct {
+	opts     syntax.FileOptions
+	filename string
+	src      string
+	line     int32
+	col      int32
+	params   string
+	expr     bool
+}
+
+var stmtCache = struct {
+	mu sync.RWMutex
+	m  map[stmtKey]*compiledStmt // nil = not compilable, use the REPL path
+}{m: make(map[stmtKey]*compiledStmt)}
+
+// compiledStmt returns the statement compiled for an env with exactly
+// env's names, or nil when it must run through the REPL path.
+func (e *Evaluator) compiledStmt(filename string, src string, line int32, col int32, env starlark.StringDict) *compiledStmt {
+	params := env.Keys() // sorted
+	key := stmtKey{filename: filename, src: src, line: line, col: col, params: strings.Join(params, ",")}
+	if e.options != nil {
+		key.opts = *e.options
+	}
+	stmtCache.mu.RLock()
+	c, ok := stmtCache.m[key]
+	stmtCache.mu.RUnlock()
+	if ok {
+		return c
+	}
+	c = e.compileStmt(filename, src, line, col, params)
+	stmtCache.mu.Lock()
+	stmtCache.m[key] = c
+	stmtCache.mu.Unlock()
+	return c
+}
+
+func (e *Evaluator) compileStmt(filename string, src string, line int32, col int32, params []string) *compiledStmt {
+	f, err := e.options.Parse(filename, src, 0)
+	if err != nil {
+		return nil
+	}
+	var assigned []string
+	seen := map[string]bool{}
+	var bind func(x syntax.Expr) bool
+	bind = func(x syntax.Expr) bool {
+		switch x := x.(type) {
+		case *syntax.Ident:
+			if !seen[x.Name] {
+				seen[x.Name] = true
+				assigned = append(assigned, x.Name)
+			}
+		case *syntax.TupleExpr:
+			for _, y := range x.List {
+				if !bind(y) {
+					return false
+				}
+			}
+		case *syntax.ListExpr:
+			for _, y := range x.List {
+				if !bind(y) {
+					return false
+				}
+			}
+		case *syntax.ParenExpr:
+			return bind(x.X)
+		case *syntax.DotExpr, *syntax.IndexExpr:
+		default:
+			return false
+		}
+		return true
+	}
+	for _, st := range f.Stmts {
+		switch st := st.(type) {
+		case *syntax.ExprStmt:
+		case *syntax.AssignStmt:
+			if !bind(st.LHS) {
+				return nil
+			}
+		default:
+			return nil
+		}
+	}
+
+	// The statement keeps its source position: the def sits on the line
+	// before it, and its first line is indented to its column (at least one
+	// space, so it is inside the def).
+	indent := int(col) - 1
+	if indent < 1 {
+		indent = 1
+	}
+	pad := strings.Repeat(" ", indent)
+	var b strings.Builder
+	b.WriteString("def " + stmtFuncName + "(" + strings.Join(params, ", ") + "):\n")
+	b.WriteString(pad + src + "\n")
+	b.WriteString(pad + "return (")
+	for _, name := range assigned {
+		b.WriteString(name + ", ")
+	}
+	b.WriteString(")\n")
+	portion := syntax.FilePortion{Content: []byte(b.String()), FirstLine: line - 1, FirstCol: 1}
+	_, prog, err := starlark.SourceProgramOptions(e.options, filename, portion, func(string) bool { return false })
+	if err != nil {
+		return nil
+	}
+	globals, err := prog.Init(&starlark.Thread{}, nil)
+	if err != nil {
+		return nil
+	}
+	fn, ok := globals[stmtFuncName].(*starlark.Function)
+	if !ok {
+		return nil
+	}
+	return &compiledStmt{fn: fn, params: params, assigned: assigned}
+}
+
+// compiledExprFunc is compiledStmt for an expression: the expression is
+// the body of `def _fizz_stmt_(<env names>): return (<expr>)`, compiled and
+// instantiated once, so an evaluation is one call instead of a
+// Program.Init that builds a new module each time.
+func (e *Evaluator) compiledExprFunc(filename string, src string, line int32, col int32, env starlark.StringDict) *compiledStmt {
+	params := env.Keys() // sorted
+	key := stmtKey{filename: filename, src: src, line: line, col: col, params: strings.Join(params, ","), expr: true}
+	if e.options != nil {
+		key.opts = *e.options
+	}
+	stmtCache.mu.RLock()
+	c, ok := stmtCache.m[key]
+	stmtCache.mu.RUnlock()
+	if ok {
+		return c
+	}
+	pad := int(col) - 1
+	if pad < 0 {
+		pad = 0
+	}
+	var b strings.Builder
+	b.WriteString("def " + stmtFuncName + "(" + strings.Join(params, ", ") + "):\n return (\n")
+	b.WriteString(strings.Repeat(" ", pad) + src + "\n)\n")
+	portion := syntax.FilePortion{Content: []byte(b.String()), FirstLine: line - 2, FirstCol: 1}
+	c = nil
+	if _, prog, err := starlark.SourceProgramOptions(e.options, filename, portion, func(string) bool { return false }); err == nil {
+		if globals, err := prog.Init(&starlark.Thread{}, nil); err == nil {
+			if fn, ok := globals[stmtFuncName].(*starlark.Function); ok {
+				c = &compiledStmt{fn: fn, params: params}
+			}
+		}
+	}
+	stmtCache.mu.Lock()
+	stmtCache.m[key] = c
+	stmtCache.mu.Unlock()
+	return c
 }

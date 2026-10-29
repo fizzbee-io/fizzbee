@@ -79,9 +79,9 @@ func (s *Stack[T]) Pop() (T, bool) {
 	return res, true
 }
 
+// Peek and Len take no lock: they run several times per statement, and
+// every stack is used by one goroutine at a time.
 func (s *Stack[T]) Peek() (T, bool) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
 	if s.peak != nil {
 		return *s.peak, true
 	} else {
@@ -105,8 +105,6 @@ func (s *Stack[T]) RawArray() []T {
 	return s.s
 }
 func (s *Stack[T]) Len() int {
-	s.lock.Lock()
-	defer s.lock.Unlock()
 	return len(s.s)
 }
 

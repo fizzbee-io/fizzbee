@@ -621,6 +621,19 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		var x starlark.Value
 		for iter.Next(&x) {
 			//fmt.Printf("anyVariable: x: %s\n", x.String())
+			if stmt.AnyStmt.Condition != "" {
+				// Filter before forking: a rejected candidate then costs one
+				// expression, not a clone of the whole process. The
+				// condition is read-only, so nothing is written back.
+				vars := t.Process.envForExpr(stmt.AnyStmt.ConditionExpr)
+				vars[stmt.AnyStmt.LoopVars[0]] = x
+				symCtx := t.Process.createSymmetryContext()
+				cond, err := t.Process.Evaluator.EvalExprWithContext(t.getFileName(), stmt.AnyStmt.ConditionExpr, vars, symCtx)
+				t.Process.PanicOnError(stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Error checking condition: %s", stmt.AnyStmt.Condition), err)
+				if !cond.Truth() {
+					continue
+				}
+			}
 			fork := t.Process.Fork()
 			fork.Name = fmt.Sprintf("Any:%s=%s", stmt.AnyStmt.LoopVars[0], x.String())
 			fork.ChoiceFairness = stmt.AnyStmt.Fairness.GetLevel()
@@ -636,21 +649,6 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 				fork.updateVariable(stmt.AnyStmt.LoopVars[0], x)
 			} else {
 				fork.currentThread().currentFrame().scope.vars[stmt.AnyStmt.LoopVars[0]] = x
-			}
-
-			if stmt.AnyStmt.Condition != "" {
-				vars := fork.envForExpr(stmt.AnyStmt.ConditionExpr)
-				vars[stmt.AnyStmt.LoopVars[0]] = x
-				symCtx := fork.createSymmetryContext()
-				cond, err := fork.Evaluator.EvalExprWithContext(t.getFileName(), stmt.AnyStmt.ConditionExpr, vars, symCtx)
-				fork.saveRotationalLastAllocated(symCtx)
-				//PanicOnError(err)
-				// TODO: This source info should be for the condition not the anyStmt
-				fork.PanicOnError(stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Error checking condition: %s", stmt.AnyStmt.Condition), err)
-				fork.updateAllVariablesInScope(vars)
-				if !cond.Truth() {
-					continue
-				}
 			}
 
 			if stmt.AnyStmt.Block != nil {
