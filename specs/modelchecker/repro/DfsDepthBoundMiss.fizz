@@ -1,0 +1,35 @@
+---
+options:
+    max_actions: 2
+    crash_on_yield: false
+deadlock_detection: false
+---
+
+# Repro for the depth_shortcut case in ../ExecutionLoop.fizz.
+#
+# s == 3 is reachable in two actions: Shortcut, then Bad.
+#   ./fizz specs/modelchecker/repro/DfsDepthBoundMiss.fizz            -> FAILED (NeverThree)
+#   ./fizz --exploration_strategy dfs specs/modelchecker/repro/DfsDepthBoundMiss.fizz -> PASSED
+#
+# With dfs, the stack pops Step first, so s == 2 is first stored at depth 2
+# (Step, Shortcut), where max_actions stops it from scheduling Bad. The
+# depth-1 Shortcut from s == 0 is then a dedup hit, because the visited set
+# ignores the depth a state was reached at.
+
+action Init:
+    s = 0
+
+atomic action Shortcut:
+    require s == 0 or s == 1
+    s = 2
+
+atomic action Step:
+    require s == 0
+    s = 1
+
+atomic action Bad:
+    require s == 2
+    s = 3
+
+always assertion NeverThree:
+    return s != 3

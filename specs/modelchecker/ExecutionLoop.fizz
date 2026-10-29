@@ -1,0 +1,532 @@
+---
+deadlock_detection: false
+options:
+    max_actions: 100
+    crash_on_yield: false
+---
+
+# FizzBee spec of the FizzBee model checker's high-level execution loop.
+#
+# This models what modelchecker/processor.go does today, not an ideal
+# design. Function names follow the Go code so the two can be read side by
+# side:
+#
+#   Start                -> OldLoop (the default queue of action-starts)
+#   startProcessedQueue  -> ProcessedStart + ProcessedLoop
+#                           (--experimental_processed_queue, and with
+#                           --experimental_no_graph)
+#   expandToYield        -> expand_to_yield
+#   processNode          -> process_node
+#   publishYieldPoint    -> publish_yield_point
+#   YieldNode            -> yield_node
+#   enqueueScheduled     -> enqueue_scheduled
+#   drainAndFlush        -> drain_and_flush
+#   traverseBFS deadlock -> find_deadlock (markovchain.go, run by main.go
+#                           after exploration when the graph is kept)
+#
+# The spec under check (the "input model") is abstracted to a small graph.
+# Each node is one state the Go checker would hash:
+#
+#   "yield": a yield point. Successors are the action-starts YieldNode
+#            schedules, one action deeper.
+#   "mid":   a mid-action step that forked (oneof / any / parallel). The
+#            successors are the forks, at the same action depth, which go
+#            through p.intermediateStates.
+#   "dead":  a fork whose thread got disabled (require false) without
+#            reaching a yield. processNode returns before dedup.
+#
+# A node id stands for the state's canonical hash, so two paths that reach
+# the same id are a dedup hit. A "bad" yield node fails an always assertion.
+#
+# Not modeled yet: crash_on_yield, thread continuations (thread-N links),
+# channel messages, max_concurrent_actions, per-action limits, symmetry,
+# guided traces, refinement, ContinueOnInvariantFailures, incremental
+# liveness, the liveness/SCC checks, simulation mode, and the Enabled
+# flag on nodes.
+#
+# Each loop iteration of the checker is one atomic action here, so a
+# counterexample trace reads as one queue pop per step.
+
+# Graph node: (kind, successors, bad)
+GRAPHS = {
+    # Mirrors benchmarks/cross-yield-dup: Flip goes 0 -> 1, and action A
+    # from both 0 and 1 reaches the same mid-action state 3 (A overwrites
+    # the only variable they differ in), which forks to 4 and 5.
+    "cross_yield_dup": struct(max_actions=3, nodes={
+        0: ("yield", [1, 3], False),
+        1: ("yield", [3], False),
+        3: ("mid", [4, 5], False),
+        4: ("yield", [3], False),
+        5: ("yield", [3], False),
+    }),
+    # A bad state reachable only through a fork inside an action.
+    "bad_after_fork": struct(max_actions=3, nodes={
+        0: ("yield", [2], False),
+        2: ("mid", [3, 4, 5], False),
+        3: ("yield", [2], False),
+        4: ("yield", [0], True),
+        5: ("dead", [], False),
+    }),
+    # A chain longer than max_actions. The bad state 4 is past the bound,
+    # so a correct checker must PASS.
+    "bad_past_bound": struct(max_actions=2, nodes={
+        0: ("yield", [1], False),
+        1: ("yield", [2], False),
+        2: ("yield", [3], False),
+        3: ("yield", [4], False),
+        4: ("yield", [4], True),
+    }),
+    # Yield 2 can only run an action whose every fork is disabled: a real
+    # deadlock, and the forks are not shared with any other yield point.
+    "plain_deadlock": struct(max_actions=3, nodes={
+        0: ("yield", [1, 2], False),
+        1: ("yield", [1], False),
+        2: ("yield", [3], False),
+        3: ("mid", [5, 6], False),
+        5: ("dead", [], False),
+        6: ("dead", [], False),
+    }),
+    # Known issue 1 (DFS/random + max_actions). 2 is one action from 0 and
+    # two actions via 1. Successors are listed so a stack pops 0 -> 1 first.
+    # If 2 is first stored at depth 2 it is never expanded, and the later
+    # depth-1 path to 2 is a dedup hit, so bad state 3 (depth 2) is missed.
+    "depth_shortcut": struct(max_actions=2, nodes={
+        0: ("yield", [2, 1], False),
+        1: ("yield", [2], False),
+        2: ("yield", [3], False),
+        3: ("yield", [3], True),
+    }),
+    # Known issue 2. From yield 1 the only action is A, whose mid-action
+    # state 3 is the same as A's from yield 0 and whose forks are all
+    # disabled. Yield 0 has other live actions; yield 1 is deadlocked. The
+    # second visit to 3 is a dedup hit, so both deadlock detectors treat
+    # yield 1 as live.
+    "shared_dead_end": struct(max_actions=3, nodes={
+        0: ("yield", [1, 3, 0], False),
+        1: ("yield", [3], False),
+        3: ("mid", [6], False),
+        6: ("dead", [], False),
+    }),
+}
+
+GRAPH_NAMES = ["cross_yield_dup", "bad_after_fork", "bad_past_bound", "plain_deadlock", "depth_shortcut", "shared_dead_end"]
+
+STRATEGIES = ["bfs", "dfs", "random"]
+
+# graph:              Start, graph kept (default)
+# processed:          startProcessedQueue, graph kept
+# processed_no_graph: startProcessedQueue with --experimental_no_graph
+MODES = ["graph", "processed", "processed_no_graph"]
+
+DEADLOCK_DETECTION = True
+
+# Set to True to include the two known issues in the run and get their
+# counterexamples (see README.md).
+INCLUDE_KNOWN_ISSUES = False
+
+ALL_CASES = [(g, s, m, c) for g in GRAPH_NAMES for s in STRATEGIES for m in MODES for c in [False, True]]
+
+CASES = [k for k in ALL_CASES if INCLUDE_KNOWN_ISSUES or not ((k[0] == "depth_shortcut" and k[1] != "bfs") or k[0] == "shared_dead_end")]
+
+
+# ---------------------------------------------------------------------------
+# Ground truth: what a correct bounded checker should find, computed
+# directly from the graph by a BFS on action depth.
+# ---------------------------------------------------------------------------
+
+atomic func ground_truth(gname):
+    nodes = GRAPHS[gname].nodes
+    mx = GRAPHS[gname].max_actions
+    depth = {0: 0}
+    frontier = [0]
+    bad = []
+    deadlocks = []
+    while len(frontier) > 0:
+        y = frontier.pop(0)
+        d = depth[y]
+        if nodes[y][2]:
+            bad.append(y)
+        if d >= mx:
+            continue
+        # Yield points one action away: follow mid-action forks.
+        succ_yields = []
+        seen_mid = set()
+        stack = list(nodes[y][1])
+        while len(stack) > 0:
+            n = stack.pop()
+            kind = nodes[n][0]
+            if kind == "yield":
+                if n not in succ_yields:
+                    succ_yields.append(n)
+            elif kind == "mid":
+                if n not in seen_mid:
+                    seen_mid.add(n)
+                    stack.extend(nodes[n][1])
+        if len(succ_yields) == 0:
+            deadlocks.append(y)
+        for s in succ_yields:
+            if s not in depth:
+                depth[s] = d + 1
+                frontier.append(s)
+    return (sorted(depth.keys()), sorted(bad), sorted(deadlocks))
+
+
+atomic action Init:
+    # Everything the assertions read is set before the first fork.
+    phase = None
+    verdict = None
+    failed = None
+    reported_deadlock = None
+    processed = False
+    collapse_active = False
+    counters = {"dedup_hits": 0, "unique_yields": 0}
+    visited = {}
+    queue = []
+    truth_yields = []
+    truth_bad = []
+    truth_deadlocks = []
+
+    case = oneof CASES
+    graph = case[0]
+    strategy = case[1]
+    mode = case[2]
+    collapse = case[3]
+    MAX = GRAPHS[graph].max_actions
+
+    processed = mode != "graph"
+    no_graph = mode == "processed_no_graph"
+    # Start enables collapsing in graph mode; startProcessedQueue only
+    # with no_graph.
+    collapse_active = collapse and (mode == "graph" or no_graph)
+
+    truth = ground_truth(graph)
+    truth_yields = truth[0]
+    truth_bad = truth[1]
+    truth_deadlocks = truth[2]
+
+    # Processor fields. Entries are (node, actionDepth, src), where src is
+    # the stored node the inbound link comes from (the nearest kept
+    # ancestor when collapsing).
+    # queue                 p.queue
+    inter = []           # p.intermediateStates
+    pending = []         # p.pendingActionStarts (processed mode)
+    expanded = []        # p.expandedYieldPoints (processed mode)
+    # visited               p.visited: hash -> actionDepth of the stored node
+    step_visited = set() # p.stepVisited (collapse)
+    outbound = {}        # node -> successors (Attach / Duplicate links)
+    # counters              dedupHitsInExpansion, uniqueYieldCount
+    if processed:
+        phase = "init"
+    else:
+        queue.append((0, 0, None))
+        phase = "loop"
+
+
+# ---------------------------------------------------------------------------
+# Collections. NewProcessor picks the queue type from the strategy:
+#   bfs:    Queue for p.queue, Queue for intermediateStates
+#   dfs:    Stack for p.queue, Queue for intermediateStates
+#   random: RandomQueue for both
+# ---------------------------------------------------------------------------
+
+atomic func pop_queue():
+    if strategy == "bfs":
+        return queue.pop(0)
+    elif strategy == "dfs":
+        return queue.pop()
+    i = oneof range(len(queue))
+    return queue.pop(i)
+
+
+atomic func pop_inter():
+    if strategy == "random":
+        i = oneof range(len(inter))
+        return inter.pop(i)
+    return inter.pop(0)
+
+
+atomic func kind_of(n):
+    return GRAPHS[graph].nodes[n][0]
+
+
+atomic func add_link(src, n):
+    if no_graph or src == None:
+        return
+    if src not in outbound:
+        outbound[src] = []
+    outbound[src].append(n)
+
+
+# ---------------------------------------------------------------------------
+# Scheduling
+# ---------------------------------------------------------------------------
+
+atomic func enqueue_scheduled(e):
+    if processed:
+        pending.append(e)
+    else:
+        queue.append(e)
+
+
+atomic func yield_node(n, d):
+    # YieldNode: no new actions once the action depth reaches max_actions.
+    if d >= MAX:
+        return
+    for s in GRAPHS[graph].nodes[n][1]:
+        enqueue_scheduled((s, d + 1, n))
+
+
+atomic func publish_yield_point(n, d):
+    counters["unique_yields"] = counters["unique_yields"] + 1
+    if processed:
+        expanded.append((n, d, n))
+    else:
+        yield_node(n, d)
+
+
+# ---------------------------------------------------------------------------
+# processNode: returns True on an invariant failure.
+# ---------------------------------------------------------------------------
+
+atomic func process_node(e):
+    n = e[0]
+    d = e[1]
+    src = e[2]
+    spec = GRAPHS[graph].nodes[n]
+    kind = spec[0]
+    if kind == "dead":
+        # len(forks) == 0 && !node.Enabled: dropped before dedup.
+        return False
+    transient = collapse_active and kind == "mid" and src != None
+
+    if n in visited:
+        # Dedup hit: Duplicate() links the parent to the stored node.
+        counters["dedup_hits"] = counters["dedup_hits"] + 1
+        add_link(src, n)
+        return False
+    if transient:
+        # Collapsed step: dedup only within this expansion.
+        if n in step_visited:
+            return False
+        step_visited.add(n)
+    else:
+        visited[n] = d
+        add_link(src, n)
+
+    if kind == "yield":
+        # Always assertions are checked only on new yield points.
+        if spec[2]:
+            failed = n
+            inter.clear()
+            return True
+        publish_yield_point(n, d)
+        return False
+
+    # Mid-action fork: children go to intermediateStates, same depth.
+    child_src = n
+    if transient:
+        child_src = src
+    for s in spec[1]:
+        inter.append((s, d, child_src))
+    return False
+
+
+atomic func expand_to_yield(e):
+    if collapse_active:
+        step_visited.clear()
+    cur = e
+    fail = False
+    while True:
+        fail = process_node(cur)
+        if len(inter) == 0:
+            break
+        cur = pop_inter()
+    # Like the Go code, the result is that of the last processNode call.
+    return fail
+
+
+# ---------------------------------------------------------------------------
+# Default path: Start. p.queue holds unprocessed action-starts.
+# ---------------------------------------------------------------------------
+
+atomic fair action OldLoop:
+    require phase == "loop" and not processed
+    if len(queue) == 0:
+        phase = "post"
+        return
+    e = pop_queue()
+    if e[1] > MAX:
+        return
+    fail = expand_to_yield(e)
+    if fail:
+        verdict = "FAIL"
+        phase = "done"
+
+
+# ---------------------------------------------------------------------------
+# startProcessedQueue. p.queue holds processed yield points; their
+# action-starts are buffered in pendingActionStarts and drained inline.
+# ---------------------------------------------------------------------------
+
+atomic func drain_and_flush():
+    while len(pending) > 0:
+        a = pending.pop(0)
+        if a[1] > MAX:
+            continue
+        fail = expand_to_yield(a)
+        if fail:
+            return True
+    for yp in expanded:
+        queue.append(yp)
+    expanded.clear()
+    return False
+
+
+atomic fair action ProcessedStart:
+    require phase == "init"
+    # Phase 1: process Init, then flush its yield point into the queue.
+    fail = expand_to_yield((0, 0, None))
+    if fail:
+        verdict = "FAIL"
+        phase = "done"
+        return
+    early = drain_and_flush()
+    if early:
+        verdict = "FAIL"
+        phase = "done"
+        return
+    phase = "loop"
+
+
+atomic fair action ProcessedLoop:
+    require phase == "loop" and processed
+    if len(queue) == 0:
+        phase = "post"
+        return
+    yp = pop_queue()
+    if yp[1] > MAX:
+        return
+    yield_node(yp[0], yp[1])
+    before = len(queue)
+    counters["dedup_hits"] = 0
+    early = drain_and_flush()
+    if early:
+        verdict = "FAIL"
+        phase = "done"
+        return
+    # Early deadlock: no new yield point queued, no dedup hit, and below
+    # the action bound.
+    if DEADLOCK_DETECTION and len(queue) == before and counters["dedup_hits"] == 0 and yp[1] < MAX:
+        reported_deadlock = yp[0]
+        verdict = "DEADLOCK"
+        phase = "done"
+
+
+# ---------------------------------------------------------------------------
+# After exploration (main.go). With the graph kept, GetAllNodes walks it
+# and reports a deadlock; in no-graph mode only the early check exists.
+# ---------------------------------------------------------------------------
+
+atomic func find_deadlock():
+    # traverseBFS: BFS over stored links, each node visited once, carrying
+    # the yield point it was reached from.
+    seen = set()
+    order = []
+    dead_node = {}
+    live_paths = {}
+    q = [(0, 0)]
+    while len(q) > 0:
+        ent = q.pop(0)
+        nd = ent[0]
+        yn = ent[1]
+        if nd in seen:
+            continue
+        seen.add(nd)
+        order.append(nd)
+        links = outbound.get(nd, [])
+        if len(links) == 0 and yn not in dead_node:
+            dead_node[yn] = nd
+        for t in links:
+            ny = yn
+            if GRAPHS[graph].nodes[t][0] == "yield":
+                live_paths[yn] = live_paths.get(yn, 0) + 1
+                ny = t
+            q.append((t, ny))
+    for nd in order:
+        if nd in dead_node and live_paths.get(nd, 0) == 0 and visited[nd] < MAX:
+            return nd
+    return None
+
+
+atomic fair action PostRun:
+    require phase == "post"
+    if DEADLOCK_DETECTION and not no_graph:
+        reported_deadlock = find_deadlock()
+    if reported_deadlock != None:
+        verdict = "DEADLOCK"
+    else:
+        verdict = "PASS"
+    phase = "done"
+
+
+# ---------------------------------------------------------------------------
+# Properties
+# ---------------------------------------------------------------------------
+
+# A PASS means no reachable bad state within the bound.
+always assertion NoMissedViolation:
+    return verdict != "PASS" or len(truth_bad) == 0
+
+# A PASS means no reachable deadlock within the bound.
+always assertion NoMissedDeadlock:
+    return verdict != "PASS" or len(truth_deadlocks) == 0
+
+# A reported invariant failure is a real one.
+always assertion ReportedFailureIsReal:
+    return verdict != "FAIL" or failed in truth_bad
+
+# A reported deadlock is a real one.
+always assertion ReportedDeadlockIsReal:
+    return verdict != "DEADLOCK" or reported_deadlock in truth_deadlocks
+
+# On a PASS, exactly the yield points reachable within the bound are stored.
+always assertion FullCoverage:
+    if verdict != "PASS":
+        return True
+    stored = sorted([n for n in visited if kind_of(n) == "yield"])
+    return stored == truth_yields
+
+# uniqueYieldCount (printed as "Unique states" in no-graph mode) counts
+# each stored yield point once. A failing yield point is stored but not
+# published, so the count is only exact when the run did not fail.
+always assertion UniqueYieldCount:
+    if verdict == "FAIL":
+        return True
+    return counters["unique_yields"] == len([n for n in visited if kind_of(n) == "yield"])
+
+# In processed mode, dedup happens before enqueue, so p.queue never holds
+# the same yield point twice.
+always assertion ProcessedQueueHasNoDuplicates:
+    if not processed:
+        return True
+    return len(queue) == len(set([e[0] for e in queue]))
+
+# Collapsed steps never enter the global visited set.
+always assertion CollapsedStepsNotStored:
+    if not collapse_active:
+        return True
+    return len([n for n in visited if kind_of(n) == "mid"]) == 0
+
+# The checker always finishes.
+eventually always assertion Terminates:
+    return phase == "done"
+
+# Sanity: every verdict shows up in some run.
+exists assertion SomeRunPasses:
+    return verdict == "PASS"
+
+exists assertion SomeRunFails:
+    return verdict == "FAIL"
+
+exists assertion SomeRunDeadlocks:
+    return verdict == "DEADLOCK"

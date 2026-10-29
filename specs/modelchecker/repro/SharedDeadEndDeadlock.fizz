@@ -1,0 +1,35 @@
+---
+options:
+    max_actions: 3
+    crash_on_yield: false
+---
+
+# Repro for the shared_dead_end case in ../ExecutionLoop.fizz.
+#
+# After Flip, x == 1 and the only action left is A, whose forks are all
+# disabled, so x == 1 is a deadlock. Every mode reports PASSED:
+#   ./fizz specs/modelchecker/repro/SharedDeadEndDeadlock.fizz
+#   ./fizz --experimental_processed_queue specs/modelchecker/repro/SharedDeadEndDeadlock.fizz
+#   ./fizz --experimental_processed_queue --experimental_no_graph specs/modelchecker/repro/SharedDeadEndDeadlock.fizz
+#
+# A sets x = 5 before forking, so its mid-action state is the same from
+# x == 0 and from x == 1. From x == 1 that state is a dedup hit, which the
+# early deadlock check counts as a live successor, and the post-run graph
+# walk in markovchain.go never revisits the shared node for the second yield
+# point. Change `x = 5` to `t = x` and both report the deadlock.
+
+action Init:
+    x = 0
+
+atomic action Flip:
+    require x == 0
+    x = 1
+
+atomic action Stay:
+    require x == 0
+    x = 0
+
+atomic action A:
+    x = 5
+    v = oneof [1, 2]
+    require v == 3
