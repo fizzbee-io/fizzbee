@@ -401,6 +401,37 @@ func HasFormulaAssertions(file *ast.File) bool {
 	return false
 }
 
+// SymmetricFairActions lists the fair actions of symmetric roles, as
+// Role.Action, when file has a liveness assertion. Symmetry reduction can
+// hide a liveness violation that depends on them: a link into a stored
+// symmetric state renames the role ids, and the fairness check doesn't
+// follow the renaming (issue #427).
+func SymmetricFairActions(file *ast.File) []string {
+	hasLiveness := false
+	for _, invariant := range file.Invariants {
+		alwaysEventually, eventuallyAlways := livenessOperators(invariant)
+		if invariant.Formula != nil || alwaysEventually || eventuallyAlways {
+			hasLiveness = true
+			break
+		}
+	}
+	if !hasLiveness {
+		return nil
+	}
+	var actions []string
+	for _, role := range file.Roles {
+		if !slices.Contains(role.Modifiers, "symmetric") {
+			continue
+		}
+		for _, action := range role.Actions {
+			if action.Name != "Init" && action.GetFairness().GetLevel() > ast.FairnessLevel_FAIRNESS_LEVEL_UNFAIR {
+				actions = append(actions, role.Name+"."+action.Name)
+			}
+		}
+	}
+	return actions
+}
+
 // CheckStrictLivenessScc is CheckStrictLiveness on the SCC-based engine.
 func CheckStrictLivenessScc(root *Node, nodes []*Node) ([]*Link, *InvariantPosition, error) {
 	process := root.Process

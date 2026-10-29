@@ -994,6 +994,12 @@ type Node struct {
 	// yield-point is popped and expanded. Nil for OLD-mode nodes.
 	yieldForks []*Process `json:"-"`
 
+	// preYieldName: the Name this node had before processNode relabelled
+	// it "yield". The deferred YieldNode/YieldFork restores it while
+	// forking, so children inherit the action name as in the default
+	// path (see Process.IsYield).
+	preYieldName string
+
 	// pathTail: in experimental no-graph mode, a lightweight linked-list
 	// node holding the action / link name that produced this node, plus a
 	// pointer to its parent's pathTail. Used for reconstructing a failure
@@ -1576,6 +1582,7 @@ func (p *Processor) publishYieldPoint(yp *Node, forks []*Process) {
 	}
 	if p.experimentalProcessedQueue {
 		yp.yieldForks = forks
+		yp.preYieldName = yp.Name
 		p.expandedYieldPoints = append(p.expandedYieldPoints, yp)
 		return
 	}
@@ -1973,6 +1980,8 @@ func (p *Processor) startProcessedQueue() (init *Node, failedNode *Node, err err
 
 		// Replay the deferred YieldNode/YieldFork to schedule yp's
 		// successor action-starts into pendingActionStarts.
+		yieldName := yp.Name
+		yp.Name = yp.preYieldName
 		if len(yp.yieldForks) > 0 {
 			for _, fork := range yp.yieldForks {
 				p.YieldFork(yp, fork)
@@ -1980,8 +1989,10 @@ func (p *Processor) startProcessedQueue() (init *Node, failedNode *Node, err err
 		} else {
 			p.YieldNode(yp)
 		}
+		yp.Name = yieldName
 		// yieldForks no longer needed; release for GC.
 		yp.yieldForks = nil
+		yp.preYieldName = ""
 
 		// Snapshot signals before expansion so we can tell after
 		// drainAndFlush whether yp produced any live successors:
