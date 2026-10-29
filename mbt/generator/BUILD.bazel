@@ -1,14 +1,18 @@
-load("@pypi//:requirements.bzl", "requirement")
+load("@fizzbee_pypi//:requirements.bzl", "requirement")
+load("@rules_python//python:defs.bzl", "py_library", "py_binary")
 
 py_library(
     name = "generator",
     srcs = [
+        "__init__.py",
         "filenames.py",
     ],
     visibility = ["//visibility:public"],
     deps = [
+        "//mbt:init",
         "//proto:ast_py_proto",
-        "//parser:fizz"
+        "//proto:py_init",
+        "//parser:fizz",
     ],
 )
 

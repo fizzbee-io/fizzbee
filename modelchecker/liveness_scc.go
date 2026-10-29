@@ -21,6 +21,13 @@ type sccGraph struct {
 	index      map[*Node]int
 	actionKeys []string // action identities, for diagnostics
 	reverse    [][]int  // predecessors over non-crash edges, built on first use
+	quiet      bool     // don't announce each property checked
+}
+
+func (s *sccGraph) announce(what, name string) {
+	if !s.quiet {
+		fmt.Println(what, name)
+	}
 }
 
 // isObservationNode reports whether n is a state between actions, where the
@@ -41,6 +48,14 @@ func isFairChoiceNode(n *Node) bool {
 }
 
 func newSccGraph(root *Node, nodes []*Node) *sccGraph {
+	return newPartialSccGraph(root, nodes, nil)
+}
+
+// newPartialSccGraph is newSccGraph for a graph still being explored. A link
+// to a node that isOpen reports, one whose own links are not all known yet,
+// is not an edge, but its action still counts as enabled where it starts.
+// isOpen may be nil.
+func newPartialSccGraph(root *Node, nodes []*Node, isOpen func(*Node) bool) *sccGraph {
 	index := make(map[*Node]int, len(nodes))
 	for i, n := range nodes {
 		index[n] = i
@@ -78,7 +93,8 @@ func newSccGraph(root *Node, nodes []*Node) *sccGraph {
 		s.g.WeakUnobserved[i] = choice
 		for _, link := range node.Outbound {
 			to, ok := index[link.Node]
-			if !ok {
+			open := !ok && isOpen != nil && isOpen(link.Node)
+			if !ok && !open {
 				continue
 			}
 			var a int
@@ -95,11 +111,14 @@ func newSccGraph(root *Node, nodes []*Node) *sccGraph {
 				// taking an observed action.
 				a = actionOf("internal|"+link.Name, liveness.Unfair)
 			}
-			s.g.Edges = append(s.g.Edges, liveness.Edge{From: i, To: to, Action: a})
-			s.links = append(s.links, link)
 			if !slices.Contains(s.g.Enabled[i], a) {
 				s.g.Enabled[i] = append(s.g.Enabled[i], a)
 			}
+			if open {
+				continue
+			}
+			s.g.Edges = append(s.g.Edges, liveness.Edge{From: i, To: to, Action: a})
+			s.links = append(s.links, link)
 		}
 	}
 	return s
@@ -315,7 +334,7 @@ func (s *sccGraph) checkFormula(f *liveness.Formula, isLabeled []bool, letters [
 // counterexample.
 func (s *sccGraph) checkFormulaAssertion(invariant *ast.Invariant, j int, classic bool) (bool, []*Link, []string, error) {
 	if invariant.Formula != nil {
-		fmt.Println("Checking formula", invariant.Name)
+		s.announce("Checking formula", invariant.Name)
 		isLabeled, letters := s.letters(
 			func(n *Node) bool { return n.Process.Atoms != nil },
 			func(n *Node) uint64 { return n.Process.Atoms[j] })
@@ -332,9 +351,9 @@ func (s *sccGraph) checkFormulaAssertion(invariant *ast.Invariant, j int, classi
 	}
 	if f := classicFormula(invariant); classic && f != nil {
 		if _, eventuallyAlways := livenessOperators(invariant); eventuallyAlways {
-			fmt.Println("Checking eventually always", invariant.Name)
+			s.announce("Checking eventually always", invariant.Name)
 		} else {
-			fmt.Println("Checking always eventually", invariant.Name)
+			s.announce("Checking always eventually", invariant.Name)
 		}
 		// The same nodes strictLivenessPredicate counts.
 		relevant := func(n *Node) bool { return n.Process.GetThreadsCount() == 0 || n.Name == "yield" }
@@ -388,9 +407,17 @@ func CheckStrictLivenessScc(root *Node, nodes []*Node) ([]*Link, *InvariantPosit
 	if len(process.Files) > 1 {
 		panic("Invariant checking not supported for multiple files yet")
 	}
-	s := newSccGraph(root, nodes)
-	for i, file := range process.Files {
+	return newSccGraph(root, nodes).checkStrictLiveness(process.Files, nil)
+}
+
+// checkStrictLiveness checks every liveness and formula assertion of files
+// but those skip reports, and returns the first counterexample found.
+func (s *sccGraph) checkStrictLiveness(files []*ast.File, skip func(*ast.Invariant) bool) ([]*Link, *InvariantPosition, error) {
+	for i, file := range files {
 		for j, invariant := range file.Invariants {
+			if skip != nil && skip(invariant) {
+				continue
+			}
 			if checked, path, notes, err := s.checkFormulaAssertion(invariant, j, false); checked {
 				if err != nil {
 					return nil, nil, fmt.Errorf("assertion %s: %w", invariant.Name, err)
@@ -407,11 +434,11 @@ func CheckStrictLivenessScc(root *Node, nodes []*Node) ([]*Link, *InvariantPosit
 				continue
 			}
 			if eventuallyAlways {
-				fmt.Println("Checking eventually always", invariant.Name)
+				s.announce("Checking eventually always", invariant.Name)
 			} else {
-				fmt.Println("Checking always eventually", invariant.Name)
+				s.announce("Checking always eventually", invariant.Name)
 			}
-			path, err := s.check(strictLivenessPredicate(nodes, i, j, eventuallyAlways), eventuallyAlways)
+			path, err := s.check(strictLivenessPredicate(s.nodes, i, j, eventuallyAlways), eventuallyAlways)
 			if err != nil {
 				return nil, nil, fmt.Errorf("liveness %s: %w", invariant.Name, err)
 			}

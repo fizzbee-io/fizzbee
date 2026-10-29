@@ -23,6 +23,41 @@ func midpoint(lo, hi int64) (int64, error) {
 	return lo + (hi-lo)/2, nil
 }
 
+// OrdinalRespaceMinGap is the smallest gap the model checker tolerates between
+// adjacent live ordinal IDs, or between an ID and either end of the ID range.
+// Midpoint allocation halves a gap on every insertion, so repeated insertion
+// into the same gap would exhaust the int64 range after about 60 steps. When
+// a gap falls below this size, the checker respaces the domain's IDs evenly
+// by rank (see OrdinalRespacedIDs), which preserves their order. The margin
+// leaves room for about 30 more insertions into one gap within a single step.
+// Tests raise it to force respacing on every state.
+var OrdinalRespaceMinGap int64 = 1 << 32
+
+// OrdinalNeedsRespace reports whether the sorted, live IDs of an ordinal
+// domain have a gap smaller than OrdinalRespaceMinGap.
+func OrdinalNeedsRespace(sortedIDs []int64) bool {
+	prev := int64(0)
+	for _, id := range sortedIDs {
+		if id-prev < OrdinalRespaceMinGap {
+			return true
+		}
+		prev = id
+	}
+	return ordinalMax-prev < OrdinalRespaceMinGap
+}
+
+// OrdinalRespacedIDs returns n IDs spread evenly over (0, ordinalMax), in
+// increasing order. The ID of rank i is replaced by the i-th returned ID.
+// A single value lands on ordinalMid, the ID fresh() gives an empty domain.
+func OrdinalRespacedIDs(n int) []int64 {
+	step := ordinalMax / int64(n+1)
+	ids := make([]int64, n)
+	for i := range ids {
+		ids[i] = step * int64(i+1)
+	}
+	return ids
+}
+
 // SymmetryKind represents the type of symmetry for a domain.
 // Different kinds have different operations and canonicalization strategies.
 type SymmetryKind string
@@ -98,7 +133,18 @@ type SymmetryContext struct {
 	// FizzCall, when set, lets fizz funcs be called inside expressions.
 	// Only predicate contexts (assertions) set it; see FizzCallKey.
 	FizzCall FizzCallFunc
+
+	// Roles and Channels are the running process's role list and channel
+	// map, published to the thread as RolesKey and ChannelsKey so that
+	// constructor builtins shared by every process find the right ones.
+	Roles    *[]*Role
+	Channels map[int]*Channel
 }
+
+// RolesKey is the starlark Thread local holding the running process's
+// *[]*Role; ChannelsKey holds its map[int]*Channel.
+const RolesKey = "fizz_roles"
+const ChannelsKey = "fizz_channels"
 
 // FizzCallFunc runs fizz func name synchronously. recv is the role for a role
 // method, nil for a top-level func.
@@ -257,10 +303,19 @@ func (d *SymmetryDomain) AttrNames() []string {
 }
 
 // segments returns a list of Segment objects representing gaps between active values.
-// Usage: domain.segments(after=None, before=None)
+// With include_points=True, each existing value is also returned as a point segment,
+// interleaved in rank order: (-inf,a1) [a1,a1] (a1,a2) ... [an,an] (an,+inf).
+// Bounds: gt/ge (lower, exclusive/inclusive), lt/le (upper, exclusive/inclusive).
+// after/before are aliases of gt/lt. A bound is compared by position and need
+// not be active; a gap is only returned when all of it is in range, so an
+// empty or reversed range returns an empty list.
+// Usage: domain.segments(after=None, before=None, include_points=False, gt=None, ge=None, lt=None, le=None)
 func (d *SymmetryDomain) segments(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var after, before starlark.Value
-	if err := starlark.UnpackArgs("segments", args, kwargs, "after?", &after, "before?", &before); err != nil {
+	var after, before, gt, ge, lt, le starlark.Value
+	includePoints := false
+	if err := starlark.UnpackArgs("segments", args, kwargs,
+		"after?", &after, "before?", &before, "include_points?", &includePoints,
+		"gt?", &gt, "ge?", &ge, "lt?", &lt, "le?", &le); err != nil {
 		return nil, err
 	}
 
@@ -271,6 +326,9 @@ func (d *SymmetryDomain) segments(thread *starlark.Thread, _ *starlark.Builtin, 
 	}
 	ctx := ctxVal.(*SymmetryContext)
 	ctx.EnsureDomainInit(d.Name)
+	if includePoints {
+		d.ensureMaterialized(ctx)
+	}
 
 	// Collect and Sort IDs
 	var used []int64
@@ -279,84 +337,119 @@ func (d *SymmetryDomain) segments(thread *starlark.Thread, _ *starlark.Builtin, 
 	}
 	slices.Sort(used)
 
+	isSet := func(v starlark.Value) bool { return v != nil && v != starlark.None }
+
+	// resolveBound picks at most one of the given (name, value) bound arguments
+	// and returns its ID.
+	type boundArg struct {
+		name string
+		val  starlark.Value
+	}
+	resolveBound := func(candidates ...boundArg) (id int64, name string, ok bool, err error) {
+		for _, c := range candidates {
+			if !isSet(c.val) {
+				continue
+			}
+			if ok {
+				return 0, "", false, fmt.Errorf("segments: '%s' and '%s' cannot be used together", name, c.name)
+			}
+			sv, isSV := c.val.(*SymmetricValue)
+			if !isSV || sv.prefix != d.Name {
+				return 0, "", false, fmt.Errorf("segments: '%s' must be a value from domain %s", c.name, d.Name)
+			}
+			id, name, ok = sv.id, c.name, true
+		}
+		return id, name, ok, nil
+	}
+
+	lowerID, lowerName, hasLower, err := resolveBound(boundArg{"after", after}, boundArg{"gt", gt}, boundArg{"ge", ge})
+	if err != nil {
+		return nil, err
+	}
+	upperID, upperName, hasUpper, err := resolveBound(boundArg{"before", before}, boundArg{"lt", lt}, boundArg{"le", le})
+	if err != nil {
+		return nil, err
+	}
+	lowerInclusive := lowerName == "ge"
+	upperInclusive := upperName == "le"
+
+	// A gap lies strictly between two adjacent existing values, and bounds are
+	// existing values, so a gap is in range iff its left end is at or above the
+	// lower bound and its right end is at or below the upper bound. Inclusive
+	// and exclusive bounds only differ for points.
+	pointInRange := func(id int64) bool {
+		if hasLower && (id < lowerID || (id == lowerID && !lowerInclusive)) {
+			return false
+		}
+		if hasUpper && (id > upperID || (id == upperID && !upperInclusive)) {
+			return false
+		}
+		return true
+	}
+
 	var segments []starlark.Value
 
-	// Helper to extract int64 ID from value
-	getID := func(v starlark.Value) (int64, bool) {
-		if sv, ok := v.(*SymmetricValue); ok {
-			if sv.prefix == d.Name {
-				return sv.id, true
-			}
-		}
-		return 0, false
-	}
-
-	var afterID int64
-	hasAfter := after != nil && after != starlark.None
-	if hasAfter {
-		if id, ok := getID(after); ok {
-			afterID = id
-		} else {
-			return nil, fmt.Errorf("segments: 'after' must be a value from domain %s", d.Name)
-		}
-	}
-
-	var beforeID int64 = ordinalMax
-	hasBefore := before != nil && before != starlark.None
-	if hasBefore {
-		if id, ok := getID(before); ok {
-			beforeID = id
-		} else {
-			return nil, fmt.Errorf("segments: 'before' must be a value from domain %s", d.Name)
-		}
-	}
-
 	if len(used) == 0 {
-		segments = append(segments, &Segment{Domain: d, IsHead: true, IsTail: true})
-	} else {
-		// Head Segment: (0, used[0])
-		if !hasAfter {
-			if !hasBefore || used[0] <= beforeID {
-				segments = append(segments, &Segment{Domain: d, Right: used[0], IsHead: true})
-			}
+		// The single gap (-inf, +inf) is both the head and the tail, so like
+		// them it is only in range when there is no bound on that side.
+		if !hasLower && !hasUpper {
+			segments = append(segments, &Segment{Domain: d, IsHead: true, IsTail: true})
 		}
+		return starlark.NewList(segments), nil
+	}
 
+	// Head Segment: (-inf, used[0])
+	if !hasLower && (!hasUpper || used[0] <= upperID) {
+		segments = append(segments, &Segment{Domain: d, Right: used[0], IsHead: true})
+	}
+
+	for i, id := range used {
+		if includePoints && pointInRange(id) {
+			segments = append(segments, &Segment{Domain: d, Left: id, Right: id, IsPoint: true})
+		}
+		if i == len(used)-1 {
+			break
+		}
 		// Body Segments: (used[i], used[i+1])
-		for i := 0; i < len(used)-1; i++ {
-			left, right := used[i], used[i+1]
-			isAfter := !hasAfter || left >= afterID
-			isBefore := !hasBefore || right <= beforeID
-
-			if isAfter && isBefore {
-				segments = append(segments, &Segment{Domain: d, Left: left, Right: right})
-			}
+		left, right := id, used[i+1]
+		if (!hasLower || left >= lowerID) && (!hasUpper || right <= upperID) {
+			segments = append(segments, &Segment{Domain: d, Left: left, Right: right})
 		}
+	}
 
-		// Tail Segment: (used[last], ordinalMax)
-		last := used[len(used)-1]
-		if !hasBefore {
-			if !hasAfter || last >= afterID {
-				segments = append(segments, &Segment{Domain: d, Left: last, IsTail: true})
-			}
-		}
+	// Tail Segment: (used[last], +inf)
+	last := used[len(used)-1]
+	if !hasUpper && (!hasLower || last >= lowerID) {
+		segments = append(segments, &Segment{Domain: d, Left: last, IsTail: true})
 	}
 
 	return starlark.NewList(segments), nil
 }
 
-// Segment represents an interval in an Ordinal Symmetry domain
+// Segment represents an interval in an Ordinal Symmetry domain: either an open
+// gap between adjacent active values (where a new value can be inserted), or,
+// when IsPoint is set, the closed interval [Left, Left] holding an existing value.
 type Segment struct {
 	Domain *SymmetryDomain
 	Left   int64
 	Right  int64
 	IsHead bool
 	IsTail bool
+	// IsPoint marks the segment as an existing value (Left == Right).
+	IsPoint bool
+	// Resolved and ResolvedID memoize the value allocated by value() on a gap,
+	// so repeated calls return the same value.
+	Resolved   bool
+	ResolvedID int64
 }
 
 var _ starlark.Value = (*Segment)(nil)
 var _ starlark.HasAttrs = (*Segment)(nil)
 
 func (s *Segment) String() string {
+	if s.IsPoint {
+		return fmt.Sprintf("<segment %s [%d, %d]>", s.Domain.Name, s.Left, s.Left)
+	}
 	leftStr := fmt.Sprintf("%d", s.Left)
 	if s.IsHead {
 		leftStr = "-inf"
@@ -369,8 +462,17 @@ func (s *Segment) String() string {
 }
 
 func (s *Segment) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf(`{"domain":"%s","left":%d,"right":%d,"is_head":%t,"is_tail":%t}`,
-		s.Domain.Name, s.Left, s.Right, s.IsHead, s.IsTail)), nil
+	// Extra fields are only written when set, so the JSON (and state hashes)
+	// of plain gap segments stay unchanged.
+	extra := ""
+	if s.IsPoint {
+		extra += `,"is_point":true`
+	}
+	if s.Resolved {
+		extra += fmt.Sprintf(`,"resolved":%d`, s.ResolvedID)
+	}
+	return []byte(fmt.Sprintf(`{"domain":"%s","left":%d,"right":%d,"is_head":%t,"is_tail":%t%s}`,
+		s.Domain.Name, s.Left, s.Right, s.IsHead, s.IsTail, extra)), nil
 }
 func (s *Segment) Type() string         { return "symmetry_segment" }
 func (s *Segment) Freeze()              {}
@@ -380,19 +482,72 @@ func (s *Segment) Hash() (uint32, error) {
 }
 
 func (s *Segment) Attr(name string) (starlark.Value, error) {
-	if name == "fresh" {
+	switch name {
+	case "fresh":
 		return starlark.NewBuiltin("fresh", s.fresh), nil
+	case "value":
+		return starlark.NewBuiltin("value", s.value), nil
+	case "is_point":
+		return starlark.Bool(s.IsPoint), nil
 	}
 	return nil, nil
 }
 
 func (s *Segment) AttrNames() []string {
-	return []string{"fresh"}
+	return []string{"fresh", "is_point", "value"}
+}
+
+// value resolves the segment to an ordinal value: a point returns its existing
+// value; a gap allocates a fresh value on the first call and returns the same
+// value on later calls. Disables the transition if the domain is at its limit.
+// Usage: seg.value()
+func (s *Segment) value(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if err := starlark.UnpackArgs("value", args, kwargs); err != nil {
+		return nil, err
+	}
+	if s.IsPoint {
+		return s.reuse(thread, s.Left)
+	}
+	if s.Resolved {
+		return s.reuse(thread, s.ResolvedID)
+	}
+	v, err := s.fresh(thread, b, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	s.Resolved = true
+	s.ResolvedID = v.(*SymmetricValue).id
+	return v, nil
+}
+
+// reuse returns an already known value of this segment (a point's value, or a
+// memoized gap value). The value may have been dropped from the state since the
+// segment was selected, for example across a yield in a non-atomic action;
+// bringing it back must still respect the limit.
+func (s *Segment) reuse(thread *starlark.Thread, id int64) (starlark.Value, error) {
+	ctxVal := thread.Local(SymmetryContextKey)
+	if ctxVal == nil {
+		return nil, fmt.Errorf("internal error: symmetry context not found in thread")
+	}
+	ctx := ctxVal.(*SymmetryContext)
+	ctx.EnsureDomainInit(s.Domain.Name)
+	if !ctx.Cache[s.Domain.Name][id] {
+		if len(ctx.Cache[s.Domain.Name]) >= s.Domain.Limit {
+			return nil, &DisableTransitionError{
+				Message: fmt.Sprintf("symmetry limit reached for domain %q (limit %d)", s.Domain.Name, s.Domain.Limit),
+			}
+		}
+		ctx.Cache[s.Domain.Name][id] = true
+	}
+	return NewSymmetricValueWithKind(s.Domain.Name, id, s.Domain.Kind), nil
 }
 
 func (s *Segment) fresh(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	if err := starlark.UnpackArgs("fresh", args, kwargs); err != nil {
 		return nil, err
+	}
+	if s.IsPoint {
+		return nil, fmt.Errorf("fresh() called on a point segment of domain %s (an existing value); use value() instead", s.Domain.Name)
 	}
 
 	// Check Limit
@@ -738,6 +893,7 @@ func makeNominal(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 	if name == "" {
 		return nil, fmt.Errorf("nominal: name cannot be empty")
 	}
+	MarkSymmetryUsed()
 	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindNominal, Materialize: materialize}, nil
 }
 
@@ -757,6 +913,7 @@ func makeOrdinal(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 	if name == "" {
 		return nil, fmt.Errorf("ordinal: name cannot be empty")
 	}
+	MarkSymmetryUsed()
 	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindOrdinal, Reflection: reflection, Materialize: materialize}, nil
 }
 
@@ -822,6 +979,7 @@ func makeInterval(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 		return nil, fmt.Errorf("interval: divergence must be >= 0, got %d", divergenceInt)
 	}
 
+	MarkSymmetryUsed()
 	return &SymmetryDomain{
 		Name:        name,
 		Limit:       limitInt,
@@ -849,6 +1007,7 @@ func makeRotational(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 	if name == "" {
 		return nil, fmt.Errorf("rotational: name cannot be empty")
 	}
+	MarkSymmetryUsed()
 	return &SymmetryDomain{Name: name, Limit: limit, Kind: SymmetryKindRotational, Materialize: materialize, Reflection: reflection}, nil
 }
 

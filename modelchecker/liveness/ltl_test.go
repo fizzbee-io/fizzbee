@@ -217,6 +217,32 @@ func TestProductMatchesSemantics(t *testing.T) {
 	}
 }
 
+// WeakUntil is a until b, or always a, and the product agrees with that on
+// every run. The encoding uses b twice, as one shared subformula.
+func TestWeakUntil(t *testing.T) {
+	r := rand.New(rand.NewSource(4))
+	for i := 0; i < iterations(t); i++ {
+		w := randomWordGraph(r)
+		a, b := randomFormula(r, 2), randomFormula(r, 2)
+		f := liveness.WeakUntil(a, b)
+		want := w.hasWord && holds(liveness.Or(liveness.Until(a, b), liveness.Always(a)), w.prefix, w.loop)
+		if got := w.hasWord && holds(f, w.prefix, w.loop); got != want {
+			t.Fatalf("%s on word %v·(%v)^ω: the encoding gives %v, want %v", formulaString(f), w.prefix, w.loop, got, want)
+		}
+		p, err := liveness.NewProduct(w.g, f, w.labeled, w.letter, w.canStop)
+		if err != nil {
+			t.Fatal(err)
+		}
+		l, err := liveness.Check(p.Graph)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if (l != nil) != want {
+			t.Fatalf("%s on word %v·(%v)^ω: product found run %v, want %v", formulaString(f), w.prefix, w.loop, l != nil, want)
+		}
+	}
+}
+
 // On the classic forms, the product with the negated formula must agree with
 // the engine's direct encodings, fairness included.
 func TestProductMatchesClassicForms(t *testing.T) {

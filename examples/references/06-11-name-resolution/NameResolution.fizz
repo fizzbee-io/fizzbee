@@ -1,0 +1,68 @@
+---
+deadlock_detection: false
+---
+
+# Example: Name Resolution
+# Which binding a name refers to when locals, function parameters, role
+# fields, state and comprehension variables share a name.
+# Demonstrates: shadowing, comprehensions, lambdas, nested blocks, role
+# methods reading globals. Every check runs inside the actions, so a wrong
+# lookup fails an assertion.
+
+LIMIT = 2
+
+role Counter:
+    action Init:
+        self.n = 0
+
+    func bump(n):
+        # The parameter n shadows the field self.n.
+        self.n = self.n + n
+        return n
+
+    atomic action Step:
+        require self.n < LIMIT
+        got = self.bump(1)
+        ok = ok and got == 1
+
+
+action Init:
+    count = 0
+    x = 10
+    ok = True
+    counter = Counter()
+
+
+func shadow(x):
+    # The parameter x shadows the state variable x.
+    return x * 2
+
+
+atomic action Shadowing:
+    require count < 2
+    count = count + 1
+    # Inside shadow, x is the parameter, not the state variable.
+    doubled = shadow(3)
+    ok = ok and doubled == 6 and x == 10
+    # A comprehension variable named like a state variable does not leak.
+    squares = [x * x for x in range(3)]
+    ok = ok and squares == [0, 1, 4] and x == 10
+    # A lambda parameter shadows too.
+    add = lambda x, y: x + y
+    ok = ok and add(1, 2) == 3 and x == 10
+
+
+atomic action NestedBlocks:
+    require count < 2
+    total = 0
+    for i in range(2):
+        for j in range(2):
+            if i == j:
+                total = total + 1
+    # A local set in a nested block is visible after it.
+    ok = ok and total == 2
+    count = count + 1
+
+
+always assertion AllLookupsCorrect:
+    return ok

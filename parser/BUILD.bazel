@@ -1,8 +1,10 @@
-load("@pypi//:requirements.bzl", "requirement")
+load("@fizzbee_pypi//:requirements.bzl", "requirement")
+load("@rules_python//python:defs.bzl", "py_library", "py_binary", "py_test")
 
 py_library(
     name = "fizz",
     srcs = [
+        "__init__.py",
         "BuildAstVisitor.py",
         "ErrorListener.py",
         "FizzLexer.py",
@@ -16,6 +18,7 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         "//proto:ast_py_proto",
+        "//proto:py_init",
         requirement("antlr4-python3-runtime"),
     ],
 )

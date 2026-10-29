@@ -1,0 +1,43 @@
+# Example 0121: Incremental liveness checking
+# Find a liveness violation without exploring every state first
+# Demonstrates: --experimental_incremental_liveness (see flags.txt)
+
+---
+deadlock_detection: false
+options:
+  max_actions: 200
+---
+# A producer may send up to 60 messages and a consumer acknowledges them.
+# The consumer is weakly fair, so every message sent is acknowledged. The
+# producer isn't fair, so nothing makes it send them all: a run may only
+# ever exchange heartbeats. AllSent is false on that run.
+#
+# Normally liveness is checked once the whole state space is explored.
+# With --experimental_incremental_liveness the checker also checks the part
+# explored so far, each time the node count doubles, and stops at the
+# first violation. Here the run of heartbeats sits next to Init, so the
+# first partial check finds it, long before all 3,782 states are
+# explored. A run with no violation still ends with the full check, so the
+# option never changes a verdict, only when a failure is reported.
+
+action Init:
+    sent = 0
+    acked = 0
+    beat = False
+
+atomic action Send:
+    require sent < 60
+    sent += 1
+
+atomic fair action Ack:
+    require acked < sent
+    acked += 1
+
+atomic fair action Heartbeat:
+    beat = not beat
+
+always eventually assertion AllAcked:
+    return acked == sent
+
+always eventually assertion AllSent:
+    return sent == 60

@@ -2,6 +2,7 @@ load("@protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_go//go:def.bzl", "go_library")
 load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@protobuf//bazel:py_proto_library.bzl", "py_proto_library")
+load("@rules_python//python:defs.bzl", "py_library")
 
 proto_library(
     name = "ast_proto",
@@ -87,4 +88,12 @@ py_proto_library(
     name = "graph_py_proto",
     visibility = ["//visibility:public"],
     deps = [":graph_proto"],
+)
+
+# The generated *_pb2.py modules form the `proto` python package; this
+# supplies its __init__.py (rules_python no longer fabricates one).
+py_library(
+    name = "py_init",
+    srcs = ["__init__.py"],
+    visibility = ["//visibility:public"],
 )

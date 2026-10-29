@@ -152,6 +152,7 @@ func MakeSymmetricValues(thread *starlark.Thread, fn *starlark.Builtin, args sta
 	if err != nil {
 		return nil, fmt.Errorf("symmetric_values(int) or symmetric_values(string, int) expected. %v", err)
 	}
+	MarkSymmetryUsed()
 	values := SymmetricValues{}
 	for i := 0; i < count; i++ {
 		values.Tuple = append(values.Tuple, NewSymmetricValue(prefix, int64(i)))

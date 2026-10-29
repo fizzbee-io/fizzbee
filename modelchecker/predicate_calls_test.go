@@ -138,6 +138,35 @@ func TestPredicateCallBinding(t *testing.T) {
 	}
 }
 
+// A top-level fizz func named like a fizz builtin (lib.Builtins, such as sum)
+// wins over a local of that name, as it did when predicate funcs were added
+// to the full environment; any other fizz func is shadowed by a local.
+func TestPredicateFuncShadowing(t *testing.T) {
+	p := predicateCallsSpec(t, "Calls")
+	root, failed, err := p.Start()
+	require.Nil(t, err)
+	require.Nil(t, failed)
+	caller := root.Process.CloneForAssert(nil, 0)
+	caller.enablePredicateCalls()
+	caller.SymbolTable = maps.Clone(caller.SymbolTable)
+	caller.SymbolTable["sum"] = caller.SymbolTable["ident"]
+	caller.NewThread()
+	caller.currentThread().currentFrame().scope = &Scope{vars: starlark.StringDict{
+		"sum":   starlark.String("local-sum"),
+		"ident": starlark.String("local-ident"),
+	}}
+
+	v, ok := caller.lookupName("sum")
+	require.True(t, ok)
+	b, isBuiltin := v.(*starlark.Builtin)
+	require.True(t, isBuiltin, "sum resolves to %v", v)
+	assert.NotSame(t, lib.Builtins["sum"], b, "the fizz func, not the fizz builtin")
+
+	v, ok = caller.lookupName("ident")
+	require.True(t, ok)
+	assert.Equal(t, starlark.String("local-ident"), v)
+}
+
 // Roles created while evaluating an assertion, in a func it calls, don't
 // shift the ids real actions allocate, whether the assertion succeeds or
 // fails.

@@ -14,7 +14,6 @@
 package modelchecker
 
 import (
-	"crypto/sha256"
 	ast "fizz/proto"
 	"fmt"
 	"log"
@@ -231,14 +230,6 @@ type Process struct {
 	// dirty: with --experimental_lazy_fork, set once a statement ran that
 	// may have written to the state; a clean disabled clone is reused.
 	dirty bool
-
-	// baseEnv caches the constant part of the statement environment; see
-	// baseEnvironment. Never copied by Fork or CloneWithRefs.
-	baseEnv starlark.StringDict
-	// baseEnvGlobals and baseEnvModules identify the globals and modules
-	// maps baseEnv was built from.
-	baseEnvGlobals uintptr
-	baseEnvModules uintptr
 
 	// assertionBindings holds, for each assertion instance a `for` header
 	// expanded to, the values its clause names are bound to.
@@ -628,77 +619,6 @@ func (n *Node) GetName() string {
 	return p.Name
 }
 
-func (p *Process) HashCode() string {
-	if p.CachedHashCode != "" {
-		return p.CachedHashCode
-	}
-	threadHashes := make([]string, len(p.Threads))
-	p.CachedThreadHashes = make([]string, len(threadHashes))
-	for i, thread := range p.Threads {
-		threadHashes[i] = thread.HashCode()
-		// Having a second copy of the thread hashes as the first one
-		// will be sorted to create the process hash
-		p.CachedThreadHashes[i] = threadHashes[i]
-	}
-
-	h := sha256.New()
-
-	// Use the Current thread's hash first, not the index
-	currentThreadHash := ""
-	if len(threadHashes) > 0 && p.Current >= 0 {
-		currentThreadHash = threadHashes[p.Current]
-	}
-	h.Write([]byte(currentThreadHash))
-
-	// Sort the thread hashes to make the hash deterministic
-	sort.Strings(threadHashes)
-	for _, hash := range threadHashes {
-		h.Write([]byte(hash))
-	}
-
-	if !excludeReturnsFromState {
-		h.Write([]byte(StringDictToJsonString(p.Returns)))
-	}
-
-	for _, role := range p.Roles {
-		// Include the role's data in the hash to distinguish processes with different role states
-		// This should not use the lib/jsonmarshaller.go, that just substitutes roles with their reference.
-		bytes, err := role.MarshalJSON()
-		if err != nil {
-			panic(err)
-		}
-		h.Write(bytes)
-	}
-	// hash the heap variables as well
-	heapHash := p.Heap.HashCode()
-	h.Write([]byte(heapHash))
-
-	channelKeys := make([]int, 0, len(p.Channels))
-	for k := range p.Channels {
-		channelKeys = append(channelKeys, k)
-	}
-	sort.Ints(channelKeys)
-	for _, k := range channelKeys {
-		channel := p.Channels[k]
-		h.Write([]byte(fmt.Sprintf("%d:%s", k, channel.String())))
-	}
-
-	channelMsgKeys := make([]int, 0, len(p.ChannelMessages))
-	for k := range p.ChannelMessages {
-		channelMsgKeys = append(channelMsgKeys, k)
-	}
-	sort.Ints(channelMsgKeys)
-	for _, k := range channelMsgKeys {
-		messages := p.ChannelMessages[k]
-		// TODO: Sort the messages, for unordered channels
-		for _, message := range messages {
-			h.Write([]byte(fmt.Sprintf("%d:%s", k, message.HashCode())))
-		}
-	}
-	p.CachedHashCode = fmt.Sprintf("%x", h.Sum(nil))
-	return p.CachedHashCode
-}
-
 func (p *Process) currentThread() *Thread {
 	return p.Threads[p.Current]
 }
@@ -765,76 +685,8 @@ func (p *Process) GetAllVariables() starlark.StringDict {
 	return dict
 }
 
-// GetAllVariablesNocopy returns all variables visible in the Current thread, without deep copying.
-// This includes state variables and variables from the Current thread's variables in the top call frame
-func (p *Process) GetAllVariablesNocopy() starlark.StringDict {
-	// Resolution precedence: builtins < globals < state < self < locals.
-	// See GetAllVariables for the full rationale.
-	base := p.baseEnvironment()
-	dict := maps.Clone(base)
-
-	maps.Copy(dict, p.Heap.state)
-	frame := p.currentThread().currentFrame()
-	if frame.obj != nil {
-		dict["self"] = frame.obj
-	}
-	maps.Copy(dict, frame.vars)
-	frame.scope.getAllVisibleVariablesToDictNoCopy(dict)
-
-	// These were historically added after the state and locals, so they
-	// win over a user variable of the same name. Re-assert them from the
-	// base so that order still holds.
-	dict["deepcopy"] = base["deepcopy"]
-	dict["resolve_role"] = base["resolve_role"]
-	for k, v := range p.Modules {
-		dict[k] = v
-	}
-	for _, file := range p.Files {
-		for _, role := range file.Roles {
-			dict[role.Name] = base[role.Name]
-		}
-	}
-	dict["Channel"] = base["Channel"]
-	p.addPredicateFuncs(dict)
-	return dict
-}
-
 // deepcopyBuiltin is shared by every environment; it holds no state.
 var deepcopyBuiltin = starlark.NewBuiltin("deepcopy", DeepCopyBuiltIn)
-
-// baseEnvironment returns the part of the statement environment that is
-// the same for every statement this process runs: builtins, globals,
-// modules and the constructor builtins, which close over this process's
-// role list and channel map. Built on first use and reused for the life of
-// the process; a fork starts with none and builds its own, since its
-// closures must point at its own roles and channels.
-func (p *Process) baseEnvironment() starlark.StringDict {
-	// Heap.globals is replaced once, when preinit finishes (processPreInit
-	// builds the map in a local and assigns it), and is otherwise never
-	// written. A cache built from the earlier, empty map must be rebuilt
-	// once the real one is in place, so key the cache on the map's identity.
-	globalsID := reflect.ValueOf(p.Heap.globals).Pointer()
-	modulesID := reflect.ValueOf(p.Modules).Pointer()
-	if p.baseEnv != nil && p.baseEnvGlobals == globalsID && p.baseEnvModules == modulesID {
-		return p.baseEnv
-	}
-	p.baseEnvGlobals = globalsID
-	p.baseEnvModules = modulesID
-	dict := maps.Clone(lib.Builtins)
-	maps.Copy(dict, p.Heap.globals)
-	dict["deepcopy"] = deepcopyBuiltin
-	dict["resolve_role"] = lib.CreateResolveRoleBuiltIn(&p.Roles)
-	maps.Copy(dict, p.Modules)
-	for _, file := range p.Files {
-		for _, role := range file.Roles {
-			symmetric := slices.Contains(role.Modifiers, "symmetric")
-			dict[role.Name] = lib.CreateRoleBuiltin(role, symmetric, &p.Roles)
-		}
-	}
-	dict["Channel"] = lib.CreateChannelBuiltin(p.Channels)
-	p.baseEnv = dict
-	return dict
-}
 
 // createSymmetryContext creates a new SymmetryContext for use during statement execution.
 // The context provides a scanner function that collects all currently used symmetric values
@@ -852,7 +704,131 @@ func (p *Process) createSymmetryContext() *lib.SymmetryContext {
 		ctx = lib.NewSymmetryContext(scanner)
 	}
 	ctx.FizzCall = p.fizzCall
+	ctx.Roles = &p.Roles
+	ctx.Channels = p.Channels
 	return ctx
+}
+
+// fixedEnvironment returns the shared map of names asserted after the
+// user's own in every environment; see Evaluator.fixedEnv. The map is built
+// on the first call and cached on the Evaluator, which every process of the
+// run shares; later calls only compare the modules map and return it.
+func (p *Process) fixedEnvironment() starlark.StringDict {
+	e := p.Evaluator
+	modulesID := reflect.ValueOf(p.Modules).Pointer()
+	if e.fixedEnv != nil && e.fixedEnvModules == modulesID {
+		return e.fixedEnv
+	}
+	dict := make(starlark.StringDict, len(p.Modules)+8)
+	dict["deepcopy"] = deepcopyBuiltin
+	dict["resolve_role"] = lib.CreateResolveRoleBuiltInFromThread()
+	maps.Copy(dict, p.Modules)
+	for _, file := range p.Files {
+		for _, role := range file.Roles {
+			symmetric := slices.Contains(role.Modifiers, "symmetric")
+			dict[role.Name] = lib.CreateRoleBuiltinFromThread(role, symmetric)
+		}
+	}
+	dict["Channel"] = lib.CreateChannelBuiltinFromThread()
+	e.fixedEnv = dict
+	e.fixedEnvModules = modulesID
+	return dict
+}
+
+// lookupName resolves one name as the statement environment would, with
+// the same precedence as GetAllVariables: the fixed names win, then
+// the innermost scope outwards, the frame's arguments, self, state,
+// globals, the top-level fizz funcs (when predicate calls are on) and the
+// builtins.
+func (p *Process) lookupName(name string) (starlark.Value, bool) {
+	return p.lookupNameIn(p.fixedEnvironment(), name)
+}
+
+// lookupNameIn is lookupName with the fixed environment already fetched.
+func (p *Process) lookupNameIn(fixed starlark.StringDict, name string) (starlark.Value, bool) {
+	if v, ok := fixed[name]; ok {
+		return v, true
+	}
+	// A top-level fizz func named like a fizz builtin (lib.Builtins) wins
+	// over every binding of that name, as addPredicateFuncs did on the full
+	// environment.
+	if lib.Builtins[name] != nil {
+		if b := p.fizzFuncBuiltin(name); b != nil {
+			return b, true
+		}
+	}
+	frame := p.currentThread().currentFrame()
+	for s := frame.scope; s != nil; s = s.parent {
+		if v, ok := s.vars[name]; ok {
+			return v, true
+		}
+	}
+	if v, ok := frame.vars[name]; ok {
+		return v, true
+	}
+	if name == "self" && frame.obj != nil {
+		return frame.obj, true
+	}
+	if v, ok := p.Heap.state[name]; ok {
+		return v, true
+	}
+	if v, ok := p.Heap.globals[name]; ok {
+		return v, true
+	}
+	if b := p.fizzFuncBuiltin(name); b != nil {
+		return b, true
+	}
+	if v, ok := lib.Builtins[name]; ok {
+		return v, true
+	}
+	return nil, false
+}
+
+// fizzFuncBuiltin returns the shared builtin that calls the top-level fizz
+// func name, or nil when predicate calls are off or name is not one.
+func (p *Process) fizzFuncBuiltin(name string) *starlark.Builtin {
+	if p.fizzCall == nil {
+		return nil
+	}
+	def, ok := p.SymbolTable[name]
+	if !ok || def.DefType != Function || def.roleName != "" {
+		return nil
+	}
+	e := p.Evaluator
+	if e.fizzFuncs == nil {
+		e.fizzFuncs = make(map[string]*starlark.Builtin)
+	}
+	b, ok := e.fizzFuncs[name]
+	if !ok {
+		b = lib.FizzFuncBuiltin(name)
+		e.fizzFuncs[name] = b
+	}
+	return b
+}
+
+// envForNames builds the environment for code that references names:
+// just those names, each looked up in place. Starlark needs a flat map,
+// and a statement names a handful of things, so this replaces copying
+// every builtin, global, state variable and local for every statement.
+func (p *Process) envForNames(names []string) starlark.StringDict {
+	dict := make(starlark.StringDict, len(names)+2)
+	fixed := p.fixedEnvironment()
+	for _, name := range names {
+		if v, ok := p.lookupNameIn(fixed, name); ok {
+			dict[name] = v
+		}
+	}
+	return dict
+}
+
+// envForExpr is envForNames for a spec expression.
+func (p *Process) envForExpr(expr *ast.Expr) starlark.StringDict {
+	return p.envForNames(exprNames(expr.GetPyExpr()))
+}
+
+// envForPyStmt is envForNames for a spec statement.
+func (p *Process) envForPyStmt(stmt *ast.PyStmt) starlark.StringDict {
+	return p.envForNames(stmtNames(stmt.GetCode()))
 }
 
 // saveRotationalLastAllocated persists the LastAllocated state from a SymmetryContext back to the Process.
@@ -1007,6 +983,11 @@ type Node struct {
 
 	DuplicateOf *Node
 
+	// transient marks a mid-action step that --experimental_collapse_steps
+	// kept out of the graph: it is neither a yield point nor a fair choice,
+	// so its successors link directly from the nearest kept ancestor.
+	transient bool
+
 	// yieldForks: in the experimental processed-queue mode, when a node
 	// reaches yield, its forks list (from thread.Execute) is saved here so
 	// startProcessedQueue can replay YieldNode/YieldFork later when the
@@ -1074,6 +1055,24 @@ type Link struct {
 	// Forward-compatible field for consumers (graph, MBT, explorer) to migrate
 	// to reading return values from the link instead of from Process.Returns.
 	Returns starlark.StringDict
+
+	// Weight is this link's share of its source node's fan-out at the time
+	// the fork was made (1/number of forks), or 0 when not recorded. A
+	// collapsed link carries the product along the collapsed path, so the
+	// exported graph keeps the original branching probabilities.
+	Weight float64
+	// Choices are the names of the collapsed steps this link stands for,
+	// in order, when --experimental_collapse_steps removed their nodes.
+	Choices []string
+}
+
+// linkWeight is a link's weight for probability purposes: an unrecorded
+// weight counts as 1.
+func linkWeight(l *Link) float64 {
+	if l.Weight > 0 {
+		return l.Weight
+	}
+	return 1
 }
 
 func (l *Link) IsCrashLink() bool {
@@ -1128,6 +1127,8 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 		Messages:       n.Inbound[0].Messages,
 		ReqId:          n.Inbound[0].ReqId,
 		Returns:        n.Inbound[0].Returns,
+		Weight:         n.Inbound[0].Weight,
+		Choices:        n.Inbound[0].Choices,
 	}
 	parent.Outbound = append(parent.Outbound, newOutLink)
 
@@ -1179,6 +1180,8 @@ func (n *Node) Attach() {
 		Messages:       n.Inbound[0].Messages,
 		ReqId:          n.Inbound[0].ReqId,
 		Returns:        n.Inbound[0].Returns,
+		Weight:         n.Inbound[0].Weight,
+		Choices:        n.Inbound[0].Choices,
 
 		FailedInvariants: n.Inbound[0].FailedInvariants,
 	}
@@ -1227,6 +1230,65 @@ func (n *Node) ForkForAlternatePaths(process *Process, name string) *Node {
 	return forkNode
 }
 
+// isKeptNodeName reports whether a node with this name is always stored
+// under --experimental_collapse_steps: init and crash nodes are observation
+// nodes for liveness, like yield points.
+func isKeptNodeName(name string) bool {
+	return name == "init" || name == "yield" || name == "crash"
+}
+
+// isFairChoiceForks reports whether forks are the options of a fair `any`
+// choice. The node that produced them must stay in the graph, since
+// liveness observes the enabledness of its options there (isFairChoiceNode).
+func isFairChoiceForks(forks []*Process) bool {
+	if len(forks) == 0 || !strings.HasPrefix(forks[0].Name, "Any:") {
+		return false
+	}
+	f := forks[0].ChoiceFairness
+	return f != ast.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN && f != ast.FairnessLevel_FAIRNESS_LEVEL_UNFAIR
+}
+
+// mergeCollapsedLink joins the inbound link of a collapsed step (top, which
+// already reaches back to the nearest kept ancestor) with the link from that
+// step to its successor (cur). The result reads as the single step that the
+// kept ancestor took: name, type, fairness and request id come from the top
+// link, while labels, messages, returns and failed invariants accumulate.
+func mergeCollapsedLink(top *Link, cur *Link) *Link {
+	merged := &Link{
+		Node:           top.Node,
+		Type:           top.Type,
+		Name:           top.Name,
+		Fairness:       top.Fairness,
+		ChoiceFairness: top.ChoiceFairness,
+		ReqId:          top.ReqId,
+		Weight:         linkWeight(top) * linkWeight(cur),
+	}
+	merged.Choices = make([]string, 0, len(top.Choices)+1)
+	merged.Choices = append(merged.Choices, top.Choices...)
+	merged.Choices = append(merged.Choices, cur.Name)
+	if len(top.Labels)+len(cur.Labels) > 0 {
+		merged.Labels = make([]string, 0, len(top.Labels)+len(cur.Labels))
+		merged.Labels = append(merged.Labels, top.Labels...)
+		merged.Labels = append(merged.Labels, cur.Labels...)
+	}
+	if len(top.Messages)+len(cur.Messages) > 0 {
+		merged.Messages = make([]*ast.Message, 0, len(top.Messages)+len(cur.Messages))
+		merged.Messages = append(merged.Messages, top.Messages...)
+		merged.Messages = append(merged.Messages, cur.Messages...)
+	}
+	if len(top.Returns)+len(cur.Returns) > 0 {
+		merged.Returns = make(starlark.StringDict, len(top.Returns)+len(cur.Returns))
+		maps.Copy(merged.Returns, top.Returns)
+		maps.Copy(merged.Returns, cur.Returns)
+	}
+	if len(top.FailedInvariants)+len(cur.FailedInvariants) > 0 {
+		merged.FailedInvariants = make(map[int][]int, len(top.FailedInvariants)+len(cur.FailedInvariants))
+		maps.Copy(merged.FailedInvariants, top.FailedInvariants)
+		maps.Copy(merged.FailedInvariants, cur.FailedInvariants)
+	}
+	return merged
+}
+
 type Processor struct {
 	Init               *Node
 	Files              []*ast.File
@@ -1271,6 +1333,20 @@ type Processor struct {
 	// at startup. The failure path (parent pointer chain via Inbound[0])
 	// remains intact so a failure trace can be reconstructed on demand.
 	experimentalNoGraph bool
+
+	// experimentalCollapseSteps: when true, mid-action steps that are
+	// neither yield points nor fair `any` choices are not stored in the
+	// graph or the visited set. Once an action's internal steps have been
+	// explored to the next yield point, that yield point links directly
+	// from the previous one, carrying the action link's name and fairness.
+	// Liveness reads fairness only on links out of yield/init/crash and
+	// fair-choice nodes, so those are kept as nodes. Internal steps are
+	// deduplicated per expansion in stepVisited (reset in expandToYield),
+	// not across the run. Off by default; only the default BFS path
+	// (Start) honours it; see collapseActive.
+	experimentalCollapseSteps bool
+	collapseActive            bool
+	stepVisited               map[string]*Node
 
 	// disableSymmetryReduction: when true, visited-set dedup uses only the
 	// plain state hash — no symmetry permutations, so no canonical renaming
@@ -1328,8 +1404,22 @@ type Processor struct {
 	// Indexed [fileIndex][invariantIndex]; lazily sized on first use.
 	existsWitness [][]bool
 
-	// usesSymmetry caches specUsesSymmetry's answer; nil until first asked.
+	// usesSymmetry caches specUsesSymmetry's answer once it is true; nil
+	// or false means ask again.
 	usesSymmetry *bool
+	// incrementalLiveness: when true, Start checks liveness on the closed
+	// part of the graph each time the visited count doubles, and stops at
+	// the first violation. See liveness_incremental.go. Off by default.
+	incrementalLiveness bool
+	// pendingActions counts, per node, the actions it scheduled that are
+	// still queued. A node with a count is open.
+	pendingActions             map[*Node]int
+	nextIncrementalCheck       int
+	incrementalEvery           int             // tests: check after each node popped once this many more are visited, instead of doubling
+	partialCheckHook           func(*sccGraph) // tests: replaces the partial check
+	incrementalFailurePath     []*Link
+	incrementalFailedInvariant *InvariantPosition
+	incrementalErr             error
 }
 
 // accumulateExistsWitness ORs a just-checked process's Witness flags into
@@ -1393,6 +1483,12 @@ func (p *Processor) SetExperimentalProcessedQueue(v bool) {
 // experimentalProcessedQueue and for refusing specs with liveness assertions.
 func (p *Processor) SetExperimentalNoGraph(v bool) {
 	p.experimentalNoGraph = v
+}
+
+// SetExperimentalCollapseSteps enables collapsing of unfair mid-action
+// steps into direct yield-to-yield links. Must be called before Start.
+func (p *Processor) SetExperimentalCollapseSteps(v bool) {
+	p.experimentalCollapseSteps = v
 }
 
 // SetDisableSymmetryReduction turns off symmetry-permutation dedup so every
@@ -1472,6 +1568,12 @@ func (p *Processor) publishYieldPoint(yp *Node, forks []*Process) {
 	// Only called for NEW (not dedup-skipped) yield-points — processNode
 	// short-circuits before reaching the publish step on dedup hits.
 	p.uniqueYieldCount++
+	if p.experimentalNoGraph {
+		// The parent (often the cloned process at a oneof step) is not
+		// read again once this yield point's transition checks have run;
+		// holding it would keep a full state alive per queued yield point.
+		yp.Process.Parent = nil
+	}
 	if p.experimentalProcessedQueue {
 		yp.yieldForks = forks
 		p.expandedYieldPoints = append(p.expandedYieldPoints, yp)
@@ -1508,6 +1610,7 @@ func (p *Processor) enqueueScheduled(node *Node) {
 		}
 		return
 	}
+	p.trackScheduled(node)
 	p.addToProcessingQueue(node)
 }
 
@@ -1547,6 +1650,7 @@ func NewProcessorWithVisitedTracking(files []*ast.File, options *ast.StateSpaceO
 		intermediateStates = lib.NewQueue[*Node]()
 	}
 	lib.ClearRoleRefs()
+	lib.ResetSymmetryUsed()
 	durabilitySpec := &DurabilitySpec{RoleDurabilitySpec: make(map[string]RoleDurabilitySpec)}
 	mc := NewModelChecker("example")
 	for _, file := range files {
@@ -1651,6 +1755,12 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 	if p.Init != nil {
 		panic("processor already started")
 	}
+	// Guided traces match link names step by step, and refinement checks
+	// read every stored node, so collapsing is limited to plain BFS runs.
+	p.collapseActive = p.experimentalCollapseSteps && p.guidedTrace == nil && len(p.Files[0].Refinements) == 0
+	if p.collapseActive {
+		p.stepVisited = make(map[string]*Node)
+	}
 	startTime := time.Now()
 	init, failedNode, err = p.InitializeNode()
 	if err != nil {
@@ -1665,12 +1775,15 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 			panic("queue should not be empty")
 		}
 
+		scheduledBy := p.scheduledBy(node)
 		if node.actionDepth > int(p.config.Options.MaxActions) {
 			// Add a node to indicate why this node was not processed
+			p.trackDone(scheduledBy)
 			continue
 		}
 
 		invariantFailure, symmetryFound, crashFailedNode, finalNode := p.expandToYield(node, startTime, &prevCount)
+		p.trackDone(scheduledBy)
 
 		if crashFailedNode != nil && failedNode == nil {
 			failedNode = crashFailedNode
@@ -1684,6 +1797,9 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 			failedNode = finalNode
 		}
 		if invariantFailure && !p.config.ContinueOnInvariantFailures {
+			break
+		}
+		if failedNode == nil && p.maybeCheckLivenessIncrementally() {
 			break
 		}
 		//if node.Process != nil && *p.config.Options.CrashOnYield && node.Enabled {
@@ -1729,6 +1845,12 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 func (p *Processor) expandToYield(node *Node, startTime time.Time, prevCount *int) (
 	invariantFailure bool, symmetryFound bool, crashFailedNode *Node, finalNode *Node) {
 	finalNode = node
+	if p.collapseActive {
+		// Internal steps are shared only within one expansion: the same
+		// mid-action state reached from another yield point is explored
+		// again, which costs time but keeps no step alive across yields.
+		clear(p.stepVisited)
+	}
 	for {
 		if len(p.visited)%20000 == 0 && len(p.visited) != *prevCount {
 			if p.isTest {
@@ -1792,6 +1914,12 @@ func (p *Processor) expandToYield(node *Node, startTime time.Time, prevCount *in
 func (p *Processor) startProcessedQueue() (init *Node, failedNode *Node, err error) {
 	if p.Init != nil {
 		panic("processor already started")
+	}
+	// No-graph mode stores no links, so collapsing only keeps mid-action
+	// steps out of the permanent visited set (see processNode).
+	p.collapseActive = p.experimentalCollapseSteps && p.experimentalNoGraph && p.guidedTrace == nil && len(p.Files[0].Refinements) == 0
+	if p.collapseActive {
+		p.stepVisited = make(map[string]*Node)
 	}
 	startTime := time.Now()
 	init, failedNode, err = p.InitializeNode()
@@ -2489,6 +2617,25 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	if node.ThreadProgress {
 		node.Enable()
 	}
+	// Respace ordinal IDs before the state is stored, so repeated midpoint
+	// allocation into one gap never runs out of room. This runs before the
+	// returns are copied to the inbound link, so the link and the state
+	// agree on IDs. Skipped when symmetry reduction is disabled, since those
+	// states must keep concrete identities.
+	if !p.disableSymmetryReduction && node.Process.respaceOrdinalIDs() {
+		node.CachedHashCode = ""
+	}
+	transient := false
+	collapsedParent := false
+	if p.collapseActive && len(node.Inbound) > 0 {
+		transient = !yield && !isKeptNodeName(node.Name) && !isFairChoiceForks(forks)
+		if parent := node.Inbound[0].Node; parent != nil && parent.transient {
+			// The parent was a collapsed step: link this node from the
+			// nearest kept ancestor instead, as the action's single step.
+			node.Inbound[0] = mergeCollapsedLink(parent.Inbound[0], node.Inbound[0])
+			collapsedParent = true
+		}
+	}
 	// Add the labels from the process to the inbound links
 	// This must be done even for duplicate nodes
 	// The labels for the outbound links are added when the node is merged/attached
@@ -2534,6 +2681,15 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 			}
 		}
 	}
+	if collapsedParent {
+		// Process.Parent was needed up to here: Execute read Parent.Enabled
+		// and propagated Enabled up the chain, and the transition
+		// invariants compared against the parent's heap. Re-point it past
+		// the collapsed steps so they can be freed once this expansion
+		// ends. propagateEnabled behaves the same: a step is only Enabled
+		// after its ancestors were, so the walk stops at the same place.
+		node.Process.Parent = node.Inbound[0].Node.Process
+	}
 
 	if node.actionDepth > 0 {
 		passed, _ := CheckSymmetryConstraints(node.Process)
@@ -2552,31 +2708,46 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		// in no_graph mode we don't keep the existing Node to compare.
 		if found {
 			// Pure dedup hit; the current node won't be retained either.
+			// Still a live successor for early deadlock detection.
+			p.dedupHitsInExpansion++
 			return false, false
 		}
-		p.visited[canonicalHash] = nil
-	} else if found {
+		if transient {
+			// Collapsed step: dedup only against this expansion's steps,
+			// as in graph mode below.
+			if prev, ok := p.stepVisited[canonicalHash]; ok && (prev.Enabled || !node.Enabled) {
+				return false, false
+			}
+			p.stepVisited[canonicalHash] = node
+			node.transient = true
+		} else {
+			p.visited[canonicalHash] = nil
+		}
+	} else if found && (other.Enabled || !node.Enabled) {
 		// TODO: Enabled should be a property of the link/transition, not the node.
 		// We will keep the enabled state in the node, during execution but have to be
 		// copied to the link/transition when attaching/merging similar to Fairness.
-		if other.Enabled || !node.Enabled {
-			if yield && other.Name == "crash" {
-				if p.shouldThreadCrash(other) {
-					p.crashThread(other)
-				}
+		if yield && other.Name == "crash" {
+			if p.shouldThreadCrash(other) {
+				p.crashThread(other)
 			}
-			node.Duplicate(other, yield)
-			// Count this as a "live successor" signal for the early
-			// deadlock detector in startProcessedQueue Phase 2. A dedup
-			// hit means an action-start reached a previously visited
-			// canonical state — a real transition out of the current yp,
-			// even though no new entry is added to p.queue.
-			p.dedupHitsInExpansion++
-			return false, false
-		} else {
-			node.Attach()
-			p.visited[canonicalHash] = node
 		}
+		node.Duplicate(other, yield)
+		// Count this as a "live successor" signal for the early
+		// deadlock detector in startProcessedQueue Phase 2. A dedup
+		// hit means an action-start reached a previously visited
+		// canonical state — a real transition out of the current yp,
+		// even though no new entry is added to p.queue.
+		p.dedupHitsInExpansion++
+		return false, false
+	} else if transient {
+		// Collapsed step: not attached to the graph and not in the global
+		// visited set. Dedup only against the steps of this expansion.
+		if prev, ok := p.stepVisited[canonicalHash]; ok && (prev.Enabled || !node.Enabled) {
+			return false, false
+		}
+		p.stepVisited[canonicalHash] = node
+		node.transient = true
 	} else {
 		node.Attach()
 		p.visited[canonicalHash] = node
@@ -2598,6 +2769,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	if !yield {
 		for _, fork := range forks {
 			newNode := node.ForkForAlternatePaths(fork, fork.Name)
+			newNode.Inbound[0].Weight = 1.0 / float64(len(forks))
 			if p.ShouldScheduleNode(newNode) {
 				// Intermediate forks carry choice information in fork.Name:
 				// "Stmt:N" / "Any:var=value" / "For:value" / "checkpoint".
@@ -2832,38 +3004,28 @@ func (p *Processor) findVisitedSymmetric(node *Node) (*Node, bool, string) {
 	return other, ok, minHash
 }
 
-// specUsesSymmetry reports whether the spec can hold a symmetric value at
-// all: a role declared symmetric, or a symmetric_values / symmetry domain
-// definition among the globals or the initial state. Computed once per
-// run; when false, findVisitedSymmetric skips the clone-and-permute path.
+// specUsesSymmetry reports whether the run can hold a symmetric value at
+// all. Every symmetric value originates from one of three places: a role
+// declared symmetric, the symmetric_values builtin, or a symmetry domain
+// constructor; clones, arithmetic and canonicalization only derive new
+// values from existing ones. The first is visible in the AST; the other two
+// set lib.SymmetryUsed when they run, wherever that happens (top level,
+// preinit hook, or inside an action), so this needs no scan of the state.
+// A true answer is cached; a false one is re-checked against the flag each
+// time, since an action run later may still create the first value. When
+// false, findVisitedSymmetric skips the clone-and-permute path, which is
+// only an optimization: a missed symmetry costs states, never a verdict.
 func (p *Processor) specUsesSymmetry(process *Process) bool {
-	if p.usesSymmetry != nil {
-		return *p.usesSymmetry
+	if p.usesSymmetry != nil && *p.usesSymmetry {
+		return true
 	}
-	uses := false
-	for _, file := range p.Files {
-		for _, role := range file.Roles {
-			if slices.Contains(role.Modifiers, "symmetric") {
-				uses = true
-			}
-		}
-	}
-	isSymmetryDef := func(v starlark.Value) bool {
-		switch v.(type) {
-		case lib.SymmetricValues, *lib.SymmetricValues, *lib.SymmetryDomain:
-			return true
-		}
-		return false
-	}
-	if !uses && process != nil && process.Heap != nil {
-		for _, v := range process.Heap.globals {
-			if isSymmetryDef(v) {
-				uses = true
-			}
-		}
-		for _, v := range process.Heap.state {
-			if isSymmetryDef(v) {
-				uses = true
+	uses := lib.SymmetryUsed()
+	if !uses {
+		for _, file := range p.Files {
+			for _, role := range file.Roles {
+				if slices.Contains(role.Modifiers, "symmetric") {
+					uses = true
+				}
 			}
 		}
 	}
@@ -2874,8 +3036,16 @@ func (p *Processor) specUsesSymmetry(process *Process) bool {
 // canonicalHashWithoutSymmetry is the hash getSymmetryTranslations yields
 // for a state with no symmetric values: HashCode with the roles sorted by
 // name and ref (step 5 of symmetricHashWithoutClone), computed on the
-// state itself. The role order and the hash cache are restored afterwards
-// so HashCode keeps returning the unsorted-order value elsewhere.
+// state itself. The role order is restored afterwards.
+//
+// Invariant on return: CachedHashCode holds the canonical hash, the key
+// this state has in the visited map, and CachedThreadHashes holds the
+// per-thread hashes, which do not depend on role order. HashCode therefore
+// keeps returning the canonical value for the rest of the node's life.
+// Nothing downstream needs the unsorted-order hash: Node.Duplicate only
+// reads CachedThreadHashes, and findVisitedSymmetric clears the cache
+// before hashing. Restoring the old value instead would force a full
+// rehash on every dedup hit, which is most edges.
 func (p *Process) canonicalHashWithoutSymmetry() string {
 	origRoles := make([]*lib.Role, len(p.Roles))
 	copy(origRoles, p.Roles)
@@ -2888,9 +3058,6 @@ func (p *Process) canonicalHashWithoutSymmetry() string {
 	p.CachedHashCode = ""
 	hash := p.HashCode()
 	copy(p.Roles, origRoles)
-	// Leave the canonical value cached: Node.Duplicate calls HashCode on
-	// both nodes of a dedup hit only to populate CachedThreadHashes, and a
-	// cleared cache would make it redo the whole hash.
 	return hash
 }
 

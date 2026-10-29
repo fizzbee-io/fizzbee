@@ -35,6 +35,10 @@ func Eventually(f *Formula) *Formula { return Until(True(), f) }
 func Always(f *Formula) *Formula     { return Not(Eventually(Not(f))) }
 func Implies(a, b *Formula) *Formula { return Or(Not(a), b) }
 
+// WeakUntil is a until b, or always a: b needn't happen. It is written as
+// not (not b until (not a and not b)), which needs one until instead of two.
+func WeakUntil(a, b *Formula) *Formula { return Not(Until(Not(b), And(Not(a), Not(b)))) }
+
 // LeadsTo is always (a implies eventually b).
 func LeadsTo(a, b *Formula) *Formula { return Always(Implies(a, Eventually(b))) }
 

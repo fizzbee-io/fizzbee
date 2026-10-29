@@ -293,6 +293,10 @@ if state == "active":
 The call contexts themselves are unrestricted: calls work in atomic,
 serial, parallel, and oneof blocks, at the top level or within roles.
 
+Assertions are the exception: inside an assertion, a fizz func can be
+called anywhere in an expression, such as `all([c.done() for c in consumers])`.
+Each call runs on a copy of the state and must be deterministic.
+
 ## 12b. `require` Cannot Be a Direct Statement of a Parallel Block
 
 **Symptom**: `require cannot be a direct statement of a parallel block` error.
