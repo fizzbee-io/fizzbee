@@ -1548,6 +1548,12 @@ func (p *Processor) publishYieldPoint(yp *Node, forks []*Process) {
 	// Only called for NEW (not dedup-skipped) yield-points — processNode
 	// short-circuits before reaching the publish step on dedup hits.
 	p.uniqueYieldCount++
+	if p.experimentalNoGraph {
+		// The parent (often the cloned process at a oneof step) is not
+		// read again once this yield point's transition checks have run;
+		// holding it would keep a full state alive per queued yield point.
+		yp.Process.Parent = nil
+	}
 	if p.experimentalProcessedQueue {
 		yp.yieldForks = forks
 		yp.preYieldName = yp.Name
@@ -1888,6 +1894,12 @@ func (p *Processor) expandToYield(node *Node, startTime time.Time, prevCount *in
 func (p *Processor) startProcessedQueue() (init *Node, failedNode *Node, err error) {
 	if p.Init != nil {
 		panic("processor already started")
+	}
+	// No-graph mode stores no links, so collapsing only keeps mid-action
+	// steps out of the permanent visited set (see processNode).
+	p.collapseActive = p.experimentalCollapseSteps && p.experimentalNoGraph && p.guidedTrace == nil && len(p.Files[0].Refinements) == 0
+	if p.collapseActive {
+		p.stepVisited = make(map[string]*Node)
 	}
 	startTime := time.Now()
 	init, failedNode, err = p.InitializeNode()
@@ -2668,9 +2680,21 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		// in no_graph mode we don't keep the existing Node to compare.
 		if found {
 			// Pure dedup hit; the current node won't be retained either.
+			// Still a live successor for early deadlock detection.
+			p.dedupHitsInExpansion++
 			return false, false
 		}
-		p.visited[canonicalHash] = nil
+		if transient {
+			// Collapsed step: dedup only against this expansion's steps,
+			// as in graph mode below.
+			if prev, ok := p.stepVisited[canonicalHash]; ok && (prev.Enabled || !node.Enabled) {
+				return false, false
+			}
+			p.stepVisited[canonicalHash] = node
+			node.transient = true
+		} else {
+			p.visited[canonicalHash] = nil
+		}
 	} else if found && (other.Enabled || !node.Enabled) {
 		// TODO: Enabled should be a property of the link/transition, not the node.
 		// We will keep the enabled state in the node, during execution but have to be
