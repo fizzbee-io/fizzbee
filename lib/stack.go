@@ -90,6 +90,20 @@ func (s *Stack[T]) Peek() (T, bool) {
 	}
 }
 
+// PeekUnlocked and LenUnlocked are Peek and Len without the lock, for a
+// stack that only one goroutine uses at a time.
+func (s *Stack[T]) PeekUnlocked() (T, bool) {
+	if s.peak != nil {
+		return *s.peak, true
+	}
+	var v T
+	return v, false
+}
+
+func (s *Stack[T]) LenUnlocked() int {
+	return len(s.s)
+}
+
 func (s *Stack[T]) Head() (T, bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
