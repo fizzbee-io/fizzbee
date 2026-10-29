@@ -1888,6 +1888,12 @@ func (p *Processor) startProcessedQueue() (init *Node, failedNode *Node, err err
 	if p.Init != nil {
 		panic("processor already started")
 	}
+	// No-graph mode stores no links, so collapsing only keeps mid-action
+	// steps out of the permanent visited set (see processNode).
+	p.collapseActive = p.experimentalCollapseSteps && p.experimentalNoGraph && p.guidedTrace == nil && len(p.Files[0].Refinements) == 0
+	if p.collapseActive {
+		p.stepVisited = make(map[string]*Node)
+	}
 	startTime := time.Now()
 	init, failedNode, err = p.InitializeNode()
 	if err != nil {
@@ -2667,7 +2673,17 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 			p.dedupHitsInExpansion++
 			return false, false
 		}
-		p.visited[canonicalHash] = nil
+		if transient {
+			// Collapsed step: dedup only against this expansion's steps,
+			// as in graph mode below.
+			if prev, ok := p.stepVisited[canonicalHash]; ok && (prev.Enabled || !node.Enabled) {
+				return false, false
+			}
+			p.stepVisited[canonicalHash] = node
+			node.transient = true
+		} else {
+			p.visited[canonicalHash] = nil
+		}
 	} else if found && (other.Enabled || !node.Enabled) {
 		// TODO: Enabled should be a property of the link/transition, not the node.
 		// We will keep the enabled state in the node, during execution but have to be
