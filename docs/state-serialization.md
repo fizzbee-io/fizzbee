@@ -71,7 +71,7 @@ Each value starts with a one-byte tag.
 | 15 | struct (`starlarkstruct`, enums, composed heaps) | shape, field values | **after** fields |
 | 16 | model_value | prefix string, varint id | yes |
 | 17 | symmetric_value | prefix, id, kind string, limit | yes |
-| 18 | role | name, symmetric bool, id value, statics index, params, fields | after id, before params |
+| 18 | role | name, symmetric bool, id value, has-methods bool, init values (string: their own self-contained encoding), params, fields | after id, before params |
 | 19 | RoleStub | role value, channel value | after both |
 | 20 | bag | count, values in bag order | before elements |
 | 21 | genericmap | count, (key, value)* | before entries |
@@ -81,7 +81,8 @@ Each value starts with a one-byte tag.
 | 25 | symmetry_domain | name, limit, kind, divergence, start, flags | yes |
 | 26 | symmetric_values | count, values | |
 | 27 | range | start, stop, step varints | |
-| 28 | opaque | uvarint index into the `CodecContext` | |
+| 28 | opaque | uvarint index into the `CodecContext` (in-process only) | |
+| 29 | global | name of a spec global (function or builtin) | |
 | 255 | reserved for an extension tag | | |
 
 **The pool.** Every value with identity gets the next pool index when it is
@@ -152,26 +153,45 @@ either.
 
 ## CodecContext
 
-Some values are shared between states by pointer: a deep clone keeps the
-same pointer instead of copying. The context, one per run
-(`Evaluator.CodecContext()`), keeps that true after decoding:
+A deep clone shares some values between states by pointer instead of copying
+them. The context, one per run (`Evaluator.CodecContext()`), keeps that true
+after decoding. Everything in it is written **by name or by value**, so a
+state decodes in any process running the same spec with the same binary,
+not only the one that wrote it:
 
 - **Channels and symmetry domains** are configuration. They are written by
-  value and interned by value, so decoding returns the very pointer that
-  was encoded.
-- **Opaque values** have no encoding of their own, such as starlark
-  functions and builtins that end up in a state. So does each role's
-  `Methods`, `RoleMethods` and `InitValues`, which every clone of a role
-  shares. Each one is stored once in an append-only table and written as
-  its index.
+  value and interned by value, so decoding returns the same pointer for
+  equal values.
+- **Role methods** are the same for every role of a type once its Init has
+  run. A role writes only whether it has them yet. The decoder takes them
+  from the context, which records them when a role is encoded in this
+  process. In another process the context's `RoleResolver` rebuilds them
+  from the spec by running the role's top-level statements, as Init does,
+  once per role type. A role whose Init hasn't run yet gets its own empty
+  map, which Init fills.
+- **RoleMethods** (the builtins for a role's fizz functions) are rebuilt
+  from the role's function names in the spec, once per role type.
+- **Init values** are written by value, as a self-contained encoding that
+  goes through the state's string table, so equal init values cost their
+  bytes once per state. The decoder interns them by (role type, encoding)
+  and hands out one shared struct per distinct value, like Java's
+  `readResolve`. Sharing is safe because init values are never changed in
+  place: `Role.SetInitValue` replaces the struct. Before this change, Init
+  updated the struct in place, and every clone of the role saw the update,
+  including states on other branches.
+- **Spec globals** (functions, builtins) that end up in a state are written
+  by name and looked up in the spec's globals.
 
-The opaque table is the only part that is local to the process. States sent
-to another machine will need these values named instead, for example
-methods by role type and name, and `InitValues` by value. That change is
-limited to the context and the two tags that use it.
+The **opaque table** is the fallback for a value with neither an encoding
+nor a name, for example a lambda kept in a variable. It stores the value
+and writes its index, which only means something inside this process. Specs
+in the reference suite don't hit it.
 
-The context is safe for concurrent use. A `StateWriter` is not; use one
-per goroutine (`NewStateWriter` takes them from a pool).
+The resolver for a run is set from the first process encoded or decoded
+(`modelchecker.specResolver`: the files, globals and evaluator, which are
+the same for every process of a run). The context is safe for concurrent
+use. A `StateWriter` is not; use one per goroutine (`NewStateWriter` takes
+them from a pool).
 
 ## Extending
 
@@ -194,10 +214,16 @@ per goroutine (`NewStateWriter` takes them from a pool).
   in `modelchecker/testdata` and round trips every stored state. The
   decoded state must encode to the same bytes, hash the same and render
   the same JSON.
+- The same test also decodes every state with a second run of the spec as
+  the template, whose context has seen none of the states. This is what
+  another process would do. `testdata/statecodec/RoleMethods.fizz` has role
+  methods and an ephemeral field, so this path is covered.
 - `FIZZ_STATE_CODEC_ROUNDTRIP=1`: makes `Fork` pass every new process
   through encode and decode, and panic if the result encodes differently.
-  With it set, `python3 test_references.py` must still pass all specs. It
-  did: 94 references and 10 lovable specs, with unchanged state counts.
+  `FIZZ_STATE_CODEC_ROUNDTRIP=fresh` does the same, but decodes with a new
+  context each time, as another process would. With either set,
+  `python3 test_references.py` must still pass all specs with unchanged
+  state counts.
 - `FIZZ_STATECODEC_SPEC=path/Spec.json go test ./modelchecker -run
   TestStateCodecSpecStats -v` prints size and speed for a spec.
 
@@ -224,7 +250,7 @@ and frames, which are mostly pcs and names.
   dictionary, seeded from the spec's field and variable names, would shrink
   each state further. The format allows that without changing the value
   encoding.
-- **Distribution.** Name the opaque values (see above). The rest of the
-  format has nothing tied to the process.
+- **Distribution.** States already decode in another process running the
+  same spec. The only exception is the opaque fallback above.
 - **Hashing.** This encoding isn't canonical: pool order and dict insertion
   order are kept. `lib.StateEncoder` remains the hash input.

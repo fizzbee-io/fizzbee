@@ -66,10 +66,51 @@ func (e *Evaluator) CodecContext() *lib.CodecContext {
 	return e.codecCtx
 }
 
+// specResolver rebuilds role methods and globals from the spec, so a
+// state encoded in one process decodes in another one running the same
+// spec.
+type specResolver struct {
+	files     []*ast.File
+	globals   starlark.StringDict
+	evaluator *Evaluator
+}
+
+func (r *specResolver) RoleMethods(roleName string) (map[string]*starlark.Function, map[string]*starlark.Builtin, error) {
+	for _, file := range r.files {
+		for _, role := range file.Roles {
+			if role.Name != roleName {
+				continue
+			}
+			methods, stmt, err := roleMethodsFromSpec(r.evaluator, file, role, r.globals)
+			if err != nil {
+				return nil, nil, fmt.Errorf("role %s: %s: %w", roleName, stmt.PyStmt.GetCode(), err)
+			}
+			return methods, lib.NewRoleMethodBuiltins(role), nil
+		}
+	}
+	return nil, nil, fmt.Errorf("role %s not in the spec", roleName)
+}
+
+func (r *specResolver) Global(name string) (starlark.Value, bool) {
+	v, ok := r.globals[name]
+	return v, ok
+}
+
+// codecContext returns the run's codec context, with a resolver for the
+// spec p belongs to.
+func codecContext(p *Process) *lib.CodecContext {
+	ctx := p.Evaluator.CodecContext()
+	if ctx.HasRoleResolver() {
+		return ctx
+	}
+	ctx.SetRoleResolver(&specResolver{files: p.Files, globals: p.Heap.globals, evaluator: p.Evaluator})
+	return ctx
+}
+
 // EncodeProcess returns the encoding of p. The result is owned by the
 // caller.
 func EncodeProcess(p *Process) ([]byte, error) {
-	w := lib.NewStateWriter(p.Evaluator.CodecContext())
+	w := lib.NewStateWriter(codecContext(p))
 	defer w.Release()
 	if err := writeProcess(w, p); err != nil {
 		return nil, err
@@ -336,7 +377,11 @@ func sortedIntKeys[V any](m map[int]V) []int {
 // parts (files, evaluator, globals, modules, symbol table) from it, as Fork
 // takes them from the parent. Parent is left nil for the caller to set.
 func DecodeProcess(data []byte, template *Process) (*Process, error) {
-	r := lib.NewStateReader(template.Evaluator.CodecContext(), data)
+	return decodeProcess(data, template, codecContext(template))
+}
+
+func decodeProcess(data []byte, template *Process, ctx *lib.CodecContext) (*Process, error) {
+	r := lib.NewStateReader(ctx, data)
 	if v := r.ReadUint8(); v != lib.StateCodecVersion {
 		if r.Err() != nil {
 			return nil, r.Err()
@@ -618,15 +663,23 @@ func readStringIntMap(r *lib.StateReader) map[string]int64 {
 // stateCodecRoundTrip makes Fork pass every new process through
 // EncodeProcess and DecodeProcess, and check that the decoded process
 // encodes to the same bytes. A test aid: with it set, a run must give the
-// same results as without.
+// same results as without. Set to "fresh", each decode uses a new codec
+// context, as if the state had been read by another process running the
+// same spec.
 var stateCodecRoundTrip = os.Getenv("FIZZ_STATE_CODEC_ROUNDTRIP") != ""
+var stateCodecRoundTripFresh = os.Getenv("FIZZ_STATE_CODEC_ROUNDTRIP") == "fresh"
 
 func roundTripProcess(p *Process) *Process {
 	data, err := EncodeProcess(p)
 	if err != nil {
 		panic(fmt.Sprintf("state codec: encode: %v", err))
 	}
-	p2, err := DecodeProcess(data, p)
+	ctx := codecContext(p)
+	if stateCodecRoundTripFresh {
+		ctx = lib.NewCodecContext()
+		ctx.SetRoleResolver(&specResolver{files: p.Files, globals: p.Heap.globals, evaluator: p.Evaluator})
+	}
+	p2, err := decodeProcess(data, p, ctx)
 	if err != nil {
 		panic(fmt.Sprintf("state codec: decode: %v", err))
 	}

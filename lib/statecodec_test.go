@@ -175,46 +175,94 @@ func TestStateCodecCycles(t *testing.T) {
 	assert.Same(t, in, back)
 }
 
+// testResolver stands in for the spec in a fresh process.
+type testResolver struct {
+	methods     map[string]*starlark.Function
+	roleMethods map[string]*starlark.Builtin
+	globals     starlark.StringDict
+}
+
+func (r *testResolver) RoleMethods(string) (map[string]*starlark.Function, map[string]*starlark.Builtin, error) {
+	return r.methods, r.roleMethods, nil
+}
+
+func (r *testResolver) Global(name string) (starlark.Value, bool) {
+	v, ok := r.globals[name]
+	return v, ok
+}
+
 func TestStateCodecRoles(t *testing.T) {
-	methods := map[string]*starlark.Function{}
+	methods := map[string]*starlark.Function{"helper": {}}
 	roleMethods := map[string]*starlark.Builtin{"Send": starlark.NewBuiltin("Send", nil)}
-	init := FromStringDict(starlark.String("init_values"), starlark.StringDict{})
 	mk := func(i int64) *Role {
 		return &Role{
 			ID: NewSymmetricValue("Node", i), Name: "Node", Symmetric: true,
 			Params:  FromStringDict(starlark.String("params"), starlark.StringDict{"n": starlark.MakeInt64(i)}),
 			Fields:  FromStringDict(starlark.String("fields"), starlark.StringDict{"log": starlark.NewList(nil)}),
-			Methods: methods, RoleMethods: roleMethods, InitValues: init,
+			Methods: methods, RoleMethods: roleMethods,
+			InitValues: FromStringDict(starlark.String("init_values"), starlark.StringDict{"log": starlark.NewList(nil)}),
 		}
 	}
 	r0, r1 := mk(0), mk(1)
 	require.NoError(t, r0.Fields.SetField("peer", r1))
+	// A role whose Init hasn't run yet has no methods.
+	r2 := mk(2)
+	r2.Methods = map[string]*starlark.Function{}
 	ch := &Channel{Id: 0, ordering: "ordered"}
 	stub := NewRoleStub(r1, ch)
-	builtin := starlark.NewBuiltin("f", nil)
+	global := starlark.NewBuiltin("helper_fn", nil)
+	lambda := starlark.NewBuiltin("not_a_global", nil)
+	resolver := &testResolver{methods: methods, roleMethods: roleMethods, globals: starlark.StringDict{"helper_fn": global}}
 
 	ctx := NewCodecContext()
-	out, data := roundTripValues(t, ctx, starlark.NewList([]starlark.Value{r0, r1, stub, builtin}))
+	ctx.SetRoleResolver(resolver)
+	state := starlark.NewList([]starlark.Value{r0, r1, stub, global, lambda, r2})
+	out, data := roundTripValues(t, ctx, state)
 	l := out[0].(*starlark.List)
-	g0, g1 := l.Index(0).(*Role), l.Index(1).(*Role)
+	g0, g1, g2 := l.Index(0).(*Role), l.Index(1).(*Role), l.Index(5).(*Role)
 	peer, _ := g0.Fields.Attr("peer")
 	assert.Same(t, g1, peer)
 	assert.Same(t, g1, l.Index(2).(*RoleStub).Role)
 	assert.Same(t, ch, l.Index(2).(*RoleStub).Channel)
-	assert.Same(t, builtin, l.Index(3))
+	assert.Same(t, global, l.Index(3))
+	assert.Same(t, lambda, l.Index(4), "a non-global builtin goes through the opaque table")
 	assert.Equal(t, r0.String(), g0.String())
 	assert.True(t, g0.IsSymmetric())
-	// Methods and init values are shared with the original, as a deep
-	// clone shares them.
-	assert.Same(t, init, g1.InitValues)
-	assert.Equal(t, roleMethods, g1.RoleMethods)
 	h0, _ := r0.Hash()
 	gh0, _ := g0.Hash()
 	assert.Equal(t, h0, gh0)
+	// Methods are shared per role type; a role before Init gets its own
+	// empty map, which Init fills.
+	assert.Equal(t, methods, g0.Methods)
+	assert.Empty(t, g2.Methods)
+	assert.Equal(t, roleMethods, g1.RoleMethods)
+	// Equal init values decode to one shared struct, like readResolve.
+	assert.Same(t, g0.InitValues, g1.InitValues)
+	assert.Equal(t, r0.InitValues.String(), g0.InitValues.String())
+	t.Logf("three roles + stub + builtins: %d bytes", len(data))
 
-	// Two roles of one type share field names through the shape table:
-	// the second role's params/fields shape costs one byte each.
-	t.Logf("two roles + stub + builtin: %d bytes", len(data))
+	// Setting an init value replaces the struct, so the others keep theirs.
+	g0.SetInitValue("log", starlark.MakeInt(1))
+	assert.NotSame(t, g0.InitValues, g1.InitValues)
+	assert.Equal(t, "init_values(log = [])", g1.InitValues.String())
+
+	// A fresh context (another process running the same spec) decodes the
+	// roles and the global from the resolver alone.
+	w := NewStateWriter(ctx)
+	defer w.Release()
+	require.NoError(t, w.WriteValue(starlark.NewList([]starlark.Value{r0, r1, global})))
+	fresh := NewCodecContext()
+	fresh.SetRoleResolver(resolver)
+	v, err := NewStateReader(fresh, w.Bytes()).ReadValue()
+	require.NoError(t, err)
+	fl := v.(*starlark.List)
+	assert.Equal(t, r0.String(), fl.Index(0).String())
+	assert.Equal(t, methods, fl.Index(0).(*Role).Methods)
+	assert.Same(t, global, fl.Index(2))
+
+	// Without a resolver, a fresh context can't resolve the methods.
+	_, err = NewStateReader(NewCodecContext(), w.Bytes()).ReadValue()
+	assert.Error(t, err)
 }
 
 func TestStateCodecUnsupportedAndCorrupt(t *testing.T) {

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fizzbee-io/fizzbee/lib"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
@@ -103,8 +104,37 @@ func TestStateCodecProcesses(t *testing.T) {
 				cfg = &ast.StateSpaceOptions{Options: &ast.Options{MaxActions: 20, MaxConcurrentActions: 1}}
 			}
 			p := runSpecForCodec(t, spec, cfg)
-			for _, n := range sortedVisited(p) {
+			nodes := sortedVisited(p)
+			for _, n := range nodes {
 				checkProcessRoundTrip(t, n.Process)
+			}
+
+			// Decode in a second run of the same spec, as another process
+			// would: its codec context has seen none of these states, so
+			// role methods and globals come from the spec.
+			other := sortedVisited(runSpecForCodec(t, spec, cfg))[0].Process
+			resolvedMethods := false
+			require.NotSame(t, nodes[0].Evaluator, other.Evaluator)
+			for _, n := range nodes {
+				data, err := EncodeProcess(n.Process)
+				require.NoError(t, err)
+				decoded, err := DecodeProcess(data, other)
+				require.NoError(t, err)
+				require.Equal(t, freshHash(n.Process), decoded.HashCode())
+				j1, err := n.Process.MarshalJSON()
+				require.NoError(t, err)
+				j2, err := decoded.MarshalJSON()
+				require.NoError(t, err)
+				require.JSONEq(t, string(j1), string(j2))
+				for i, r := range decoded.Roles {
+					require.Equal(t, len(n.Process.Roles[i].Methods), len(r.Methods), "role %s methods", r.Name)
+					if len(r.Methods) > 0 {
+						resolvedMethods = true
+					}
+				}
+			}
+			if filepath.Base(spec) == "RoleMethods.json" {
+				require.True(t, resolvedMethods, "no role methods were resolved")
 			}
 		})
 	}
@@ -133,11 +163,15 @@ func TestStateCodecSpecStats(t *testing.T) {
 		sample = append(sample, nodes[i])
 	}
 
-	total, heapOnly := 0, 0
+	total, heapOnly, strBytes := 0, 0, 0
 	encoded := make([][]byte, len(sample))
 	for i, n := range sample {
 		encoded[i] = checkProcessRoundTrip(t, n.Process)
 		total += len(encoded[i])
+		w := lib.NewStateWriter(n.Evaluator.CodecContext())
+		require.NoError(t, writeProcess(w, n.Process))
+		strBytes += w.StringBytes()
+		w.Release()
 		h, err := EncodeProcess(&Process{Heap: n.Heap, Evaluator: n.Evaluator})
 		require.NoError(t, err)
 		heapOnly += len(h)
@@ -189,5 +223,6 @@ func TestStateCodecSpecStats(t *testing.T) {
 	fmt.Printf("spec=%s stored=%d sampled=%d\n", spec, len(nodes), len(sample))
 	fmt.Printf("encoded process: %.0f B/state (heap state alone %.0f B); forked process in memory: %.0f B\n",
 		float64(total)/k, float64(heapOnly)/k, forkBytes)
+	fmt.Printf("first occurrences of strings: %.0f B/state\n", float64(strBytes)/k)
 	fmt.Printf("encode %.1f us, decode %.1f us, Fork %.1f us per state\n", encNs/1e3, decNs/1e3, forkNs/1e3)
 }

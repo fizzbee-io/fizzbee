@@ -30,11 +30,11 @@ import (
 //   - Strings and record shapes (constructor + field names) are numbered
 //     the same way, in their own tables, so a field name or a repeated
 //     string costs one or two bytes after its first use.
-//   - Values that are configuration rather than state (channels, symmetry
-//     domains) and values that can't be encoded (functions, builtins, and
-//     a role's methods) go through a CodecContext shared by every state of
-//     a run. Decoding returns the very same pointers that were encoded, as
-//     a deep clone does.
+//   - What a deep clone shares between states rather than copies
+//     (channels, symmetry domains, a role's methods and init values, spec
+//     functions) is written by name or by value and goes through a
+//     CodecContext, which hands out one shared object per name or value.
+//     A state decodes in any process running the same spec.
 //
 // The writer and reader must agree on when a value is numbered: containers
 // are numbered before their elements (so cycles can refer back to them),
@@ -77,25 +77,49 @@ const (
 	vtSymValues
 	vtRange  // start, stop, step
 	vtOpaque // index into the CodecContext's opaque table
+	vtGlobal // name of a spec-level global (a function or builtin)
 	tagExt   = 0xFF
 )
 
 // CodecContext holds what all states of one model-checking run share:
-// interned channels and symmetry domains, and an append-only table of
-// values that have no encoding of their own (starlark functions and
-// builtins, and each role's methods and init values, which a deep clone
-// shares between states). Decoding needs the same context the state was
-// encoded with. It is safe for concurrent use.
+// interned channels and symmetry domains, what every role of a type shares
+// (its methods), interned role init values, and the RoleResolver that
+// rebuilds role methods and globals from the spec. Decoding needs a context
+// of the same spec, not necessarily the one the state was encoded with:
+// everything above is written by name or by value. Decoding returns the
+// shared objects rather than fresh copies, as a deep clone shares them.
 //
-// The opaque table only means something inside this process. States that
-// must cross machines need those values named instead; the table is the
-// one place that has to change for it.
+// The one exception is the opaque table, the fallback for a value that has
+// neither an encoding nor a name (a lambda kept in the state, say). Its
+// entries only mean something inside this process.
+//
+// It is safe for concurrent use.
 type CodecContext struct {
 	mu        sync.RWMutex
 	opaque    []any
 	opaqueIdx map[any]uint64
 	channels  map[channelKey]*Channel
 	domains   map[SymmetryDomain]*SymmetryDomain
+	resolver  RoleResolver
+	roleTypes map[string]*roleType
+	// initValues interns role init values by role name and encoding.
+	initValues map[string]*Struct
+}
+
+// RoleResolver rebuilds, from the spec, what a state refers to by name.
+type RoleResolver interface {
+	// RoleMethods returns the methods a role of this type has once its
+	// Init has run, and its RoleMethods builtins.
+	RoleMethods(roleName string) (map[string]*starlark.Function, map[string]*starlark.Builtin, error)
+	// Global returns the spec-level global of this name.
+	Global(name string) (starlark.Value, bool)
+}
+
+// roleType is what every role of one type shares. Methods is nil until a
+// role with its methods is seen or resolved.
+type roleType struct {
+	methods     map[string]*starlark.Function
+	roleMethods map[string]*starlark.Builtin
 }
 
 type channelKey struct {
@@ -103,22 +127,119 @@ type channelKey struct {
 	name, ordering, delivery, blocking string
 }
 
-// roleStatics is what a deep clone of a role shares with the original
-// rather than copies.
-type roleStatics struct {
-	methods     map[string]*starlark.Function
-	roleMethods map[string]*starlark.Builtin
-	initValues  *Struct
-}
-
-type roleStaticsKey struct{ methods, roleMethods, initValues uintptr }
-
 func NewCodecContext() *CodecContext {
 	return &CodecContext{
 		opaqueIdx: make(map[any]uint64),
 		channels:  make(map[channelKey]*Channel),
 		domains:   make(map[SymmetryDomain]*SymmetryDomain),
+		roleTypes: make(map[string]*roleType),
+
+		initValues: make(map[string]*Struct),
 	}
+}
+
+// SetRoleResolver sets the resolver if none is set yet.
+func (c *CodecContext) SetRoleResolver(r RoleResolver) {
+	if c.HasRoleResolver() {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.resolver == nil {
+		c.resolver = r
+	}
+}
+
+func (c *CodecContext) HasRoleResolver() bool { return c.getResolver() != nil }
+
+func (c *CodecContext) getResolver() RoleResolver {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.resolver
+}
+
+// noteRole records the shared parts of a role being encoded, so decoding
+// in this process returns them rather than resolving them again.
+func (c *CodecContext) noteRole(r *Role) {
+	c.mu.RLock()
+	t, ok := c.roleTypes[r.Name]
+	known := ok && (t.methods != nil || len(r.Methods) == 0)
+	c.mu.RUnlock()
+	if known {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	t, ok = c.roleTypes[r.Name]
+	if !ok {
+		t = &roleType{roleMethods: r.RoleMethods}
+		c.roleTypes[r.Name] = t
+	}
+	if t.methods == nil && len(r.Methods) > 0 {
+		t.methods = r.Methods
+	}
+}
+
+// roleType returns the shared parts of a role type, resolving them from
+// the spec if needed. needMethods asks for the methods too.
+func (c *CodecContext) roleType(name string, needMethods bool) (*roleType, error) {
+	c.mu.RLock()
+	t, ok := c.roleTypes[name]
+	c.mu.RUnlock()
+	if ok && (!needMethods || t.methods != nil) {
+		return t, nil
+	}
+	resolver := c.getResolver()
+	if resolver == nil {
+		return nil, fmt.Errorf("role %s: no role resolver in the codec context", name)
+	}
+	methods, roleMethods, err := resolver.RoleMethods(name)
+	if err != nil {
+		return nil, err
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	t, ok = c.roleTypes[name]
+	if !ok {
+		t = &roleType{roleMethods: roleMethods}
+		c.roleTypes[name] = t
+	}
+	if t.methods == nil {
+		t.methods = methods
+	}
+	return t, nil
+}
+
+// internInitValues returns the shared init values of this role type and
+// encoding, decoding them on first use. Init values are never changed in
+// place once set (see Role.SetInitValue), so sharing them is safe.
+func (c *CodecContext) internInitValues(roleName, enc string) (*Struct, error) {
+	key := roleName + "\x00" + enc
+	c.mu.RLock()
+	s, ok := c.initValues[key]
+	c.mu.RUnlock()
+	if ok {
+		return s, nil
+	}
+	r := NewStateReader(c, []byte(enc))
+	v, err := r.ReadValue()
+	if err == nil {
+		err = r.Done()
+	}
+	if err != nil {
+		return nil, err
+	}
+	s, ok = v.(*Struct)
+	if !ok {
+		return nil, fmt.Errorf("%w: init values is %s", ErrCorruptState, v.Type())
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if existing, ok := c.initValues[key]; ok {
+		return existing, nil
+	}
+	c.initValues[key] = s
+	return s, nil
 }
 
 func (c *CodecContext) internOpaque(key any, v any) uint64 {
@@ -195,6 +316,8 @@ type StateWriter struct {
 	shapes map[shapeKey]uint64
 	// nshapes counts shapes written, including uncached ones.
 	nshapes uint64
+	// strBytes counts the bytes of first occurrences of strings.
+	strBytes int
 }
 
 // shapeKey identifies a record shape by its kind and the encoding of its
@@ -229,6 +352,7 @@ func (w *StateWriter) Reset() {
 	clear(w.shapes)
 	w.nrefs = 0
 	w.nshapes = 0
+	w.strBytes = 0
 }
 
 func (w *StateWriter) Release() {
@@ -238,6 +362,11 @@ func (w *StateWriter) Release() {
 	w.ctx = nil
 	writerPool.Put(w)
 }
+
+// StringBytes returns how many of the bytes written so far are first
+// occurrences of strings (headers included): what a dictionary shared
+// across states could save at most.
+func (w *StateWriter) StringBytes() int { return w.strBytes }
 
 // Bytes returns the encoding written so far, valid until the next write,
 // Reset or Release.
@@ -265,7 +394,9 @@ func (w *StateWriter) WriteString(s string) {
 		return
 	}
 	w.strs[s] = uint64(len(w.strs))
+	n := len(w.buf)
 	w.WriteUvarint(uint64(len(s)) << 1)
+	w.strBytes += len(w.buf) - n + len(s)
 	w.buf = append(w.buf, s...)
 }
 
@@ -521,13 +652,22 @@ func (w *StateWriter) WriteValue(v starlark.Value) error {
 			return err
 		}
 		w.register(v)
-		statics := roleStatics{x.Methods, x.RoleMethods, x.InitValues}
-		key := roleStaticsKey{
-			reflect.ValueOf(x.Methods).Pointer(),
-			reflect.ValueOf(x.RoleMethods).Pointer(),
-			reflect.ValueOf(x.InitValues).Pointer(),
+		// Methods are the same for every role of a type once its Init has
+		// run, so only whether they are there is written.
+		w.ctx.noteRole(x)
+		w.WriteBool(len(x.Methods) > 0)
+		// Init values are written as a self-contained encoding, through
+		// the string table: roles with equal init values share it, and the
+		// reader interns them by it.
+		sub := NewStateWriter(w.ctx)
+		if x.InitValues == nil {
+			sub.buf = append(sub.buf, vtNone)
+		} else if err := sub.WriteValue(x.InitValues); err != nil {
+			sub.Release()
+			return err
 		}
-		w.WriteUvarint(w.ctx.internOpaque(key, statics))
+		w.WriteString(string(sub.Bytes()))
+		sub.Release()
 		if err := w.WriteValue(x.Params); err != nil {
 			return err
 		}
@@ -630,9 +770,20 @@ func (w *StateWriter) WriteValue(v starlark.Value) error {
 			w.WriteVarint(step)
 			return nil
 		}
-		// Functions, builtins and anything else without an encoding of its
-		// own: a deep clone shares these between states, so share them
-		// through the context too. Only pointers have a stable identity.
+		// A function or builtin that is a spec global is written by name.
+		if fn, ok := v.(interface{ Name() string }); ok {
+			if resolver := w.ctx.getResolver(); resolver != nil {
+				if g, ok := resolver.Global(fn.Name()); ok && g == v {
+					w.buf = append(w.buf, vtGlobal)
+					w.WriteString(fn.Name())
+					return nil
+				}
+			}
+		}
+		// Anything else without an encoding of its own (a lambda, say): a
+		// deep clone shares these between states, so share them through
+		// the context's opaque table, which only works in this process.
+		// Only pointers have a stable identity.
 		if reflect.TypeOf(v).Kind() != reflect.Ptr {
 			return fmt.Errorf("state codec: unsupported value type %T (%s)", v, v.Type())
 		}
@@ -1028,13 +1179,28 @@ func (r *StateReader) ReadValue() (starlark.Value, error) {
 		}
 		role := &Role{ID: id, Name: name, Symmetric: symmetric}
 		r.register(role)
-		o, ok := r.ctx.opaqueAt(r.ReadUvarint())
-		statics, ok2 := o.(roleStatics)
-		if !ok || !ok2 {
-			r.fail("role statics not in context")
+		hasMethods := r.ReadBool()
+		initEnc := r.ReadString()
+		if r.err != nil {
 			return nil, r.err
 		}
-		role.Methods, role.RoleMethods, role.InitValues = statics.methods, statics.roleMethods, statics.initValues
+		t, err := r.ctx.roleType(name, hasMethods)
+		if err != nil {
+			return nil, err
+		}
+		role.RoleMethods = t.roleMethods
+		if hasMethods {
+			role.Methods = t.methods
+		} else {
+			// Init adds the methods to this map, so it is the role's own.
+			role.Methods = map[string]*starlark.Function{}
+		}
+		if initEnc != string([]byte{vtNone}) {
+			if role.InitValues, err = r.ctx.internInitValues(name, initEnc); err != nil {
+				return nil, err
+			}
+		}
+		var ok bool
 		params, err := r.ReadValue()
 		if err != nil {
 			return nil, err
@@ -1151,6 +1317,22 @@ func (r *StateReader) ReadValue() (starlark.Value, error) {
 		}
 		return starlark.Call(&starlark.Thread{}, starlark.Universe["range"],
 			starlark.Tuple{starlark.MakeInt64(start), starlark.MakeInt64(stop), starlark.MakeInt64(step)}, nil)
+	case vtGlobal:
+		name := r.ReadString()
+		if r.err != nil {
+			return nil, r.err
+		}
+		resolver := r.ctx.getResolver()
+		if resolver == nil {
+			r.fail("global %s: no resolver in the codec context", name)
+			return nil, r.err
+		}
+		v, ok := resolver.Global(name)
+		if !ok {
+			r.fail("global %s not found", name)
+			return nil, r.err
+		}
+		return v, nil
 	case vtOpaque:
 		o, ok := r.ctx.opaqueAt(r.ReadUvarint())
 		v, ok2 := o.(starlark.Value)
