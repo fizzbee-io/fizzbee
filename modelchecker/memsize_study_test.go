@@ -18,9 +18,9 @@ import (
 	ast "fizz/proto"
 	"github.com/fizzbee-io/fizzbee/lib"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
+	"google.golang.org/protobuf/proto"
 )
 
 const studyN = 20000
