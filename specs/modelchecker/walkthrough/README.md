@@ -10,9 +10,12 @@ Executor is an oracle):
 - `step1.fizz`: roles and state from the whiteboard.
 - `step2.fizz`: RPCs and the one `Step` action.
 - `step3.fizz`: review the run with `exists` assertions.
-- `step7.fizz`: the complete loop: exploration order, action depth bound,
+- `step7.fizz`: the loop with exploration order, action depth bound,
   deadlock, safety check, and the end-of-run liveness call. Passes with bfs;
   set `ORDERS = ["dfs"]` to reproduce the known depth-bound issue.
+- `step8.fizz`: the current high-level loop. BFS only, no crash recovery,
+  edges labelled with fairness and crash for the liveness oracle, and the
+  deadlock-or-stutter switch (`deadlock_detection`).
 
 Robustness line, the same loop under checker crashes and with two workers.
 This refines the main line and will move to its own spec:

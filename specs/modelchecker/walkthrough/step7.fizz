@@ -127,7 +127,8 @@ role Explorer:
     # The run is over: hand the graph to the liveness check.
     atomic fair action Finish:
         require len(frontier.items) == 0 and len(frontier.inflight) == 0 and verdict == None
-        verdict = ("LIVENESS", liveness(graph.edges))
+        result = liveness(graph.edges)
+        verdict = ("LIVENESS", result)
 
 action Init:
     order = oneof ORDERS

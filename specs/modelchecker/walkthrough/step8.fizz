@@ -1,0 +1,196 @@
+---
+deadlock_detection: false
+options:
+    max_concurrent_actions: 1
+    crash_on_yield: false
+---
+
+# Step 8: the loop at the high level, after review. BFS only. No crash
+# recovery: a single process that dies is a failed run. Every edge carries
+# the label the liveness check needs (the action's fairness, and whether
+# it is a crash), and a terminal state is either reported as a deadlock
+# or left in the graph as a stutter state, by one switch.
+
+# The spec under check: yield point -> (next yield point, fairness, crash).
+# The labels come from the Executor; the loop only records them.
+# 3 has no non-crash successor, so it is a deadlock or a stutter state.
+SPEC = {
+    0: [(1, "weak", False), (2, "unfair", False)],
+    1: [(3, "strong", False), (1, "unfair", True)],
+    2: [(3, "unfair", False)],
+    3: [(0, "unfair", True)],
+    # 4 is not reachable from 0.
+    4: [(0, "unfair", False)],
+}
+BAD = set()
+MAX_ACTIONS = 3
+
+# The spec under check's configuration, as the loop sees it. Both runs.
+DEADLOCK_DETECTION_OPTIONS = [True, False]
+
+# Ground truth: states reachable within MAX_ACTIONS, bad ones among them,
+# and terminal states (no non-crash successor, below the bound).
+atomic func ground_truth():
+    depth = {0: 0}
+    queue = [0]
+    terminal = set()
+    while len(queue) > 0:
+        s = queue.pop(0)
+        live = [e for e in SPEC[s] if not e[2]]
+        if len(live) == 0 and depth[s] < MAX_ACTIONS:
+            terminal.add(s)
+        if depth[s] >= MAX_ACTIONS:
+            continue
+        for e in SPEC[s]:
+            t = e[0]
+            if t not in depth:
+                depth[t] = depth[s] + 1
+                queue.append(t)
+    reachable = set(depth.keys())
+    return (reachable, reachable.intersection(BAD), terminal)
+
+role Frontier:
+    action Init:
+        self.items = []      # (state, depth), oldest first
+        self.seen = set()
+
+    # Queue a state unless it was offered before. Marking and queueing are
+    # one operation, so dedup-before-enqueue is exact.
+    atomic func offer(s, d):
+        if s in self.seen:
+            return
+        self.seen.add(s)
+        self.items.append((s, d))
+
+    atomic func pop():
+        return self.items.pop(0)
+
+role StateGraph:
+    action Init:
+        self.edges = {}      # state -> set of (target, fairness, crash)
+
+    atomic func edge(s, label):
+        if s not in self.edges:
+            self.edges[s] = set()
+        self.edges[s].add(label)
+
+    # A state with no edges is still part of the graph.
+    atomic func expanded(s):
+        if s not in self.edges:
+            self.edges[s] = set()
+
+# The liveness checker is an oracle over the finished, labelled graph.
+# Which cycles count as fair and how a stutter state is judged are its
+# business; the loop's contract is only that the graph it gets is whole.
+atomic func liveness(edges):
+    return "live"
+
+role Explorer:
+    action Init:
+        self.current = None
+
+    fair action Step:
+        require len(frontier.items) > 0 and verdict == None
+        atomic:
+            e = frontier.pop()
+            s = e[0]
+            d = e[1]
+            self.current = s
+            # The Executor, as an oracle: successors with their labels.
+            succ = SPEC[s]
+        if d >= MAX_ACTIONS:
+            # At the bound: the state is stored but not expanded.
+            succ = []
+        elif deadlock_detection and len([x for x in succ if not x[2]]) == 0:
+            # Nothing but crashes can happen here. Otherwise this is a
+            # stutter state and the liveness check judges it.
+            verdict = ("DEADLOCK", s)
+        for x in succ:
+            t = x[0]
+            graph.edge(s, x)
+            if t in BAD and t not in frontier.seen:
+                verdict = ("FAIL", t)
+            frontier.offer(t, d + 1)
+        atomic:
+            graph.expanded(s)
+            self.current = None
+
+    # The run is over: hand the graph to the liveness check.
+    atomic fair action Finish:
+        require len(frontier.items) == 0 and self.current == None and verdict == None
+        result = liveness(graph.edges)
+        verdict = ("LIVENESS", result)
+
+action Init:
+    deadlock_detection = oneof DEADLOCK_DETECTION_OPTIONS
+    truth = ground_truth()
+    REACHABLE = truth[0]
+    REACHABLE_BAD = truth[1]
+    TERMINAL = truth[2]
+    verdict = None
+    frontier = Frontier()
+    graph = StateGraph()
+    explorer = Explorer()
+    frontier.offer(0, 0)
+
+atomic func finished():
+    return len(frontier.items) == 0 and explorer.current == None
+
+atomic func clean(v):
+    return v == None or v[0] == "LIVENESS"
+
+# No false state: nothing outside the bound is ever seen.
+always assertion OnlyReachableStates:
+    return frontier.seen.issubset(REACHABLE)
+
+# No missed state: a clean finish means every reachable state was seen.
+always assertion FinishMeansComplete:
+    if finished() and clean(verdict):
+        return frontier.seen == REACHABLE
+    return True
+
+# No missed violation or deadlock.
+always assertion NoMissedViolation:
+    if finished() and clean(verdict):
+        return len(REACHABLE_BAD) == 0 and (not deadlock_detection or len(TERMINAL) == 0)
+    return True
+
+# No false alarm.
+always assertion ReportedFailureIsReal:
+    if clean(verdict):
+        return True
+    if verdict[0] == "FAIL":
+        return verdict[1] in REACHABLE_BAD
+    return deadlock_detection and verdict[1] in TERMINAL
+
+# The liveness check sees every reachable state with all its labelled edges,
+# terminal and stutter states included. Edges out of states at the bound are
+# not explored, so they are empty.
+always assertion LivenessSeesWholeGraph:
+    if verdict == None or verdict[0] != "LIVENESS":
+        return True
+    if set(graph.edges.keys()) != REACHABLE:
+        return False
+    for s in REACHABLE:
+        expected = set(SPEC[s])
+        if len(graph.edges[s]) > 0 and graph.edges[s] != expected:
+            return False
+    return True
+
+# Every state we have seen is somewhere: queued, being expanded, or expanded.
+always assertion NoLostState:
+    for s in frontier.seen:
+        if s == explorer.current or s in graph.edges or len([e for e in frontier.items if e[0] == s]) > 0:
+            continue
+        return False
+    return True
+
+eventually always assertion Terminates:
+    return verdict != None
+
+# Both outcomes of the switch happen.
+exists assertion SomeRunReportsDeadlock:
+    return verdict != None and verdict[0] == "DEADLOCK"
+
+exists assertion SomeRunReachesLiveness:
+    return verdict != None and verdict[0] == "LIVENESS"
