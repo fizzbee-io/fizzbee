@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"reflect"
 	"sync"
+	"sync/atomic"
 
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
@@ -104,6 +105,44 @@ type CodecContext struct {
 	roleTypes map[string]*roleType
 	// initValues interns role init values by role name and encoding.
 	initValues map[string]*Struct
+	// dict is the string dictionary shared by all states, set once.
+	dict atomic.Pointer[stringDict]
+}
+
+// stringDict is a fixed list of strings that states refer to by index
+// instead of spelling them out. It must be the same list wherever a state
+// is decoded, so it is built from the spec alone.
+type stringDict struct {
+	words []string
+	index map[string]uint64
+}
+
+// SetDictionary sets the string dictionary if none is set yet. Every
+// process that decodes a state must set the same words in the same order.
+func (c *CodecContext) SetDictionary(words []string) {
+	d := &stringDict{index: make(map[string]uint64, len(words))}
+	for _, w := range words {
+		if _, dup := d.index[w]; !dup {
+			d.index[w] = uint64(len(d.words))
+			d.words = append(d.words, w)
+		}
+	}
+	c.dict.CompareAndSwap(nil, d)
+}
+
+// ShareDictionary gives c the dictionary of another context, if c has none.
+func (c *CodecContext) ShareDictionary(from *CodecContext) {
+	if d := from.dict.Load(); d != nil {
+		c.dict.CompareAndSwap(nil, d)
+	}
+}
+
+// DictionarySize returns the number of strings in the dictionary.
+func (c *CodecContext) DictionarySize() int {
+	if d := c.dict.Load(); d != nil {
+		return len(d.words)
+	}
+	return 0
 }
 
 // RoleResolver rebuilds, from the spec, what a state refers to by name.
@@ -309,6 +348,7 @@ func (c *CodecContext) internDomain(d *SymmetryDomain) *SymmetryDomain {
 // Everything written with one writer between Resets shares one value pool.
 type StateWriter struct {
 	ctx    *CodecContext
+	dict   *stringDict
 	buf    []byte
 	refs   map[starlark.Value]uint64
 	nrefs  uint64
@@ -341,6 +381,7 @@ var writerPool = sync.Pool{New: func() any {
 func NewStateWriter(ctx *CodecContext) *StateWriter {
 	w := writerPool.Get().(*StateWriter)
 	w.ctx = ctx
+	w.dict = ctx.dict.Load()
 	w.Reset()
 	return w
 }
@@ -360,6 +401,7 @@ func (w *StateWriter) Release() {
 		w.buf = make([]byte, 0, 1024)
 	}
 	w.ctx = nil
+	w.dict = nil
 	writerPool.Put(w)
 }
 
@@ -386,16 +428,29 @@ func (w *StateWriter) WriteBool(b bool) {
 	}
 }
 
-// WriteString writes a string through the string table: the first
-// occurrence is (len<<1) followed by the bytes, a repeat is (index<<1)|1.
+// String headers: the low two bits say what follows.
+const (
+	strNew  = 0 // (len<<2): the bytes follow, and the string is numbered
+	strRef  = 1 // (index<<2)|1: a string numbered earlier in this state
+	strDict = 2 // (index<<2)|2: a string of the context's dictionary
+)
+
+// WriteString writes a string as a dictionary index, a reference to an
+// earlier occurrence in this state, or its bytes.
 func (w *StateWriter) WriteString(s string) {
+	if w.dict != nil {
+		if idx, ok := w.dict.index[s]; ok {
+			w.WriteUvarint(idx<<2 | strDict)
+			return
+		}
+	}
 	if idx, ok := w.strs[s]; ok {
-		w.WriteUvarint(idx<<1 | 1)
+		w.WriteUvarint(idx<<2 | strRef)
 		return
 	}
 	w.strs[s] = uint64(len(w.strs))
 	n := len(w.buf)
-	w.WriteUvarint(uint64(len(s)) << 1)
+	w.WriteUvarint(uint64(len(s))<<2 | strNew)
 	w.strBytes += len(w.buf) - n + len(s)
 	w.buf = append(w.buf, s...)
 }
@@ -831,6 +886,7 @@ var ErrCorruptState = errors.New("state codec: corrupt state")
 // first error and return zero values after it; check Err.
 type StateReader struct {
 	ctx    *CodecContext
+	dict   *stringDict
 	buf    []byte
 	pos    int
 	err    error
@@ -845,7 +901,7 @@ type readShape struct {
 }
 
 func NewStateReader(ctx *CodecContext, data []byte) *StateReader {
-	return &StateReader{ctx: ctx, buf: data}
+	return &StateReader{ctx: ctx, dict: ctx.dict.Load(), buf: data}
 }
 
 func (r *StateReader) Err() error { return r.err }
@@ -938,15 +994,27 @@ func (r *StateReader) ReadString() string {
 	if r.err != nil {
 		return ""
 	}
-	if h&1 == 1 {
-		idx := h >> 1
+	switch h & 3 {
+	case strRef:
+		idx := h >> 2
 		if idx >= uint64(len(r.strs)) {
 			r.fail("string ref %d out of range", idx)
 			return ""
 		}
 		return r.strs[idx]
+	case strDict:
+		idx := h >> 2
+		if r.dict == nil || idx >= uint64(len(r.dict.words)) {
+			r.fail("dictionary string %d out of range", idx)
+			return ""
+		}
+		return r.dict.words[idx]
+	case strNew:
+	default:
+		r.fail("bad string header")
+		return ""
 	}
-	n := h >> 1
+	n := h >> 2
 	if n > uint64(len(r.buf)-r.pos) {
 		r.fail("string length %d exceeds input", n)
 		return ""

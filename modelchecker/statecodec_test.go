@@ -223,6 +223,6 @@ func TestStateCodecSpecStats(t *testing.T) {
 	fmt.Printf("spec=%s stored=%d sampled=%d\n", spec, len(nodes), len(sample))
 	fmt.Printf("encoded process: %.0f B/state (heap state alone %.0f B); forked process in memory: %.0f B\n",
 		float64(total)/k, float64(heapOnly)/k, forkBytes)
-	fmt.Printf("first occurrences of strings: %.0f B/state\n", float64(strBytes)/k)
+	fmt.Printf("first occurrences of strings not in the %d-word dictionary: %.0f B/state\n", nodes[0].Evaluator.CodecContext().DictionarySize(), float64(strBytes)/k)
 	fmt.Printf("encode %.1f us, decode %.1f us, Fork %.1f us per state\n", encNs/1e3, decNs/1e3, forkNs/1e3)
 }

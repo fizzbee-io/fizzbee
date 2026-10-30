@@ -4,6 +4,8 @@ import (
 	ast "fizz/proto"
 	"fmt"
 	"os"
+	"reflect"
+	"regexp"
 	"slices"
 	"sort"
 
@@ -96,15 +98,120 @@ func (r *specResolver) Global(name string) (starlark.Value, bool) {
 	return v, ok
 }
 
-// codecContext returns the run's codec context, with a resolver for the
-// spec p belongs to.
+// codecContext returns the run's codec context, set up for the spec p
+// belongs to.
 func codecContext(p *Process) *lib.CodecContext {
 	ctx := p.Evaluator.CodecContext()
 	if ctx.HasRoleResolver() {
 		return ctx
 	}
-	ctx.SetRoleResolver(&specResolver{files: p.Files, globals: p.Heap.globals, evaluator: p.Evaluator})
+	setUpCodecContext(ctx, p)
 	return ctx
+}
+
+func setUpCodecContext(ctx *lib.CodecContext, p *Process) {
+	if ctx.DictionarySize() == 0 {
+		ctx.SetDictionary(specDictionary(p.Files))
+	}
+	ctx.SetRoleResolver(&specResolver{files: p.Files, globals: p.Heap.globals, evaluator: p.Evaluator})
+}
+
+const dictionaryRoleInstances = 8
+
+var identifierRe = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*`)
+
+// specDictionary returns the strings a state of this spec is likely to
+// hold, built from the spec alone so every process builds the same list:
+// the identifiers in the spec (variable, field, role, action and function
+// names, and words in string literals), the program counters of its
+// statements, and a few fixed names. Shorter strings come first, so the
+// most frequent ones get one-byte indexes.
+func specDictionary(files []*ast.File) []string {
+	words := map[string]bool{}
+	for _, w := range []string{"", "yield", "init", "crash", "checkpoint", "record", "params", "fields", "init_values", "enum", "struct"} {
+		words[w] = true
+	}
+	var walk func(v reflect.Value, path string)
+	addPath := func(path string) {
+		words[path] = true
+		words[path+".any"] = true
+		words[path+".Block.$"] = true
+	}
+	walk = func(v reflect.Value, path string) {
+		if v.Kind() == reflect.Pointer {
+			if v.IsNil() {
+				return
+			}
+			v = v.Elem()
+		}
+		if v.Kind() != reflect.Struct {
+			return
+		}
+		if path != "" {
+			addPath(path)
+		}
+		t := v.Type()
+		for i := 0; i < t.NumField(); i++ {
+			f := t.Field(i)
+			if f.Tag.Get("protobuf") == "" {
+				continue
+			}
+			fv := v.Field(i)
+			child := f.Name
+			if path != "" {
+				child = path + "." + f.Name
+			}
+			switch {
+			case fv.Kind() == reflect.String:
+				for _, w := range identifierRe.FindAllString(fv.String(), -1) {
+					words[w] = true
+				}
+			case fv.Kind() == reflect.Slice && fv.Type().Elem().Kind() == reflect.String:
+				for j := 0; j < fv.Len(); j++ {
+					words[fv.Index(j).String()] = true
+				}
+			case fv.Kind() == reflect.Slice:
+				for j := 0; j < fv.Len(); j++ {
+					walk(fv.Index(j), fmt.Sprintf("%s[%d]", child, j))
+				}
+			case fv.Kind() == reflect.Pointer:
+				walk(fv, child)
+			}
+		}
+	}
+	for _, f := range files {
+		walk(reflect.ValueOf(f), "")
+		// Frame names of role actions and functions are qualified by the
+		// role, and action names (stats, process names) by the instance
+		// too. The instance count isn't in the spec, so the first
+		// dictionaryRoleInstances of each role are covered.
+		for _, r := range f.Roles {
+			var names []string
+			for _, a := range r.Actions {
+				names = append(names, a.Name)
+			}
+			for _, fn := range r.Functions {
+				names = append(names, fn.Name)
+			}
+			for _, name := range names {
+				words[r.Name+"."+name] = true
+				for i := 0; i < dictionaryRoleInstances; i++ {
+					words[fmt.Sprintf("%s#%d.%s", r.Name, i, name)] = true
+				}
+			}
+		}
+	}
+	list := make([]string, 0, len(words))
+	for w := range words {
+		list = append(list, w)
+	}
+	sort.Slice(list, func(i, j int) bool {
+		if len(list[i]) != len(list[j]) {
+			return len(list[i]) < len(list[j])
+		}
+		return list[i] < list[j]
+	})
+	return list
 }
 
 // EncodeProcess returns the encoding of p. The result is owned by the
@@ -676,8 +783,12 @@ func roundTripProcess(p *Process) *Process {
 	}
 	ctx := codecContext(p)
 	if stateCodecRoundTripFresh {
-		ctx = lib.NewCodecContext()
-		ctx.SetRoleResolver(&specResolver{files: p.Files, globals: p.Heap.globals, evaluator: p.Evaluator})
+		// The dictionary is built from the spec alone, so sharing the
+		// run's saves rebuilding it at every fork.
+		fresh := lib.NewCodecContext()
+		fresh.ShareDictionary(ctx)
+		setUpCodecContext(fresh, p)
+		ctx = fresh
 	}
 	p2, err := decodeProcess(data, p, ctx)
 	if err != nil {

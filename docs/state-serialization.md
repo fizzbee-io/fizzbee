@@ -24,8 +24,10 @@ sending states between machines. Neither is built yet.
    reference pool, so a role referenced from the heap, from `Process.Roles`
    and from a frame's `self` decodes to one role.
 3. **Compact and cheap.** It is a single pass with no separate pool section
-   and no offsets. Ints are varints, and strings and record shapes are
-   written once per state.
+   and no offsets. Ints are varints. Strings the spec already contains are
+   written as indexes into a dictionary built from the spec, and the rest
+   are written once per state. Record shapes are also written once per
+   state.
 4. **Extensible.** Value types are one-byte tags, and process fields are
    numbered, so new fields don't need a version bump.
 
@@ -46,7 +48,7 @@ zero value.
 | Name | Encoding |
 |---|---|
 | uvarint / varint | `encoding/binary` (zigzag for signed) |
-| string | `(len<<1)` + bytes the first time, `(index<<1)\|1` after. The index is into this state's string table |
+| string | uvarint header whose low 2 bits say what it is: `(index<<2)\|2` for a dictionary string; `(len<<2)` + bytes for the first occurrence of any other string; `(index<<2)\|1` for a repeat, with the index into this state's string table |
 | raw bytes | uvarint length + bytes (not interned) |
 | strings | uvarint count + string* |
 
@@ -99,6 +101,23 @@ Writer and reader register at the same point, as the table shows:
 Tuples, ints, strings and other plain values have no identity and aren't
 pooled. Strings have their own table, so a repeated string costs 1 to 2
 bytes.
+
+**The string dictionary.** Most strings in a state come from the spec:
+variable and field names, role and action names, program counters, enum
+values. `modelchecker.specDictionary` builds a sorted list of them from the
+loaded spec. It contains:
+
+- every identifier in the AST's strings (code, names, literals);
+- every statement path, plus its `.any` and `.Block.$` variants;
+- `Role.action` and `Role#i.action` names for the first 8 instances of each
+  role;
+- a few fixed names (`yield`, `init`, `record`, ...).
+
+The list is sorted shortest first, so the common names get one-byte
+indexes. It depends only on the spec, so every process running the spec
+builds the same list. A string in the dictionary costs 1 to 2 bytes even
+the first time it appears in a state. On raft and gossip, about 8 B per
+state of strings are still written out in full.
 
 **Shapes.** A record's constructor plus its sorted field names make a
 *shape*. The first use writes `0, constructor, names`. Later uses write
@@ -235,21 +254,24 @@ graph still live in the heap, so GC adds to all three.
 
 | Spec | Encoded process | Heap state alone | Encode | Decode | Fork (today) |
 |---|---:|---:|---:|---:|---:|
-| raft (3 nodes) | 441 B | 195 B | 20 us | 10 us | 26 us |
-| gossip (3 servers, 1 concurrent) | 336 B | 124 B | 7.5 us | 12 us | 15 us |
+| raft (3 nodes) | 225 B | 153 B | 24 us | 9 us | 23 us |
+| gossip (3 servers, 1 concurrent) | 176 B | 94 B | 9 us | 7 us | 11 us |
+
+Without the string dictionary, the encoded process was 460 B for raft and
+355 B for gossip, and about 60% of that was strings.
 
 For comparison, the memory study measured raft's in-memory `Heap.state` at
 2.2 KB per stored node, and the whole node at 5.5 KB. So raft's heap state
-is about 11x smaller encoded. The rest of the encoded process is the threads
-and frames, which are mostly pcs and names.
+is about 14x smaller encoded, and the whole process about 24x smaller than
+the node.
 
 ## Not done yet, and kept possible
 
 - **Disk spilling of the queue.** States are self-contained byte strings,
-  so a batch is just length-prefixed states. A per-batch string and shape
-  dictionary, seeded from the spec's field and variable names, would shrink
-  each state further. The format allows that without changing the value
-  encoding.
+  so a batch is just length-prefixed states. The batch header is the place
+  for a fingerprint of the string dictionary, so a batch can't be read
+  with another spec's dictionary. Compressing a page of states (zstd, for
+  example) is a further option on top.
 - **Distribution.** States already decode in another process running the
   same spec. The only exception is the opaque fallback above.
 - **Hashing.** This encoding isn't canonical: pool order and dict insertion
