@@ -62,14 +62,14 @@ def plot_cdf(metrics):
 
 def main(argv):
     parser = argparse.ArgumentParser(description='Example of command-line flags in Python')
-    parser.add_argument('-s', '--states', type=str, help='Path prefix for the states file')
+    parser.add_argument('-s', '--states', type=str, help='Directory holding the nodes_*.pb and adjacency_lists_*.pb files')
     parser.add_argument('-m', '--perf', type=str, help='Path for the performance model spec file')
     parser.add_argument('-b', '--source', type=str, help='Path for the behaviour model spec file')
 
     args = parser.parse_args()
 
     if not args.states:
-        print("--states (the path prefix for the states data) is required")
+        print("--states (the directory holding the states data) is required")
         exit(1)
 
     perf_model = perf.PerformanceModel()
