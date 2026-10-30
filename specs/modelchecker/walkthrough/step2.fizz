@@ -1,0 +1,73 @@
+---
+deadlock_detection: false
+---
+
+# Step 2: the RPCs on each role and the one action, Explorer.Step,
+# following board 4 one message at a time.
+
+SPEC = {
+    0: [1, 2],
+    1: [3],
+    2: [3],
+    3: [3],
+}
+
+role Frontier:
+    action Init:
+        self.items = []
+
+    atomic func push(s):
+        self.items.append(s)
+
+    atomic func pop():
+        return self.items.pop(0)
+
+role Visited:
+    action Init:
+        self.hashes = set()
+
+    # Check-and-set. Returns True when s was not seen before.
+    atomic func add(s):
+        if s in self.hashes:
+            return False
+        self.hashes.add(s)
+        return True
+
+role StateGraph:
+    action Init:
+        self.edges = {}
+
+    atomic func edge(s, t):
+        if s not in self.edges:
+            self.edges[s] = []
+        self.edges[s].append(t)
+
+# The Executor: one step of the spec under check.
+atomic func successors(s):
+    return SPEC[s]
+
+role Explorer:
+    action Init:
+        self.current = None
+
+    # One turn of the loop. Serial, so every RPC is its own step and
+    # another explorer could run between them.
+    action Step:
+        require len(frontier.items) > 0
+        s = frontier.pop()
+        self.current = s
+        succ = successors(s)
+        for t in succ:
+            graph.edge(s, t)
+            is_new = visited.add(t)
+            if is_new:
+                frontier.push(t)
+        self.current = None
+
+action Init:
+    frontier = Frontier()
+    visited = Visited()
+    graph = StateGraph()
+    explorer = Explorer()
+    frontier.push(0)
+    visited.add(0)

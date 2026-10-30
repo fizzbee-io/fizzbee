@@ -1,0 +1,159 @@
+---
+deadlock_detection: false
+# Baseline: today's checker. One thread, no crashes. Steps 4 and 6 turn
+# these back on.
+options:
+    max_concurrent_actions: 1
+    crash_on_yield: false
+---
+
+# Step 5: properties against ground truth. The spec under check gets a
+# set of bad states, the Explorer reports the first one it finds, and the
+# assertions compare the run with what a BFS over SPEC says.
+
+SPEC = {
+    0: [1, 2],
+    1: [3],
+    2: [3],
+    3: [3],
+    # 4 is not reachable from 0.
+    4: [0],
+}
+
+# States that fail the spec's safety assertion. Empty here; the second
+# run uses {3}.
+BAD = set()
+
+# Ground truth: everything reachable from 0, by a plain BFS over SPEC.
+# Computed in Init: a top-level `for` crashes the checker (see notes).
+atomic func reachable_states():
+    found = set([0])
+    queue = [0]
+    while len(queue) > 0:
+        s = queue.pop(0)
+        for t in SPEC[s]:
+            if t not in found:
+                found.add(t)
+                queue.append(t)
+    return found
+
+role Frontier:
+    action Init:
+        self.items = []
+        self.inflight = set()
+        self.seen = set()
+
+    # Queue s unless it was offered before. The seen set lives here so
+    # that marking and queueing cannot be split by a crash.
+    atomic func offer(s):
+        if s in self.seen:
+            return
+        self.seen.add(s)
+        self.items.append(s)
+
+    # Hand out the oldest state but keep it until done() is called.
+    atomic func claim():
+        s = self.items.pop(0)
+        self.inflight.add(s)
+        return s
+
+    atomic func done(s):
+        self.inflight.remove(s)
+
+    # A claim whose explorer died goes back to the queue.
+    atomic func requeue(s):
+        self.inflight.remove(s)
+        self.items.append(s)
+
+role StateGraph:
+    action Init:
+        self.edges = {}
+
+    # Idempotent: a requeued state records the same edges again.
+    atomic func edge(s, t):
+        if s not in self.edges:
+            self.edges[s] = set()
+        self.edges[s].add(t)
+
+@state(ephemeral=["current"])
+role Explorer:
+    action Init:
+        self.current = None
+
+    # One turn of the loop. Serial, so every RPC is its own step and
+    # another explorer could run between them.
+    fair action Step:
+        require len(frontier.items) > 0 and verdict == None
+        atomic:
+            s = frontier.claim()
+            self.current = s
+            # The Executor: one step of the spec under check. Pure, so
+            # it is not its own yield point.
+            succ = SPEC[s]
+        for t in succ:
+            graph.edge(s, t)
+            # The safety checker: runs once per new state.
+            if t in BAD and t not in frontier.seen:
+                verdict = ("FAIL", t)
+            frontier.offer(t)
+        atomic:
+            frontier.done(s)
+            self.current = None
+
+    # Nobody is working on a claimed state: its explorer crashed.
+    atomic fair action Recover:
+        require self.current == None and len(frontier.inflight) > 0
+        s = oneof frontier.inflight
+        frontier.requeue(s)
+
+action Init:
+    REACHABLE = reachable_states()
+    verdict = None
+    frontier = Frontier()
+    graph = StateGraph()
+    explorer = Explorer()
+    frontier.offer(0)
+
+atomic func finished():
+    return len(frontier.items) == 0 and len(frontier.inflight) == 0
+
+# No false state: nothing unreachable is ever seen.
+always assertion OnlyReachableStates:
+    return frontier.seen.issubset(REACHABLE)
+
+# No missed state: when the run finishes clean, every reachable state was seen.
+always assertion FinishMeansComplete:
+    if finished() and verdict == None:
+        return frontier.seen == REACHABLE
+    return True
+
+# No missed violation: a clean finish means no reachable state is bad.
+always assertion NoMissedViolation:
+    if finished() and verdict == None:
+        return len(REACHABLE.intersection(BAD)) == 0
+    return True
+
+# No false alarm: a reported state is bad and reachable.
+always assertion ReportedFailureIsReal:
+    if verdict != None:
+        return verdict[1] in BAD and verdict[1] in REACHABLE
+    return True
+
+# Recorded edges are edges of the spec.
+always assertion EdgesMatchSpec:
+    for s in graph.edges:
+        if not graph.edges[s].issubset(set(SPEC[s])):
+            return False
+    return True
+
+# Every state we have seen is somewhere: queued, being expanded, or expanded.
+always assertion NoLostState:
+    for s in frontier.seen:
+        if s in frontier.items or s in frontier.inflight or s in graph.edges:
+            continue
+        return False
+    return True
+
+# The run ends, with a complete graph or a verdict.
+eventually always assertion Terminates:
+    return (finished() and frontier.seen == REACHABLE) or verdict != None

@@ -1,0 +1,108 @@
+---
+deadlock_detection: false
+# Baseline: today's checker. One thread, no crashes. Steps 4 and 6 turn
+# these back on.
+options:
+    max_concurrent_actions: 1
+    crash_on_yield: true
+---
+
+# Step 4c: the seen set moves into the Frontier, so marking a state seen
+# and queueing it is one RPC. Expanding a state is idempotent, so a
+# requeued state can be expanded again.
+
+SPEC = {
+    0: [1, 2],
+    1: [3],
+    2: [3],
+    3: [3],
+}
+
+role Frontier:
+    action Init:
+        self.items = []
+        self.inflight = set()
+        self.seen = set()
+
+    # Queue s unless it was offered before. The seen set lives here so
+    # that marking and queueing cannot be split by a crash.
+    atomic func offer(s):
+        if s in self.seen:
+            return
+        self.seen.add(s)
+        self.items.append(s)
+
+    # Hand out the oldest state but keep it until done() is called.
+    atomic func claim():
+        s = self.items.pop(0)
+        self.inflight.add(s)
+        return s
+
+    atomic func done(s):
+        self.inflight.remove(s)
+
+    # A claim whose explorer died goes back to the queue.
+    atomic func requeue(s):
+        self.inflight.remove(s)
+        self.items.append(s)
+
+role StateGraph:
+    action Init:
+        self.edges = {}
+
+    # Idempotent: a requeued state records the same edges again.
+    atomic func edge(s, t):
+        if s not in self.edges:
+            self.edges[s] = set()
+        self.edges[s].add(t)
+
+@state(ephemeral=["current"])
+role Explorer:
+    action Init:
+        self.current = None
+
+    # One turn of the loop. Serial, so every RPC is its own step and
+    # another explorer could run between them.
+    action Step:
+        require len(frontier.items) > 0
+        atomic:
+            s = frontier.claim()
+            self.current = s
+            # The Executor: one step of the spec under check. Pure, so
+            # it is not its own yield point.
+            succ = SPEC[s]
+        for t in succ:
+            graph.edge(s, t)
+            frontier.offer(t)
+        atomic:
+            frontier.done(s)
+            self.current = None
+
+    # Nobody is working on a claimed state: its explorer crashed.
+    atomic fair action Recover:
+        require self.current == None and len(frontier.inflight) > 0
+        s = oneof frontier.inflight
+        frontier.requeue(s)
+
+action Init:
+    frontier = Frontier()
+    graph = StateGraph()
+    explorer = Explorer()
+    frontier.offer(0)
+
+# The loop ends with an empty frontier and every reachable state seen.
+exists assertion Finishes:
+    return len(frontier.items) == 0 and explorer.current == None and len(frontier.seen) == len(SPEC)
+
+# Every state is popped once: the graph's sources are exactly the seen set
+# minus states still queued.
+exists assertion GraphIsComplete:
+    return len(frontier.items) == 0 and len(frontier.inflight) == 0 and set(graph.edges.keys()) == frontier.seen
+
+# Every state we have seen is somewhere: queued, being expanded, or expanded.
+always assertion NoLostState:
+    for s in frontier.seen:
+        if s in frontier.items or s in frontier.inflight or s in graph.edges:
+            continue
+        return False
+    return True

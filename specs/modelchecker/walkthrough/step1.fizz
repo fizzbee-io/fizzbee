@@ -1,0 +1,39 @@
+---
+# Nothing can happen yet, so every run ends in a deadlock. Turn the
+# check off until the loop exists.
+deadlock_detection: false
+---
+
+# Step 1: roles and state, straight from board 1.
+#
+# The spec under check is a fixed graph of yield points: node -> successors.
+# 0 is Init. The Executor is a lookup in it.
+
+SPEC = {
+    0: [1, 2],
+    1: [3],
+    2: [3],
+    3: [3],
+}
+
+role Frontier:
+    action Init:
+        self.items = []
+
+role Visited:
+    action Init:
+        self.hashes = set()
+
+role StateGraph:
+    action Init:
+        self.edges = {}
+
+role Explorer:
+    action Init:
+        self.current = None
+
+action Init:
+    frontier = Frontier()
+    visited = Visited()
+    graph = StateGraph()
+    explorer = Explorer()

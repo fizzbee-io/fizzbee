@@ -1,0 +1,93 @@
+---
+deadlock_detection: false
+# Baseline: today's checker. One thread, no crashes. Steps 4 and 6 turn
+# these back on.
+options:
+    max_concurrent_actions: 1
+    crash_on_yield: true
+---
+
+# Step 4a: crashes back on. A crash kills the Step thread at any yield
+# point. Which states can a dead step lose?
+
+SPEC = {
+    0: [1, 2],
+    1: [3],
+    2: [3],
+    3: [3],
+}
+
+role Frontier:
+    action Init:
+        self.items = []
+
+    atomic func push(s):
+        self.items.append(s)
+
+    atomic func pop():
+        return self.items.pop(0)
+
+role Visited:
+    action Init:
+        self.hashes = set()
+
+    # Check-and-set. Returns True when s was not seen before.
+    atomic func add(s):
+        if s in self.hashes:
+            return False
+        self.hashes.add(s)
+        return True
+
+role StateGraph:
+    action Init:
+        self.edges = {}
+
+    atomic func edge(s, t):
+        if s not in self.edges:
+            self.edges[s] = []
+        self.edges[s].append(t)
+
+role Explorer:
+    action Init:
+        self.current = None
+
+    # One turn of the loop. Serial, so every RPC is its own step and
+    # another explorer could run between them.
+    action Step:
+        require len(frontier.items) > 0
+        s = frontier.pop()
+        self.current = s
+        # The Executor: one step of the spec under check. Pure, so it is
+        # not its own yield point.
+        succ = SPEC[s]
+        for t in succ:
+            graph.edge(s, t)
+            is_new = visited.add(t)
+            if is_new:
+                frontier.push(t)
+        self.current = None
+
+action Init:
+    frontier = Frontier()
+    visited = Visited()
+    graph = StateGraph()
+    explorer = Explorer()
+    frontier.push(0)
+    visited.add(0)
+
+# The loop ends with an empty frontier and every reachable state seen.
+exists assertion Finishes:
+    return len(frontier.items) == 0 and explorer.current == None and len(visited.hashes) == len(SPEC)
+
+# Every state is popped once: the graph's sources are exactly the visited set
+# minus states still queued.
+exists assertion GraphIsComplete:
+    return len(frontier.items) == 0 and set(graph.edges.keys()) == visited.hashes
+
+# Every state we have seen is somewhere: queued, being expanded, or expanded.
+always assertion NoLostState:
+    for s in visited.hashes:
+        if s in frontier.items or s == explorer.current or s in graph.edges:
+            continue
+        return False
+    return True
