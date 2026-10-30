@@ -1,0 +1,186 @@
+---
+deadlock_detection: false
+options:
+    max_concurrent_actions: 1
+    crash_on_yield: false
+---
+
+# Step 7: the loop at the high level, complete. A state is an opaque id,
+# equivalence is "same id", and the Executor is an oracle that returns the
+# yield points one action away. Those are specified separately. What is
+# left here is the loop's own business: exploration order, the action
+# depth bound, deadlock, the safety check, and the end-of-run liveness
+# check over the graph.
+
+# The spec under check: yield point -> yield points one action away.
+# 3 is two actions from 0 via 4, and three via 1 and 2. The bad state 5
+# is one action past 3, so it is within the bound only along the short
+# path. Successors are listed so that a stack takes the long path first.
+SPEC = {
+    0: [4, 1],
+    1: [2],
+    2: [3],
+    4: [3],
+    3: [5],
+    5: [5],
+}
+BAD = set([5])
+MAX_ACTIONS = 3
+
+# Add "dfs" to see the known issue: seen is keyed by id only, so a state
+# first reached by a longer path is stored at the deeper depth, is not
+# expanded at the bound, and the shorter path to it is a dedup hit.
+# FinishMeansComplete fails, and the bad state 5 is never found.
+ORDERS = ["bfs"]
+
+# Ground truth: states and bad states reachable within MAX_ACTIONS, and
+# deadlocks (no successor, below the bound), by a BFS on action depth.
+atomic func ground_truth():
+    depth = {0: 0}
+    queue = [0]
+    deadlocks = set()
+    while len(queue) > 0:
+        s = queue.pop(0)
+        if len(SPEC[s]) == 0 and depth[s] < MAX_ACTIONS:
+            deadlocks.add(s)
+        if depth[s] >= MAX_ACTIONS:
+            continue
+        for t in SPEC[s]:
+            if t not in depth:
+                depth[t] = depth[s] + 1
+                queue.append(t)
+    reachable = set(depth.keys())
+    return (reachable, reachable.intersection(BAD), deadlocks)
+
+role Frontier:
+    action Init:
+        self.items = []      # (state, depth), in arrival order
+        self.inflight = set()
+        self.seen = set()
+
+    # Queue a state unless it was offered before. Seen is by id only:
+    # the depth it was first reached at is not part of the key.
+    atomic func offer(s, d):
+        if s in self.seen:
+            return
+        self.seen.add(s)
+        self.items.append((s, d))
+
+    atomic func claim():
+        if order == "bfs":
+            e = self.items.pop(0)
+        else:
+            e = self.items.pop()
+        self.inflight.add(e[0])
+        return e
+
+    atomic func done(s):
+        self.inflight.remove(s)
+
+role StateGraph:
+    action Init:
+        self.edges = {}
+
+    atomic func edge(s, t):
+        if s not in self.edges:
+            self.edges[s] = set()
+        self.edges[s].add(t)
+
+    atomic func expanded(s):
+        if s not in self.edges:
+            self.edges[s] = set()
+
+# The liveness checker is an oracle over the finished graph. What it
+# returns is specified separately; here it only has to be called with a
+# graph that is complete.
+atomic func liveness(edges):
+    return "live"
+
+role Explorer:
+    action Init:
+        self.current = None
+
+    fair action Step:
+        require len(frontier.items) > 0 and verdict == None
+        atomic:
+            e = frontier.claim()
+            s = e[0]
+            d = e[1]
+            self.current = s
+            # The Executor, as an oracle.
+            succ = SPEC[s]
+        if d >= MAX_ACTIONS:
+            # At the bound: the state is stored but not expanded.
+            succ = []
+        elif len(succ) == 0:
+            verdict = ("DEADLOCK", s)
+        for t in succ:
+            graph.edge(s, t)
+            if t in BAD and t not in frontier.seen:
+                verdict = ("FAIL", t)
+            frontier.offer(t, d + 1)
+        atomic:
+            graph.expanded(s)
+            frontier.done(s)
+            self.current = None
+
+    # The run is over: hand the graph to the liveness check.
+    atomic fair action Finish:
+        require len(frontier.items) == 0 and len(frontier.inflight) == 0 and verdict == None
+        verdict = ("LIVENESS", liveness(graph.edges))
+
+action Init:
+    order = oneof ORDERS
+    truth = ground_truth()
+    REACHABLE = truth[0]
+    REACHABLE_BAD = truth[1]
+    DEADLOCKS = truth[2]
+    verdict = None
+    frontier = Frontier()
+    graph = StateGraph()
+    explorer = Explorer()
+    frontier.offer(0, 0)
+
+atomic func finished():
+    return len(frontier.items) == 0 and len(frontier.inflight) == 0
+
+# No false state: nothing outside the bound is ever seen.
+always assertion OnlyReachableStates:
+    return frontier.seen.issubset(REACHABLE)
+
+# No missed state: when the run finishes clean, every reachable state was seen.
+always assertion FinishMeansComplete:
+    if finished() and (verdict == None or verdict[0] == "LIVENESS"):
+        return frontier.seen == REACHABLE
+    return True
+
+# No missed violation or deadlock: a clean finish means there were none.
+always assertion NoMissedViolation:
+    if finished() and (verdict == None or verdict[0] == "LIVENESS"):
+        return len(REACHABLE_BAD) == 0 and len(DEADLOCKS) == 0
+    return True
+
+# No false alarm.
+always assertion ReportedFailureIsReal:
+    if verdict == None or verdict[0] == "LIVENESS":
+        return True
+    if verdict[0] == "FAIL":
+        return verdict[1] in REACHABLE_BAD
+    return verdict[1] in DEADLOCKS
+
+# The liveness check only ever sees a complete graph.
+always assertion LivenessSeesWholeGraph:
+    if verdict != None and verdict[0] == "LIVENESS":
+        return set(graph.edges.keys()) == REACHABLE
+    return True
+
+# Every state we have seen is somewhere: queued, being expanded, or expanded.
+always assertion NoLostState:
+    for s in frontier.seen:
+        if s in frontier.inflight or s in graph.edges or len([e for e in frontier.items if e[0] == s]) > 0:
+            continue
+        return False
+    return True
+
+eventually always assertion Terminates:
+    return verdict != None
