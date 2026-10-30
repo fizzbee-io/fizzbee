@@ -86,7 +86,11 @@ role Explorer:
         self.current = None
         self.depth = 0
 
-    fair action Step:
+    # Atomic: with one explorer and max_concurrent_actions 1, a non-atomic
+    # Step only adds one intermediate state per successor offered (LIMIT 3:
+    # 142,826 states against 36,344). The step 6 line keeps the non-atomic
+    # form, where the interleaving with a second worker is the point.
+    atomic fair action Step:
         require len(frontier.items) > 0 and verdict == None
         atomic:
             e = frontier.pop()
