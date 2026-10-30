@@ -46,6 +46,13 @@ func (e *Evaluator) EvalExprWithContext(filename string, expr *ast.Expr, prevSta
 		}
 		return v, err
 	}
+	return e.evalExprProgram(filename, expr, prevState, symCtx)
+}
+
+// evalExprProgram evaluates expr as a cached program initialized per call,
+// the path for expressions compiledExprFunc can't take.
+func (e *Evaluator) evalExprProgram(filename string, expr *ast.Expr, prevState starlark.StringDict, symCtx *lib.SymmetryContext) (starlark.Value, error) {
+	start := expr.GetSourceInfo().GetStart()
 	prog, err := e.compiledExpr(filename, expr.GetPyExpr(), start.GetLine(), start.GetColumn(), prevState)
 	if err != nil {
 		if !lib.IsDisableTransitionError(err) {
@@ -187,6 +194,13 @@ func (e *Evaluator) ExecPyStmtWithContext(filename string, stmt *ast.PyStmt, pre
 	if c := e.compiledStmt(filename, stmt.Code, start.GetLine(), start.GetColumn(), prevState); c != nil {
 		return c.exec(newEvalThread(symCtx), prevState)
 	}
+	return e.execPyStmtREPL(filename, stmt, prevState, symCtx)
+}
+
+// execPyStmtREPL parses, compiles and runs stmt as a REPL chunk over
+// prevState, the path for statements compiledStmt can't take.
+func (e *Evaluator) execPyStmtREPL(filename string, stmt *ast.PyStmt, prevState starlark.StringDict, symCtx *lib.SymmetryContext) (bool, error) {
+	start := stmt.GetSourceInfo().GetStart()
 	filePortion := syntax.FilePortion{
 		Content:   []byte(stmt.Code),
 		FirstLine: start.GetLine(),
@@ -324,7 +338,11 @@ func (c *compiledStmt) exec(thread *starlark.Thread, env starlark.StringDict) (b
 		}
 		return false, err
 	}
-	for i, v := range res.(starlark.Tuple) {
+	values, ok := res.(starlark.Tuple)
+	if !ok || len(values) != len(c.assigned) {
+		return false, fmt.Errorf("internal error: %s returned %s for %d names", stmtFuncName, res.Type(), len(c.assigned))
+	}
+	for i, v := range values {
 		env[c.assigned[i]] = v
 	}
 	return true, nil
@@ -412,6 +430,40 @@ func (e *Evaluator) compileStmt(filename string, src string, line int32, col int
 			return nil
 		}
 	}
+	// Inside the function a name the statement binds is local throughout,
+	// so reading it before it is bound fails at run time, where the REPL
+	// path reports an undefined global when resolving. Leave such
+	// statements to the REPL path so the error stays the same.
+	bound := map[string]bool{}
+	for _, name := range params {
+		bound[name] = true
+	}
+	for _, st := range f.Stmts {
+		var reads []string
+		var targets []syntax.Expr
+		switch st := st.(type) {
+		case *syntax.ExprStmt:
+			reads = referencedNames([]syntax.Stmt{st})
+		case *syntax.AssignStmt:
+			reads = referencedNames([]syntax.Stmt{&syntax.ExprStmt{X: st.RHS}})
+			if st.Op != syntax.EQ {
+				reads = append(reads, referencedNames([]syntax.Stmt{&syntax.ExprStmt{X: st.LHS}})...)
+			} else {
+				reads = append(reads, targetReads(st.LHS)...)
+			}
+			targets = append(targets, st.LHS)
+		}
+		for _, name := range reads {
+			if seen[name] && !bound[name] {
+				return nil
+			}
+		}
+		for _, x := range targets {
+			for _, name := range referencedNames([]syntax.Stmt{&syntax.ExprStmt{X: x}}) {
+				bound[name] = true
+			}
+		}
+	}
 
 	// The statement keeps its source position: the def sits on the line
 	// before it, and its first line is indented to its column (at least one
@@ -445,6 +497,30 @@ func (e *Evaluator) compileStmt(filename string, src string, line int32, col int
 		return nil
 	}
 	return &compiledStmt{fn: fn, params: params, assigned: assigned}
+}
+
+// targetReads lists the names an assignment target reads: those inside an
+// attribute or index target, such as d and k in d[k] = v.
+func targetReads(x syntax.Expr) []string {
+	switch x := x.(type) {
+	case *syntax.TupleExpr:
+		return targetListReads(x.List)
+	case *syntax.ListExpr:
+		return targetListReads(x.List)
+	case *syntax.ParenExpr:
+		return targetReads(x.X)
+	case *syntax.DotExpr, *syntax.IndexExpr:
+		return referencedNames([]syntax.Stmt{&syntax.ExprStmt{X: x}})
+	}
+	return nil
+}
+
+func targetListReads(list []syntax.Expr) []string {
+	var names []string
+	for _, x := range list {
+		names = append(names, targetReads(x)...)
+	}
+	return names
 }
 
 // compiledExprFunc is compiledStmt for an expression: the expression is
