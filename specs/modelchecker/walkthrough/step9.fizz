@@ -1,0 +1,226 @@
+---
+deadlock_detection: false
+options:
+    max_concurrent_actions: 1
+    crash_on_yield: false
+---
+
+# Step 9: the spec under check is no longer one fixed graph. The Executor
+# is an oracle that answers lazily: the first time a state is expanded it
+# picks any successor set, each successor being a state already known or
+# one fresh state. The loop is checked against every spec with up to
+# LIMIT states, up to relabelling (nominal symmetry), not against a graph
+# written by hand. The answer is remembered, so the oracle is a function.
+
+# Distinct states a spec under check may have. 2: 828 states, under a
+# second. 3: 142,826 states, three and a half minutes. 4 is out of reach.
+LIMIT = 2
+MAX_SUCC = 2         # fresh states one expansion may mint
+MAX_ACTIONS = 2      # the checker's depth bound
+LABELS = [("unfair", False), ("unfair", True)]   # (fairness, crash)
+DEADLOCK_DETECTION_OPTIONS = [True, False]
+
+# States of the spec under check are interchangeable identifiers.
+S = symmetry.nominal(name="s", limit=LIMIT)
+
+# Ground truth over what the oracle has said so far. A state the oracle
+# has not been asked about is a leaf. Once the loop finishes, the oracle
+# has been asked about every state it reached below the bound, so this is
+# the truth for the spec that got chosen.
+atomic func ground_truth(root, spec, kind):
+    depth = {root: 0}
+    queue = [root]
+    terminal = set()
+    bad = set()
+    while len(queue) > 0:
+        s = queue.pop(0)
+        if kind.get(s, "ok") == "bad":
+            bad.add(s)
+        edges = spec.get(s, [])
+        live = [e for e in edges if not e[2]]
+        if len(live) == 0 and depth[s] < MAX_ACTIONS:
+            terminal.add(s)
+        if depth[s] >= MAX_ACTIONS:
+            continue
+        for e in edges:
+            t = e[0]
+            if t not in depth:
+                depth[t] = depth[s] + 1
+                queue.append(t)
+    return (set(depth.keys()), bad, terminal)
+
+role Frontier:
+    action Init:
+        self.items = []
+        self.seen = set()
+        self.parent = {}
+
+    atomic func offer(s, d, p):
+        if s in self.seen:
+            return
+        self.seen.add(s)
+        self.parent[s] = p
+        self.items.append((s, d))
+
+    atomic func pop():
+        return self.items.pop(0)
+
+role StateGraph:
+    action Init:
+        self.edges = {}
+
+    atomic func edge(s, label):
+        if s not in self.edges:
+            self.edges[s] = set()
+        self.edges[s].add(label)
+
+    atomic func expanded(s):
+        if s not in self.edges:
+            self.edges[s] = set()
+
+atomic func liveness(edges):
+    return "live"
+
+role Explorer:
+    action Init:
+        self.current = None
+
+    fair action Step:
+        require len(frontier.items) > 0 and verdict == None
+        atomic:
+            e = frontier.pop()
+            s = e[0]
+            d = e[1]
+            self.current = s
+            # The Executor, as a lazy oracle. Asked once per state.
+            if s not in SPEC:
+                # Candidates: every known state plus up to MAX_SUCC fresh
+                # ones, so a state can branch to several new states.
+                cands = set()
+                for i in range(MAX_SUCC):
+                    cands = cands | set(S.choices())
+                chosen = set()
+                for t in cands:
+                    # Leave t out, or take it with one label.
+                    pick = oneof [None] + LABELS
+                    if pick == None:
+                        continue
+                    chosen.add((t, pick[0], pick[1]))
+                    if t not in KIND:
+                        kind = oneof ["ok", "bad"]
+                        KIND[t] = kind
+                SPEC[s] = list(chosen)
+                TRUTH = ground_truth(init_state, SPEC, KIND)
+            succ = SPEC[s]
+        if d >= MAX_ACTIONS:
+            succ = []
+        elif deadlock_detection and len([x for x in succ if not x[2]]) == 0:
+            verdict = ("DEADLOCK", s)
+        for x in succ:
+            t = x[0]
+            graph.edge(s, x)
+            if KIND[t] == "bad" and t not in frontier.seen:
+                verdict = ("FAIL", t)
+            frontier.offer(t, d + 1, s)
+        atomic:
+            graph.expanded(s)
+            self.current = None
+
+    atomic fair action Finish:
+        require len(frontier.items) == 0 and self.current == None and verdict == None
+        result = liveness(graph.edges)
+        verdict = ("LIVENESS", result)
+
+action Init:
+    deadlock_detection = oneof DEADLOCK_DETECTION_OPTIONS
+    SPEC = {}            # what the oracle has answered: state -> [(target, fairness, crash)]
+    KIND = {}            # state -> "ok" | "bad", decided when the state is first minted
+    init_state = S.choose()
+    kind = oneof ["ok", "bad"]
+    KIND[init_state] = kind
+    verdict = None
+    frontier = Frontier()
+    graph = StateGraph()
+    explorer = Explorer()
+    if KIND[init_state] == "bad":
+        verdict = ("FAIL", init_state)
+    frontier.offer(init_state, 0, None)
+    TRUTH = ground_truth(init_state, SPEC, KIND)   # recomputed whenever the oracle answers
+
+atomic func finished():
+    return len(frontier.items) == 0 and explorer.current == None
+
+atomic func clean(v):
+    return v == None or v[0] == "LIVENESS"
+
+always assertion OnlyReachableStates:
+    return frontier.seen.issubset(TRUTH[0])
+
+always assertion FinishMeansComplete:
+    if finished() and clean(verdict):
+        return frontier.seen == TRUTH[0]
+    return True
+
+always assertion NoMissedViolation:
+    if finished() and clean(verdict):
+        return len(TRUTH[1]) == 0 and (not deadlock_detection or len(TRUTH[2]) == 0)
+    return True
+
+always assertion ReportedFailureIsReal:
+    if clean(verdict):
+        return True
+    if verdict[0] == "FAIL":
+        return verdict[1] in TRUTH[1]
+    return deadlock_detection and verdict[1] in TRUTH[2]
+
+always assertion LivenessSeesWholeGraph:
+    if verdict == None or verdict[0] != "LIVENESS":
+        return True
+    if set(graph.edges.keys()) != TRUTH[0]:
+        return False
+    for s in TRUTH[0]:
+        if len(graph.edges[s]) > 0 and graph.edges[s] != set(SPEC[s]):
+            return False
+    return True
+
+always assertion EveryStateHasATrace:
+    for s in frontier.seen:
+        cur = s
+        steps = 0
+        while cur != init_state and steps <= len(frontier.seen):
+            cur = frontier.parent[cur]
+            steps = steps + 1
+        if cur != init_state:
+            return False
+    return True
+
+always assertion NoLostState:
+    for s in frontier.seen:
+        if s == explorer.current or s in graph.edges or len([e for e in frontier.items if e[0] == s]) > 0:
+            continue
+        return False
+    return True
+
+# The oracle is a function: a state is asked about at most once, so no
+# state has two answers. (Expansion happens once per state.)
+always assertion OracleAskedOnce:
+    for s in SPEC:
+        if s not in frontier.seen:
+            return False
+    return True
+
+eventually always assertion Terminates:
+    return verdict != None
+
+exists assertion SomeRunReportsDeadlock:
+    return verdict != None and verdict[0] == "DEADLOCK"
+
+exists assertion SomeRunReachesLiveness:
+    return verdict != None and verdict[0] == "LIVENESS"
+
+exists assertion SomeRunFails:
+    return verdict != None and verdict[0] == "FAIL"
+
+# Some chosen spec uses every state the limit allows.
+exists assertion SomeSpecIsFull:
+    return len(frontier.seen) == LIMIT

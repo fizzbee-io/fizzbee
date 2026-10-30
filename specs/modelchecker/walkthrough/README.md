@@ -16,6 +16,11 @@ Executor is an oracle):
 - `step8.fizz`: the current high-level loop. BFS only, no crash recovery,
   edges labelled with fairness and crash for the liveness oracle, and the
   deadlock-or-stutter switch (`deadlock_detection`).
+- `step9.fizz`: the same loop checked against every spec with up to
+  `LIMIT` states instead of one hand-written graph. The Executor answers
+  lazily: the first time a state is expanded it picks any successor set
+  from the known states plus fresh ones (nominal symmetry, so relabelled
+  specs are one spec). `LIMIT = 2` runs in a second, `3` in a few minutes.
 
 Robustness line, the same loop under checker crashes and with two workers.
 This refines the main line and will move to its own spec:
