@@ -243,10 +243,7 @@ func newRole(astRole *ast.Role, symmetric bool, roles *[]*Role, kwargs []starlar
 		}
 		fields := FromStringDict(starlark.String("fields"), starlark.StringDict{})
 		initValues := FromStringDict(starlark.String("init_values"), starlark.StringDict{})
-		roleMethods := make(map[string]*starlark.Builtin)
-		for _, function := range astRole.Functions {
-			roleMethods[function.Name] = starlark.NewBuiltin(function.Name, fizz_func_always_error)
-		}
+		roleMethods := NewRoleMethodBuiltins(astRole)
 
 		var id starlark.Value
 		if symmetric {
@@ -260,6 +257,27 @@ func newRole(astRole *ast.Role, symmetric bool, roles *[]*Role, kwargs []starlar
 		*roles = append(*roles, r)
 		return r, nil
 	}
+}
+
+// NewRoleMethodBuiltins returns the builtins that stand for a role's fizz
+// functions, called through the thread's FizzCallKey.
+func NewRoleMethodBuiltins(astRole *ast.Role) map[string]*starlark.Builtin {
+	roleMethods := make(map[string]*starlark.Builtin, len(astRole.Functions))
+	for _, function := range astRole.Functions {
+		roleMethods[function.Name] = starlark.NewBuiltin(function.Name, fizz_func_always_error)
+	}
+	return roleMethods
+}
+
+// SetInitValue sets the init value of an ephemeral field. A role's init
+// values are shared by its clones and, through the state codec, by every
+// decoded role with equal ones, so they are never changed in place: this
+// replaces the struct.
+func (r *Role) SetInitValue(name string, v starlark.Value) {
+	s := NewEmptyStruct(r.InitValues.constructor, len(r.InitValues.entries)+1)
+	s.entries = append(s.entries, r.InitValues.entries...)
+	_ = s.SetField(name, v)
+	r.InitValues = s
 }
 
 func fizz_func_always_error(t *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
