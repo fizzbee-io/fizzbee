@@ -53,13 +53,16 @@ role Frontier:
     action Init:
         self.items = []      # (state, depth), oldest first
         self.seen = set()
+        self.parent = {}     # state -> the state it was first reached from
 
     # Queue a state unless it was offered before. Marking and queueing are
-    # one operation, so dedup-before-enqueue is exact.
-    atomic func offer(s, d):
+    # one operation, so dedup-before-enqueue is exact. The parent is kept
+    # so a verdict can be turned into a trace back to Init.
+    atomic func offer(s, d, p):
         if s in self.seen:
             return
         self.seen.add(s)
+        self.parent[s] = p
         self.items.append((s, d))
 
     atomic func pop():
@@ -110,7 +113,7 @@ role Explorer:
             graph.edge(s, x)
             if t in BAD and t not in frontier.seen:
                 verdict = ("FAIL", t)
-            frontier.offer(t, d + 1)
+            frontier.offer(t, d + 1, s)
         atomic:
             graph.expanded(s)
             self.current = None
@@ -131,7 +134,10 @@ action Init:
     frontier = Frontier()
     graph = StateGraph()
     explorer = Explorer()
-    frontier.offer(0, 0)
+    # Init is a state like any other: checked, then queued.
+    if 0 in BAD:
+        verdict = ("FAIL", 0)
+    frontier.offer(0, 0, None)
 
 atomic func finished():
     return len(frontier.items) == 0 and explorer.current == None
@@ -174,6 +180,18 @@ always assertion LivenessSeesWholeGraph:
     for s in REACHABLE:
         expected = set(SPEC[s])
         if len(graph.edges[s]) > 0 and graph.edges[s] != expected:
+            return False
+    return True
+
+# Every seen state has a trace back to Init through the parents.
+always assertion EveryStateHasATrace:
+    for s in frontier.seen:
+        cur = s
+        steps = 0
+        while cur != 0 and steps <= len(SPEC):
+            cur = frontier.parent[cur]
+            steps = steps + 1
+        if cur != 0:
             return False
     return True
 
