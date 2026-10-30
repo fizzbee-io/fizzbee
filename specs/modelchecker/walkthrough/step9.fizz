@@ -84,6 +84,7 @@ atomic func liveness(edges):
 role Explorer:
     action Init:
         self.current = None
+        self.depth = 0
 
     fair action Step:
         require len(frontier.items) > 0 and verdict == None
@@ -92,6 +93,7 @@ role Explorer:
             s = e[0]
             d = e[1]
             self.current = s
+            self.depth = d
             # The Executor, as a lazy oracle. Asked once per state.
             if s not in SPEC:
                 # Candidates: every known state plus up to MAX_SUCC fresh
@@ -206,6 +208,17 @@ always assertion NoLostState:
 always assertion OracleAskedOnce:
     for s in SPEC:
         if s not in frontier.seen:
+            return False
+    return True
+
+# Breadth first: nothing deeper than the state being expanded is popped
+# before it. Needs four states of spec to be observable (the queue has to
+# hold two depths at once), so LIMIT 2 and 3 cannot fail it.
+always assertion QueueIsBreadthFirst:
+    if explorer.current == None:
+        return True
+    for e in frontier.items:
+        if e[1] < explorer.depth:
             return False
     return True
 
