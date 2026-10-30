@@ -22,6 +22,7 @@ go_library(
         "processor.go",
         "protopath.go",
         "starlark.go",
+        "statecodec.go",
         "statehash.go",
         "state_visitor.go",
         "symmetry_check.go",
@@ -61,6 +62,7 @@ go_test(
         "processor_test.go",
         "protopath_test.go",
         "starlark_test.go",
+        "statecodec_test.go",
         "statehash_test.go",
         "thread_test.go",
     ],
@@ -77,5 +79,6 @@ go_test(
         "@net_starlark_go//starlark",
         "@net_starlark_go//syntax",
         "@org_golang_google_protobuf//encoding/protojson",
+        "@org_golang_google_protobuf//proto",
     ],
 )

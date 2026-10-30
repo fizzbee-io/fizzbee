@@ -1,0 +1,230 @@
+# State serialization format
+
+FizzBee can write a complete model-checker state (a `Process`: heap, roles,
+threads with their call stacks, channel messages, stats, ...) to a compact
+byte string and read it back. Decoding gives a process that the checker can
+keep exploring from, the same as one made by `Process.Fork`.
+
+The code is in two layers:
+
+- `lib/statecodec.go`: `StateWriter` / `StateReader` for starlark values,
+  and the `CodecContext` shared by a run.
+- `modelchecker/statecodec.go`: `EncodeProcess` / `DecodeProcess`, which
+  write the process around the values.
+
+It is the base for keeping most of the BFS queue on disk, and later for
+sending states between machines. Neither is built yet.
+
+## Goals
+
+1. **Exact.** Aliasing and cycles survive a round trip. If two variables
+   point at one list, the decoded state has one list, not two equal ones.
+   Naive JSON gets this wrong.
+2. **One unit per state.** A whole process is one byte string with one
+   reference pool, so a role referenced from the heap, from `Process.Roles`
+   and from a frame's `self` decodes to one role.
+3. **Compact and cheap.** It is a single pass with no separate pool section
+   and no offsets. Ints are varints, and strings and record shapes are
+   written once per state.
+4. **Extensible.** Value types are one-byte tags, and process fields are
+   numbered, so new fields don't need a version bump.
+
+## Layout
+
+```
+state   := version:byte  field*  0
+field   := fieldNo:uvarint  payload
+```
+
+`version` is `lib.StateCodecVersion` (currently 1). A process field with its
+zero value is left out. A reader rejects a field number it doesn't know.
+So a newer reader still reads older states, and the new field takes its
+zero value.
+
+### Primitives
+
+| Name | Encoding |
+|---|---|
+| uvarint / varint | `encoding/binary` (zigzag for signed) |
+| string | `(len<<1)` + bytes the first time, `(index<<1)\|1` after. The index is into this state's string table |
+| raw bytes | uvarint length + bytes (not interned) |
+| strings | uvarint count + string* |
+
+### Values
+
+Each value starts with a one-byte tag.
+
+| Tag | Type | Payload | Pooled |
+|---|---|---|---|
+| 1-3 | None, False, True | none | |
+| 4 | int (fits int64) | varint | |
+| 5 | int (big) | sign+1 byte, raw big-endian magnitude | |
+| 6 | float | 8 bytes LE IEEE 754 | |
+| 7 | string | string | via string table |
+| 8 | bytes | raw bytes | |
+| 9 | tuple | count, values | |
+| 10 | **ref** | uvarint index into the value pool | |
+| 11 | list | count, values | before elements |
+| 12 | dict | count, (key, value)* in insertion order | before entries |
+| 13 | set | count, values in insertion order | before elements |
+| 14 | record (`lib.Struct`, also role params/fields) | shape, field values | before fields |
+| 15 | struct (`starlarkstruct`, enums, composed heaps) | shape, field values | **after** fields |
+| 16 | model_value | prefix string, varint id | yes |
+| 17 | symmetric_value | prefix, id, kind string, limit | yes |
+| 18 | role | name, symmetric bool, id value, statics index, params, fields | after id, before params |
+| 19 | RoleStub | role value, channel value | after both |
+| 20 | bag | count, values in bag order | before elements |
+| 21 | genericmap | count, (key, value)* | before entries |
+| 22 | genericset | count, keys | before keys |
+| 23 | symmetry_segment | domain value, left, right, flags, resolved id | after domain |
+| 24 | Channel | id, name, ordering, delivery, blocking | yes |
+| 25 | symmetry_domain | name, limit, kind, divergence, start, flags | yes |
+| 26 | symmetric_values | count, values | |
+| 27 | range | start, stop, step varints | |
+| 28 | opaque | uvarint index into the `CodecContext` | |
+| 255 | reserved for an extension tag | | |
+
+**The pool.** Every value with identity gets the next pool index when it is
+registered. A later occurrence of the same pointer is written as `ref`.
+Writer and reader register at the same point, as the table shows:
+
+- Containers register *before* their elements, so a cycle refers back to
+  them.
+- `starlarkstruct.Struct` is immutable and can't exist before its fields,
+  so it registers *after* them. A cycle through it is cut at the mutable
+  container inside, the same as `deepCloneStarlarkValue` does.
+- A role registers after its id, because its hash depends on the id.
+
+Tuples, ints, strings and other plain values have no identity and aren't
+pooled. Strings have their own table, so a repeated string costs 1 to 2
+bytes.
+
+**Shapes.** A record's constructor plus its sorted field names make a
+*shape*. The first use writes `0, constructor, names`. Later uses write
+`index+1`. Three roles of one type, or a list of records, pay for their
+field names once per state.
+
+### Process fields
+
+| No | Field | Payload |
+|---|---|---|
+| 1 | Name | string |
+| 2 | Current | varint |
+| 3 | Heap state | string dict: count, (name, value)* in sorted order |
+| 4 | Threads | count, then per thread: present bool, id, fairness, aborted, frames |
+| 5 | Roles | count, values (refs into the pool) |
+| 6 | ChannelMessages | count, (channel id, count, (receiver, function, frame, params)*)* |
+| 7 | Channels | count, (id, channel value)* |
+| 8 | RotationalLastAllocated | count, (name, varint)* |
+| 9 | Stats | total actions, count, (action, varint)* |
+| 10 | Returns | string dict |
+| 11 | FailedInvariants | count, (key, ints)* |
+| 12 | Witness | count, (count, bool*)* |
+| 13 | Atoms | count, uvarint* |
+| 14 | Labels | strings |
+| 15 | Messages | count, proto-encoded `ast.Message`* |
+| 16 | Flags | bits: Enabled, ThreadProgress, IsYield, EnableCheckpoint |
+| 17 | Fairness | uvarint |
+| 18 | ChoiceFairness | uvarint |
+| 19 | topLevelVars | strings |
+
+A **frame** is: file index, pc, name, scope chain, vars (string dict),
+caller-assign names, and the receiver role (or None). A **scope chain** is
+a count, then each scope root-first: flow, skip statements, loop vars, and
+loop range (0 means nil, n+1 means n values). The root scope also has its
+vars. Child scopes share the root's vars, as they do in memory.
+
+String dicts leave out builtins and modules, as `CopyDict` does when a
+state is cloned.
+
+### What is not written
+
+These parts belong to the run, not the state. `DecodeProcess` takes them
+from a template process of the same run, the same way `Fork` takes them
+from the parent:
+
+- `Files`, `Evaluator`, `SymbolTable`, `Modules`, `Heap.globals`
+- `durabilitySpec`, `guidedTrace`, `assertionBindings`
+
+`Parent` is left for the caller to set. Hash caches aren't written and are
+recomputed on demand. Transient predicate-evaluation fields aren't written
+either.
+
+## CodecContext
+
+Some values are shared between states by pointer: a deep clone keeps the
+same pointer instead of copying. The context, one per run
+(`Evaluator.CodecContext()`), keeps that true after decoding:
+
+- **Channels and symmetry domains** are configuration. They are written by
+  value and interned by value, so decoding returns the very pointer that
+  was encoded.
+- **Opaque values** have no encoding of their own, such as starlark
+  functions and builtins that end up in a state. So does each role's
+  `Methods`, `RoleMethods` and `InitValues`, which every clone of a role
+  shares. Each one is stored once in an append-only table and written as
+  its index.
+
+The opaque table is the only part that is local to the process. States sent
+to another machine will need these values named instead, for example
+methods by role type and name, and `InitValues` by value. That change is
+limited to the context and the two tags that use it.
+
+The context is safe for concurrent use. A `StateWriter` is not; use one
+per goroutine (`NewStateWriter` takes them from a pool).
+
+## Extending
+
+- **New value type:** take the next free tag, add a case to
+  `StateWriter.WriteValue` and `StateReader.ReadValue`, and decide where it
+  registers in the pool. Add it to `lib/statecodec_test.go`. Older
+  encodings still decode.
+- **New process field:** add the next field number to
+  `modelchecker/statecodec.go`, write it only when non-zero, and read it in
+  `readProcessFields`.
+- **Changing an existing encoding:** bump `StateCodecVersion`.
+
+## Testing
+
+- `go test ./lib -run StateCodec`: every value type, aliasing across
+  top-level values, cycles (including through a struct), roles and stubs,
+  and truncated or corrupt input (always an `ErrCorruptState`, never a
+  panic or a huge allocation).
+- `go test ./modelchecker -run TestStateCodecProcesses`: runs every spec
+  in `modelchecker/testdata` and round trips every stored state. The
+  decoded state must encode to the same bytes, hash the same and render
+  the same JSON.
+- `FIZZ_STATE_CODEC_ROUNDTRIP=1`: makes `Fork` pass every new process
+  through encode and decode, and panic if the result encodes differently.
+  With it set, `python3 test_references.py` must still pass all specs. It
+  did: 94 references and 10 lovable specs, with unchanged state counts.
+- `FIZZ_STATECODEC_SPEC=path/Spec.json go test ./modelchecker -run
+  TestStateCodecSpecStats -v` prints size and speed for a spec.
+
+## Measurements
+
+These are from `TestStateCodecSpecStats`, sampling about 2,000 stored
+states (linux/amd64). The timings were taken with the run's whole state
+graph still live in the heap, so GC adds to all three.
+
+| Spec | Encoded process | Heap state alone | Encode | Decode | Fork (today) |
+|---|---:|---:|---:|---:|---:|
+| raft (3 nodes) | 441 B | 195 B | 20 us | 10 us | 26 us |
+| gossip (3 servers, 1 concurrent) | 336 B | 124 B | 7.5 us | 12 us | 15 us |
+
+For comparison, the memory study measured raft's in-memory `Heap.state` at
+2.2 KB per stored node, and the whole node at 5.5 KB. So raft's heap state
+is about 11x smaller encoded. The rest of the encoded process is the threads
+and frames, which are mostly pcs and names.
+
+## Not done yet, and kept possible
+
+- **Disk spilling of the queue.** States are self-contained byte strings,
+  so a batch is just length-prefixed states. A per-batch string and shape
+  dictionary, seeded from the spec's field and variable names, would shrink
+  each state further. The format allows that without changing the value
+  encoding.
+- **Distribution.** Name the opaque values (see above). The rest of the
+  format has nothing tied to the process.
+- **Hashing.** This encoding isn't canonical: pool order and dict insertion
+  order are kept. `lib.StateEncoder` remains the hash input.
