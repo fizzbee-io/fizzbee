@@ -41,6 +41,7 @@ go_library(
 go_test(
     name = "lib_test",
     srcs = [
+        "empty_test.go",
         "jsonmarshaller_test.go",
         "jsonstring_test.go",
         "statehash_test.go",
