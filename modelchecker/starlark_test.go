@@ -251,6 +251,10 @@ func TestCompiledStmtMatchesREPL(t *testing.T) {
 		{"comprehension", []string{"y = [x * i for i in lst if i > 1]", "z = {i: x for i in lst}"}},
 		{"shadow_builtin", []string{"len = 3", "y = len + x"}},
 		{"lambda_closure", []string{"f = lambda v: v + x", "x = 100", "y = f(1)"}},
+		{"lambda_rebind_same_chunk", []string{"x = 10; f = lambda: x; x = 20", "y = f()"}},
+		{"lambda_rebind_later", []string{"f = lambda: x", "x = 20", "y = f()", "x = 30", "z = f()"}},
+		{"lambda_param_shadows_env", []string{"f = lambda x: x * 2", "y = f(3) + x"}},
+		{"comprehension_var_shadows_env", []string{"x = [x for x in lst]"}},
 		{"two_statements_one_line", []string{"a = 1; b = a + x"}},
 		{"multiline", []string{"y = (x +\n      1)"}},
 		{"runtime_error", []string{"y = x // zero"}},
@@ -283,7 +287,7 @@ func TestCompiledStmtMatchesREPL(t *testing.T) {
 // binds before that name exists keeps the REPL path and its error.
 func TestCompiledStmtFallsBack(t *testing.T) {
 	checker := NewModelChecker("test")
-	for _, code := range []string{"w = w + 1", "w += 1", "a, b = 1, a", "d[w] = 1; w = 2"} {
+	for _, code := range []string{"w = w + 1", "w += 1", "a, b = 1, a", "d[w] = 1; w = 2", "w = [w for w in lst]", "def g(): pass", "if x: y = 1"} {
 		assert.Nil(t, checker.compiledStmt("equiv.fizz", code, 20, 9, compiledEquivEnv()), code)
 	}
 	assert.NotNil(t, checker.compiledStmt("equiv.fizz", "w = 1; v = w + 1", 20, 9, compiledEquivEnv()))
