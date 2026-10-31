@@ -227,6 +227,10 @@ type Process struct {
 
 	topLevelVars []string
 
+	// dirty: with --experimental_lazy_fork, set once a statement ran that
+	// may have written to the state; a clean disabled clone is reused.
+	dirty bool
+
 	// assertionBindings holds, for each assertion instance a `for` header
 	// expanded to, the values its clause names are bound to.
 	assertionBindings map[string]starlark.StringDict
@@ -1002,6 +1006,10 @@ type Node struct {
 	// trace without keeping ancestor Process objects alive. Nil otherwise.
 	// Siblings share the parent's pathTail pointer.
 	pathTail *pathNode `json:"-"`
+
+	// lazy: with --experimental_lazy_fork, the action this node will run,
+	// set until the node is dequeued and materializeLazy forks the parent.
+	lazy *lazyAction `json:"-"`
 }
 
 // pathNode is a single entry in the no-graph mode's action-name chain. It
@@ -1303,6 +1311,16 @@ type Processor struct {
 	isTest             bool
 	hashes             JoinHashes
 	guidedTrace        *GuidedTrace
+
+	// Lazy action forks (see lazyfork.go).
+	lazyForks          bool
+	scratch            *Process // clean clone of scratchParent, free for reuse
+	scratchCandidate   *Process // the clone materialized last
+	scratchParent      *Process
+	scratchThread      int
+	scratchPrevCurrent int
+	lazyForked         int
+	lazyReused         int
 	preinitHookContent string
 	visitedMapTracking int // 0=default, 1=enabled, 2=disabled
 
@@ -1492,6 +1510,14 @@ func (p *Processor) SetDisableSymmetryReduction(v bool) {
 // only via Link.Returns — use this to verify downstream consumers have
 // migrated. Sets a package-level variable (the flag is process-wide, not
 // per-Processor).
+// SetExperimentalLazyFork enables lazy action forks: the clone of a yield
+// state for an action is made when the action start is dequeued, and a
+// clone left clean by a disabled action is reused for the next action.
+func (p *Processor) SetExperimentalLazyFork(v bool) {
+	p.lazyForks = v
+	lazyForksEnabled = v
+}
+
 func (p *Processor) SetExperimentalNoStateReturns(v bool) {
 	excludeReturnsFromState = v
 }
@@ -1799,6 +1825,7 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 		fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
 	}
 	p.printPeakSummary()
+	p.printLazySummary()
 
 	return p.Init, failedNode, err
 }
@@ -2085,6 +2112,14 @@ func (p *Processor) printRunSummary(startTime time.Time) {
 		fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
 	}
 	p.printPeakSummary()
+	p.printLazySummary()
+}
+
+func (p *Processor) printLazySummary() {
+	if !p.lazyForks {
+		return
+	}
+	fmt.Printf("Lazy forks: %d cloned, %d reused\n", p.lazyForked, p.lazyReused)
 }
 
 // printPeakSummary reports the peak processing-queue length observed during
@@ -2575,6 +2610,9 @@ func processPreInit(init *Node, stmts []*ast.Statement, preinitHookContent strin
 }
 
 func (p *Processor) processNode(node *Node) (bool, bool) {
+	if node.lazy != nil && !p.materializeLazy(node) {
+		return false, false
+	}
 	if node.Process.currentThread().currentPc() == "" && node.Name == "init" {
 		if node.Process.Files[0].Actions[0].Name != "Init" {
 			return p.processInit(node), false
@@ -2584,6 +2622,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	node.CachedHashCode = ""
 	forks, yield := node.currentThread().Execute()
 	if len(forks) == 0 && !node.Enabled && !node.ThreadProgress {
+		p.offerScratch(node.Process)
 		return false, false
 	}
 	if node.ThreadProgress {
@@ -3682,6 +3721,23 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 	}
 
 	if p.ExceedsActionCountLimits(action, statProcess, role) {
+		return
+	}
+
+	if p.lazyForks {
+		if role != nil {
+			found := false
+			for _, r := range statProcess.Roles {
+				if r != nil && r.RefStringShort() == role.RefStringShort() {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return
+			}
+		}
+		p.enqueueScheduled(node.newLazyActionNode(statProcess, role, roleIndex, action, actionIndex))
 		return
 	}
 

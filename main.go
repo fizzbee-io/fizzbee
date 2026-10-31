@@ -43,6 +43,7 @@ var experimentalProcessedQueue bool
 var experimentalNoGraph bool
 var experimentalNoStateReturns bool
 var experimentalCollapseSteps bool
+var experimentalLazyFork bool
 var noSymmetryReduction bool
 var experimentalIncrementalLiveness bool
 
@@ -753,6 +754,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		p1.SetExperimentalNoGraph(experimentalNoGraph)
 		p1.SetExperimentalNoStateReturns(experimentalNoStateReturns)
 		p1.SetExperimentalCollapseSteps(experimentalCollapseSteps)
+		p1.SetExperimentalLazyFork(experimentalLazyFork && !simulation && guidedTrace == nil)
 		p1.SetDisableSymmetryReduction(noSymmetryReduction)
 		p1.SetIncrementalLiveness(experimentalIncrementalLiveness && guidedTrace == nil && isStrictLiveness(stateConfig))
 		holder.Store(p1)
@@ -1228,6 +1230,7 @@ func parseFlags() []string {
 	//    and the transition-invariant check later assigns over it; only
 	//    visible with continue_path_on_invariant_failures.
 	flag.BoolVar(&experimentalCollapseSteps, "experimental_collapse_steps", false, "EXPERIMENTAL: do not store mid-action steps that are neither yield points nor fair `any` choices. Once an action's internal steps are explored to the next yield point, that yield point links directly from the previous one. Same unique states and assertion outcomes; far fewer stored nodes. Ignored with --trace, refinements, simulation, and --experimental_processed_queue unless --experimental_no_graph is set. Without --experimental_no_graph, turns off the default processed queue. Default=false.")
+	flag.BoolVar(&experimentalLazyFork, "experimental_lazy_fork", false, "EXPERIMENTAL: fork the state for an action when the action start is dequeued instead of when it is scheduled, and reuse the clone of an action that was disabled without writing to the state for the next action of the same state. Same states and verdicts; less cloning and a smaller queue. Ignored in simulation and trace modes. Default=false.")
 	flag.BoolVar(&noSymmetryReduction, "no-symmetry-reduction", false, "Disable symmetry reduction: dedup uses only the plain state hash, so every persisted state keeps its concrete symmetric values/role identities (no canonical renaming). Larger state space. Required when generating state graphs for MBT replay from specs that use symmetric roles or symmetry values. Default=false.")
 	flag.Parse()
 
