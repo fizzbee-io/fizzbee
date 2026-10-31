@@ -54,6 +54,13 @@ go_test(
 )
 
 go_test(
+    name = "starlarkstruct_test",
+    srcs = ["starlarkstruct_test.go"],
+    embed = [":lib"],
+    deps = ["@net_starlark_go//starlark"],
+)
+
+go_test(
     name = "symmetry_test",
     srcs = ["symmetry_test.go"],
     embed = [":lib"],
