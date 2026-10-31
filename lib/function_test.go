@@ -31,18 +31,29 @@ inc1b = make(1)
 inc2 = make(2)
 double = lambda v: v * 2
 withDefault = lambda v, k=3: v + k
+def holder(fs):
+    return lambda: fs
+holdInc = holder([inc1])
+holdDouble = holder([double])
 `)
 	json := func(name string) string {
 		b, err := MarshalJSONStarlarkValue(g[name], 0)
 		require.NoError(t, err)
 		return string(b)
 	}
-	assert.Equal(t, `{"function":"lambda@3:12","captured":{"x":1}}`, json("inc1"))
-	assert.Equal(t, `{"function":"lambda@8:15","defaults":[null,3]}`, json("withDefault"))
+	assert.Equal(t, `{"function":"lambda@f.star:3:12","captured":{"x":1}}`, json("inc1"))
+	assert.Equal(t, `{"function":"lambda@f.star:8:15","defaults":[null,3]}`, json("withDefault"))
 
 	// Same source position and captured values: the same value.
 	assert.Equal(t, encodeHash(g["inc1"]), encodeHash(g["inc1b"]))
 	// Different captured values or a different lambda: different values.
 	assert.NotEqual(t, encodeHash(g["inc1"]), encodeHash(g["inc2"]))
 	assert.NotEqual(t, encodeHash(g["inc1"]), encodeHash(g["double"]))
+	// A function inside a captured container is part of the value.
+	assert.NotEqual(t, encodeHash(g["holdInc"]), encodeHash(g["holdDouble"]))
+
+	// The same line and column in another file is a different function.
+	other, err := starlark.ExecFile(&starlark.Thread{}, "g.star", "\ndef make(x):\n    return lambda v: v + x\ninc1 = make(1)\n", nil)
+	require.NoError(t, err)
+	assert.NotEqual(t, encodeHash(g["inc1"]), encodeHash(other["inc1"]))
 }

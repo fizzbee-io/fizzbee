@@ -10,17 +10,17 @@ import (
 
 // marshalFunctionJSON encodes a Starlark function (a lambda or a nested def)
 // held in state. Two functions are the same value when they come from the
-// same source position and have the same default values and the same
-// captured values, so all three go into the encoding; the state hash uses
-// it too. A spec statement runs as a function whose parameters are the
+// same source position (file, line and column) and have the same default
+// values and the same captured values, so all three go into the encoding;
+// the state hash uses it too. A spec statement runs as a function whose parameters are the
 // names in scope, so a lambda's outside names are captured values, fixed
 // as of the statement that created it.
 //
-//	{"function":"lambda@12:9","defaults":[null,1],"captured":{"x":3}}
+//	{"function":"lambda@Spec.fizz:12:9","defaults":[null,1],"captured":{"x":3}}
 func marshalFunctionJSON(fn *starlark.Function, depth int) ([]byte, error) {
 	var buf strings.Builder
 	pos := fn.Position()
-	name, err := json.Marshal(fmt.Sprintf("%s@%d:%d", fn.Name(), pos.Line, pos.Col))
+	name, err := json.Marshal(fmt.Sprintf("%s@%s:%d:%d", fn.Name(), pos.Filename(), pos.Line, pos.Col))
 	if err != nil {
 		return nil, err
 	}
