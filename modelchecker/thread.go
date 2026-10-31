@@ -299,17 +299,6 @@ func NewCallStack() *CallStack {
 	return &CallStack{lib.NewStack[*CallFrame]()}
 }
 
-// Peek and Len run several times per statement. A call stack belongs to one
-// thread of one process, which only one goroutine runs at a time, so they
-// skip the lock.
-func (s *CallStack) Peek() (*CallFrame, bool) {
-	return s.Stack.PeekUnlocked()
-}
-
-func (s *CallStack) Len() int {
-	return s.Stack.LenUnlocked()
-}
-
 func (s *CallStack) CloneFrames(refs map[starlark.Value]starlark.Value, permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) []*CallFrame {
 	frames := s.RawArray()
 	cloned := make([]*CallFrame, len(frames))
