@@ -17,12 +17,10 @@ options:
 LIMIT = 2
 MAX_SUCC = 2         # fresh states one expansion may mint
 MAX_ACTIONS = 2      # the checker's depth bound
-# Edge labels the Executor can hand back: (fairness, crash). The loop never
-# reads fairness, so one value stands for all of them. The crash flag is
-# read only by the deadlock count, so it is offered only in the run that
-# has the switch on (LIMIT 3: 36,344 states with it in both runs, 12,750 now).
-LIVE = ("unfair", False)
-CRASH = ("unfair", True)
+# An edge is (target, crash). The loop reads the crash flag in one place,
+# the deadlock count, so crash edges are only offered in the run that has
+# the switch on. Fairness is not modeled: the loop never reads it, it is a
+# label the Executor hands to the liveness check through the graph.
 DEADLOCK_DETECTION_OPTIONS = [True, False]
 
 # States of the spec under check are interchangeable identifiers.
@@ -42,7 +40,7 @@ atomic func ground_truth(root, spec, kind):
         if kind.get(s, "ok") == "bad":
             bad.add(s)
         edges = spec.get(s, [])
-        live = [e for e in edges if not e[2]]
+        live = [e for e in edges if not e[1]]
         if len(live) == 0 and depth[s] < MAX_ACTIONS:
             terminal.add(s)
         if depth[s] >= MAX_ACTIONS:
@@ -112,11 +110,11 @@ role Explorer:
                     cands = cands | set(S.choices())
                 chosen = set()
                 for t in cands:
-                    # Leave t out, or take it with one label.
-                    pick = oneof [None] + labels
-                    if pick == None:
+                    # Leave t out, or take it as a live or a crash edge.
+                    pick = oneof picks
+                    if pick == "none":
                         continue
-                    chosen.add((t, pick[0], pick[1]))
+                    chosen.add((t, pick == "crash"))
                     if t not in KIND:
                         kind = oneof ["ok", "bad"]
                         KIND[t] = kind
@@ -125,7 +123,7 @@ role Explorer:
             succ = SPEC[s]
         if d >= MAX_ACTIONS:
             succ = []
-        elif deadlock_detection and len([x for x in succ if not x[2]]) == 0:
+        elif deadlock_detection and len([x for x in succ if not x[1]]) == 0:
             verdict = ("DEADLOCK", s)
         for x in succ:
             t = x[0]
@@ -144,8 +142,8 @@ role Explorer:
 
 action Init:
     deadlock_detection = oneof DEADLOCK_DETECTION_OPTIONS
-    labels = [LIVE, CRASH] if deadlock_detection else [LIVE]
-    SPEC = {}            # what the oracle has answered: state -> [(target, fairness, crash)]
+    picks = ["none", "live", "crash"] if deadlock_detection else ["none", "live"]
+    SPEC = {}            # what the oracle has answered: state -> [(target, crash)]
     KIND = {}            # state -> "ok" | "bad", decided when the state is first minted
     init_state = S.choose()
     kind = oneof ["ok", "bad"]
