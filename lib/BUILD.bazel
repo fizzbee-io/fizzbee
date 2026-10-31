@@ -4,6 +4,7 @@ go_library(
     name = "lib",
     srcs = [
         "counter.go",
+        "function.go",
         "jsonmarshaller.go",
         "jsonstring.go",
         "linear_collection.go",
@@ -42,6 +43,7 @@ go_test(
     name = "lib_test",
     srcs = [
         "empty_test.go",
+        "function_test.go",
         "jsonmarshaller_test.go",
         "jsonstring_test.go",
         "statehash_test.go",
@@ -49,6 +51,7 @@ go_test(
     embed = [":lib"],
     deps = [
         "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
         "@net_starlark_go//starlark",
     ],
 )
