@@ -83,3 +83,20 @@ func fileExists(name string) bool {
 	_, err := os.Stat(name)
 	return err == nil
 }
+
+func TestSymmetricFairActions(t *testing.T) {
+	fair := &ast.Fairness{Level: ast.FairnessLevel_FAIRNESS_LEVEL_WEAK}
+	file := &ast.File{
+		Roles: []*ast.Role{
+			{Name: "Worker", Modifiers: []string{"symmetric"}, Actions: []*ast.Action{
+				{Name: "Init", Fairness: fair},
+				{Name: "Work", Fairness: fair},
+				{Name: "Idle"},
+			}},
+			{Name: "Leader", Actions: []*ast.Action{{Name: "Elect", Fairness: fair}}},
+		},
+	}
+	assert.Empty(t, SymmetricFairActions(file), "no liveness assertion")
+	file.Invariants = []*ast.Invariant{{Name: "Done", Always: true, Eventually: true}}
+	assert.Equal(t, []string{"Worker.Work"}, SymmetricFairActions(file))
+}
