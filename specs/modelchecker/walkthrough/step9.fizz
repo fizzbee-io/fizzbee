@@ -12,12 +12,17 @@ options:
 # LIMIT states, up to relabelling (nominal symmetry), not against a graph
 # written by hand. The answer is remembered, so the oracle is a function.
 
-# Distinct states a spec under check may have. 2: 828 states, under a
-# second. 3: 142,826 states, three and a half minutes. 4 is out of reach.
+# Distinct states a spec under check may have. 2: 100 states. 3: 12,750
+# states, under half a minute. 4: not run yet.
 LIMIT = 2
 MAX_SUCC = 2         # fresh states one expansion may mint
 MAX_ACTIONS = 2      # the checker's depth bound
-LABELS = [("unfair", False), ("unfair", True)]   # (fairness, crash)
+# Edge labels the Executor can hand back: (fairness, crash). The loop never
+# reads fairness, so one value stands for all of them. The crash flag is
+# read only by the deadlock count, so it is offered only in the run that
+# has the switch on (LIMIT 3: 36,344 states with it in both runs, 12,750 now).
+LIVE = ("unfair", False)
+CRASH = ("unfair", True)
 DEADLOCK_DETECTION_OPTIONS = [True, False]
 
 # States of the spec under check are interchangeable identifiers.
@@ -108,7 +113,7 @@ role Explorer:
                 chosen = set()
                 for t in cands:
                     # Leave t out, or take it with one label.
-                    pick = oneof [None] + LABELS
+                    pick = oneof [None] + labels
                     if pick == None:
                         continue
                     chosen.add((t, pick[0], pick[1]))
@@ -139,6 +144,7 @@ role Explorer:
 
 action Init:
     deadlock_detection = oneof DEADLOCK_DETECTION_OPTIONS
+    labels = [LIVE, CRASH] if deadlock_detection else [LIVE]
     SPEC = {}            # what the oracle has answered: state -> [(target, fairness, crash)]
     KIND = {}            # state -> "ok" | "bad", decided when the state is first minted
     init_state = S.choose()
