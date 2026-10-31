@@ -190,3 +190,142 @@ func TestEvalExprCacheErrorPosition(t *testing.T) {
 	assert.Contains(t, evalErr.Backtrace(), "pos.fizz:7402:")
 	assert.Contains(t, evalErr.Error(), "division by zero")
 }
+
+// compiledEquivEnv is a fresh environment for each run, so a statement that
+// mutates a value in place doesn't leak between the two paths.
+func compiledEquivEnv() starlark.StringDict {
+	d := starlark.NewDict(1)
+	_ = d.SetKey(starlark.String("k"), starlark.MakeInt(0))
+	return starlark.StringDict{
+		"x":      starlark.MakeInt(10),
+		"zero":   starlark.MakeInt(0),
+		"lst":    starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.MakeInt(2)}),
+		"d":      d,
+		"pair":   starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)},
+		"nested": starlark.Tuple{starlark.Tuple{starlark.MakeInt(1), starlark.MakeInt(2)}, starlark.MakeInt(3)},
+	}
+}
+
+func compiledEquivStmt(code string, line, col int32) *ast.PyStmt {
+	return &ast.PyStmt{
+		Code:       code,
+		SourceInfo: &ast.SourceInfo{Start: &ast.Position{Line: line, Column: col}},
+	}
+}
+
+// errPos is the position of the innermost frame of a Starlark error.
+func errPos(err error) string {
+	if evalErr, ok := err.(*starlark.EvalError); ok && len(evalErr.CallStack) > 0 {
+		return evalErr.CallStack[len(evalErr.CallStack)-1].Pos.String()
+	}
+	return ""
+}
+
+func envStrings(env starlark.StringDict) map[string]string {
+	m := map[string]string{}
+	for k, v := range env {
+		m[k] = v.String()
+	}
+	return m
+}
+
+// TestCompiledStmtMatchesREPL runs each sequence of statements through the
+// compiled-function path and through the REPL path, each on its own fresh
+// environment, and requires the same environment afterwards and the same
+// error, at the same position, for a statement that fails.
+func TestCompiledStmtMatchesREPL(t *testing.T) {
+	checker := NewModelChecker("test")
+	cases := []struct {
+		name  string
+		stmts []string
+	}{
+		{"rebind", []string{"x = x + 1"}},
+		{"augmented", []string{"x += 1", "lst += [3]"}},
+		{"new_name_visible_to_next", []string{"y = x + 1", "z = y * 2"}},
+		{"tuple_unpack", []string{"a, b = pair"}},
+		{"list_unpack", []string{"[a, b] = pair"}},
+		{"nested_unpack", []string{"(a, b), c = nested"}},
+		{"swap", []string{"a, b = pair", "a, b = b, a"}},
+		{"index_targets", []string{"d['k'] = x", "lst[0] = x", "d['n'] = d['k'] + 1"}},
+		{"in_place_call", []string{"lst.append(x)", "d.update({'m': 1})"}},
+		{"comprehension", []string{"y = [x * i for i in lst if i > 1]", "z = {i: x for i in lst}"}},
+		{"shadow_builtin", []string{"len = 3", "y = len + x"}},
+		{"lambda_closure", []string{"f = lambda v: v + x", "x = 100", "y = f(1)"}},
+		{"lambda_rebind_same_chunk", []string{"x = 10; f = lambda: x; x = 20", "y = f()"}},
+		{"lambda_rebind_later", []string{"f = lambda: x", "x = 20", "y = f()", "x = 30", "z = f()"}},
+		{"lambda_param_shadows_env", []string{"f = lambda x: x * 2", "y = f(3) + x"}},
+		{"comprehension_var_shadows_env", []string{"x = [x for x in lst]"}},
+		{"two_statements_one_line", []string{"a = 1; b = a + x"}},
+		{"multiline", []string{"y = (x +\n      1)"}},
+		{"runtime_error", []string{"y = x // zero"}},
+		{"runtime_error_second_line", []string{"y = (x +\n      x // zero)"}},
+		{"index_error", []string{"y = lst[5]"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			compiledEnv, replEnv := compiledEquivEnv(), compiledEquivEnv()
+			for i, code := range tc.stmts {
+				stmt := compiledEquivStmt(code, int32(20+i), 9)
+				start := stmt.GetSourceInfo().GetStart()
+				c := checker.compiledStmt("equiv.fizz", code, start.GetLine(), start.GetColumn(), compiledEnv)
+				require.NotNil(t, c, "statement %q should take the compiled path", code)
+				_, compiledErr := c.exec(newEvalThread(nil), compiledEnv)
+				_, replErr := checker.execPyStmtREPL("equiv.fizz", stmt, replEnv, nil)
+				if replErr != nil || compiledErr != nil {
+					require.Error(t, compiledErr, "REPL failed with %v", replErr)
+					require.Error(t, replErr, "compiled path failed with %v", compiledErr)
+					assert.Equal(t, errPos(replErr), errPos(compiledErr), "error position")
+					return
+				}
+				assert.Equal(t, envStrings(replEnv), envStrings(compiledEnv), "after %q", code)
+			}
+		})
+	}
+}
+
+// TestCompiledStmtFallsBack checks that a statement reading a name it
+// binds before that name exists keeps the REPL path and its error.
+func TestCompiledStmtFallsBack(t *testing.T) {
+	checker := NewModelChecker("test")
+	for _, code := range []string{"w = w + 1", "w += 1", "a, b = 1, a", "d[w] = 1; w = 2", "w = [w for w in lst]", "def g(): pass", "if x: y = 1"} {
+		assert.Nil(t, checker.compiledStmt("equiv.fizz", code, 20, 9, compiledEquivEnv()), code)
+	}
+	assert.NotNil(t, checker.compiledStmt("equiv.fizz", "w = 1; v = w + 1", 20, 9, compiledEquivEnv()))
+}
+
+// TestCompiledExprMatchesProgram does the same for expressions.
+func TestCompiledExprMatchesProgram(t *testing.T) {
+	checker := NewModelChecker("test")
+	cases := []string{
+		"x + 1",
+		"[i * x for i in lst]",
+		"d['k'] == 0 and len(lst) > 1",
+		"pair[0] if x > 5 else pair[1]",
+		"(x +\n     lst[1])",
+		"x // zero",
+		"(x +\n     x // zero)",
+		"lst[5]",
+	}
+	for _, src := range cases {
+		t.Run(src, func(t *testing.T) {
+			expr := cacheTestExpr(src, 30, 13)
+			start := expr.GetSourceInfo().GetStart()
+			c := checker.compiledExprFunc("equiv.fizz", src, start.GetLine(), start.GetColumn(), compiledEquivEnv())
+			require.NotNil(t, c, "expression %q should take the compiled path", src)
+			env := compiledEquivEnv()
+			args := make(starlark.Tuple, len(c.params))
+			for i, name := range c.params {
+				args[i] = env[name]
+			}
+			compiledVal, compiledErr := starlark.Call(newEvalThread(nil), c.fn, args, nil)
+			progVal, progErr := checker.evalExprProgram("equiv.fizz", expr, compiledEquivEnv(), nil)
+			if progErr != nil || compiledErr != nil {
+				require.Error(t, compiledErr, "program path failed with %v", progErr)
+				require.Error(t, progErr, "compiled path failed with %v", compiledErr)
+				assert.Equal(t, errPos(progErr), errPos(compiledErr), "error position")
+				return
+			}
+			assert.Equal(t, progVal.String(), compiledVal.String())
+		})
+	}
+}
