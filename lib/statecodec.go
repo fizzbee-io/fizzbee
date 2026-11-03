@@ -620,7 +620,10 @@ func (w *StateWriter) writePairs(items []starlark.Tuple) error {
 	for i, kv := range items {
 		keys[i] = kv[0]
 	}
-	order := canonicalOrder(keys)
+	order, err := canonicalOrder(keys)
+	if err != nil {
+		return err
+	}
 	for i := range items {
 		kv := items[i]
 		if order != nil {
@@ -638,7 +641,10 @@ func (w *StateWriter) writePairs(items []starlark.Tuple) error {
 
 // writeUnordered writes count and elements in canonical order.
 func (w *StateWriter) writeUnordered(elems []starlark.Value) error {
-	order := canonicalOrder(elems)
+	order, err := canonicalOrder(elems)
+	if err != nil {
+		return err
+	}
 	if order == nil {
 		return w.writeSlice(elems)
 	}

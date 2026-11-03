@@ -2,6 +2,7 @@ package lib
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 	"sort"
 	"unsafe"
@@ -21,10 +22,14 @@ import (
 // numbers; any other mix sorts by the keys' StateEncoder bytes. Keys whose
 // canonical bytes tie (equal but distinct values in a bag, say) keep their
 // relative order.
-func canonicalOrder(keys []starlark.Value) []int {
+//
+// The StateEncoder panics on a few values it can't hash (a NaN inside
+// symmetric_values, say); that is an error here, as hashing the state
+// would fail the same way.
+func canonicalOrder(keys []starlark.Value) (order []int, err error) {
 	n := len(keys)
 	if n < 2 {
-		return nil
+		return nil, nil
 	}
 	allStr, allInt := true, true
 	for _, k := range keys {
@@ -56,6 +61,11 @@ func canonicalOrder(keys []starlark.Value) []int {
 	default:
 		enc := make([][]byte, n)
 		e := NewStateEncoder()
+		defer func() {
+			if p := recover(); p != nil {
+				order, err = nil, fmt.Errorf("state codec: can't order the elements of an unordered collection: %v", p)
+			}
+		}()
 		for i, k := range keys {
 			e.Truncate(0)
 			e.WriteValue(k, 0)
@@ -72,14 +82,14 @@ func canonicalOrder(keys []starlark.Value) []int {
 		}
 	}
 	if sorted {
-		return nil
+		return nil, nil
 	}
-	order := make([]int, n)
+	order = make([]int, n)
 	for i := range order {
 		order[i] = i
 	}
 	sort.SliceStable(order, func(a, b int) bool { return less(order[a], order[b]) })
-	return order
+	return order, nil
 }
 
 // structLayout mirrors starlarkstruct.Struct, whose fields are unexported.
