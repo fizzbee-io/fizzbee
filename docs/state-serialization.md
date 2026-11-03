@@ -31,6 +31,25 @@ sending states between machines. Neither is built yet.
 4. **Extensible.** Value types are one-byte tags, and process fields are
    numbered, so new fields don't need a version bump.
 
+## Guarantees
+
+| Guarantee | Meaning | Holds |
+|---|---|---|
+| Round-trip fidelity | The decoded process is the same state: it hashes the same, renders the same, encodes to the same bytes, and keeps every aliasing and cycle, structs included. Unordered collections come back in canonical order. | Always |
+| Process portability | The state decodes in another process running the same spec with the same binary. | Unless the state holds an opaque value (a lambda or closure kept across a yield). `CodecContext.SetPortable(true)` makes that an error at encode time, so a portable encoding is never silently process-local. |
+| Durable portability | The state decodes after the writing process is gone, for example from a checkpoint on disk. | Not on its own. It needs process portability plus a record of the format version, the spec and dictionary fingerprint and the runtime version. That record belongs in the header of a page of states, which is not built yet; a single state only carries the format version. |
+
+Determinism is a separate property from these:
+
+- The same state encodes to the same bytes whatever path reached it, as
+  far as the state hash can tell: heap and scope variables are written in
+  sorted order, and unordered collections in canonical order (below).
+- The encoding is finer than the hash. Two equal lists and one list
+  referenced twice hash the same but encode differently, and symmetry
+  reduction happens in the hash only. Equal hashes don't imply equal bytes.
+- Ordered values (lists, tuples, records, the order of roles and threads)
+  are written in their order, which is part of the state.
+
 ## Layout
 
 ```
@@ -110,9 +129,15 @@ and the encoding of a state doesn't depend on the path that reached it.
 A decoded collection iterates in sorted order.
 
 **Limits.** Values nest at most 10,000 deep, inline (a back-reference is
-one level), when writing and reading. The reader never panics: corrupt
-input, or a value type that panics while being built, gives an
-`ErrCorruptState`.
+one level), when writing and reading (`maxValueDepth`). A chain of 10,000
+records is the kind of state that would hit it. The reader's allocations
+are bounded by the input size: every count and length is checked against
+the bytes left before anything is allocated, every element and every pool
+entry takes at least one byte, and a back-reference reuses a value rather
+than building one. So no separate limits on counts, string lengths or the
+pool are needed. The reader never panics: corrupt input, or a value type
+that panics while being built, gives an `ErrCorruptState`, and
+`DecodeProcess` then returns no process.
 
 Tuples, ints, strings and other plain values have no identity and aren't
 pooled. Strings have their own table, so a repeated string costs 1 to 2
@@ -307,8 +332,8 @@ Sizes are per state, and so are the times:
 
 The dictionary was trained on the first 2,000 states and measured on the
 rest. It only helps a state compressed on its own; in a batch the earlier
-states already act as one. (Source of the benchmark:
-`/mnt/project-files/specs/compression-bench/main.go` in the project files.)
+states already act as one. Nothing here compresses yet; this is the
+measurement for the queue work built on the codec.
 
 So a batch of 1,000 states with zstd at its default level is about 15x
 smaller than the encoded states, for well under 1 us per state, against
