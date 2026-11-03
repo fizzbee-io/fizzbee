@@ -37,11 +37,14 @@ import (
 //     CodecContext, which hands out one shared object per name or value.
 //     A state decodes in any process running the same spec.
 //
-// The writer and reader must agree on when a value is numbered: containers
-// are numbered before their elements (so cycles can refer back to them),
-// immutable starlarkstruct.Structs after their fields (they can't exist
-// before their fields do), and roles after their id (a role's hash depends
-// on its id).
+// The writer and reader must agree on when a value is numbered: containers,
+// records and structs are numbered before their elements (so cycles can
+// refer back to them), and roles after their id (a role's hash depends on
+// its id).
+//
+// The elements of unordered collections (dict, set, genericmap, genericset,
+// bag) are written in a canonical order, not insertion order: see
+// canonicalOrder. A decoded collection iterates in that order.
 
 // StateCodecVersion is the first byte of every encoded state. Bump it on any
 // change that an older reader would misread.
@@ -61,17 +64,17 @@ const (
 	vtTuple    // count, elements
 	vtRef      // back-reference: index into the value table
 	vtList     // count, elements
-	vtDict     // count, key/value pairs in insertion order
-	vtSet      // count, elements in insertion order
+	vtDict     // count, key/value pairs in canonical order
+	vtSet      // count, elements in canonical order
 	vtRecord   // lib.Struct: shape, field values
 	vtStruct   // starlarkstruct.Struct: shape, field values
 	vtModel    // ModelValue: prefix, id
 	vtSymValue // SymmetricValue: prefix, id, kind, limit
 	vtRole     // name, symmetric, id, statics, params, fields
 	vtRoleStub // role, channel
-	vtBag      // count, elements in bag order
-	vtGenMap   // count, key/value pairs
-	vtGenSet   // count, keys
+	vtBag      // count, elements in canonical order
+	vtGenMap   // count, key/value pairs in canonical order
+	vtGenSet   // count, keys in canonical order
 	vtSegment  // domain, left, right, flags, resolved id
 	vtChannel  // id, name, ordering, delivery, blocking
 	vtDomain   // name, limit, kind, divergence, start, flags
@@ -81,6 +84,11 @@ const (
 	vtGlobal // name of a spec-level global (a function or builtin)
 	tagExt   = 0xFF
 )
+
+// maxValueDepth bounds how deeply values nest, so corrupt or hostile input
+// can't exhaust the stack. Only values written inline count: a reference
+// back to a value is one level. A chain of records 10,000 long would hit it.
+const maxValueDepth = 10000
 
 // CodecContext holds what all states of one model-checking run share:
 // interned channels and symmetry domains, what every role of a type shares
@@ -107,7 +115,15 @@ type CodecContext struct {
 	initValues map[string]*Struct
 	// dict is the string dictionary shared by all states, set once.
 	dict atomic.Pointer[stringDict]
+	// portable makes writing a value that would need the opaque table an
+	// error, so every encoding decodes in another process.
+	portable atomic.Bool
 }
+
+// SetPortable sets whether encodings must decode in another process. When
+// set, a value with neither an encoding nor a name (one that would go
+// through the opaque table) makes WriteValue fail instead.
+func (c *CodecContext) SetPortable(portable bool) { c.portable.Store(portable) }
 
 // stringDict is a fixed list of strings that states refer to by index
 // instead of spelling them out. It must be the same list wherever a state
@@ -358,6 +374,7 @@ type StateWriter struct {
 	nshapes uint64
 	// strBytes counts the bytes of first occurrences of strings.
 	strBytes int
+	depth    int
 }
 
 // shapeKey identifies a record shape by its kind and the encoding of its
@@ -394,6 +411,7 @@ func (w *StateWriter) Reset() {
 	w.nrefs = 0
 	w.nshapes = 0
 	w.strBytes = 0
+	w.depth = 0
 }
 
 func (w *StateWriter) Release() {
@@ -573,6 +591,53 @@ func (w *StateWriter) writeShape(kind byte, constructor starlark.Value, names []
 
 // WriteValue writes one starlark value.
 func (w *StateWriter) WriteValue(v starlark.Value) error {
+	w.depth++
+	defer func() { w.depth-- }()
+	if w.depth > maxValueDepth {
+		return fmt.Errorf("state codec: values nest deeper than %d", maxValueDepth)
+	}
+	return w.writeValue(v)
+}
+
+// writePairs writes count and key/value pairs in canonical order.
+func (w *StateWriter) writePairs(items []starlark.Tuple) error {
+	w.WriteUvarint(uint64(len(items)))
+	keys := make([]starlark.Value, len(items))
+	for i, kv := range items {
+		keys[i] = kv[0]
+	}
+	order := canonicalOrder(keys)
+	for i := range items {
+		kv := items[i]
+		if order != nil {
+			kv = items[order[i]]
+		}
+		if err := w.WriteValue(kv[0]); err != nil {
+			return err
+		}
+		if err := w.WriteValue(kv[1]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// writeUnordered writes count and elements in canonical order.
+func (w *StateWriter) writeUnordered(elems []starlark.Value) error {
+	order := canonicalOrder(elems)
+	if order == nil {
+		return w.writeSlice(elems)
+	}
+	w.WriteUvarint(uint64(len(elems)))
+	for _, i := range order {
+		if err := w.WriteValue(elems[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *StateWriter) writeValue(v starlark.Value) error {
 	switch x := v.(type) {
 	case starlark.NoneType:
 		w.buf = append(w.buf, vtNone)
@@ -623,23 +688,21 @@ func (w *StateWriter) WriteValue(v starlark.Value) error {
 		}
 		w.register(v)
 		w.buf = append(w.buf, vtDict)
-		items := x.Items()
-		w.WriteUvarint(uint64(len(items)))
-		for _, kv := range items {
-			if err := w.WriteValue(kv[0]); err != nil {
-				return err
-			}
-			if err := w.WriteValue(kv[1]); err != nil {
-				return err
-			}
-		}
+		return w.writePairs(x.Items())
 	case *starlark.Set:
 		if w.ref(v) {
 			return nil
 		}
 		w.register(v)
 		w.buf = append(w.buf, vtSet)
-		return w.writeValues(x.Len(), x.Iterate())
+		elems := make([]starlark.Value, 0, x.Len())
+		iter := x.Iterate()
+		var e starlark.Value
+		for iter.Next(&e) {
+			elems = append(elems, e)
+		}
+		iter.Done()
+		return w.writeUnordered(elems)
 	case *Struct:
 		if w.ref(v) {
 			return nil
@@ -662,6 +725,10 @@ func (w *StateWriter) WriteValue(v starlark.Value) error {
 		if w.ref(v) {
 			return nil
 		}
+		if !structLayoutOK {
+			return fmt.Errorf("state codec: unexpected starlarkstruct.Struct layout (starlark upgraded?)")
+		}
+		w.register(v)
 		w.buf = append(w.buf, vtStruct)
 		names := x.AttrNames()
 		if err := w.writeShape(vtStruct, x.Constructor(), names); err != nil {
@@ -676,8 +743,6 @@ func (w *StateWriter) WriteValue(v starlark.Value) error {
 				return fmt.Errorf("%s: %w", name, err)
 			}
 		}
-		// Numbered after its fields: see the package comment.
-		w.register(v)
 	case *SymmetricValue:
 		if w.ref(v) {
 			return nil
@@ -745,34 +810,25 @@ func (w *StateWriter) WriteValue(v starlark.Value) error {
 		}
 		w.register(v)
 		w.buf = append(w.buf, vtBag)
-		return w.writeSlice(x.elems)
+		return w.writeUnordered(x.elems)
 	case *GenericMap:
 		if w.ref(v) {
 			return nil
 		}
 		w.register(v)
 		w.buf = append(w.buf, vtGenMap)
-		w.WriteUvarint(uint64(len(x.entries)))
-		for _, kv := range x.entries {
-			if err := w.WriteValue(kv[0]); err != nil {
-				return err
-			}
-			if err := w.WriteValue(kv[1]); err != nil {
-				return err
-			}
-		}
+		return w.writePairs(x.entries)
 	case *GenericSet:
 		if w.ref(v) {
 			return nil
 		}
 		w.register(v)
 		w.buf = append(w.buf, vtGenSet)
-		w.WriteUvarint(uint64(len(x.dict.entries)))
-		for _, kv := range x.dict.entries {
-			if err := w.WriteValue(kv[0]); err != nil {
-				return err
-			}
+		keys := make([]starlark.Value, len(x.dict.entries))
+		for i, kv := range x.dict.entries {
+			keys[i] = kv[0]
 		}
+		return w.writeUnordered(keys)
 	case *Segment:
 		if w.ref(v) {
 			return nil
@@ -842,6 +898,9 @@ func (w *StateWriter) WriteValue(v starlark.Value) error {
 		if reflect.TypeOf(v).Kind() != reflect.Ptr {
 			return fmt.Errorf("state codec: unsupported value type %T (%s)", v, v.Type())
 		}
+		if w.ctx.portable.Load() {
+			return fmt.Errorf("state codec: %s value %s has no portable encoding", v.Type(), v.String())
+		}
 		w.buf = append(w.buf, vtOpaque)
 		w.WriteUvarint(w.ctx.internOpaque(v, v))
 	}
@@ -893,6 +952,7 @@ type StateReader struct {
 	refs   []starlark.Value
 	strs   []string
 	shapes []readShape
+	depth  int
 }
 
 type readShape struct {
@@ -1083,8 +1143,8 @@ func (r *StateReader) readShape() (readShape, error) {
 		return readShape{}, r.err
 	}
 	if h > 0 {
-		if h-1 >= uint64(len(r.shapes)) {
-			r.fail("shape ref %d out of range", h-1)
+		if h-1 >= uint64(len(r.shapes)) || r.shapes[h-1].constructor == nil {
+			r.fail("shape ref %d out of range or not yet read", h-1)
 			return readShape{}, r.err
 		}
 		return r.shapes[h-1], nil
@@ -1103,7 +1163,28 @@ func (r *StateReader) readShape() (readShape, error) {
 }
 
 // ReadValue reads one value written by WriteValue.
-func (r *StateReader) ReadValue() (starlark.Value, error) {
+func (r *StateReader) ReadValue() (v starlark.Value, err error) {
+	r.depth++
+	defer func() {
+		r.depth--
+		// Building a value runs its own code (hashing a set element,
+		// comparing dict keys), and some value types panic on input no
+		// real state holds. Corrupt input must not take the checker down.
+		if r.depth == 0 {
+			if p := recover(); p != nil {
+				r.fail("building a value panicked: %v", p)
+				v, err = nil, r.err
+			}
+		}
+	}()
+	if r.depth > maxValueDepth {
+		r.fail("values nest deeper than %d", maxValueDepth)
+		return nil, r.err
+	}
+	return r.readValue()
+}
+
+func (r *StateReader) readValue() (starlark.Value, error) {
 	tag := r.ReadUint8()
 	if r.err != nil {
 		return nil, r.err
@@ -1211,20 +1292,42 @@ func (r *StateReader) ReadValue() (starlark.Value, error) {
 		}
 		return s, nil
 	case vtStruct:
+		// Numbered before its fields, like a record: the struct is built
+		// with its field names and filled in as the fields are read, so a
+		// cycle through it refers back to this struct.
+		if !structLayoutOK {
+			r.fail("unexpected starlarkstruct.Struct layout")
+			return nil, r.err
+		}
+		idx := r.reserve()
 		shape, err := r.readShape()
 		if err != nil {
 			return nil, err
 		}
 		d := make(starlark.StringDict, len(shape.names))
 		for _, name := range shape.names {
+			d[name] = starlark.None
+		}
+		s := starlarkstruct.FromStringDict(shape.constructor, d)
+		ents := structEntries(s)
+		if len(ents) != len(shape.names) {
+			r.fail("struct has repeated field names")
+			return nil, r.err
+		}
+		for i, name := range shape.names {
+			if ents[i].name != name {
+				r.fail("struct field names are not sorted")
+				return nil, r.err
+			}
+		}
+		r.refs[idx] = s
+		for i := range ents {
 			v, err := r.ReadValue()
 			if err != nil {
 				return nil, err
 			}
-			d[name] = v
+			ents[i].value = v
 		}
-		s := starlarkstruct.FromStringDict(shape.constructor, d)
-		r.register(s)
 		return s, nil
 	case vtSymValue:
 		prefix := r.ReadString()

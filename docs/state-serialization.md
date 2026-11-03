@@ -67,17 +67,17 @@ Each value starts with a one-byte tag.
 | 9 | tuple | count, values | |
 | 10 | **ref** | uvarint index into the value pool | |
 | 11 | list | count, values | before elements |
-| 12 | dict | count, (key, value)* in insertion order | before entries |
-| 13 | set | count, values in insertion order | before elements |
+| 12 | dict | count, (key, value)* in canonical order | before entries |
+| 13 | set | count, values in canonical order | before elements |
 | 14 | record (`lib.Struct`, also role params/fields) | shape, field values | before fields |
-| 15 | struct (`starlarkstruct`, enums, composed heaps) | shape, field values | **after** fields |
+| 15 | struct (`starlarkstruct`, enums, composed heaps) | shape, field values | before fields |
 | 16 | model_value | prefix string, varint id | yes |
 | 17 | symmetric_value | prefix, id, kind string, limit | yes |
 | 18 | role | name, symmetric bool, id value, has-methods bool, init values (string: their own self-contained encoding), params, fields | after id, before params |
 | 19 | RoleStub | role value, channel value | after both |
-| 20 | bag | count, values in bag order | before elements |
-| 21 | genericmap | count, (key, value)* | before entries |
-| 22 | genericset | count, keys | before keys |
+| 20 | bag | count, values in canonical order | before elements |
+| 21 | genericmap | count, (key, value)* in canonical order | before entries |
+| 22 | genericset | count, keys in canonical order | before keys |
 | 23 | symmetry_segment | domain value, left, right, flags, resolved id | after domain |
 | 24 | Channel | id, name, ordering, delivery, blocking | yes |
 | 25 | symmetry_domain | name, limit, kind, divergence, start, flags | yes |
@@ -91,12 +91,28 @@ Each value starts with a one-byte tag.
 registered. A later occurrence of the same pointer is written as `ref`.
 Writer and reader register at the same point, as the table shows:
 
-- Containers register *before* their elements, so a cycle refers back to
-  them.
-- `starlarkstruct.Struct` is immutable and can't exist before its fields,
-  so it registers *after* them. A cycle through it is cut at the mutable
-  container inside, the same as `deepCloneStarlarkValue` does.
+- Containers, records and structs register *before* their elements, so a
+  cycle refers back to them and keeps its identity.
+- `starlarkstruct.Struct` has no way to build it before its fields, so the
+  reader builds it with its field names and fills the values in as it
+  reads them (through a mirror of its unexported layout, checked against
+  the real type at startup; a starlark upgrade that changes it makes
+  writing a struct fail, and `TestStateCodecStructLayout` catches it).
 - A role registers after its id, because its hash depends on the id.
+
+**Canonical order.** Elements of unordered collections (dict, set, bag,
+genericmap, genericset) are written sorted, not in insertion order: strings
+as strings, int64s as numbers, and any other mix by their `StateEncoder`
+bytes. Elements whose bytes tie (equal but distinct values in a bag) keep
+their relative order. The state hash already ignores insertion order for
+these types, so two states the checker treats as one also encode alike,
+and the encoding of a state doesn't depend on the path that reached it.
+A decoded collection iterates in sorted order.
+
+**Limits.** Values nest at most 10,000 deep, inline (a back-reference is
+one level), when writing and reading. The reader never panics: corrupt
+input, or a value type that panics while being built, gives an
+`ErrCorruptState`.
 
 Tuples, ints, strings and other plain values have no identity and aren't
 pooled. Strings have their own table, so a repeated string costs 1 to 2
@@ -204,7 +220,9 @@ not only the one that wrote it:
 The **opaque table** is the fallback for a value with neither an encoding
 nor a name, for example a lambda kept in a variable. It stores the value
 and writes its index, which only means something inside this process. Specs
-in the reference suite don't hit it.
+in the reference suite don't hit it. `CodecContext.SetPortable(true)` turns
+the fallback into an error, for encodings that must decode elsewhere. The
+table keeps its values alive for the run.
 
 The resolver for a run is set from the first process encoded or decoded
 (`modelchecker.specResolver`: the files, globals and evaluator, which are
@@ -226,9 +244,15 @@ them from a pool).
 ## Testing
 
 - `go test ./lib -run StateCodec`: every value type, aliasing across
-  top-level values, cycles (including through a struct), roles and stubs,
-  and truncated or corrupt input (always an `ErrCorruptState`, never a
-  panic or a huge allocation).
+  top-level values, cycles (including through a struct, from either side),
+  canonical order (each unordered type built in different orders encodes
+  to the same bytes), the depth limit, portable mode, roles and stubs, and
+  truncated or corrupt input (always an `ErrCorruptState`, never a panic
+  or a huge allocation).
+- `go test ./lib -run XXX -fuzz FuzzStateReader`: random input never
+  panics or hangs the reader, and whatever decodes encodes and decodes
+  again. Plain `go test` runs the seeds and the saved crashers in
+  `lib/testdata/fuzz`.
 - `go test ./modelchecker -run TestStateCodecProcesses`: runs every spec
   in `modelchecker/testdata` and round trips every stored state. The
   decoded state must encode to the same bytes, hash the same and render
@@ -274,5 +298,7 @@ the node.
   example) is a further option on top.
 - **Distribution.** States already decode in another process running the
   same spec. The only exception is the opaque fallback above.
-- **Hashing.** This encoding isn't canonical: pool order and dict insertion
-  order are kept. `lib.StateEncoder` remains the hash input.
+- **Hashing.** `lib.StateEncoder` remains the hash input. The encoding is
+  a fixed function of the state, but it is finer than the hash: it keeps
+  aliasing (one list referenced twice vs two equal lists), which the hash
+  doesn't, and symmetry reduction happens in the hash only.

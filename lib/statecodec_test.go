@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"bytes"
 	"errors"
 	"math"
 	"math/big"
@@ -42,7 +43,22 @@ func roundTripValues(t *testing.T, ctx *CodecContext, vals ...starlark.Value) ([
 func assertStarlarkEqual(t *testing.T, want, got starlark.Value) {
 	t.Helper()
 	assert.Equal(t, want.Type(), got.Type())
-	assert.Equal(t, want.String(), got.String())
+	switch want.Type() {
+	case "dict", "set", "bag", "genericmap", "genericset":
+		// Decoded in canonical order, so they print differently. Compare
+		// them as the state hash does (bag equality is order-sensitive).
+		e1, e2 := NewStateEncoder(), NewStateEncoder()
+		e1.WriteValue(want, 0)
+		e2.WriteValue(got, 0)
+		assert.Equal(t, e1.Bytes(), e2.Bytes(), "%s != %s", want, got)
+		e1.Release()
+		e2.Release()
+		if want.Type() == "bag" {
+			return
+		}
+	default:
+		assert.Equal(t, want.String(), got.String())
+	}
 	switch want.Type() {
 	case "symmetry_segment", "Channel", "symmetric_values":
 		// Compared by identity, or (symmetric_values) not comparable.
@@ -173,6 +189,149 @@ func TestStateCodecCycles(t *testing.T) {
 	in := out[2].(*starlark.List)
 	back, _ := in.Index(0).(*starlarkstruct.Struct).Attr("l")
 	assert.Same(t, in, back)
+
+	// Written from the struct's side, the cycle comes back to the same
+	// struct, not a copy of it.
+	out, _ = roundTripValues(t, NewCodecContext(), st)
+	s2 := out[0].(*starlarkstruct.Struct)
+	l2, _ := s2.Attr("l")
+	assert.Same(t, s2, l2.(*starlark.List).Index(0))
+}
+
+func TestStateCodecStructLayout(t *testing.T) {
+	require.True(t, structLayoutOK, "starlarkstruct.Struct no longer matches structLayout")
+}
+
+// Unordered collections encode alike whatever order their elements were
+// added in, as they hash alike.
+func TestStateCodecCanonicalOrder(t *testing.T) {
+	keyss := [][]starlark.Value{
+		{starlark.String("b"), starlark.String("a"), starlark.String("c")},
+		{starlark.MakeInt(3), starlark.MakeInt(-1), starlark.MakeInt(2)},
+		{starlark.String("x"), starlark.MakeInt(1), starlark.Tuple{starlark.MakeInt(2)}, starlark.None},
+	}
+	for _, keys := range keyss {
+		build := func(order []int) []starlark.Value {
+			ks := make([]starlark.Value, len(order))
+			for i, j := range order {
+				ks[i] = keys[j]
+			}
+			d := starlark.NewDict(len(ks))
+			set := starlark.NewSet(len(ks))
+			gm := &GenericMap{}
+			gs := &GenericSet{dict: &GenericMap{}}
+			bag := &Bag{}
+			for _, k := range ks {
+				require.NoError(t, d.SetKey(k, starlark.MakeInt(len(ks))))
+				require.NoError(t, set.Insert(k))
+				require.NoError(t, gm.SetKey(k, starlark.NewList([]starlark.Value{k})))
+				require.NoError(t, gs.dict.SetKey(k, starlark.None))
+				bag.elems = append(bag.elems, k, k)
+			}
+			return []starlark.Value{d, set, gm, gs, bag}
+		}
+		w1, w2 := NewStateWriter(NewCodecContext()), NewStateWriter(NewCodecContext())
+		fwd := []int{0, 1, 2}
+		rev := []int{2, 1, 0}
+		if len(keys) == 4 {
+			fwd, rev = []int{0, 1, 2, 3}, []int{3, 1, 0, 2}
+		}
+		for i, v := range build(fwd) {
+			require.NoError(t, w1.WriteValue(v), i)
+		}
+		for i, v := range build(rev) {
+			require.NoError(t, w2.WriteValue(v), i)
+		}
+		assert.Equal(t, w1.Bytes(), w2.Bytes(), "keys %v", keys)
+		// And the decoded collections are equal to the originals.
+		vals := build(rev)
+		out, _ := roundTripValues(t, NewCodecContext(), vals...)
+		for i := range vals {
+			assertStarlarkEqual(t, vals[i], out[i])
+		}
+		w1.Release()
+		w2.Release()
+	}
+}
+
+func TestStateCodecDepthLimit(t *testing.T) {
+	var v starlark.Value = starlark.None
+	for i := 0; i < maxValueDepth+1; i++ {
+		v = starlark.Tuple{v}
+	}
+	w := NewStateWriter(NewCodecContext())
+	defer w.Release()
+	assert.Error(t, w.WriteValue(v))
+
+	// Hand-made input nesting too deeply fails cleanly.
+	data := make([]byte, 0, 2*maxValueDepth+3)
+	for i := 0; i < maxValueDepth+1; i++ {
+		data = append(data, vtTuple, 1)
+	}
+	data = append(data, vtNone)
+	_, err := NewStateReader(NewCodecContext(), data).ReadValue()
+	assert.ErrorIs(t, err, ErrCorruptState)
+}
+
+func TestStateCodecPortable(t *testing.T) {
+	ctx := NewCodecContext()
+	lambda := starlark.NewBuiltin("anon", func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
+		return starlark.None, nil
+	})
+	w := NewStateWriter(ctx)
+	defer w.Release()
+	require.NoError(t, w.WriteValue(lambda))
+	ctx.SetPortable(true)
+	w.Reset()
+	assert.Error(t, w.WriteValue(lambda))
+}
+
+// FuzzStateReader checks that no input makes the reader panic, and that
+// whatever decodes encodes and decodes again.
+func FuzzStateReader(f *testing.F) {
+	ctx := NewCodecContext()
+	inner := starlark.NewList(nil)
+	st := starlarkstruct.FromStringDict(starlark.String("enum"), starlark.StringDict{"l": inner, "x": starlark.MakeInt(-5)})
+	_ = inner.Append(st)
+	d := starlark.NewDict(2)
+	_ = d.SetKey(starlark.String("k"), inner)
+	_ = d.SetKey(starlark.MakeInt(7), starlark.Tuple{starlark.Float(1.5), starlark.Bytes("b")})
+	rec := FromStringDict(starlark.String("record"), starlark.StringDict{"a": d, "b": st})
+	for _, v := range []starlark.Value{st, d, rec, starlark.MakeInt(1 << 40), starlark.String("hello")} {
+		w := NewStateWriter(ctx)
+		if err := w.WriteValue(v); err != nil {
+			f.Fatal(err)
+		}
+		f.Add(append([]byte(nil), w.Bytes()...))
+		w.Release()
+	}
+	f.Fuzz(func(t *testing.T, data []byte) {
+		r := NewStateReader(ctx, data)
+		v, err := r.ReadValue()
+		if err != nil {
+			// Corrupt input, or an error building a value (an unhashable
+			// dict key, say). Only panics are bugs.
+			return
+		}
+		if bytes.IndexByte(data, vtRange) >= 0 {
+			// A decoded range can be huge, and sorting a set holding one
+			// iterates it (as the state hash does). Decoding it is cheap,
+			// which is what this checks.
+			return
+		}
+		w := NewStateWriter(ctx)
+		defer w.Release()
+		if err := w.WriteValue(v); err != nil {
+			t.Fatalf("decoded value doesn't encode: %v", err)
+		}
+		v2, err := NewStateReader(ctx, w.Bytes()).ReadValue()
+		if err != nil {
+			t.Fatalf("re-encoded value doesn't decode: %v", err)
+		}
+		if v.Type() != v2.Type() {
+			t.Fatalf("type %s became %s", v.Type(), v2.Type())
+		}
+	})
 }
 
 // testResolver stands in for the spec in a fresh process.
