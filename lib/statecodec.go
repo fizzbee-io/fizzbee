@@ -7,6 +7,8 @@ import (
 	"math"
 	"math/big"
 	"reflect"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -122,7 +124,10 @@ type CodecContext struct {
 
 // SetPortable sets whether encodings must decode in another process. When
 // set, a value with neither an encoding nor a name (one that would go
-// through the opaque table) makes WriteValue fail instead.
+// through the opaque table) makes WriteValue fail instead. It applies to
+// every writer sharing the context: set it before encoding starts and
+// don't change it during a run, or states written concurrently may differ
+// in whether they are portable.
 func (c *CodecContext) SetPortable(portable bool) { c.portable.Store(portable) }
 
 // stringDict is a fixed list of strings that states refer to by index
@@ -313,6 +318,15 @@ func (c *CodecContext) internOpaque(key any, v any) uint64 {
 	c.opaque = append(c.opaque, v)
 	c.opaqueIdx[key] = idx
 	return idx
+}
+
+// OpaqueCount returns how many values the opaque table holds. They stay
+// alive for the run, with whatever they capture, and make the states that
+// hold them decode only in this process.
+func (c *CodecContext) OpaqueCount() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.opaque)
 }
 
 func (c *CodecContext) opaqueAt(idx uint64) (any, bool) {
@@ -870,8 +884,7 @@ func (w *StateWriter) writeValue(v starlark.Value) error {
 	default:
 		switch v.Type() {
 		case "range":
-			r := v.(starlark.Indexable)
-			start, stop, step, err := rangeBounds(r)
+			start, stop, step, err := rangeBounds(v)
 			if err != nil {
 				return err
 			}
@@ -917,24 +930,34 @@ func boolBits(bs ...bool) byte {
 	return b
 }
 
-// rangeBounds recovers start, stop and step of a starlark range, whose type
-// is unexported. Ranges compare by their elements, so for an empty or
-// one-element range any bounds with the same elements will do.
-func rangeBounds(r starlark.Indexable) (int64, int64, int64, error) {
-	n := r.Len()
-	if n == 0 {
-		return 0, 0, 1, nil
+// rangeBounds recovers the exact start, stop and step of a starlark range,
+// whose type is unexported, from its String form ("range(stop)",
+// "range(start, stop)" or "range(start, stop, step)"). No arithmetic, so
+// nothing can overflow, and the decoded range prints and compares the same.
+// A starlark upgrade that changes the form makes writing a range fail.
+func rangeBounds(r starlark.Value) (int64, int64, int64, error) {
+	str := r.String()
+	if !strings.HasPrefix(str, "range(") || !strings.HasSuffix(str, ")") {
+		return 0, 0, 0, fmt.Errorf("state codec: unexpected range form %q", str)
 	}
-	first, ok := r.Index(0).(starlark.Int).Int64()
-	if !ok {
-		return 0, 0, 0, fmt.Errorf("state codec: range out of int64")
+	parts := strings.Split(str[len("range("):len(str)-1], ", ")
+	nums := make([]int64, len(parts))
+	for i, part := range parts {
+		n, err := strconv.ParseInt(part, 10, 64)
+		if err != nil {
+			return 0, 0, 0, fmt.Errorf("state codec: unexpected range form %q", str)
+		}
+		nums[i] = n
 	}
-	step := int64(1)
-	if n > 1 {
-		second, _ := r.Index(1).(starlark.Int).Int64()
-		step = second - first
+	switch len(nums) {
+	case 1:
+		return 0, nums[0], 1, nil
+	case 2:
+		return nums[0], nums[1], 1, nil
+	case 3:
+		return nums[0], nums[1], nums[2], nil
 	}
-	return first, first + int64(n)*step, step, nil
+	return 0, 0, 0, fmt.Errorf("state codec: unexpected range form %q", str)
 }
 
 // ErrCorruptState is returned (wrapped) for input that isn't a valid
@@ -1019,7 +1042,14 @@ func (r *StateReader) ReadVarint() int64 {
 	return n
 }
 
-func (r *StateReader) ReadBool() bool { return r.ReadUint8() != 0 }
+func (r *StateReader) ReadBool() bool {
+	b := r.ReadUint8()
+	if b > 1 {
+		r.fail("bad bool %d", b)
+		return false
+	}
+	return b == 1
+}
 
 // ReadCount reads a count of items that take at least one byte each, so a
 // corrupt count can't make the reader allocate more than the input size.
@@ -1200,11 +1230,25 @@ func (r *StateReader) readValue() (starlark.Value, error) {
 		return starlark.MakeInt64(r.ReadVarint()), r.err
 	case vtBigInt:
 		sign := int(r.ReadUint8()) - 1
-		b := new(big.Int).SetBytes(r.readRaw())
+		mag := r.readRaw()
+		if r.err != nil {
+			return nil, r.err
+		}
+		// Only ints outside int64 are written this way, with no leading
+		// zero bytes.
+		if sign == 0 || sign > 1 || len(mag) == 0 || mag[0] == 0 {
+			r.fail("bad big int")
+			return nil, r.err
+		}
+		b := new(big.Int).SetBytes(mag)
 		if sign < 0 {
 			b.Neg(b)
 		}
-		return starlark.MakeBigInt(b), r.err
+		if b.IsInt64() {
+			r.fail("big int fits in int64")
+			return nil, r.err
+		}
+		return starlark.MakeBigInt(b), nil
 	case vtFloat:
 		if len(r.buf)-r.pos < 8 {
 			r.fail("short float")
@@ -1309,7 +1353,11 @@ func (r *StateReader) readValue() (starlark.Value, error) {
 			d[name] = starlark.None
 		}
 		s := starlarkstruct.FromStringDict(shape.constructor, d)
-		ents := structEntries(s)
+		ents, mutable := structEntries(s)
+		if !mutable {
+			r.fail("new struct is frozen")
+			return nil, r.err
+		}
 		if len(ents) != len(shape.names) {
 			r.fail("struct has repeated field names")
 			return nil, r.err

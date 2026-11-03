@@ -39,16 +39,26 @@ sending states between machines. Neither is built yet.
 | Process portability | The state decodes in another process running the same spec with the same binary. | Unless the state holds an opaque value (a lambda or closure kept across a yield). `CodecContext.SetPortable(true)` makes that an error at encode time, so a portable encoding is never silently process-local. |
 | Durable portability | The state decodes after the writing process is gone, for example from a checkpoint on disk. | Not on its own. It needs process portability plus a record of the format version, the spec and dictionary fingerprint and the runtime version. That record belongs in the header of a page of states, which is not built yet; a single state only carries the format version. |
 
-Determinism is a separate property from these:
+Determinism is a separate property from these. Precisely:
 
-- The same state encodes to the same bytes whatever path reached it, as
-  far as the state hash can tell: heap and scope variables are written in
-  sorted order, and unordered collections in canonical order (below).
-- The encoding is finer than the hash. Two equal lists and one list
-  referenced twice hash the same but encode differently, and symmetry
-  reduction happens in the hash only. Equal hashes don't imply equal bytes.
-- Ordered values (lists, tuples, records, the order of roles and threads)
-  are written in their order, which is part of the state.
+- **A fixed object graph always encodes to the same bytes**, aliasing
+  included. Heap and scope variables are written in sorted order, ordered
+  values (lists, tuples, records, roles, threads) in their own order, and
+  unordered collections in canonical order (below), so insertion order
+  doesn't matter where the canonical order is total.
+- **Canonical order is total only where elements have distinct sort keys.**
+  Elements whose keys tie keep their insertion order. Keys tie only for
+  elements the state hash can't tell apart either: equal but distinct
+  values (two `[[]]` lists in a bag), or cyclic values that differ only
+  beyond the hash's depth of 20. Dict and set keys must be hashable, so
+  they are immutable and acyclic, and for them ties mean equal keys, which
+  a dict or set can't hold twice. So ties come up only in bags and in
+  generic collections holding mutable values, and there the bytes can
+  depend on insertion order. Decoding is exact either way.
+- **The encoding is finer than the hash.** It keeps identity topology: two
+  lists sharing a child and two lists with equal children hash the same but
+  encode differently, and symmetry reduction happens in the hash only.
+  Equal hashes don't imply equal bytes; equal bytes do imply equal hashes.
 
 ## Layout
 
@@ -58,9 +68,12 @@ field   := fieldNo:uvarint  payload
 ```
 
 `version` is `lib.StateCodecVersion` (currently 1). A process field with its
-zero value is left out. A reader rejects a field number it doesn't know.
-So a newer reader still reads older states, and the new field takes its
-zero value.
+zero value is left out. A reader rejects a field number it doesn't know,
+a repeated field and unknown flag bits: compatibility is strict, and only
+in one direction. A newer reader still reads older states, and a new
+field takes its zero value; an older reader rejects a newer state. Fields
+carry no length, so unknown ones can't be skipped; a format meant for
+mixed versions would need that, or a version check in a page header.
 
 ### Primitives
 
@@ -101,7 +114,7 @@ Each value starts with a one-byte tag.
 | 24 | Channel | id, name, ordering, delivery, blocking | yes |
 | 25 | symmetry_domain | name, limit, kind, divergence, start, flags | yes |
 | 26 | symmetric_values | count, values | |
-| 27 | range | start, stop, step varints | |
+| 27 | range | start, stop, step varints, exactly as the range was made | |
 | 28 | opaque | uvarint index into the `CodecContext` (in-process only) | |
 | 29 | global | name of a spec global (function or builtin) | |
 | 255 | reserved for an extension tag | | |
@@ -122,22 +135,35 @@ Writer and reader register at the same point, as the table shows:
 **Canonical order.** Elements of unordered collections (dict, set, bag,
 genericmap, genericset) are written sorted, not in insertion order: strings
 as strings, int64s as numbers, and any other mix by their `StateEncoder`
-bytes. Elements whose bytes tie (equal but distinct values in a bag) keep
-their relative order. The state hash already ignores insertion order for
-these types, so two states the checker treats as one also encode alike,
-and the encoding of a state doesn't depend on the path that reached it.
-A decoded collection iterates in sorted order.
+bytes. Sort keys are computed per element, apart from the state's pool;
+the pool numbering then follows the sorted order, so aliasing between
+elements is written consistently. Elements whose keys tie keep their
+relative order (see Determinism above). The state hash already ignores
+insertion order for these types. A decoded collection iterates in sorted
+order.
 
 **Limits.** Values nest at most 10,000 deep, inline (a back-reference is
 one level), when writing and reading (`maxValueDepth`). A chain of 10,000
-records is the kind of state that would hit it. The reader's allocations
-are bounded by the input size: every count and length is checked against
-the bytes left before anything is allocated, every element and every pool
-entry takes at least one byte, and a back-reference reuses a value rather
-than building one. So no separate limits on counts, string lengths or the
-pool are needed. The reader never panics: corrupt input, or a value type
-that panics while being built, gives an `ErrCorruptState`, and
-`DecodeProcess` then returns no process.
+records is the kind of state that would hit it. Measured
+(`TestStateCodecDepthAtLimit`), a round trip of lists or records nested
+1,000 / 2,000 / 5,000 / 10,000 deep grows the goroutine stack by about
+2 / 4 / 8 / 16 MB and takes under 35 ms; Go's default stack limit is 1 GB.
+
+Collection counts and byte lengths are checked against the bytes left
+before anything is allocated, so a corrupt length can't request an
+arbitrary allocation, and every element and pool entry takes at least one
+byte of input. Decoding can still allocate several times the input size,
+since runtime containers have their own overhead (a dict's hash table, a
+role's maps), and a valid-looking count can allocate before the entries
+after it turn out to be corrupt. There are no separate limits on counts,
+string lengths or the pool.
+
+The reader never panics: corrupt input, or a value type that panics while
+being built, gives an `ErrCorruptState`, and so does a panic while
+`DecodeProcess` builds the process around the values. `DecodeProcess` then
+returns no process. The reader is strict: bools must be 0 or 1, big ints
+must be minimal and outside int64, and a process field may appear only
+once, with no unknown flag bits.
 
 Tuples, ints, strings and other plain values have no identity and aren't
 pooled. Strings have their own table, so a repeated string costs 1 to 2
@@ -247,7 +273,11 @@ nor a name, for example a lambda kept in a variable. It stores the value
 and writes its index, which only means something inside this process. Specs
 in the reference suite don't hit it. `CodecContext.SetPortable(true)` turns
 the fallback into an error, for encodings that must decode elsewhere. The
-table keeps its values alive for the run.
+table keeps its values alive for the run. Set portability before encoding starts and don't change it during a
+run: it applies to every writer sharing the context, so changing it while
+states are written concurrently would mix portable and process-local
+states. `CodecContext.OpaqueCount()` tells how many values the table
+holds (`TestStateCodecSpecStats` prints it).
 
 The resolver for a run is set from the first process encoded or decoded
 (`modelchecker.specResolver`: the files, globals and evaluator, which are
@@ -346,9 +376,10 @@ for a 30% saving).
 - **Disk spilling of the queue.** States are self-contained byte strings,
   so a batch is just length-prefixed states. The batch header is the place
   for a fingerprint of the string dictionary, so a batch can't be read
-  with another spec's dictionary. Each batch of about 1,000 states is
-  compressed with zstd as one block (see the measurements above), in
-  memory as well as on disk; disk pages can hold several batches.
+  with another spec's dictionary. The measurements above suggest
+  compressing each batch of about 1,000 states with zstd as one block, in
+  memory as well as on disk, with disk pages holding several batches. That
+  is an option to evaluate in that work, not a decision made here.
 - **Distribution.** States already decode in another process running the
   same spec. The only exception is the opaque fallback above.
 - **Hashing.** `lib.StateEncoder` remains the hash input. The encoding is

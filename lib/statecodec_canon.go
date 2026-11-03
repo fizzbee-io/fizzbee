@@ -122,7 +122,11 @@ var structLayoutOK = func() bool {
 	return real.Field(0).Type == mine.Field(0).Type
 }()
 
-// structEntries returns s's entries, sorted by name, to fill in place.
-func structEntries(s *starlarkstruct.Struct) []structEntry {
-	return (*structLayout)(unsafe.Pointer(s)).entries
+// structEntries returns the entries, sorted by name, of a struct the reader
+// has just built, to fill in place. Only for that: the struct must be new
+// and not frozen, and it must not be changed once decoding has filled it,
+// since starlark structs are immutable to everything else.
+func structEntries(s *starlarkstruct.Struct) ([]structEntry, bool) {
+	l := (*structLayout)(unsafe.Pointer(s))
+	return l.entries, !l.frozen
 }

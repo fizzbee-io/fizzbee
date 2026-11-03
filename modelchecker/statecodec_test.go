@@ -225,4 +225,5 @@ func TestStateCodecSpecStats(t *testing.T) {
 		float64(total)/k, float64(heapOnly)/k, forkBytes)
 	fmt.Printf("first occurrences of strings not in the %d-word dictionary: %.0f B/state\n", nodes[0].Evaluator.CodecContext().DictionarySize(), float64(strBytes)/k)
 	fmt.Printf("encode %.1f us, decode %.1f us, Fork %.1f us per state\n", encNs/1e3, decNs/1e3, forkNs/1e3)
+	fmt.Printf("opaque values held by the codec context: %d\n", nodes[0].Evaluator.CodecContext().OpaqueCount())
 }

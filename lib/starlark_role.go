@@ -276,7 +276,10 @@ func NewRoleMethodBuiltins(astRole *ast.Role) map[string]*starlark.Builtin {
 func (r *Role) SetInitValue(name string, v starlark.Value) {
 	s := NewEmptyStruct(r.InitValues.constructor, len(r.InitValues.entries)+1)
 	s.entries = append(s.entries, r.InitValues.entries...)
-	_ = s.SetField(name, v)
+	if err := s.SetField(name, v); err != nil {
+		// s is new and unfrozen, so SetField can't fail.
+		panic(fmt.Sprintf("Role.SetInitValue(%s): %v", name, err))
+	}
 	r.InitValues = s
 }
 

@@ -5,7 +5,9 @@ import (
 	"errors"
 	"math"
 	"math/big"
+	"runtime"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -85,22 +87,34 @@ func TestStateCodecScalars(t *testing.T) {
 	for i := range vals {
 		assertStarlarkEqual(t, vals[i], out[i])
 	}
-	nan, _ := roundTripValues(t, NewCodecContext(), starlark.Float(math.NaN()))
-	assert.True(t, math.IsNaN(float64(nan[0].(starlark.Float))))
+	// Floats keep their exact bits: NaN payloads and the sign of zero.
+	for _, f := range []float64{math.NaN(), math.Float64frombits(0x7ff8000000000abc), math.Copysign(0, -1), 0, math.Inf(1)} {
+		out, _ := roundTripValues(t, NewCodecContext(), starlark.Float(f))
+		assert.Equal(t, math.Float64bits(f), math.Float64bits(float64(out[0].(starlark.Float))))
+	}
 }
 
 func TestStateCodecRange(t *testing.T) {
-	for _, args := range [][]int{{5}, {2, 10, 3}, {10, 0, -2}, {3, 3}, {7, 8}} {
+	const maxI, minI = math.MaxInt64, math.MinInt64
+	for _, args := range [][]int64{
+		{0}, {5}, {-5}, {3, 3}, {9, 2}, {7, 8}, {2, 10, 3}, {10, 0, -2}, {0, 10, 20}, {0, -10, -20},
+		{maxI - 1, maxI}, {minI, minI + 1}, {minI, minI + 3, 2}, {maxI, maxI - 2, -1},
+		{0, maxI, maxI}, {maxI, 0, minI}, {-(1 << 62), 1 << 62, 1 << 61},
+	} {
 		tuple := starlark.Tuple{}
 		for _, a := range args {
-			tuple = append(tuple, starlark.MakeInt(a))
+			tuple = append(tuple, starlark.MakeInt64(a))
 		}
 		rng, err := starlark.Call(&starlark.Thread{}, starlark.Universe["range"], tuple, nil)
 		require.NoError(t, err)
 		out, _ := roundTripValues(t, NewCodecContext(), rng)
+		// Exactly the same range: same bounds, so the same elements and
+		// the same printed form.
+		assert.Equal(t, rng.String(), out[0].String())
 		eq, err := starlark.Equal(rng, out[0])
 		require.NoError(t, err)
 		assert.True(t, eq, "%s != %s", rng, out[0])
+		assert.Equal(t, rng.(starlark.Sequence).Len(), out[0].(starlark.Sequence).Len())
 	}
 }
 
@@ -251,6 +265,94 @@ func TestStateCodecCanonicalOrder(t *testing.T) {
 		}
 		w1.Release()
 		w2.Release()
+	}
+}
+
+func nestedLists(depth int) starlark.Value {
+	var v starlark.Value = starlark.None
+	for i := 1; i < depth; i++ {
+		v = starlark.NewList([]starlark.Value{v})
+	}
+	return v
+}
+
+func nestedRecords(depth int) starlark.Value {
+	var v starlark.Value = starlark.None
+	for i := 1; i < depth; i++ {
+		v = FromStringDict(Default, starlark.StringDict{"next": v})
+	}
+	return v
+}
+
+// Values nested right up to the limit round trip, and the stack they take
+// stays small (goroutine stacks grow on demand, up to 1 GB by default).
+func TestStateCodecDepthAtLimit(t *testing.T) {
+	for _, depth := range []int{1000, 2000, 5000, maxValueDepth} {
+		for name, v := range map[string]starlark.Value{"lists": nestedLists(depth), "records": nestedRecords(depth)} {
+			var stack uint64
+			var elapsed time.Duration
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				var before, after runtime.MemStats
+				runtime.ReadMemStats(&before)
+				start := time.Now()
+				out, _ := roundTripValues(t, NewCodecContext(), v)
+				elapsed = time.Since(start)
+				runtime.ReadMemStats(&after)
+				stack = after.StackInuse - before.StackInuse
+				assert.Equal(t, v.Type(), out[0].Type())
+			}()
+			<-done
+			t.Logf("%s nested %d deep: round trip %v, stack grew by about %d KB", name, depth, elapsed, stack/1024)
+		}
+	}
+}
+
+// Elements whose canonical sort keys tie keep their relative order. Where
+// they tie, they are equal as far as the state hash can tell, so the
+// decoded state is still the same state; and identity is kept either way.
+func TestStateCodecCanonicalTies(t *testing.T) {
+	ctx := NewCodecContext()
+	// Bags and generic collections may hold mutable values, so equal but
+	// distinct elements, shared children and cycles are all possible.
+	shared := starlark.NewList(nil)
+	a := starlark.NewList([]starlark.Value{shared})
+	b := starlark.NewList([]starlark.Value{shared})
+	c := starlark.NewList([]starlark.Value{starlark.NewList(nil)})
+	x, y := starlark.NewList(nil), starlark.NewList(nil)
+	require.NoError(t, x.Append(y))
+	require.NoError(t, y.Append(x))
+
+	// (A genericset can't hold these: its keys compare by value, so a, b
+	// and c are one key, and comparing x with y never ends.)
+	for _, order := range [][]starlark.Value{{a, b, c, x, y}, {y, c, b, x, a}} {
+		bag := &Bag{elems: append([]starlark.Value(nil), order...)}
+		out, _ := roundTripValues(t, ctx, bag)
+		var withEmpty, cyclic []*starlark.List
+		for _, e := range out[0].(*Bag).elems {
+			inner := e.(*starlark.List).Index(0).(*starlark.List)
+			if inner.Len() == 0 {
+				withEmpty = append(withEmpty, inner)
+			} else {
+				cyclic = append(cyclic, e.(*starlark.List))
+			}
+		}
+		// a and b still share their child; c's child is its own.
+		require.Len(t, withEmpty, 3)
+		pairs := 0
+		for p := 0; p < 3; p++ {
+			for q := p + 1; q < 3; q++ {
+				if withEmpty[p] == withEmpty[q] {
+					pairs++
+				}
+			}
+		}
+		assert.Equal(t, 1, pairs, "exactly one pair shares a child")
+		// x and y still point at each other.
+		require.Len(t, cyclic, 2)
+		assert.Same(t, cyclic[0], cyclic[1].Index(0))
+		assert.Same(t, cyclic[1], cyclic[0].Index(0))
 	}
 }
 
@@ -448,4 +550,16 @@ func TestStateCodecUnsupportedAndCorrupt(t *testing.T) {
 	r = NewStateReader(ctx, []byte{vtList, 0xFF, 0xFF, 0xFF, 0x0F})
 	_, err = r.ReadValue()
 	assert.ErrorIs(t, err, ErrCorruptState)
+
+	for name, data := range map[string][]byte{
+		"bool other than 0 or 1": {vtRole, 0, 2},
+		"big int sign 0":         {vtBigInt, 1, 9, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+		"big int sign 3":         {vtBigInt, 3, 9, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+		"big int leading zero":   {vtBigInt, 2, 10, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+		"big int fits in int64":  {vtBigInt, 2, 1, 5},
+		"big int empty":          {vtBigInt, 2, 0},
+	} {
+		_, err := NewStateReader(ctx, data).ReadValue()
+		assert.ErrorIs(t, err, ErrCorruptState, name)
+	}
 }

@@ -487,7 +487,15 @@ func DecodeProcess(data []byte, template *Process) (*Process, error) {
 	return decodeProcess(data, template, codecContext(template))
 }
 
-func decodeProcess(data []byte, template *Process, ctx *lib.CodecContext) (*Process, error) {
+func decodeProcess(data []byte, template *Process, ctx *lib.CodecContext) (p *Process, err error) {
+	// ReadValue already turns panics into errors; this covers building the
+	// process around the values, so corrupt input never takes the checker
+	// down and never yields a partly decoded process.
+	defer func() {
+		if rec := recover(); rec != nil {
+			p, err = nil, fmt.Errorf("%w: decoding the process panicked: %v", lib.ErrCorruptState, rec)
+		}
+	}()
 	r := lib.NewStateReader(ctx, data)
 	if v := r.ReadUint8(); v != lib.StateCodecVersion {
 		if r.Err() != nil {
@@ -495,7 +503,7 @@ func decodeProcess(data []byte, template *Process, ctx *lib.CodecContext) (*Proc
 		}
 		return nil, fmt.Errorf("%w: version %d, want %d", lib.ErrCorruptState, v, lib.StateCodecVersion)
 	}
-	p := &Process{
+	p = &Process{
 		Heap:      &Heap{state: starlark.StringDict{}, globals: template.Heap.globals},
 		Evaluator: template.Evaluator,
 
@@ -529,10 +537,17 @@ func decodeProcess(data []byte, template *Process, ctx *lib.CodecContext) (*Proc
 }
 
 func readProcessFields(r *lib.StateReader, p *Process) error {
+	var seen uint64
 	for {
 		field := r.ReadUvarint()
 		if r.Err() != nil {
 			return r.Err()
+		}
+		if field != pfEnd && field < 64 {
+			if seen&(1<<field) != 0 {
+				return fmt.Errorf("%w: process field %d repeated", lib.ErrCorruptState, field)
+			}
+			seen |= 1 << field
 		}
 		var err error
 		switch field {
@@ -639,6 +654,9 @@ func readProcessFields(r *lib.StateReader, p *Process) error {
 			}
 		case pfFlags:
 			flags := r.ReadUvarint()
+			if flags&^uint64(flagEnabled|flagThreadProgress|flagIsYield|flagEnableCheckpoint) != 0 {
+				return fmt.Errorf("%w: unknown process flags %#x", lib.ErrCorruptState, flags)
+			}
 			p.Enabled = flags&flagEnabled != 0
 			p.ThreadProgress = flags&flagThreadProgress != 0
 			p.IsYield = flags&flagIsYield != 0
