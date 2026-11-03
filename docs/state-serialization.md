@@ -289,13 +289,41 @@ For comparison, the memory study measured raft's in-memory `Heap.state` at
 is about 14x smaller encoded, and the whole process about 24x smaller than
 the node.
 
+### Compressing batches of states
+
+States compress well in batches, because neighbouring states in BFS order
+share most of their bytes. Measured on every stored state of raft (328,900)
+and gossip with 2 concurrent actions (86,118), in BFS order, one core,
+using `github.com/klauspost/compress` (pure Go, not yet a dependency).
+Sizes are per state, and so are the times:
+
+| Codec | Alone | 100 per batch | 1,000 per batch | 10,000 per batch | Compress / decompress at 1,000 |
+|---|---:|---:|---:|---:|---:|
+| none (raft / gossip) | 225 / 215 B | | | | |
+| s2 | 192 / 194 B | 30 / 27 B | 27 / 23 B | 26 / 23 B | 0.2 / 0.1 us |
+| zstd default | 157 / 164 B | 18 / 17 B | **15 / 14 B** | 15 / 13 B | **0.5 / 0.2 us** |
+| zstd better | 157 / 164 B | 16 / 16 B | 13 / 12 B | 12 / 12 B | 0.8 / 0.2 us |
+| zstd + dictionary | 100 / 94 B | 18 / 16 B | 15 / 14 B | 15 / 13 B | 0.7 / 0.3 us |
+
+The dictionary was trained on the first 2,000 states and measured on the
+rest. It only helps a state compressed on its own; in a batch the earlier
+states already act as one. (Source of the benchmark:
+`/mnt/project-files/specs/compression-bench/main.go` in the project files.)
+
+So a batch of 1,000 states with zstd at its default level is about 15x
+smaller than the encoded states, for well under 1 us per state, against
+20 us to encode and 10 us to decode. Larger batches add little; 100 already
+gets most of it. Compressing states one at a time is not worth it (10 us
+for a 30% saving).
+
 ## Not done yet, and kept possible
 
 - **Disk spilling of the queue.** States are self-contained byte strings,
   so a batch is just length-prefixed states. The batch header is the place
   for a fingerprint of the string dictionary, so a batch can't be read
-  with another spec's dictionary. Compressing a page of states (zstd, for
-  example) is a further option on top.
+  with another spec's dictionary. Each batch of about 1,000 states is
+  compressed with zstd as one block (see the measurements above), in
+  memory as well as on disk; disk pages can hold several batches.
 - **Distribution.** States already decode in another process running the
   same spec. The only exception is the opaque fallback above.
 - **Hashing.** `lib.StateEncoder` remains the hash input. The encoding is
