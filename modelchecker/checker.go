@@ -7,6 +7,9 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 	"log"
+	"sync"
+
+	"github.com/fizzbee-io/fizzbee/lib"
 )
 
 type Evaluator struct {
@@ -22,6 +25,11 @@ type Evaluator struct {
 	fixedEnv        starlark.StringDict
 	fixedEnvModules uintptr
 	fizzFuncs       map[string]*starlark.Builtin
+
+	// codecCtx is the state codec's context for this run, made on first
+	// use by CodecContext.
+	codecOnce sync.Once
+	codecCtx  *lib.CodecContext
 }
 
 func NewEvaluator(options *syntax.FileOptions, thread *starlark.Thread) *Evaluator {

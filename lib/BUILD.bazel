@@ -18,6 +18,8 @@ go_library(
         "starlark_role.go",
         "starlark_types.go",
         "starlarkstruct.go",
+        "statecodec.go",
+        "statecodec_canon.go",
         "statehash.go",
         "symmetry.go",
         "symmetry_used.go",
@@ -46,13 +48,16 @@ go_test(
         "function_test.go",
         "jsonmarshaller_test.go",
         "jsonstring_test.go",
+        "statecodec_test.go",
         "statehash_test.go",
     ],
+    data = glob(["testdata/fuzz/**"]),
     embed = [":lib"],
     deps = [
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
         "@net_starlark_go//starlark",
+        "@net_starlark_go//starlarkstruct",
     ],
 )
 

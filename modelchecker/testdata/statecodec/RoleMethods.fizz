@@ -1,0 +1,29 @@
+# Roles with methods defined in the role body and an ephemeral field, for
+# the state codec tests: decoding in another process has to rebuild the
+# methods from the spec and share the init values.
+
+@state(ephemeral=['cache'])
+role Server:
+    def bump(self, x):
+        return x + 1
+
+    action Init:
+        self.disk = 0
+        self.cache = 0
+
+    func Read():
+        return self.cache
+
+    action Write:
+        require self.disk < 2
+        self.disk = self.bump(self.disk)
+        self.cache = self.bump(self.cache)
+
+action Init:
+    a = Server()
+    b = Server()
+    servers = [a, b]
+
+atomic action Check:
+    s = servers[0]
+    v = s.Read()

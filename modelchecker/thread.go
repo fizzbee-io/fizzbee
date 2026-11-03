@@ -1006,21 +1006,36 @@ func (t *Thread) getDefinition(stmt *ast.Statement) (*lib.Role, *lib.RoleStub, *
 	return nil, nil, t.Process.SymbolTable[stmt.CallStmt.Name]
 }
 
+// roleMethodsFromSpec runs a role's top-level statements over a copy of
+// the globals and returns the functions they define: the role's methods.
+// On error it also returns the statement that failed.
+func roleMethodsFromSpec(evaluator *Evaluator, file *ast.File, r *ast.Role, globals starlark.StringDict) (map[string]*starlark.Function, *ast.Statement, error) {
+	global := maps.Clone(globals)
+	for _, stmt := range r.Stmts {
+		if _, err := evaluator.ExecPyStmt(file.GetSourceInfo().GetFileName(), stmt.PyStmt, global); err != nil {
+			return nil, stmt, err
+		}
+	}
+	methods := make(map[string]*starlark.Function)
+	for k, v := range global {
+		if v.Type() != "function" || globals[k] == v {
+			// original global did not change
+			continue
+		}
+		methods[k] = v.(*starlark.Function)
+	}
+	return methods, nil, nil
+}
+
 func findRoleInitAction(process *Process, role *lib.Role) (int, string) {
 	for i, file := range process.Files {
 		for j, r := range file.Roles {
 			if r.Name == role.Name {
-				global := maps.Clone(process.Heap.globals)
-				for _, stmt := range r.Stmts {
-					_, err := process.Evaluator.ExecPyStmt(file.GetSourceInfo().GetFileName(), stmt.PyStmt, global)
+				methods, stmt, err := roleMethodsFromSpec(process.Evaluator, file, r, process.Heap.globals)
+				if err != nil {
 					process.PanicOnError(stmt.GetSourceInfo(), fmt.Sprintf("Error executing statement: %s", stmt.PyStmt.GetCode()), err)
 				}
-				for k, v := range global {
-					if v.Type() != "function" || process.Heap.globals[k] == v {
-						// original global did not change
-						continue
-					}
-
+				for k, v := range methods {
 					err := role.AddMethod(k, v)
 					process.PanicOnError(nil, fmt.Sprintf("Error adding method %s to role %s", k, role.Name), err)
 				}
@@ -1275,7 +1290,7 @@ func (t *Thread) CopyInitValuesForEphemeralFields(oldFrame *CallFrame) {
 		} else {
 			attr, err := fieldsClonedStruct.Attr(fieldName)
 			if err == nil {
-				oldFrame.obj.InitValues.SetField(fieldName, attr)
+				oldFrame.obj.SetInitValue(fieldName, attr)
 			}
 		}
 	}
