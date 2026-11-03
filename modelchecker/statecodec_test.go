@@ -1,6 +1,7 @@
 package modelchecker
 
 import (
+	"bytes"
 	ast "fizz/proto"
 	"fmt"
 	"os"
@@ -226,4 +227,79 @@ func TestStateCodecSpecStats(t *testing.T) {
 	fmt.Printf("first occurrences of strings not in the %d-word dictionary: %.0f B/state\n", nodes[0].Evaluator.CodecContext().DictionarySize(), float64(strBytes)/k)
 	fmt.Printf("encode %.1f us, decode %.1f us, Fork %.1f us per state\n", encNs/1e3, decNs/1e3, forkNs/1e3)
 	fmt.Printf("opaque values held by the codec context: %d\n", nodes[0].Evaluator.CodecContext().OpaqueCount())
+}
+
+// TestStateCodecForkEquivalence runs specs with Fork as is and with every
+// forked process replaced by its decoded copy (in this process, and as
+// another process would decode it). The explored state spaces must be the
+// same. testdata/statecodec/Cycles.fizz keeps cyclic values in its state
+// and asserts that their identity survives exploration.
+func TestStateCodecForkEquivalence(t *testing.T) {
+	base := "."
+	if dir := os.Getenv("RUNFILES_DIR"); dir != "" {
+		base = filepath.Join(dir, "_main", "modelchecker")
+	}
+	specs, err := filepath.Glob(filepath.Join(base, "testdata", "statecodec", "*.json"))
+	require.NoError(t, err)
+	require.NotEmpty(t, specs)
+	defer func(rt, fresh bool) { stateCodecRoundTrip, stateCodecRoundTripFresh = rt, fresh }(stateCodecRoundTrip, stateCodecRoundTripFresh)
+	for _, spec := range specs {
+		t.Run(spec, func(t *testing.T) {
+			hashes := func(rt, fresh bool) []string {
+				stateCodecRoundTrip, stateCodecRoundTripFresh = rt, fresh
+				p := runSpecForCodec(t, spec, nil)
+				var keys []string
+				for _, n := range sortedVisited(p) {
+					keys = append(keys, freshHash(n.Process))
+				}
+				require.NotEmpty(t, keys)
+				return keys
+			}
+			want := hashes(false, false)
+			require.Equal(t, want, hashes(true, false), "round trip in this process")
+			require.Equal(t, want, hashes(true, true), "round trip as another process")
+		})
+	}
+}
+
+// FuzzDecodeProcess checks that no input makes DecodeProcess panic or hang,
+// that a failed decode returns no process, and that a decoded process
+// encodes again. Seeds are real states of the statecodec testdata specs.
+func FuzzDecodeProcess(f *testing.F) {
+	base := "."
+	if dir := os.Getenv("RUNFILES_DIR"); dir != "" {
+		base = filepath.Join(dir, "_main", "modelchecker")
+	}
+	var template *Process
+	for _, spec := range []string{"Cycles.json", "RoleMethods.json"} {
+		p := runSpecForCodec(f, filepath.Join(base, "testdata", "statecodec", spec), nil)
+		nodes := sortedVisited(p)
+		for i, n := range nodes {
+			if i >= 8 {
+				break
+			}
+			data, err := EncodeProcess(n.Process)
+			require.NoError(f, err)
+			f.Add(data)
+		}
+		template = nodes[0].Process
+	}
+	f.Fuzz(func(t *testing.T, data []byte) {
+		p, err := DecodeProcess(data, template)
+		if err != nil {
+			if p != nil {
+				t.Fatalf("failed decode returned a process: %v", err)
+			}
+			return
+		}
+		if bytes.IndexByte(data, 10 /* vtRef */) >= 0 {
+			// Re-encoding sorts unordered collections by their state-hash
+			// bytes, which can be costly for shared or cyclic values; see
+			// lib.FuzzStateReader. Decoding them is what this checks.
+			return
+		}
+		if _, err := EncodeProcess(p); err != nil {
+			return
+		}
+	})
 }

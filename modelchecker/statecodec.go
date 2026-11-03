@@ -587,6 +587,9 @@ func readProcessFields(r *lib.StateReader, p *Process) error {
 				k := int(r.ReadVarint())
 				msgs := make([]*ChannelMessage, r.ReadCount())
 				for j := range msgs {
+					if r.Err() != nil {
+						return r.Err()
+					}
 					m := &ChannelMessage{receiver: r.ReadString(), function: r.ReadString()}
 					if m.frame, err = readFrame(r); err != nil {
 						return err
@@ -624,13 +627,16 @@ func readProcessFields(r *lib.StateReader, p *Process) error {
 		case pfFailedInvariants:
 			n := r.ReadCount()
 			p.FailedInvariants = make(map[int][]int, n)
-			for i := 0; i < n; i++ {
+			for i := 0; i < n && r.Err() == nil; i++ {
 				k := int(r.ReadVarint())
 				p.FailedInvariants[k] = readInts(r)
 			}
 		case pfWitness:
 			p.Witness = make([][]bool, r.ReadCount())
 			for i := range p.Witness {
+				if r.Err() != nil {
+					return r.Err()
+				}
 				p.Witness[i] = make([]bool, r.ReadCount())
 				for j := range p.Witness[i] {
 					p.Witness[i][j] = r.ReadBool()
@@ -640,15 +646,22 @@ func readProcessFields(r *lib.StateReader, p *Process) error {
 			p.Atoms = make([]uint64, r.ReadCount())
 			for i := range p.Atoms {
 				p.Atoms[i] = r.ReadUvarint()
+				if r.Err() != nil {
+					return r.Err()
+				}
 			}
 		case pfLabels:
 			p.Labels = r.ReadStrings()
 		case pfMessages:
 			p.Messages = make([]*ast.Message, r.ReadCount())
 			for i := range p.Messages {
+				raw := r.ReadRawBytes()
+				if r.Err() != nil {
+					return r.Err()
+				}
 				m := &ast.Message{}
-				if err := proto.Unmarshal(r.ReadRawBytes(), m); err != nil {
-					return err
+				if err := proto.Unmarshal(raw, m); err != nil {
+					return fmt.Errorf("%w: message %d: %v", lib.ErrCorruptState, i, err)
 				}
 				p.Messages[i] = m
 			}
@@ -696,6 +709,9 @@ func readThread(r *lib.StateReader, p *Process) (*Thread, error) {
 	}
 	n := r.ReadCount()
 	for i := 0; i < n; i++ {
+		if r.Err() != nil {
+			return nil, r.Err()
+		}
 		f, err := readFrame(r)
 		if err != nil {
 			return nil, err
@@ -707,6 +723,9 @@ func readThread(r *lib.StateReader, p *Process) (*Thread, error) {
 
 func readFrame(r *lib.StateReader) (*CallFrame, error) {
 	f := &CallFrame{FileIndex: int(r.ReadUvarint()), pc: r.ReadString(), Name: r.ReadString()}
+	if r.Err() != nil {
+		return nil, r.Err()
+	}
 	var err error
 	if f.scope, err = readScopeChain(r); err != nil {
 		return nil, err
@@ -733,6 +752,9 @@ func readScopeChain(r *lib.StateReader) (*Scope, error) {
 	n := r.ReadCount()
 	var s *Scope
 	for i := 0; i < n; i++ {
+		if r.Err() != nil {
+			return nil, r.Err()
+		}
 		child := &Scope{
 			parent:    s,
 			flow:      ast.Flow(r.ReadUvarint()),
@@ -771,6 +793,9 @@ func readInts(r *lib.StateReader) []int {
 	xs := make([]int, n)
 	for i := range xs {
 		xs[i] = int(r.ReadVarint())
+		if r.Err() != nil {
+			return nil
+		}
 	}
 	return xs
 }
@@ -778,7 +803,7 @@ func readInts(r *lib.StateReader) []int {
 func readStringIntMap(r *lib.StateReader) map[string]int64 {
 	n := r.ReadCount()
 	m := make(map[string]int64, n)
-	for i := 0; i < n; i++ {
+	for i := 0; i < n && r.Err() == nil; i++ {
 		k := r.ReadString()
 		m[k] = r.ReadVarint()
 	}

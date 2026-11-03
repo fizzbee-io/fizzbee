@@ -39,6 +39,20 @@ sending states between machines. Neither is built yet.
 | Process portability | The state decodes in another process running the same spec with the same binary. | Unless the state holds an opaque value (a lambda or closure kept across a yield). `CodecContext.SetPortable(true)` makes that an error at encode time, so a portable encoding is never silently process-local. |
 | Durable portability | The state decodes after the writing process is gone, for example from a checkpoint on disk. | Not on its own. It needs process portability plus a record of the format version, the spec and dictionary fingerprint and the runtime version. That record belongs in the header of a page of states, which is not built yet; a single state only carries the format version. |
 
+**Cyclic values.** A state may hold cycles (a list holding itself, a
+record holding itself, a cycle through several containers), and the
+checker explores such states as it does any other: the state hash cuts
+values off at depth 20. Decoding gives back the same cycles, and decoded
+values behave as the originals do in what the checker does with them: they
+hash alike, and comparing a cyclic value with `==` fails alike, with
+starlark's "comparison exceeded maximum recursion depth", with or without
+the codec. So decoding adds no failure the original state didn't have.
+`testdata/statecodec/Cycles.fizz` checks this end to end:
+`TestStateCodecForkEquivalence` explores it with Fork as is and with every
+fork replaced by its decoded copy, and the state spaces must match.
+Limits of the state hash itself (cost on heavily shared values, cyclic
+`symmetric_values`) are outside the codec.
+
 Determinism is a separate property from these. Precisely:
 
 - **A fixed object graph always encodes to the same bytes**, aliasing
@@ -304,6 +318,12 @@ them from a pool).
   to the same bytes), the depth limit, portable mode, roles and stubs, and
   truncated or corrupt input (always an `ErrCorruptState`, never a panic
   or a huge allocation).
+- `go test ./modelchecker -run TestStateCodecForkEquivalence`: the
+  statecodec testdata specs (including `Cycles.fizz`) explore the same
+  states with and without every fork going through the codec.
+- `go test ./modelchecker -run XXX -fuzz FuzzDecodeProcess`: random
+  input never makes `DecodeProcess` panic or hang, and a failed decode
+  returns no process. Seeds are real states.
 - `go test ./lib -run XXX -fuzz FuzzStateReader`: random input never
   panics or hangs the reader, and whatever decodes encodes and decodes
   again. Plain `go test` runs the seeds and the saved crashers in

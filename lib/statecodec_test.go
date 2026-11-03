@@ -212,6 +212,36 @@ func TestStateCodecCycles(t *testing.T) {
 	assert.Same(t, s2, l2.(*starlark.List).Index(0))
 }
 
+// Cyclic values decode to the same cycles, and they behave the same as the
+// originals in the operations the checker applies to states: they hash
+// alike, and comparing them fails alike (starlark's recursion limit), so
+// decoding adds no failure that the original state didn't have.
+func TestStateCodecCyclesBehaveAlike(t *testing.T) {
+	self := starlark.NewList(nil)
+	require.NoError(t, self.Append(self))
+	rec := FromStringDict(Default, starlark.StringDict{"n": starlark.MakeInt(1)})
+	require.NoError(t, rec.SetField("me", rec))
+	x, y := starlark.NewList(nil), starlark.NewList(nil)
+	require.NoError(t, x.Append(y))
+	require.NoError(t, y.Append(x))
+	bag := &Bag{elems: []starlark.Value{x, self}}
+	for _, v := range []starlark.Value{self, rec, x, bag} {
+		out, _ := roundTripValues(t, NewCodecContext(), v)
+		e1, e2 := NewStateEncoder(), NewStateEncoder()
+		e1.WriteValue(v, 0)
+		e2.WriteValue(out[0], 0)
+		assert.Equal(t, e1.Bytes(), e2.Bytes(), "hash input of %s", v.Type())
+		e1.Release()
+		e2.Release()
+		_, err1 := starlark.Equal(v, v)
+		_, err2 := starlark.Equal(out[0], out[0])
+		assert.Equal(t, err1 == nil, err2 == nil, "comparing %s", v.Type())
+		if err1 != nil && err2 != nil {
+			assert.Equal(t, err1.Error(), err2.Error())
+		}
+	}
+}
+
 func TestStateCodecStructLayout(t *testing.T) {
 	require.True(t, structLayoutOK, "starlarkstruct.Struct no longer matches structLayout")
 }
