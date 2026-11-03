@@ -327,14 +327,18 @@ them from a pool).
 
 ## Measurements
 
-These are from `TestStateCodecSpecStats`, sampling about 2,000 stored
-states (linux/amd64). The timings were taken with the run's whole state
-graph still live in the heap, so GC adds to all three.
+These are from one run of `TestStateCodecSpecStats` per spec, at the
+commit that added this section, sampling about 2,000 stored states
+(linux/amd64, a shared cloud container). The timings were taken with the
+run's whole state graph still live in the heap, so GC adds to all three,
+and they vary by about 30% between runs; sizes don't vary. No spec held an
+opaque value.
 
-| Spec | Encoded process | Heap state alone | Encode | Decode | Fork (today) |
-|---|---:|---:|---:|---:|---:|
-| raft (3 nodes) | 225 B | 153 B | 24 us | 9 us | 23 us |
-| gossip (3 servers, 1 concurrent) | 176 B | 94 B | 9 us | 7 us | 11 us |
+| Spec | Stored states | Encoded process | Heap state alone | Encode | Decode | Fork (today) |
+|---|---:|---:|---:|---:|---:|---:|
+| raft (3 nodes) | 328,900 | 225 B | 153 B | 22 us | 14 us | 41 us |
+| gossip (3 servers, 1 concurrent) | 2,426 | 176 B | 94 B | 12 us | 9 us | 12 us |
+| gossip (3 servers, 2 concurrent) | 86,118 | 215 B | 94 B | 14 us | 9 us | 25 us |
 
 Without the string dictionary, the encoded process was 460 B for raft and
 355 B for gossip, and about 60% of that was strings.
