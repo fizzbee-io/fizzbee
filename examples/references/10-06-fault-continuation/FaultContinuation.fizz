@@ -1,0 +1,20 @@
+---
+options:
+  crash_on_yield: false
+---
+# Example: Fault Continuation
+# Every step of a fair<fault> action is a fault, including the steps after
+# its first yield, so they can't be in a counterexample's loop either.
+# Once a fault has started, the rest of it is still scheduled fairly, so a
+# run can't leave it half done forever.
+# Demonstrates: fair<fault> on a serial action with several steps
+
+action Init:
+    up = True
+
+serial fair<fault> action Glitch:
+    up = False
+    up = True
+
+eventually always assertion StaysUp:
+    return up

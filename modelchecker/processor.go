@@ -1088,6 +1088,20 @@ func (l *Link) IsCrashLink() bool {
 	return isCrashLinkName(l.Name)
 }
 
+// IsFaultLink reports whether l is a step of a fair<fault> action,
+// including the steps after its first yield. Like a crash, a fault can
+// happen only finitely often: its steps may be in a liveness
+// counterexample's prefix but never in its loop.
+func (l *Link) IsFaultLink() bool {
+	return l.Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_FAULT
+}
+
+// isFairLevel reports whether f is a weak or strong fairness, the levels
+// that create a fairness obligation.
+func isFairLevel(f ast.FairnessLevel) bool {
+	return f == ast.FairnessLevel_FAIRNESS_LEVEL_WEAK || f == ast.FairnessLevel_FAIRNESS_LEVEL_STRONG
+}
+
 func isCrashLinkName(linkName string) bool {
 	return linkName == "crash" || strings.HasPrefix(linkName, "crash-role")
 }
@@ -2412,8 +2426,7 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 			continue
 		}
 		if liveness && node.actionDepth > 0 && node.actionDepth > int(randMaxActions) {
-			if node.currentThread().Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_UNFAIR ||
-				node.currentThread().Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN {
+			if !isFairLevel(node.currentThread().Fairness) {
 				livenessNode = node
 				continue
 			}

@@ -114,6 +114,7 @@ After the frontmatter (or at the start if no frontmatter), the FizzBee specifica
 - `fair` - Weak fairness (same as `fair<weak>`)
 - `fair<weak>` - Eventually executes if continuously enabled
 - `fair<strong>` - Eventually executes if infinitely often enabled
+- `fair<fault>` - An injected fault: executes only finitely often (actions only, not `any`/`oneof`)
 
 ### Assertion Modifiers
 
@@ -196,7 +197,7 @@ Actions can have optional modifiers that control execution flow and fairness:
 
 **Modifier Order** (both optional):
 1. **Flow modifier**: `atomic` or `serial` (default: `serial`)
-2. **Fairness modifier**: `fair`, `fair<weak>`, or `fair<strong>` (default: unfair)
+2. **Fairness modifier**: `fair`, `fair<weak>`, `fair<strong>`, or `fair<fault>` (default: unfair)
 3. **`action` keyword**
 4. **Action name**
 
@@ -755,6 +756,30 @@ fair<strong> action RunsEventually:
 ```
 
 **Use case**: Actions enabled intermittently
+
+### Fault Actions (`fair<fault>`)
+
+A fault action, like a crash, can happen any finite number of times but not
+forever. Its steps, including the ones after its first yield, may be in a
+liveness counterexample's prefix but never in its loop, and it creates no
+fairness obligation. A fault that has started is still completed fairly.
+
+```python
+atomic fair<fault> action Break:
+    up = False
+
+atomic fair action Repair:
+    if not up:
+        up = True
+
+eventually always assertion StaysUp:
+    return up
+    # Passes: Break can't recur forever. As a plain unfair action,
+    # Break, Repair, Break, ... would be a counterexample.
+```
+
+**Use case**: Faults written as actions (message drops, partitions,
+spurious timeouts) that liveness should assume eventually stop
 
 ### Fairness and Liveness
 

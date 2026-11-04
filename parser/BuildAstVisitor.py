@@ -320,8 +320,10 @@ class BuildAstVisitor(FizzParserVisitor):
                         fairness.level = ast.FairnessLevel.FAIRNESS_LEVEL_STRONG
                     elif levelStr == "weak":
                         fairness.level = ast.FairnessLevel.FAIRNESS_LEVEL_WEAK
+                    elif levelStr == "fault":
+                        fairness.level = ast.FairnessLevel.FAIRNESS_LEVEL_FAULT
                     else:
-                        raise Exception("Fairness can only be weak or strong.", levelStr)
+                        raise Exception("Fairness can only be weak, strong or fault.", levelStr)
                     break
                 self.log_childtree(child)
                 childProto = self.visit(child)
@@ -1121,6 +1123,8 @@ class BuildAstVisitor(FizzParserVisitor):
                 if isinstance(childProto, ast.Block):
                     any_stmt.block.CopyFrom(childProto)
                 elif isinstance(childProto, ast.Fairness):
+                    if childProto.level == ast.FairnessLevel.FAIRNESS_LEVEL_FAULT:
+                        raise Exception("fair<fault> applies only to actions, not to any/oneof choices", get_source_info(child))
                     any_stmt.fairness.CopyFrom(childProto)
                 else:
                     print("visitAny_assign_stmt childProto",childProto, child)
