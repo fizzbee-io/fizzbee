@@ -1,0 +1,18 @@
+Model checking tests/specs/roles-in-one-statement/Accounts.json
+configFileName: tests/specs/roles-in-one-statement/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2} deadlock_detection:false
+Nodes: 9, queued: 0, elapsed: 899.373µs
+Peak (new): queue=3 pendingActionStarts=2
+Time taken for model checking: 917.3µs
+Writen graph dotfile: tests/specs/roles-in-one-statement/out/run_2026-11-04_22-17-51/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/roles-in-one-statement/out/run_2026-11-04_22-17-51/graph.dot -o graph.svg && open graph.svg
+Writen communication diagram dotfile: tests/specs/roles-in-one-statement/out/run_2026-11-04_22-17-51/communication.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/roles-in-one-statement/out/run_2026-11-04_22-17-51/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 9 Unique states: 9
+IsLive: true
+Time taken to check liveness: 620.326µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/roles-in-one-statement/out/run_2026-11-04_22-17-51

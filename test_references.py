@@ -22,6 +22,9 @@ import time
 from pathlib import Path
 
 REFS_DIR = Path("examples/references")
+# Regression specs for checker behavior. Run like references, but kept out of
+# examples/references, which is published as documentation.
+TEST_SPECS_DIR = Path("tests/specs")
 LOVABLE_DIR = Path("examples/requirements/lovable")
 # Override to test a specific build, e.g. the CI release artifact:
 #   FIZZ=./fizzbee-test-linux_x86/fizz python3 test_references.py
@@ -154,13 +157,17 @@ def diff_lines(expected: list[str], actual: list[str]) -> list[str]:
 def main() -> int:
     # Collect examples with baseline.txt and a .fizz file
     examples = []
-    for d in sorted(REFS_DIR.iterdir()):
+    dirs = sorted(REFS_DIR.iterdir())
+    if TEST_SPECS_DIR.exists():
+        dirs += sorted(TEST_SPECS_DIR.iterdir())
+    for d in dirs:
         if not d.is_dir():
             continue
         baseline = d / "baseline.txt"
         fizz = find_fizz_file(d)
         if baseline.exists() and fizz:
-            examples.append((d.name, fizz, baseline))
+            name = d.name if d.parent == REFS_DIR else f"{TEST_SPECS_DIR}/{d.name}"
+            examples.append((name, fizz, baseline))
 
     print(f"Found {len(examples)} examples with baselines\n")
 
