@@ -77,6 +77,30 @@ for PLATFORM in "${PLATFORMS[@]}"; do
     for ENTRY in parser_bin parser_bin.repo_mapping parser_bin.runfiles_manifest parser_bin.runfiles; do
         cp -L -R "bazel-bin/parser/$ENTRY" "$TARGET_DIR/parser/"
     done
+    # Deduplicate the interpreter: the toolchain ships bin/python and
+    # bin/python3 as symlinks to bin/python3.X and `cp -L` just turned them
+    # into three full copies (30 MB each on linux x86_64). Restore the
+    # symlinks; tar preserves them, and the bootstrap only references
+    # bin/python3. The real interpreter is found by name shape so a python
+    # minor bump does not need an edit here.
+    chmod -R u+w "$TARGET_DIR/parser"
+    TOOLCHAIN_DIRS=$(find "$TARGET_DIR/parser/parser_bin.runfiles" -mindepth 1 -maxdepth 1 -type d -name '*python?python_3_*')
+    if [[ $(printf '%s\n' "$TOOLCHAIN_DIRS" | grep -c .) -ne 1 ]]; then
+        echo "ERROR: expected exactly one bundled python toolchain under parser_bin.runfiles, found:" >&2
+        echo "$TOOLCHAIN_DIRS" >&2
+        exit 1
+    fi
+    REAL_PYTHON=$(ls "$TOOLCHAIN_DIRS/bin" | grep -E '^python3\.[0-9]+$')
+    if [[ $(printf '%s\n' "$REAL_PYTHON" | grep -c .) -ne 1 ]]; then
+        echo "ERROR: expected exactly one bin/python3.X in the bundled toolchain, found: $REAL_PYTHON" >&2
+        exit 1
+    fi
+    for LINK in python python3; do
+        if [[ -f "$TOOLCHAIN_DIRS/bin/$LINK" && ! -L "$TOOLCHAIN_DIRS/bin/$LINK" ]]; then
+            rm "$TOOLCHAIN_DIRS/bin/$LINK"
+            ln -s "$REAL_PYTHON" "$TOOLCHAIN_DIRS/bin/$LINK"
+        fi
+    done
     # Byte-stream copies (not cp) for the two large single files: on APFS a
     # freshly written bazel output can report a bogus hole (SEEK_HOLE at
     # offset 0 while reads return data), and hole-aware copiers such as
@@ -85,30 +109,91 @@ for PLATFORM in "${PLATFORMS[@]}"; do
     cat bazel-bin/fizzbee_/fizzbee > "$TARGET_DIR/fizzbee"
     chmod 0755 "$TARGET_DIR/fizzbee"
     cat bazel-bin/mbt/generator/generator_bin.zip > "$TARGET_DIR/mbt_gen.zip"
-    # Fail loudly if the staged zip is not intact (the mbt-scaffold
+    # Deduplicate the interpreter inside the zip and verify it. The
+    # toolchain ships bin/python and bin/python3 as symlinks to
+    # bin/python3.X; bazel's zipper dereferences them, so the zip carried
+    # three copies of the interpreter (30 MB each on linux x86_64). The
+    # bootstrap (__main__.py) recreates symlink entries on extraction, so
+    # the two are rewritten as symlink members pointing at the real file,
+    # restoring upstream's layout. The toolchain dir is matched by shape
+    # (`*python?python_3_*`, see the invariants below).
+    # Then fail loudly if the zip is not intact (the mbt-scaffold
     # subcommand runs it with the user's python3; a corrupt zip would only
-    # surface as a user-facing traceback). The zip embeds its own copy of
-    # the python toolchain, so the interpreter size invariant (see below)
-    # is enforced on its members too.
-    python3 -c 'import sys, zipfile
-z = zipfile.ZipFile(sys.argv[1])
-bad = z.testzip()
-if bad:
-    sys.exit("ERROR: corrupt member in staged mbt_gen.zip: %s" % bad)
-limit = int(sys.argv[2])
-# Same candidates as the parser check: the executable (and its
-# dereferenced symlink copies) plus libpython, which holds the
-# interpreter code on macOS. Zero candidates means the zip layout
-# changed and the check would be vacuous, so that fails too.
-cands = [i for i in z.infolist()
-         if "/bin/python3" in i.filename or "/lib/libpython3" in i.filename]
-if not cands:
-    sys.exit("ERROR: no bundled python interpreter found in mbt_gen.zip (layout changed?)")
-fat = [i for i in cands if i.file_size > limit]
-if fat:
-    sys.exit("ERROR: bundled interpreter in mbt_gen.zip exceeds %d MB: %s" % (
-        limit // 1048576, ", ".join("%s (%d MB)" % (i.filename, i.file_size // 1048576) for i in fat)))
-' "$TARGET_DIR/mbt_gen.zip" "$MAX_INTERP_BYTES"
+    # surface as a user-facing traceback), if an interpreter member is over
+    # MAX_INTERP_BYTES (the zip embeds its own toolchain copy), or if the
+    # dedupe did not take.
+    python3 - "$TARGET_DIR/mbt_gen.zip" "$MAX_INTERP_BYTES" <<'PYEOF'
+import fnmatch, os, re, stat, sys, zipfile
+path, limit = sys.argv[1], int(sys.argv[2])
+tmp = path + ".tmp"
+def toolchain_root(name):
+    """<...>/<toolchain> if name lies under a python toolchain repo dir, else None."""
+    parts = name.split("/")
+    for k, part in enumerate(parts[:-1]):
+        if fnmatch.fnmatch(part, "*python?python_3_*"):
+            return "/".join(parts[:k + 1])
+    return None
+def toolchain_bin(name):
+    """(toolchain dir, basename) if name is <...>/<toolchain>/bin/<file>, else None."""
+    parts = name.split("/")
+    if len(parts) >= 3 and parts[-2] == "bin" and fnmatch.fnmatch(parts[-3], "*python?python_3_*"):
+        return "/".join(parts[:-2]), parts[-1]
+    return None
+def is_link(i):
+    return stat.S_ISLNK(i.external_attr >> 16)
+with zipfile.ZipFile(path) as src:
+    infos = src.infolist()
+    real = sorted({tb[1] for i in infos if (tb := toolchain_bin(i.filename)) and re.fullmatch(r"python3\.\d+", tb[1])})
+    if len(real) != 1:
+        sys.exit("ERROR: expected exactly one bin/python3.X interpreter in mbt_gen.zip, found %s" % real)
+    real = real[0]
+    with zipfile.ZipFile(tmp, "w") as dst:
+        for i in infos:
+            tb = toolchain_bin(i.filename)
+            if tb and tb[1] in ("python", "python3") and not is_link(i):
+                link = zipfile.ZipInfo(i.filename, date_time=i.date_time)
+                link.external_attr = (stat.S_IFLNK | 0o777) << 16
+                dst.writestr(link, real)
+            else:
+                dst.writestr(i, src.read(i))
+os.replace(tmp, path)
+with zipfile.ZipFile(path) as z:
+    bad = z.testzip()
+    if bad:
+        sys.exit("ERROR: corrupt member in staged mbt_gen.zip: %s" % bad)
+    infos = z.infolist()
+    # Size invariant: same candidates as the parser check below — the
+    # executable plus libpython, which holds the interpreter code on
+    # macOS. Zero candidates means the layout changed and the check would
+    # be vacuous, so that fails too.
+    cands = [i for i in infos if "/bin/python3" in i.filename or "/lib/libpython3" in i.filename]
+    if not cands:
+        sys.exit("ERROR: no bundled python interpreter found in mbt_gen.zip (layout changed?)")
+    fat = [i for i in cands if i.file_size > limit]
+    if fat:
+        sys.exit("ERROR: bundled interpreter in mbt_gen.zip exceeds %d MB: %s" % (
+            limit // 1048576, ", ".join("%s (%d MB)" % (i.filename, i.file_size // 1048576) for i in fat)))
+    # Layout invariant, mirroring the parser-tree checks below: exactly one
+    # toolchain repo, whose bin/ holds the real interpreter as a regular
+    # member and both bin/python and bin/python3 as symlink members
+    # pointing at it.
+    roots = sorted({r for i in infos if (r := toolchain_root(i.filename))})
+    if len(roots) != 1:
+        sys.exit("ERROR: expected exactly one python toolchain in mbt_gen.zip, found %s" % roots)
+    by_name = {tb[1]: i for i in infos if (tb := toolchain_bin(i.filename))}
+    interp = by_name.get(real)
+    if interp is None or is_link(interp):
+        sys.exit("ERROR: %s/bin/%s in mbt_gen.zip is not a regular interpreter member" % (roots[0], real))
+    for name in ("python", "python3"):
+        i = by_name.get(name)
+        if i is None:
+            sys.exit("ERROR: %s/bin/%s missing from mbt_gen.zip" % (roots[0], name))
+        if not is_link(i):
+            sys.exit("ERROR: %s/bin/%s in mbt_gen.zip is still a copy, not a symlink (interpreter dedupe failed)" % (roots[0], name))
+        target = z.read(i).decode()
+        if target != real:
+            sys.exit("ERROR: %s/bin/%s in mbt_gen.zip links to %r, expected %r" % (roots[0], name, target, real))
+PYEOF
 
     # Strip pip and ensurepip from the bundled hermetic python toolchain.
     # The parser never uses them at runtime, and the stale bundled pip is
@@ -150,18 +235,12 @@ if fat:
             exit 1
         fi
     done
-    # 3. Exactly one bundled python toolchain, and its interpreter is the
-    #    stripped build (see MAX_INTERP_BYTES). The repo is matched by shape
-    #    (`*python?python_3_*` covers rules_python's `++`/`~~` naming eras)
-    #    rather than by name. bin/python3* covers the executable and its
-    #    dereferenced symlink copies; lib/libpython3* is where the macOS
-    #    builds keep the interpreter code (their bin/python3.13 is a stub).
-    TOOLCHAIN_DIRS=$(find "$TARGET_DIR/parser/parser_bin.runfiles" -mindepth 1 -maxdepth 1 -type d -name '*python?python_3_*')
-    if [[ $(printf '%s\n' "$TOOLCHAIN_DIRS" | grep -c .) -ne 1 ]]; then
-        echo "ERROR: expected exactly one bundled python toolchain under parser_bin.runfiles, found:" >&2
-        echo "$TOOLCHAIN_DIRS" >&2
-        exit 1
-    fi
+    # 3. The bundled interpreter is the stripped build (see
+    #    MAX_INTERP_BYTES). TOOLCHAIN_DIRS was resolved above (the repo is
+    #    matched by shape: `*python?python_3_*` covers rules_python's
+    #    `++`/`~~` naming eras). bin/python3* covers the executable;
+    #    lib/libpython3* is where the macOS builds keep the interpreter
+    #    code (their bin/python3.13 is a stub).
     for F in "$TOOLCHAIN_DIRS"/bin/python3* "$TOOLCHAIN_DIRS"/lib/libpython3*; do
         [[ -f "$F" ]] || continue
         SIZE=$(wc -c < "$F")
@@ -170,6 +249,13 @@ if fat:
             echo "       Expected python-build-standalone's install_only_stripped flavor. Check that the" >&2
             echo "       python.single_version_platform_override entries in MODULE.bazel still match the" >&2
             echo "       patch version rules_python resolves \"3.13\" to." >&2
+            exit 1
+        fi
+    done
+    # 4. The interpreter ships once: bin/python and bin/python3 are symlinks.
+    for LINK in python python3; do
+        if [[ ! -L "$TOOLCHAIN_DIRS/bin/$LINK" || "$(readlink "$TOOLCHAIN_DIRS/bin/$LINK")" != "$REAL_PYTHON" ]]; then
+            echo "ERROR: $TOOLCHAIN_DIRS/bin/$LINK is not a symlink to $REAL_PYTHON (interpreter dedupe failed)" >&2
             exit 1
         fi
     done
