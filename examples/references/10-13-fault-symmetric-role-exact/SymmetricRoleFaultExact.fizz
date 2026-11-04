@@ -1,0 +1,30 @@
+---
+options:
+  crash_on_yield: false
+---
+# Example: Fault Action on a Symmetric Role, Without Symmetry Reduction
+# A fair<fault> role action happens only finitely often across all
+# instances of the role together.
+# Same spec as 10-10, checked with --no-symmetry-reduction, which checks
+# liveness exactly (symmetry reduction can hide liveness violations, see
+# issue #427).
+# Demonstrates: fair<fault> on a role action, checked exactly
+
+symmetric role Node:
+    action Init:
+        self.up = True
+
+    atomic fair<fault> action Break:
+        self.up = False
+
+    atomic fair action Repair:
+        if not self.up:
+            self.up = True
+
+action Init:
+    nodes = []
+    for i in range(2):
+        nodes.append(Node())
+
+eventually always assertion AllUp:
+    return all([n.up for n in nodes])
