@@ -1,0 +1,22 @@
+# Example 0122: Simulation Finds a Reachable Failure
+# A simulation run executes actions and reports an assertion violated a few steps in
+# Demonstrates: simulation mode, always assertion, failure trace from a random walk
+
+---
+deadlock_detection: false
+options:
+    max_actions: 10
+---
+
+# With a fixed seed (flags.txt) the single run is deterministic. Inc is the
+# only action, so any run reaches counter == 3 on its third step and must
+# fail Small. A run that never leaves Init (the bug this pins down) passes.
+
+action Init:
+    counter = 0
+
+atomic action Inc:
+    counter = counter + 1
+
+always assertion Small:
+    return counter < 3
