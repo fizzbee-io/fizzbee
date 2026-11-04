@@ -140,9 +140,13 @@ func (s *Struct) ReplaceEntriesFromStringDict(d starlark.StringDict) {
 type Struct struct {
 	constructor starlark.Value
 	entries     entries // sorted by name
+	frozen      bool
 }
 
 func (s *Struct) SetField(name string, val starlark.Value) error {
+	if s.frozen {
+		return fmt.Errorf("cannot set field %q on frozen record", name)
+	}
 	for i, e := range s.entries {
 		if e.name == name {
 			s.entries[i] = entry{name, val}
@@ -235,9 +239,18 @@ func (s *Struct) Truth() starlark.Bool { return true } // even when empty
 func (s *Struct) Hash() (uint32, error) {
 	return 0, fmt.Errorf("unhashable type: record")
 }
+
+// Freeze deep-freezes the struct's values. The frozen flag is a recursion
+// guard (ported from upstream starlarkstruct, go.starlark.net #567): records
+// are mutable here (SetField) and a spec can build a reference cycle
+// (a.peer = b; b.peer = a), which the unguarded walk followed forever and
+// crashed the checker with a Go stack overflow when the globals were frozen.
 func (s *Struct) Freeze() {
-	for _, e := range s.entries {
-		e.value.Freeze()
+	if !s.frozen {
+		s.frozen = true
+		for _, e := range s.entries {
+			e.value.Freeze()
+		}
 	}
 }
 
