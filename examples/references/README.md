@@ -497,8 +497,14 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 
 ### 10-10-fault-symmetric-role: Fault Action on a Symmetric Role
 - **State space**: 4 nodes, 4 unique states
-- **Purpose**: A role fault counts across all instances together
+- **Purpose**: A role fault counts across all instances together; shows `fair<fault>` works with symmetry reduction (the baseline keeps the issue #427 warning, so 10-13 checks the same spec exactly)
 - **Key concepts**: `fair<fault>` on a symmetric role action
+- **Status**: ✅ PASSED
+
+### 10-13-fault-symmetric-role-exact: Symmetric Role Fault, Checked Exactly
+- **State space**: 4 nodes, 4 unique states
+- **Purpose**: 10-10 with `--no-symmetry-reduction` (from `flags.txt`), so liveness is checked without the #427 caveat
+- **Key concepts**: `fair<fault>` on a role action, exact liveness
 - **Status**: ✅ PASSED
 
 ### 10-11-unfair-repeating-fault: Unfair Repeating Fault
@@ -513,7 +519,7 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: `fair<fault>` with `always` assertions
 - **Status**: ❌ FAILED (expected)
 
-Examples 10-04 to 10-11 run with `FIZZ_LIVENESS_ENGINE=shadow` (from their
+Examples 10-04 to 10-11 and 10-13 run with `FIZZ_LIVENESS_ENGINE=shadow` (from their
 `env.txt`), so their baselines also pin that both liveness engines agree.
 
 ### 11-01-simple-role: Simple Role
