@@ -1,0 +1,605 @@
+package lib
+
+import (
+	"bytes"
+	"errors"
+	"math"
+	"math/big"
+	"runtime"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
+)
+
+func roundTripValues(t *testing.T, ctx *CodecContext, vals ...starlark.Value) ([]starlark.Value, []byte) {
+	t.Helper()
+	w := NewStateWriter(ctx)
+	defer w.Release()
+	for _, v := range vals {
+		require.NoError(t, w.WriteValue(v))
+	}
+	data := append([]byte(nil), w.Bytes()...)
+	r := NewStateReader(ctx, data)
+	out := make([]starlark.Value, len(vals))
+	for i := range vals {
+		v, err := r.ReadValue()
+		require.NoError(t, err)
+		out[i] = v
+	}
+	require.NoError(t, r.Done())
+
+	// The decoded values encode to the same bytes.
+	w2 := NewStateWriter(ctx)
+	defer w2.Release()
+	for _, v := range out {
+		require.NoError(t, w2.WriteValue(v))
+	}
+	assert.Equal(t, data, w2.Bytes())
+	return out, data
+}
+
+func assertStarlarkEqual(t *testing.T, want, got starlark.Value) {
+	t.Helper()
+	assert.Equal(t, want.Type(), got.Type())
+	switch want.Type() {
+	case "dict", "set", "bag", "genericmap", "genericset":
+		// Decoded in canonical order, so they print differently. Compare
+		// them as the state hash does (bag equality is order-sensitive).
+		e1, e2 := NewStateEncoder(), NewStateEncoder()
+		e1.WriteValue(want, 0)
+		e2.WriteValue(got, 0)
+		assert.Equal(t, e1.Bytes(), e2.Bytes(), "%s != %s", want, got)
+		e1.Release()
+		e2.Release()
+		if want.Type() == "bag" {
+			return
+		}
+	default:
+		assert.Equal(t, want.String(), got.String())
+	}
+	switch want.Type() {
+	case "symmetry_segment", "Channel", "symmetric_values":
+		// Compared by identity, or (symmetric_values) not comparable.
+		return
+	}
+	if eq, err := starlark.Equal(want, got); err == nil {
+		assert.True(t, eq, "%s != %s", want, got)
+	}
+}
+
+func TestStateCodecScalars(t *testing.T) {
+	huge := new(big.Int).Lsh(big.NewInt(1), 100)
+	vals := []starlark.Value{
+		starlark.None, starlark.True, starlark.False,
+		starlark.MakeInt(0), starlark.MakeInt(-1), starlark.MakeInt64(math.MaxInt64), starlark.MakeInt64(math.MinInt64),
+		starlark.MakeBigInt(huge), starlark.MakeBigInt(new(big.Int).Neg(huge)),
+		starlark.Float(1.5), starlark.Float(math.Inf(-1)),
+		starlark.String(""), starlark.String("hello"), starlark.String("hello"),
+		starlark.Bytes("\x00\xff"),
+		starlark.Tuple{starlark.MakeInt(1), starlark.String("a")},
+		starlark.Tuple{},
+	}
+	out, _ := roundTripValues(t, NewCodecContext(), vals...)
+	for i := range vals {
+		assertStarlarkEqual(t, vals[i], out[i])
+	}
+	// Floats keep their exact bits: NaN payloads and the sign of zero.
+	for _, f := range []float64{math.NaN(), math.Float64frombits(0x7ff8000000000abc), math.Copysign(0, -1), 0, math.Inf(1)} {
+		out, _ := roundTripValues(t, NewCodecContext(), starlark.Float(f))
+		assert.Equal(t, math.Float64bits(f), math.Float64bits(float64(out[0].(starlark.Float))))
+	}
+}
+
+func TestStateCodecRange(t *testing.T) {
+	const maxI, minI = math.MaxInt64, math.MinInt64
+	for _, args := range [][]int64{
+		{0}, {5}, {-5}, {3, 3}, {9, 2}, {7, 8}, {2, 10, 3}, {10, 0, -2}, {0, 10, 20}, {0, -10, -20},
+		{maxI - 1, maxI}, {minI, minI + 1}, {minI, minI + 3, 2}, {maxI, maxI - 2, -1},
+		{0, maxI, maxI}, {maxI, 0, minI}, {-(1 << 62), 1 << 62, 1 << 61},
+	} {
+		tuple := starlark.Tuple{}
+		for _, a := range args {
+			tuple = append(tuple, starlark.MakeInt64(a))
+		}
+		rng, err := starlark.Call(&starlark.Thread{}, starlark.Universe["range"], tuple, nil)
+		require.NoError(t, err)
+		out, _ := roundTripValues(t, NewCodecContext(), rng)
+		// Exactly the same range: same bounds, so the same elements and
+		// the same printed form.
+		assert.Equal(t, rng.String(), out[0].String())
+		eq, err := starlark.Equal(rng, out[0])
+		require.NoError(t, err)
+		assert.True(t, eq, "%s != %s", rng, out[0])
+		assert.Equal(t, rng.(starlark.Sequence).Len(), out[0].(starlark.Sequence).Len())
+	}
+}
+
+func TestStateCodecContainers(t *testing.T) {
+	dict := starlark.NewDict(2)
+	require.NoError(t, dict.SetKey(starlark.String("b"), starlark.MakeInt(2)))
+	require.NoError(t, dict.SetKey(starlark.Tuple{starlark.MakeInt(1)}, starlark.NewList([]starlark.Value{starlark.None})))
+	set := starlark.NewSet(2)
+	require.NoError(t, set.Insert(starlark.MakeInt(3)))
+	require.NoError(t, set.Insert(starlark.String("x")))
+	rec := FromStringDict(Default, starlark.StringDict{"z": starlark.MakeInt(1), "a": starlark.String("v")})
+	rec2 := FromStringDict(Default, starlark.StringDict{"z": starlark.MakeInt(2), "a": starlark.String("w")})
+	st := starlarkstruct.FromStringDict(starlark.String("enum"), starlark.StringDict{"RED": starlark.String("RED")})
+	gm := GenericMapFromEntries([]starlark.Tuple{{starlark.NewList(nil), starlark.MakeInt(1)}})
+	gs := GenericSetFromDistinct([]starlark.Value{starlark.NewDict(0), starlark.MakeInt(1)})
+	bag := NewBag([]starlark.Value{starlark.MakeInt(2), starlark.MakeInt(1), starlark.MakeInt(2)})
+	mv := NewModelValue("n", 3)
+	sv := NewRotationalSymmetricValue("r", 1, 4)
+	domain := &SymmetryDomain{Name: "T", Limit: 3, Kind: SymmetryKindOrdinal, Materialize: true}
+	seg := &Segment{Domain: domain, Left: 1, Right: 4, IsTail: true, Resolved: true, ResolvedID: 2}
+	ch := &Channel{Id: 2, Name: "net", ordering: "unordered", delivery: "atmost_once", blocking: "fire_and_forget"}
+	vals := []starlark.Value{
+		starlark.NewList([]starlark.Value{starlark.MakeInt(1), starlark.String("a")}),
+		dict, set, rec, rec2, st, gm, gs, bag, mv, sv, domain, seg, ch,
+		SymmetricValues{Tuple: starlark.Tuple{NewSymmetricValue("s", 0), NewSymmetricValue("s", 1)}},
+	}
+	ctx := NewCodecContext()
+	out, _ := roundTripValues(t, ctx, vals...)
+	for i := range vals {
+		assertStarlarkEqual(t, vals[i], out[i])
+	}
+	// Configuration values come back as the very same pointers.
+	assert.Same(t, domain, out[11])
+	assert.Same(t, ch, out[13])
+	assert.Same(t, domain, out[12].(*Segment).Domain)
+	assert.Equal(t, *seg, *out[12].(*Segment))
+	assert.Equal(t, *sv, *out[10].(*SymmetricValue))
+}
+
+func TestStateCodecAliasing(t *testing.T) {
+	shared := starlark.NewList([]starlark.Value{starlark.MakeInt(1)})
+	mv := NewModelValue("n", 0)
+	holder := FromStringDict(Default, starlark.StringDict{"a": shared, "b": shared, "id": mv})
+	outer := starlark.NewList([]starlark.Value{shared, holder, mv})
+
+	out, _ := roundTripValues(t, NewCodecContext(), outer, shared)
+	list := out[0].(*starlark.List)
+	got := list.Index(0).(*starlark.List)
+	rec := list.Index(1).(*Struct)
+	a, _ := rec.Attr("a")
+	b, _ := rec.Attr("b")
+	id, _ := rec.Attr("id")
+	assert.Same(t, got, a)
+	assert.Same(t, got, b)
+	assert.Same(t, got, out[1], "references across top-level values share one pool")
+	assert.Same(t, list.Index(2), id)
+
+	// Mutating through one alias is seen through the other, as before.
+	require.NoError(t, got.Append(starlark.MakeInt(2)))
+	assert.Equal(t, 2, a.(*starlark.List).Len())
+}
+
+func TestStateCodecCycles(t *testing.T) {
+	list := starlark.NewList(nil)
+	dict := starlark.NewDict(1)
+	require.NoError(t, dict.SetKey(starlark.String("self"), list))
+	require.NoError(t, list.Append(list))
+	require.NoError(t, list.Append(dict))
+	rec := FromStringDict(Default, starlark.StringDict{})
+	require.NoError(t, rec.SetField("me", rec))
+	// A struct can't hold itself, but it can sit in a cycle through a
+	// mutable container.
+	inner := starlark.NewList(nil)
+	st := starlarkstruct.FromStringDict(starlarkstruct.Default, starlark.StringDict{"l": inner})
+	require.NoError(t, inner.Append(st))
+
+	out, _ := roundTripValues(t, NewCodecContext(), list, rec, inner)
+	l := out[0].(*starlark.List)
+	assert.Same(t, l, l.Index(0))
+	d := l.Index(1).(*starlark.Dict)
+	self, _, _ := d.Get(starlark.String("self"))
+	assert.Same(t, l, self)
+	r := out[1].(*Struct)
+	me, _ := r.Attr("me")
+	assert.Same(t, r, me)
+	in := out[2].(*starlark.List)
+	back, _ := in.Index(0).(*starlarkstruct.Struct).Attr("l")
+	assert.Same(t, in, back)
+
+	// Written from the struct's side, the cycle comes back to the same
+	// struct, not a copy of it.
+	out, _ = roundTripValues(t, NewCodecContext(), st)
+	s2 := out[0].(*starlarkstruct.Struct)
+	l2, _ := s2.Attr("l")
+	assert.Same(t, s2, l2.(*starlark.List).Index(0))
+}
+
+// Cyclic values decode to the same cycles, and they behave the same as the
+// originals in the operations the checker applies to states: they hash
+// alike, and comparing them fails alike (starlark's recursion limit), so
+// decoding adds no failure that the original state didn't have.
+func TestStateCodecCyclesBehaveAlike(t *testing.T) {
+	self := starlark.NewList(nil)
+	require.NoError(t, self.Append(self))
+	rec := FromStringDict(Default, starlark.StringDict{"n": starlark.MakeInt(1)})
+	require.NoError(t, rec.SetField("me", rec))
+	x, y := starlark.NewList(nil), starlark.NewList(nil)
+	require.NoError(t, x.Append(y))
+	require.NoError(t, y.Append(x))
+	bag := &Bag{elems: []starlark.Value{x, self}}
+	for _, v := range []starlark.Value{self, rec, x, bag} {
+		out, _ := roundTripValues(t, NewCodecContext(), v)
+		e1, e2 := NewStateEncoder(), NewStateEncoder()
+		e1.WriteValue(v, 0)
+		e2.WriteValue(out[0], 0)
+		assert.Equal(t, e1.Bytes(), e2.Bytes(), "hash input of %s", v.Type())
+		e1.Release()
+		e2.Release()
+		_, err1 := starlark.Equal(v, v)
+		_, err2 := starlark.Equal(out[0], out[0])
+		assert.Equal(t, err1 == nil, err2 == nil, "comparing %s", v.Type())
+		if err1 != nil && err2 != nil {
+			assert.Equal(t, err1.Error(), err2.Error())
+		}
+	}
+}
+
+func TestStateCodecStructLayout(t *testing.T) {
+	require.True(t, structLayoutOK, "starlarkstruct.Struct no longer matches structLayout")
+}
+
+// Unordered collections encode alike whatever order their elements were
+// added in, as they hash alike.
+func TestStateCodecCanonicalOrder(t *testing.T) {
+	keyss := [][]starlark.Value{
+		{starlark.String("b"), starlark.String("a"), starlark.String("c")},
+		{starlark.MakeInt(3), starlark.MakeInt(-1), starlark.MakeInt(2)},
+		{starlark.String("x"), starlark.MakeInt(1), starlark.Tuple{starlark.MakeInt(2)}, starlark.None},
+	}
+	for _, keys := range keyss {
+		build := func(order []int) []starlark.Value {
+			ks := make([]starlark.Value, len(order))
+			for i, j := range order {
+				ks[i] = keys[j]
+			}
+			d := starlark.NewDict(len(ks))
+			set := starlark.NewSet(len(ks))
+			gm := &GenericMap{}
+			gs := &GenericSet{dict: &GenericMap{}}
+			bag := &Bag{}
+			for _, k := range ks {
+				require.NoError(t, d.SetKey(k, starlark.MakeInt(len(ks))))
+				require.NoError(t, set.Insert(k))
+				require.NoError(t, gm.SetKey(k, starlark.NewList([]starlark.Value{k})))
+				require.NoError(t, gs.dict.SetKey(k, starlark.None))
+				bag.elems = append(bag.elems, k, k)
+			}
+			return []starlark.Value{d, set, gm, gs, bag}
+		}
+		w1, w2 := NewStateWriter(NewCodecContext()), NewStateWriter(NewCodecContext())
+		fwd := []int{0, 1, 2}
+		rev := []int{2, 1, 0}
+		if len(keys) == 4 {
+			fwd, rev = []int{0, 1, 2, 3}, []int{3, 1, 0, 2}
+		}
+		for i, v := range build(fwd) {
+			require.NoError(t, w1.WriteValue(v), i)
+		}
+		for i, v := range build(rev) {
+			require.NoError(t, w2.WriteValue(v), i)
+		}
+		assert.Equal(t, w1.Bytes(), w2.Bytes(), "keys %v", keys)
+		// And the decoded collections are equal to the originals.
+		vals := build(rev)
+		out, _ := roundTripValues(t, NewCodecContext(), vals...)
+		for i := range vals {
+			assertStarlarkEqual(t, vals[i], out[i])
+		}
+		w1.Release()
+		w2.Release()
+	}
+}
+
+func nestedLists(depth int) starlark.Value {
+	var v starlark.Value = starlark.None
+	for i := 1; i < depth; i++ {
+		v = starlark.NewList([]starlark.Value{v})
+	}
+	return v
+}
+
+func nestedRecords(depth int) starlark.Value {
+	var v starlark.Value = starlark.None
+	for i := 1; i < depth; i++ {
+		v = FromStringDict(Default, starlark.StringDict{"next": v})
+	}
+	return v
+}
+
+// Values nested right up to the limit round trip, and the stack they take
+// stays small (goroutine stacks grow on demand, up to 1 GB by default).
+func TestStateCodecDepthAtLimit(t *testing.T) {
+	for _, depth := range []int{1000, 2000, 5000, maxValueDepth} {
+		for name, v := range map[string]starlark.Value{"lists": nestedLists(depth), "records": nestedRecords(depth)} {
+			var stack uint64
+			var elapsed time.Duration
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				var before, after runtime.MemStats
+				runtime.ReadMemStats(&before)
+				start := time.Now()
+				out, _ := roundTripValues(t, NewCodecContext(), v)
+				elapsed = time.Since(start)
+				runtime.ReadMemStats(&after)
+				stack = after.StackInuse - before.StackInuse
+				assert.Equal(t, v.Type(), out[0].Type())
+			}()
+			<-done
+			t.Logf("%s nested %d deep: round trip %v, stack grew by about %d KB", name, depth, elapsed, stack/1024)
+		}
+	}
+}
+
+// Elements whose canonical sort keys tie keep their relative order. Where
+// they tie, they are equal as far as the state hash can tell, so the
+// decoded state is still the same state; and identity is kept either way.
+func TestStateCodecCanonicalTies(t *testing.T) {
+	ctx := NewCodecContext()
+	// Bags and generic collections may hold mutable values, so equal but
+	// distinct elements, shared children and cycles are all possible.
+	shared := starlark.NewList(nil)
+	a := starlark.NewList([]starlark.Value{shared})
+	b := starlark.NewList([]starlark.Value{shared})
+	c := starlark.NewList([]starlark.Value{starlark.NewList(nil)})
+	x, y := starlark.NewList(nil), starlark.NewList(nil)
+	require.NoError(t, x.Append(y))
+	require.NoError(t, y.Append(x))
+
+	// (A genericset can't hold these: its keys compare by value, so a, b
+	// and c are one key, and comparing x with y never ends.)
+	for _, order := range [][]starlark.Value{{a, b, c, x, y}, {y, c, b, x, a}} {
+		bag := &Bag{elems: append([]starlark.Value(nil), order...)}
+		out, _ := roundTripValues(t, ctx, bag)
+		var withEmpty, cyclic []*starlark.List
+		for _, e := range out[0].(*Bag).elems {
+			inner := e.(*starlark.List).Index(0).(*starlark.List)
+			if inner.Len() == 0 {
+				withEmpty = append(withEmpty, inner)
+			} else {
+				cyclic = append(cyclic, e.(*starlark.List))
+			}
+		}
+		// a and b still share their child; c's child is its own.
+		require.Len(t, withEmpty, 3)
+		pairs := 0
+		for p := 0; p < 3; p++ {
+			for q := p + 1; q < 3; q++ {
+				if withEmpty[p] == withEmpty[q] {
+					pairs++
+				}
+			}
+		}
+		assert.Equal(t, 1, pairs, "exactly one pair shares a child")
+		// x and y still point at each other.
+		require.Len(t, cyclic, 2)
+		assert.Same(t, cyclic[0], cyclic[1].Index(0))
+		assert.Same(t, cyclic[1], cyclic[0].Index(0))
+	}
+}
+
+func TestStateCodecDepthLimit(t *testing.T) {
+	var v starlark.Value = starlark.None
+	for i := 0; i < maxValueDepth+1; i++ {
+		v = starlark.Tuple{v}
+	}
+	w := NewStateWriter(NewCodecContext())
+	defer w.Release()
+	assert.Error(t, w.WriteValue(v))
+
+	// Hand-made input nesting too deeply fails cleanly.
+	data := make([]byte, 0, 2*maxValueDepth+3)
+	for i := 0; i < maxValueDepth+1; i++ {
+		data = append(data, vtTuple, 1)
+	}
+	data = append(data, vtNone)
+	_, err := NewStateReader(NewCodecContext(), data).ReadValue()
+	assert.ErrorIs(t, err, ErrCorruptState)
+}
+
+func TestStateCodecPortable(t *testing.T) {
+	ctx := NewCodecContext()
+	lambda := starlark.NewBuiltin("anon", func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
+		return starlark.None, nil
+	})
+	w := NewStateWriter(ctx)
+	defer w.Release()
+	require.NoError(t, w.WriteValue(lambda))
+	ctx.SetPortable(true)
+	w.Reset()
+	assert.Error(t, w.WriteValue(lambda))
+}
+
+// FuzzStateReader checks that no input makes the reader panic, and that
+// whatever decodes encodes and decodes again.
+func FuzzStateReader(f *testing.F) {
+	ctx := NewCodecContext()
+	inner := starlark.NewList(nil)
+	st := starlarkstruct.FromStringDict(starlark.String("enum"), starlark.StringDict{"l": inner, "x": starlark.MakeInt(-5)})
+	_ = inner.Append(st)
+	d := starlark.NewDict(2)
+	_ = d.SetKey(starlark.String("k"), inner)
+	_ = d.SetKey(starlark.MakeInt(7), starlark.Tuple{starlark.Float(1.5), starlark.Bytes("b")})
+	rec := FromStringDict(starlark.String("record"), starlark.StringDict{"a": d, "b": st})
+	for _, v := range []starlark.Value{st, d, rec, starlark.MakeInt(1 << 40), starlark.String("hello")} {
+		w := NewStateWriter(ctx)
+		if err := w.WriteValue(v); err != nil {
+			f.Fatal(err)
+		}
+		f.Add(append([]byte(nil), w.Bytes()...))
+		w.Release()
+	}
+	f.Fuzz(func(t *testing.T, data []byte) {
+		r := NewStateReader(ctx, data)
+		v, err := r.ReadValue()
+		if err != nil {
+			// Corrupt input, or an error building a value (an unhashable
+			// dict key, say). Only panics are bugs.
+			return
+		}
+		if bytes.IndexByte(data, vtRange) >= 0 || bytes.IndexByte(data, vtSymValues) >= 0 || bytes.IndexByte(data, vtRef) >= 0 {
+			// Writing sorts unordered collections by their StateEncoder
+			// bytes, and the StateEncoder iterates a range (which can be
+			// huge), prints symmetric_values with String() (which recurses
+			// without end on a cyclic one), and expands shared or cyclic
+			// values up to depth 20 (exponential in the sharing). Hashing
+			// such a state costs the same. These are limits of the state
+			// hash, not of this codec, and real states don't approach
+			// them; decoding them is cheap and safe, which is what this
+			// checks. Without back-references a decoded value is a tree no
+			// bigger than its input, so re-encoding it is cheap.
+			return
+		}
+		w := NewStateWriter(ctx)
+		defer w.Release()
+		if err := w.WriteValue(v); err != nil {
+			// Some decodable values can't be ordered (or hashed): a NaN
+			// in symmetric_values inside a set, say. No real state holds
+			// one, since hashing it fails too. Writing must not panic.
+			return
+		}
+		v2, err := NewStateReader(ctx, w.Bytes()).ReadValue()
+		if err != nil {
+			t.Fatalf("re-encoded value doesn't decode: %v", err)
+		}
+		if v.Type() != v2.Type() {
+			t.Fatalf("type %s became %s", v.Type(), v2.Type())
+		}
+	})
+}
+
+// testResolver stands in for the spec in a fresh process.
+type testResolver struct {
+	methods     map[string]*starlark.Function
+	roleMethods map[string]*starlark.Builtin
+	globals     starlark.StringDict
+}
+
+func (r *testResolver) RoleMethods(string) (map[string]*starlark.Function, map[string]*starlark.Builtin, error) {
+	return r.methods, r.roleMethods, nil
+}
+
+func (r *testResolver) Global(name string) (starlark.Value, bool) {
+	v, ok := r.globals[name]
+	return v, ok
+}
+
+func TestStateCodecRoles(t *testing.T) {
+	methods := map[string]*starlark.Function{"helper": {}}
+	roleMethods := map[string]*starlark.Builtin{"Send": starlark.NewBuiltin("Send", nil)}
+	mk := func(i int64) *Role {
+		return &Role{
+			ID: NewSymmetricValue("Node", i), Name: "Node", Symmetric: true,
+			Params:  FromStringDict(starlark.String("params"), starlark.StringDict{"n": starlark.MakeInt64(i)}),
+			Fields:  FromStringDict(starlark.String("fields"), starlark.StringDict{"log": starlark.NewList(nil)}),
+			Methods: methods, RoleMethods: roleMethods,
+			InitValues: FromStringDict(starlark.String("init_values"), starlark.StringDict{"log": starlark.NewList(nil)}),
+		}
+	}
+	r0, r1 := mk(0), mk(1)
+	require.NoError(t, r0.Fields.SetField("peer", r1))
+	// A role whose Init hasn't run yet has no methods.
+	r2 := mk(2)
+	r2.Methods = map[string]*starlark.Function{}
+	ch := &Channel{Id: 0, ordering: "ordered"}
+	stub := NewRoleStub(r1, ch)
+	global := starlark.NewBuiltin("helper_fn", nil)
+	lambda := starlark.NewBuiltin("not_a_global", nil)
+	resolver := &testResolver{methods: methods, roleMethods: roleMethods, globals: starlark.StringDict{"helper_fn": global}}
+
+	ctx := NewCodecContext()
+	ctx.SetRoleResolver(resolver)
+	state := starlark.NewList([]starlark.Value{r0, r1, stub, global, lambda, r2})
+	out, data := roundTripValues(t, ctx, state)
+	l := out[0].(*starlark.List)
+	g0, g1, g2 := l.Index(0).(*Role), l.Index(1).(*Role), l.Index(5).(*Role)
+	peer, _ := g0.Fields.Attr("peer")
+	assert.Same(t, g1, peer)
+	assert.Same(t, g1, l.Index(2).(*RoleStub).Role)
+	assert.Same(t, ch, l.Index(2).(*RoleStub).Channel)
+	assert.Same(t, global, l.Index(3))
+	assert.Same(t, lambda, l.Index(4), "a non-global builtin goes through the opaque table")
+	assert.Equal(t, r0.String(), g0.String())
+	assert.True(t, g0.IsSymmetric())
+	h0, _ := r0.Hash()
+	gh0, _ := g0.Hash()
+	assert.Equal(t, h0, gh0)
+	// Methods are shared per role type; a role before Init gets its own
+	// empty map, which Init fills.
+	assert.Equal(t, methods, g0.Methods)
+	assert.Empty(t, g2.Methods)
+	assert.Equal(t, roleMethods, g1.RoleMethods)
+	// Equal init values decode to one shared struct, like readResolve.
+	assert.Same(t, g0.InitValues, g1.InitValues)
+	assert.Equal(t, r0.InitValues.String(), g0.InitValues.String())
+	t.Logf("three roles + stub + builtins: %d bytes", len(data))
+
+	// Setting an init value replaces the struct, so the others keep theirs.
+	g0.SetInitValue("log", starlark.MakeInt(1))
+	assert.NotSame(t, g0.InitValues, g1.InitValues)
+	assert.Equal(t, "init_values(log = [])", g1.InitValues.String())
+
+	// A fresh context (another process running the same spec) decodes the
+	// roles and the global from the resolver alone.
+	w := NewStateWriter(ctx)
+	defer w.Release()
+	require.NoError(t, w.WriteValue(starlark.NewList([]starlark.Value{r0, r1, global})))
+	fresh := NewCodecContext()
+	fresh.SetRoleResolver(resolver)
+	v, err := NewStateReader(fresh, w.Bytes()).ReadValue()
+	require.NoError(t, err)
+	fl := v.(*starlark.List)
+	assert.Equal(t, r0.String(), fl.Index(0).String())
+	assert.Equal(t, methods, fl.Index(0).(*Role).Methods)
+	assert.Same(t, global, fl.Index(2))
+
+	// Without a resolver, a fresh context can't resolve the methods.
+	_, err = NewStateReader(NewCodecContext(), w.Bytes()).ReadValue()
+	assert.Error(t, err)
+}
+
+func TestStateCodecUnsupportedAndCorrupt(t *testing.T) {
+	ctx := NewCodecContext()
+	w := NewStateWriter(ctx)
+	defer w.Release()
+	require.NoError(t, w.WriteValue(starlark.NewList([]starlark.Value{starlark.String("abc"), starlark.MakeInt(300)})))
+	data := append([]byte(nil), w.Bytes()...)
+
+	for i := 0; i < len(data); i++ {
+		r := NewStateReader(ctx, data[:i])
+		_, err := r.ReadValue()
+		if err == nil {
+			err = r.Done()
+		}
+		assert.True(t, errors.Is(err, ErrCorruptState), "truncated at %d: %v", i, err)
+	}
+	r := NewStateReader(ctx, []byte{0xFE})
+	_, err := r.ReadValue()
+	assert.ErrorIs(t, err, ErrCorruptState)
+	r = NewStateReader(ctx, []byte{vtRef, 5})
+	_, err = r.ReadValue()
+	assert.ErrorIs(t, err, ErrCorruptState)
+	r = NewStateReader(ctx, []byte{vtList, 0xFF, 0xFF, 0xFF, 0x0F})
+	_, err = r.ReadValue()
+	assert.ErrorIs(t, err, ErrCorruptState)
+
+	for name, data := range map[string][]byte{
+		"bool other than 0 or 1": {vtRole, 0, 2},
+		"big int sign 0":         {vtBigInt, 1, 9, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+		"big int sign 3":         {vtBigInt, 3, 9, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+		"big int leading zero":   {vtBigInt, 2, 10, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+		"big int fits in int64":  {vtBigInt, 2, 1, 5},
+		"big int empty":          {vtBigInt, 2, 0},
+	} {
+		_, err := NewStateReader(ctx, data).ReadValue()
+		assert.ErrorIs(t, err, ErrCorruptState, name)
+	}
+}

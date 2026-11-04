@@ -422,6 +422,9 @@ func (p *Process) Fork() *Process {
 		}
 	}
 
+	if stateCodecRoundTrip {
+		return roundTripProcess(p2)
+	}
 	return p2
 }
 

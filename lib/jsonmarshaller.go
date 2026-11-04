@@ -303,6 +303,12 @@ func MarshalJSONStarlarkValue(m starlark.Value, depth int) ([]byte, error) {
 		return []byte(buf.String()), nil
 	case "model_value", "symmetric_value", "Channel", "symmetry_segment":
 		return json.Marshal(m)
+	case "function":
+		if fn, ok := m.(*starlark.Function); ok {
+			return marshalFunctionJSON(fn, depth)
+		}
+		fmt.Println("Warn: unknown type: ", m.Type(), " value: ", m.String(), " using default json.Marshal")
+		return json.Marshal(m)
 	default:
 		fmt.Println("Warn: unknown type: ", m.Type(), " value: ", m.String(), " using default json.Marshal")
 		return json.Marshal(m)

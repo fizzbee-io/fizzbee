@@ -39,7 +39,7 @@ func (s *Stack[T]) ClearAll() {
 }
 
 func (s *Stack[T]) Empty() bool {
-	return s.Empty()
+	return s.Len() == 0
 }
 
 func NewStack[T any]() *Stack[T] {

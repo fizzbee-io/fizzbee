@@ -47,7 +47,7 @@ func (q *Queue[T]) Len() int {
 }
 
 func (q *Queue[T]) Empty() bool {
-    return q.Empty()
+    return q.Len() == 0
 }
 
 func NewQueue[T any]() *Queue[T] {

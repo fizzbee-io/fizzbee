@@ -4,6 +4,7 @@ go_library(
     name = "lib",
     srcs = [
         "counter.go",
+        "function.go",
         "jsonmarshaller.go",
         "jsonstring.go",
         "linear_collection.go",
@@ -17,6 +18,8 @@ go_library(
         "starlark_role.go",
         "starlark_types.go",
         "starlarkstruct.go",
+        "statecodec.go",
+        "statecodec_canon.go",
         "statehash.go",
         "symmetry.go",
         "symmetry_used.go",
@@ -41,15 +44,28 @@ go_library(
 go_test(
     name = "lib_test",
     srcs = [
+        "empty_test.go",
+        "function_test.go",
         "jsonmarshaller_test.go",
         "jsonstring_test.go",
+        "statecodec_test.go",
         "statehash_test.go",
     ],
+    data = glob(["testdata/fuzz/**"]),
     embed = [":lib"],
     deps = [
         "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
         "@net_starlark_go//starlark",
+        "@net_starlark_go//starlarkstruct",
     ],
+)
+
+go_test(
+    name = "starlarkstruct_test",
+    srcs = ["starlarkstruct_test.go"],
+    embed = [":lib"],
+    deps = ["@net_starlark_go//starlark"],
 )
 
 go_test(

@@ -57,12 +57,14 @@ func main() {
 	}
 
 	// The processed queue is on by default only where it is validated:
-	// BFS, without incremental liveness, and without graph-mode collapse
+	// BFS outside simulation (a simulation run with it stops at Init),
+	// without incremental liveness, and without graph-mode collapse
 	// (collapse links only work with the default queue). Under DFS/random
 	// with max_actions the changed order can prune a different subset of
 	// states. Passing the flag explicitly overrides this.
 	if !isFlagSet("experimental_processed_queue") {
 		experimentalProcessedQueue = explorationStrategy == "bfs" &&
+			!simulation &&
 			!experimentalIncrementalLiveness &&
 			!(experimentalCollapseSteps && !experimentalNoGraph)
 	}
@@ -78,6 +80,11 @@ func main() {
 		}
 		fmt.Println("Note: --experimental_no_graph auto-enables --experimental_processed_queue.")
 		experimentalProcessedQueue = true
+	}
+
+	if simulation && experimentalProcessedQueue {
+		fmt.Println("Error: simulation does not support --experimental_processed_queue or --experimental_no_graph (each run would stop at Init).")
+		os.Exit(1)
 	}
 
 	if experimentalIncrementalLiveness {

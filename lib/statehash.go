@@ -249,6 +249,15 @@ func (e *StateEncoder) WriteValue(v starlark.Value, depth int) {
 		e.WriteInt64(int64(x.Left))
 		e.WriteInt64(int64(x.Right))
 		e.buf = append(e.buf, boolByte(x.IsHead), boolByte(x.IsTail))
+	case *starlark.Function:
+		// Rare in state, so it shares the JSON encoding rather than having
+		// its own: source position, defaults and captured values.
+		b, err := marshalFunctionJSON(x, depth)
+		if err != nil {
+			panic(err)
+		}
+		e.buf = append(e.buf, tagOther)
+		e.WriteBytes(b)
 	case *starlarkstruct.Struct:
 		names := x.AttrNames()
 		e.buf = append(e.buf, tagMap)

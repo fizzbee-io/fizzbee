@@ -1,0 +1,29 @@
+---
+options:
+    max_actions: 3
+---
+
+# Cyclic values in the state: a list holding itself, a cycle through two
+# lists (also held in a bag), and a record holding itself. The assertion
+# checks that the cycles keep their identity as the state is explored.
+
+action Init:
+    a = []
+    a.append(a)
+    b = []
+    c = [b]
+    b.append(c)
+    r = record(n=0)
+    r.me = r
+    bag1 = bag()
+    bag1.add(b)
+    n = 0
+
+atomic action Step:
+    n = (n + 1) % 2
+    r.n = n
+    if len(a) < 3:
+        a.append(n)
+
+always assertion CyclesKeepIdentity:
+    return len(a[0]) == len(a) and r.me.n == r.n and len(b[0][0]) == len(b)
