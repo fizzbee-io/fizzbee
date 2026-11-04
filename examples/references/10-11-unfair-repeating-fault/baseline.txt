@@ -1,0 +1,44 @@
+Model checking examples/references/10-11-unfair-repeating-fault/UnfairFault.json
+configFileName: examples/references/10-11-unfair-repeating-fault/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
+Nodes: 2, queued: 0, elapsed: 517.836µs
+Peak (new): queue=1 pendingActionStarts=2
+Time taken for model checking: 539.132µs
+Writen graph dotfile: examples/references/10-11-unfair-repeating-fault/out/run_2026-11-04_19-22-40/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/10-11-unfair-repeating-fault/out/run_2026-11-04_19-22-40/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 2 Unique states: 2
+Liveness shadow agree StaysUp: cycle finder FAIL (counterexample valid), scc FAIL (counterexample valid)
+IsLive: false
+Time taken to check liveness: 259.61µs
+FAILED: Liveness check failed
+Invariant: StaysUp
+------
+Init
+--
+state: {"up":true}
+------
+Break
+--
+state: {"up":false}
+------
+Break
+--
+state: {"up":false}
+------
+Break
+--
+state: {"up":false}
+------
+Repair
+--
+state: {"up":true}
+------
+Writen graph json: examples/references/10-11-unfair-repeating-fault/out/run_2026-11-04_19-22-40/error-graph.json
+Writen graph dotfile: examples/references/10-11-unfair-repeating-fault/out/run_2026-11-04_19-22-40/error-graph.dot
+To generate an image file, run: 
+dot -Tsvg examples/references/10-11-unfair-repeating-fault/out/run_2026-11-04_19-22-40/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: examples/references/10-11-unfair-repeating-fault/out/run_2026-11-04_19-22-40/error-states.html
+To open: 
+open examples/references/10-11-unfair-repeating-fault/out/run_2026-11-04_19-22-40/error-states.html

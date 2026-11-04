@@ -114,11 +114,28 @@ def read_flags(d: Path) -> list[str]:
     return flags
 
 
+def read_env(d: Path) -> dict[str, str]:
+    """Optional per-example environment: an `env.txt` next to the spec, one
+    KEY=VALUE per line. Lets reference examples pin modes that are chosen by
+    environment variable, such as FIZZ_LIVENESS_ENGINE=shadow, which runs
+    both liveness engines and prints whether they agree."""
+    env_file = d / "env.txt"
+    env = {}
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, value = line.split("=", 1)
+                env[key.strip()] = value.strip()
+    return env
+
+
 def run_spec(fizz_file: Path) -> tuple[str, str, float]:
     t0 = time.monotonic()
     cmd = [FIZZ] + read_flags(fizz_file.parent) + [str(fizz_file)]
+    env = {**os.environ, **read_env(fizz_file.parent)}
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUT_SECONDS)
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUT_SECONDS, env=env)
         stdout, stderr = r.stdout, r.stderr
     except subprocess.TimeoutExpired:
         # The TIMEOUT: line is kept by normalize(), so the mismatch diff

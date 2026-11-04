@@ -2,15 +2,15 @@ Model checking examples/references/10-06-fault-continuation/FaultContinuation.js
 configFileName: examples/references/10-06-fault-continuation/fizz.yaml
 fizz.yaml not found. Using default options
 StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2  crash_on_yield:false}
-Nodes: 4, queued: 0, elapsed: 520.222µs
+Nodes: 4, queued: 0, elapsed: 407.052µs
 Peak (new): queue=1 pendingActionStarts=2
-Time taken for model checking: 538.213µs
-Writen graph dotfile: examples/references/10-06-fault-continuation/out/run_2026-11-04_07-58-10/graph.dot
+Time taken for model checking: 421.749µs
+Writen graph dotfile: examples/references/10-06-fault-continuation/out/run_2026-11-04_19-22-39/graph.dot
 To generate svg, run: 
-dot -Tsvg examples/references/10-06-fault-continuation/out/run_2026-11-04_07-58-10/graph.dot -o graph.svg && open graph.svg
+dot -Tsvg examples/references/10-06-fault-continuation/out/run_2026-11-04_19-22-39/graph.dot -o graph.svg && open graph.svg
 Valid Nodes: 4 Unique states: 4
-Checking eventually always StaysUp
+Liveness shadow agree StaysUp: cycle finder PASS, scc PASS
 IsLive: true
-Time taken to check liveness: 267.472µs
+Time taken to check liveness: 247.18µs
 PASSED: Model checker completed successfully
-Writen 1 node files and 1 link files to dir examples/references/10-06-fault-continuation/out/run_2026-11-04_07-58-10
+Writen 1 node files and 1 link files to dir examples/references/10-06-fault-continuation/out/run_2026-11-04_19-22-39

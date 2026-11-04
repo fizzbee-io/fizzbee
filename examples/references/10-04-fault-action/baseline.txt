@@ -2,15 +2,15 @@ Model checking examples/references/10-04-fault-action/FaultAction.json
 configFileName: examples/references/10-04-fault-action/fizz.yaml
 fizz.yaml not found. Using default options
 StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
-Nodes: 2, queued: 0, elapsed: 608.176µs
+Nodes: 2, queued: 0, elapsed: 545.389µs
 Peak (new): queue=1 pendingActionStarts=2
-Time taken for model checking: 632.974µs
-Writen graph dotfile: examples/references/10-04-fault-action/out/run_2026-11-04_07-58-10/graph.dot
+Time taken for model checking: 555.463µs
+Writen graph dotfile: examples/references/10-04-fault-action/out/run_2026-11-04_19-22-38/graph.dot
 To generate svg, run: 
-dot -Tsvg examples/references/10-04-fault-action/out/run_2026-11-04_07-58-10/graph.dot -o graph.svg && open graph.svg
+dot -Tsvg examples/references/10-04-fault-action/out/run_2026-11-04_19-22-38/graph.dot -o graph.svg && open graph.svg
 Valid Nodes: 2 Unique states: 2
-Checking eventually always StaysUp
+Liveness shadow agree StaysUp: cycle finder PASS, scc PASS
 IsLive: true
-Time taken to check liveness: 345.537µs
+Time taken to check liveness: 145.71µs
 PASSED: Model checker completed successfully
-Writen 1 node files and 1 link files to dir examples/references/10-04-fault-action/out/run_2026-11-04_07-58-10
+Writen 1 node files and 1 link files to dir examples/references/10-04-fault-action/out/run_2026-11-04_19-22-38
