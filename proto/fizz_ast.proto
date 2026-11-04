@@ -61,6 +61,11 @@ enum FairnessLevel {
   FAIRNESS_LEVEL_UNFAIR = 1;
   FAIRNESS_LEVEL_WEAK = 2;
   FAIRNESS_LEVEL_STRONG = 3;
+  // FAULT marks an action that can happen only finitely often in a run,
+  // like an injected crash: its steps may appear in a liveness
+  // counterexample's prefix but never in its loop, and it creates no
+  // fairness obligation.
+  FAIRNESS_LEVEL_FAULT = 4;
 }
 
 enum Flow {

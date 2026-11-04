@@ -1,0 +1,14 @@
+# Example: Fault in the Prefix
+# A fair<fault> action can still happen a finite number of times, so
+# damage it leaves behind is a real liveness violation.
+# Demonstrates: fair<fault> steps in a counterexample's prefix
+
+action Init:
+    up = True
+
+# Nothing repairs a Destroy, so after it the system stays down.
+atomic fair<fault> action Destroy:
+    up = False
+
+eventually always assertion StaysUp:
+    return up

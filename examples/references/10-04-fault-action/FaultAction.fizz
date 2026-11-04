@@ -1,0 +1,20 @@
+# Example: Fault Action
+# A fair<fault> action can happen only finitely often in a run.
+# Demonstrates: fair<fault>, liveness that holds once faults stop
+
+action Init:
+    up = True
+
+# Break is an injected fault. As a plain unfair action, the run
+# Break, Repair, Break, Repair, ... would be a liveness counterexample
+# to StaysUp. As a fault, it can't recur forever, so it can't be part
+# of the counterexample's loop.
+atomic fair<fault> action Break:
+    up = False
+
+atomic fair action Repair:
+    if not up:
+        up = True
+
+eventually always assertion StaysUp:
+    return up

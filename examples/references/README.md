@@ -459,6 +459,24 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: `fair<strong>`, intermittent enabling
 - **Status**: ✅ PASSED
 
+### 10-04-fault-action: Fault Action
+- **State space**: 2 nodes, 2 unique states
+- **Purpose**: A `fair<fault>` action can't be in a liveness counterexample's loop
+- **Key concepts**: `fair<fault>`, faults that eventually stop
+- **Status**: ✅ PASSED
+
+### 10-05-fault-in-prefix: Fault in the Prefix
+- **State space**: 2 nodes, 2 unique states
+- **Purpose**: A fault can still happen a finite number of times, so lasting damage fails liveness
+- **Key concepts**: `fair<fault>` steps in the counterexample's prefix
+- **Status**: ❌ FAILED (expected)
+
+### 10-06-fault-continuation: Fault Continuation
+- **State space**: 4 nodes, 4 unique states
+- **Purpose**: Every step of a multi-step fault is a fault, and a started fault still completes
+- **Key concepts**: `serial fair<fault> action`, yields inside a fault
+- **Status**: ✅ PASSED
+
 ### 11-01-simple-role: Simple Role
 - **State space**: 11 nodes, 11 unique states
 - **Purpose**: Basic role definition with actions

@@ -358,8 +358,10 @@ func GenerateDotFile(node *Node, visited map[*Node]bool) string {
 			edgewidth := 1
 			edgecolor := "black"
 
-			if child.Fairness != proto.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN &&
-				child.Fairness != proto.FairnessLevel_FAIRNESS_LEVEL_UNFAIR {
+			if child.Fairness == proto.FairnessLevel_FAIRNESS_LEVEL_FAULT {
+				edgecolor = "darkorange"
+			}
+			if isFairLevel(child.Fairness) {
 				edgecolor = "forestgreen"
 				if child.Fairness == proto.FairnessLevel_FAIRNESS_LEVEL_STRONG {
 					edgewidth = 3
@@ -447,8 +449,10 @@ func GenerateFailurePath(nodes []*Link, name string, invariant *InvariantPositio
 			edgewidth := 1
 			edgecolor := "black"
 
-			if link.Fairness != proto.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN &&
-				link.Fairness != proto.FairnessLevel_FAIRNESS_LEVEL_UNFAIR {
+			if link.Fairness == proto.FairnessLevel_FAIRNESS_LEVEL_FAULT {
+				edgecolor = "darkorange"
+			}
+			if isFairLevel(link.Fairness) {
 				edgecolor = "forestgreen"
 				if link.Fairness == proto.FairnessLevel_FAIRNESS_LEVEL_STRONG {
 					edgewidth = 3
@@ -588,7 +592,7 @@ func GenerateCommunicationGraph(messages []string) string {
 		hasFairAction := false
 		for action, fairness := range actions {
 
-			if fairness == proto.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN || fairness == proto.FairnessLevel_FAIRNESS_LEVEL_UNFAIR {
+			if !isFairLevel(fairness) {
 				actionNodeName := fmt.Sprintf("action%s%s", receiver, action)
 				builder.WriteString(fmt.Sprintf("  \"%s\" [label=\"\" shape=\"none\"]\n", actionNodeName))
 				builder.WriteString(fmt.Sprintf("  \"%s\" -> \"%s\" [label=\"%s\"];\n", actionNodeName, receiver, action))
@@ -599,7 +603,7 @@ func GenerateCommunicationGraph(messages []string) string {
 		if hasFairAction {
 			builder.WriteString(fmt.Sprintf("  \"FairAction%s\" [shape=none label=<<table cellpadding=\"14\" cellspacing=\"8\" style=\"invisible\"><tr>\n", receiver))
 			for action, fairness := range actions {
-				if !(fairness == proto.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN || fairness == proto.FairnessLevel_FAIRNESS_LEVEL_UNFAIR) {
+				if isFairLevel(fairness) {
 					builder.WriteString(fmt.Sprintf("      <td port=\"%s\"></td>\n", action))
 				}
 			}
@@ -607,7 +611,7 @@ func GenerateCommunicationGraph(messages []string) string {
 			// Make the FairAction node at the same rank as the receiver
 			builder.WriteString(fmt.Sprintf("  { rank=same; \"%s\"; \"FairAction%s\"; }\n", receiver, receiver))
 			for action, fairness := range actions {
-				if !(fairness == proto.FairnessLevel_FAIRNESS_LEVEL_UNKNOWN || fairness == proto.FairnessLevel_FAIRNESS_LEVEL_UNFAIR) {
+				if isFairLevel(fairness) {
 					builder.WriteString(fmt.Sprintf("  \"FairAction%s\":%s -> \"%s\" [label=\"%s\"];\n", receiver, action, receiver, action))
 				}
 			}

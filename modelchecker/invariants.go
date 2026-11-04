@@ -983,7 +983,7 @@ func cycleFinderHelper(node *Node, callback CycleCallback, visited map[*Node]boo
 	}
 	// Traverse outbound links
 	for _, link := range node.Outbound {
-		if link.IsCrashLink() {
+		if link.IsCrashLink() || link.IsFaultLink() {
 			//fmt.Println("Skipping crash link", link.Name, "from node", node.String(), "to node", link.Node.String())
 			continue
 		}

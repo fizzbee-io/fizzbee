@@ -98,9 +98,24 @@ func newPartialSccGraph(root *Node, nodes []*Node, isOpen func(*Node) bool) *scc
 				continue
 			}
 			var a int
+			enabled := -1
 			switch {
 			case link.IsCrashLink():
 				a = actionOf(link.Name, liveness.Crash)
+			case link.IsFaultLink():
+				// A fault's steps stay out of the loop. The continuation of a
+				// fault already started keeps its strong fairness, so a run
+				// can't leave a fault half done forever: it is enabled under
+				// its usual identity, but taken as a crash-class edge.
+				name := "internal|" + link.Name
+				if observes || choice {
+					var f ast.FairnessLevel
+					name, f, _ = fairnessLinkName(node, link)
+					if isFairLevel(f) {
+						enabled = actionOf(name, toLivenessFairness(f))
+					}
+				}
+				a = actionOf(name, liveness.Crash)
 			case observes || choice:
 				// Same identity and fairness the cycle finder uses, including
 				// strong fairness for fair choices and thread switches.
@@ -113,6 +128,9 @@ func newPartialSccGraph(root *Node, nodes []*Node, isOpen func(*Node) bool) *scc
 			}
 			if !slices.Contains(s.g.Enabled[i], a) {
 				s.g.Enabled[i] = append(s.g.Enabled[i], a)
+			}
+			if enabled >= 0 && !slices.Contains(s.g.Enabled[i], enabled) {
+				s.g.Enabled[i] = append(s.g.Enabled[i], enabled)
 			}
 			if open {
 				continue
@@ -424,7 +442,7 @@ func SymmetricFairActions(file *ast.File) []string {
 			continue
 		}
 		for _, action := range role.Actions {
-			if action.Name != "Init" && action.GetFairness().GetLevel() > ast.FairnessLevel_FAIRNESS_LEVEL_UNFAIR {
+			if action.Name != "Init" && isFairLevel(action.GetFairness().GetLevel()) {
 				actions = append(actions, role.Name+"."+action.Name)
 			}
 		}
