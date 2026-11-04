@@ -31,6 +31,11 @@ import (
 // lazyForksEnabled gates the per-statement purity bookkeeping.
 var lazyForksEnabled bool
 
+// lazyVerifyReuse, when set (by tests), is called with every reused clone
+// right after its reset, together with a fresh fork of the same parent. The
+// two must be indistinguishable.
+var lazyVerifyReuse func(reused, fresh *Process)
+
 type lazyAction struct {
 	parent      *Process
 	role        *lib.Role
@@ -83,6 +88,9 @@ func (p *Processor) materializeLazy(node *Node) bool {
 		proc = p.scratch
 		p.resetScratch(proc, la.parent)
 		p.lazyReused++
+		if lazyVerifyReuse != nil {
+			lazyVerifyReuse(proc, la.parent.Fork())
+		}
 	} else {
 		proc = la.parent.Fork()
 		p.lazyForked++
@@ -185,12 +193,21 @@ func (p *Processor) resetScratch(proc *Process, parent *Process) {
 
 // --- statement purity -----------------------------------------------------
 
-var pureExprCache sync.Map // expression code -> bool
+var pureExprCache sync.Map // expression code -> pureExpr
 var pureStmtCache sync.Map // statement code -> pureStmt
 
+// pureExpr is the purity of an expression by its syntax alone. calls lists
+// the builtin names it calls: the expression is pure only where each of them
+// still resolves to that builtin (see builtinsShadowed).
+type pureExpr struct {
+	ok    bool
+	calls []string
+}
+
 type pureStmt struct {
-	ok   bool
-	name string // assigned local name, "" for a bare expression
+	ok    bool
+	name  string // assigned local name, "" for a bare expression
+	calls []string
 }
 
 // pureBuiltins are calls that read their arguments and allocate at most a
@@ -204,68 +221,135 @@ var pureBuiltins = map[string]bool{
 	"sum": true, "repr": true, "record": true,
 }
 
-// isPureExprCode reports whether evaluating the expression cannot modify the
-// process state.
-func isPureExprCode(code string) bool {
+// classifyExprCode classifies an expression by its syntax: whether it can
+// modify the process state, given that the builtin names it calls resolve to
+// the builtins.
+func classifyExprCode(code string) pureExpr {
 	if code == "" {
-		return true
+		return pureExpr{ok: true}
 	}
 	if v, ok := pureExprCache.Load(code); ok {
-		return v.(bool)
+		return v.(pureExpr)
 	}
+	res := pureExpr{}
 	expr, err := syntax.ParseExpr("expr", code, 0)
-	pure := err == nil && pureSyntaxExpr(expr)
-	pureExprCache.Store(code, pure)
-	return pure
+	if err == nil {
+		res.ok = pureSyntaxRoot(expr, &res.calls)
+	}
+	pureExprCache.Store(code, res)
+	return res
 }
 
-func isPureExpr(e *ast.Expr) bool {
+// isPureExpr reports whether evaluating the expression in t's current frame
+// cannot modify the process state.
+func (t *Thread) isPureExpr(e *ast.Expr) bool {
 	if e == nil {
 		return true
 	}
-	return isPureExprCode(e.GetPyExpr())
+	c := classifyExprCode(e.GetPyExpr())
+	return c.ok && !t.builtinsShadowed(c.calls)
 }
 
-func pureSyntaxExpr(e syntax.Expr) bool {
+// builtinsShadowed reports whether any of the names, which the purity check
+// assumed to be builtins, is bound to something else where t runs: a fizz
+// function, a local, a state variable, a global or a module. The lookup
+// order follows lookupNameIn.
+func (t *Thread) builtinsShadowed(names []string) bool {
+	if len(names) == 0 {
+		return false
+	}
+	p := t.Process
+	fixed := p.fixedEnvironment()
+	frame := t.currentFrame()
+	for _, name := range names {
+		if _, ok := fixed[name]; ok {
+			return true
+		}
+		if p.fizzFuncBuiltin(name) != nil {
+			return true
+		}
+		for s := frame.scope; s != nil; s = s.parent {
+			if _, ok := s.vars[name]; ok {
+				return true
+			}
+		}
+		if _, ok := frame.vars[name]; ok {
+			return true
+		}
+		if _, ok := p.Heap.state[name]; ok {
+			return true
+		}
+		if _, ok := p.Heap.globals[name]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+// pureSyntaxRoot is pureSyntaxExpr for a whole expression. It also rejects
+// an expression whose comprehension variables reuse the name of a builtin
+// it calls, since the call would then go to the variable.
+func pureSyntaxRoot(e syntax.Expr, calls *[]string) bool {
+	var bound []string
+	if !pureSyntaxExpr(e, calls, &bound) {
+		return false
+	}
+	for _, b := range bound {
+		for _, c := range *calls {
+			if b == c {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func pureSyntaxExpr(e syntax.Expr, calls, bound *[]string) bool {
 	switch e := e.(type) {
 	case nil:
 		return true
 	case *syntax.Ident, *syntax.Literal:
 		return true
 	case *syntax.ParenExpr:
-		return pureSyntaxExpr(e.X)
+		return pureSyntaxExpr(e.X, calls, bound)
 	case *syntax.UnaryExpr:
-		return pureSyntaxExpr(e.X)
+		return pureSyntaxExpr(e.X, calls, bound)
 	case *syntax.BinaryExpr:
-		return pureSyntaxExpr(e.X) && pureSyntaxExpr(e.Y)
+		return pureSyntaxExpr(e.X, calls, bound) && pureSyntaxExpr(e.Y, calls, bound)
 	case *syntax.DotExpr:
-		return pureSyntaxExpr(e.X)
+		return pureSyntaxExpr(e.X, calls, bound)
 	case *syntax.IndexExpr:
-		return pureSyntaxExpr(e.X) && pureSyntaxExpr(e.Y)
+		return pureSyntaxExpr(e.X, calls, bound) && pureSyntaxExpr(e.Y, calls, bound)
 	case *syntax.SliceExpr:
-		return pureSyntaxExpr(e.X) && pureSyntaxExpr(e.Lo) && pureSyntaxExpr(e.Hi) && pureSyntaxExpr(e.Step)
+		return pureSyntaxExpr(e.X, calls, bound) && pureSyntaxExpr(e.Lo, calls, bound) && pureSyntaxExpr(e.Hi, calls, bound) && pureSyntaxExpr(e.Step, calls, bound)
 	case *syntax.CondExpr:
-		return pureSyntaxExpr(e.Cond) && pureSyntaxExpr(e.True) && pureSyntaxExpr(e.False)
+		return pureSyntaxExpr(e.Cond, calls, bound) && pureSyntaxExpr(e.True, calls, bound) && pureSyntaxExpr(e.False, calls, bound)
 	case *syntax.TupleExpr:
-		return pureSyntaxExprs(e.List)
+		return pureSyntaxExprs(e.List, calls, bound)
 	case *syntax.ListExpr:
-		return pureSyntaxExprs(e.List)
+		return pureSyntaxExprs(e.List, calls, bound)
 	case *syntax.DictExpr:
-		return pureSyntaxExprs(e.List)
+		return pureSyntaxExprs(e.List, calls, bound)
 	case *syntax.DictEntry:
-		return pureSyntaxExpr(e.Key) && pureSyntaxExpr(e.Value)
+		return pureSyntaxExpr(e.Key, calls, bound) && pureSyntaxExpr(e.Value, calls, bound)
 	case *syntax.Comprehension:
-		if !pureSyntaxExpr(e.Body) {
+		if !pureSyntaxExpr(e.Body, calls, bound) {
 			return false
 		}
 		for _, c := range e.Clauses {
 			switch c := c.(type) {
 			case *syntax.ForClause:
-				if !pureSyntaxExpr(c.Vars) || !pureSyntaxExpr(c.X) {
+				if !pureSyntaxExpr(c.Vars, calls, bound) || !pureSyntaxExpr(c.X, calls, bound) {
 					return false
 				}
+				syntax.Walk(c.Vars, func(n syntax.Node) bool {
+					if id, ok := n.(*syntax.Ident); ok {
+						*bound = append(*bound, id.Name)
+					}
+					return true
+				})
 			case *syntax.IfClause:
-				if !pureSyntaxExpr(c.Cond) {
+				if !pureSyntaxExpr(c.Cond, calls, bound) {
 					return false
 				}
 			default:
@@ -278,15 +362,25 @@ func pureSyntaxExpr(e syntax.Expr) bool {
 		if !ok || !pureBuiltins[fn.Name] {
 			return false
 		}
-		return pureSyntaxExprs(e.Args)
+		for _, arg := range e.Args {
+			// sorted, min and max call their key function, which may be
+			// any callable; a lambda is already rejected below.
+			if kw, ok := arg.(*syntax.BinaryExpr); ok && kw.Op == syntax.EQ {
+				if id, ok := kw.X.(*syntax.Ident); ok && id.Name == "key" {
+					return false
+				}
+			}
+		}
+		*calls = append(*calls, fn.Name)
+		return pureSyntaxExprs(e.Args, calls, bound)
 	default:
 		return false
 	}
 }
 
-func pureSyntaxExprs(list []syntax.Expr) bool {
+func pureSyntaxExprs(list []syntax.Expr, calls, bound *[]string) bool {
 	for _, x := range list {
-		if !pureSyntaxExpr(x) {
+		if !pureSyntaxExpr(x, calls, bound) {
 			return false
 		}
 	}
@@ -303,14 +397,15 @@ func pureLocalStatement(code string) pureStmt {
 	res := pureStmt{}
 	f, err := syntax.Parse("stmt", code, 0)
 	if err == nil && len(f.Stmts) == 1 {
+		var calls []string
 		switch s := f.Stmts[0].(type) {
 		case *syntax.AssignStmt:
-			if id, ok := s.LHS.(*syntax.Ident); ok && s.Op == syntax.EQ && pureSyntaxExpr(s.RHS) {
-				res = pureStmt{ok: true, name: id.Name}
+			if id, ok := s.LHS.(*syntax.Ident); ok && s.Op == syntax.EQ && pureSyntaxRoot(s.RHS, &calls) {
+				res = pureStmt{ok: true, name: id.Name, calls: calls}
 			}
 		case *syntax.ExprStmt:
-			if pureSyntaxExpr(s.X) {
-				res = pureStmt{ok: true}
+			if pureSyntaxRoot(s.X, &calls) {
+				res = pureStmt{ok: true, calls: calls}
 			}
 		}
 	}
@@ -328,7 +423,7 @@ func (t *Thread) noteStatement(stmt *ast.Statement) {
 	switch {
 	case stmt.PyStmt != nil:
 		ps := pureLocalStatement(stmt.PyStmt.GetCode())
-		if !ps.ok || ps.name == "self" {
+		if !ps.ok || ps.name == "self" || t.builtinsShadowed(ps.calls) {
 			p.dirty = true
 			return
 		}
@@ -340,36 +435,36 @@ func (t *Thread) noteStatement(stmt *ast.Statement) {
 	case stmt.Block != nil, stmt.BreakStmt != nil, stmt.ContinueStmt != nil:
 	case stmt.IfStmt != nil:
 		for _, b := range stmt.IfStmt.Branches {
-			if !isPureExpr(b.GetConditionExpr()) {
+			if !t.isPureExpr(b.GetConditionExpr()) {
 				p.dirty = true
 				return
 			}
 		}
 	case stmt.AnyStmt != nil:
-		if !isPureExpr(stmt.AnyStmt.GetIterExpr()) || !isPureExpr(stmt.AnyStmt.GetConditionExpr()) {
+		if !t.isPureExpr(stmt.AnyStmt.GetIterExpr()) || !t.isPureExpr(stmt.AnyStmt.GetConditionExpr()) {
 			p.dirty = true
 		}
 	case stmt.ForStmt != nil:
-		if !isPureExpr(stmt.ForStmt.GetIterExpr()) {
+		if !t.isPureExpr(stmt.ForStmt.GetIterExpr()) {
 			p.dirty = true
 		}
 	case stmt.WhileStmt != nil:
-		if !isPureExpr(stmt.WhileStmt.GetIterExpr()) {
+		if !t.isPureExpr(stmt.WhileStmt.GetIterExpr()) {
 			p.dirty = true
 		}
 	case stmt.RequireStmt != nil:
-		if !isPureExpr(stmt.RequireStmt.GetConditionExpr()) {
+		if !t.isPureExpr(stmt.RequireStmt.GetConditionExpr()) {
 			p.dirty = true
 		}
 	case stmt.ReturnStmt != nil:
-		if !isPureExpr(stmt.ReturnStmt.GetExpr()) {
+		if !t.isPureExpr(stmt.ReturnStmt.GetExpr()) {
 			p.dirty = true
 		}
 	case stmt.CallStmt != nil:
 		// A call to a builtin (no fizz definition) is marked dirty by
 		// executeStatement once the definition has been looked up.
 		for _, arg := range stmt.CallStmt.Args {
-			if !isPureExpr(arg.GetExpr()) {
+			if !t.isPureExpr(arg.GetExpr()) {
 				p.dirty = true
 				return
 			}

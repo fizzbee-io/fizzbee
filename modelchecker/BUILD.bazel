@@ -55,6 +55,7 @@ go_test(
         "formula_test.go",
         "graph_test.go",
         "invariants_test.go",
+        "lazyfork_test.go",
         "liveness_incremental_test.go",
         "liveness_scc_test.go",
         "markovchain_test.go",

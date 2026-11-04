@@ -1,0 +1,20 @@
+# A top-level constant named like a pure builtin. The purity check must not
+# take max(...) for the builtin, so the clone of Shadowed is never reused:
+# Count never ends disabled, so any reuse would come from Shadowed.
+---
+options:
+  max_actions: 3
+deadlock_detection: false
+---
+
+max = lambda a, b: a - b
+
+action Init:
+    count = 0
+
+atomic action Shadowed:
+    require max(1, 2) > 0
+    pass
+
+atomic action Count:
+    count += 1
