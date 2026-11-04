@@ -22,7 +22,7 @@
 python3 test_references.py
 ```
 
-Runs all 94 reference examples (those with a `baseline.txt`) and all lovable specs in `examples/requirements/lovable/`. Compares output semantically (strips timestamps, elapsed times, file paths). Reports PASS/FAIL per example and a summary.
+Runs all reference examples (those with a `baseline.txt`), the regression specs in `tests/specs/`, and all lovable specs in `examples/requirements/lovable/`. Compares output semantically (strips timestamps, elapsed times, file paths). Reports PASS/FAIL per example and a summary.
 
 To update a baseline after an intentional change:
 ```bash
