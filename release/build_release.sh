@@ -23,6 +23,17 @@ esac
 
 # TODO: Couldn't build for windows yet, and the bash script has to be converted to BAT or something else.
 
+# Upper bound for the bundled python interpreter executable (and, on
+# macOS, libpython). MODULE.bazel points the toolchain at
+# python-build-standalone's install_only_stripped archives; the default
+# install_only build is the same code plus ~80 MB of DWARF debug data per
+# copy, which alone used to triple the linux tarballs. The overrides are
+# keyed on the exact python patch version, so a rules_python bump that
+# moves "3.13" to a newer release silently reinstates the fat build —
+# this check catches that at release time. Stripped sizes as of 3.13.13:
+# linux x86_64 30 MB, linux aarch64 21 MB, macOS libpython 17 MB.
+MAX_INTERP_BYTES=$((50 * 1024 * 1024))
+
 # Define platforms
 PLATFORMS=(
     "macos_x86"
@@ -76,10 +87,28 @@ for PLATFORM in "${PLATFORMS[@]}"; do
     cat bazel-bin/mbt/generator/generator_bin.zip > "$TARGET_DIR/mbt_gen.zip"
     # Fail loudly if the staged zip is not intact (the mbt-scaffold
     # subcommand runs it with the user's python3; a corrupt zip would only
-    # surface as a user-facing traceback).
+    # surface as a user-facing traceback). The zip embeds its own copy of
+    # the python toolchain, so the interpreter size invariant (see below)
+    # is enforced on its members too.
     python3 -c 'import sys, zipfile
-bad = zipfile.ZipFile(sys.argv[1]).testzip()
-sys.exit("ERROR: corrupt member in staged mbt_gen.zip: %s" % bad if bad else 0)' "$TARGET_DIR/mbt_gen.zip"
+z = zipfile.ZipFile(sys.argv[1])
+bad = z.testzip()
+if bad:
+    sys.exit("ERROR: corrupt member in staged mbt_gen.zip: %s" % bad)
+limit = int(sys.argv[2])
+# Same candidates as the parser check: the executable (and its
+# dereferenced symlink copies) plus libpython, which holds the
+# interpreter code on macOS. Zero candidates means the zip layout
+# changed and the check would be vacuous, so that fails too.
+cands = [i for i in z.infolist()
+         if "/bin/python3" in i.filename or "/lib/libpython3" in i.filename]
+if not cands:
+    sys.exit("ERROR: no bundled python interpreter found in mbt_gen.zip (layout changed?)")
+fat = [i for i in cands if i.file_size > limit]
+if fat:
+    sys.exit("ERROR: bundled interpreter in mbt_gen.zip exceeds %d MB: %s" % (
+        limit // 1048576, ", ".join("%s (%d MB)" % (i.filename, i.file_size // 1048576) for i in fat)))
+' "$TARGET_DIR/mbt_gen.zip" "$MAX_INTERP_BYTES"
 
     # Strip pip and ensurepip from the bundled hermetic python toolchain.
     # The parser never uses them at runtime, and the stale bundled pip is
@@ -118,6 +147,29 @@ sys.exit("ERROR: corrupt member in staged mbt_gen.zip: %s" % bad if bad else 0)'
     for PKG in antlr4 google/protobuf; do
         if ! find "$TARGET_DIR/parser" -type d -path "*/$PKG" | grep -q .; then
             echo "ERROR: runtime dependency '$PKG' missing from packaged parser (over-stripped?)" >&2
+            exit 1
+        fi
+    done
+    # 3. Exactly one bundled python toolchain, and its interpreter is the
+    #    stripped build (see MAX_INTERP_BYTES). The repo is matched by shape
+    #    (`*python?python_3_*` covers rules_python's `++`/`~~` naming eras)
+    #    rather than by name. bin/python3* covers the executable and its
+    #    dereferenced symlink copies; lib/libpython3* is where the macOS
+    #    builds keep the interpreter code (their bin/python3.13 is a stub).
+    TOOLCHAIN_DIRS=$(find "$TARGET_DIR/parser/parser_bin.runfiles" -mindepth 1 -maxdepth 1 -type d -name '*python?python_3_*')
+    if [[ $(printf '%s\n' "$TOOLCHAIN_DIRS" | grep -c .) -ne 1 ]]; then
+        echo "ERROR: expected exactly one bundled python toolchain under parser_bin.runfiles, found:" >&2
+        echo "$TOOLCHAIN_DIRS" >&2
+        exit 1
+    fi
+    for F in "$TOOLCHAIN_DIRS"/bin/python3* "$TOOLCHAIN_DIRS"/lib/libpython3*; do
+        [[ -f "$F" ]] || continue
+        SIZE=$(wc -c < "$F")
+        if (( SIZE > MAX_INTERP_BYTES )); then
+            echo "ERROR: bundled interpreter $F is $((SIZE / 1048576)) MB, over the $((MAX_INTERP_BYTES / 1048576)) MB limit." >&2
+            echo "       Expected python-build-standalone's install_only_stripped flavor. Check that the" >&2
+            echo "       python.single_version_platform_override entries in MODULE.bazel still match the" >&2
+            echo "       patch version rules_python resolves \"3.13\" to." >&2
             exit 1
         fi
     done

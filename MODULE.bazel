@@ -44,6 +44,49 @@ python.toolchain(
     python_version = "3.13",
 )
 
+# Ship python-build-standalone's `install_only_stripped` flavor instead of
+# the `install_only` build rules_python picks by default. They are the same
+# build; stripped just drops the DWARF debug data and BOLT's saved original
+# sections, which on linux make up ~80 of the 111 MB interpreter binary
+# (the macOS builds are stripped either way). rules_python exposes no
+# flavor knob, so each released platform is pointed at the stripped
+# archive explicitly. The sha256 values come from the release's
+# SHA256SUMS (https://github.com/astral-sh/python-build-standalone/releases/tag/20260414).
+#
+# Keep the version here in sync with what "3.13" resolves to in
+# rules_python (bazel query @rules_python//python:versions.bzl or the
+# toolchain repo name under `bazel info output_base`/external). If a
+# rules_python bump moves 3.13 to a newer patch release, these overrides
+# stop applying and the fat build silently returns; release/build_release.sh
+# guards against that with an interpreter size check.
+python.single_version_platform_override(
+    platform = "aarch64-apple-darwin",
+    python_version = "3.13.13",
+    sha256 = "874f9931ad40dcce38caf6f408aa7e10ec3d0dfce2184ba7af62a965a66b9cd9",
+    urls = ["https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.13.13+20260414-aarch64-apple-darwin-install_only_stripped.tar.gz"],
+)
+
+python.single_version_platform_override(
+    platform = "aarch64-unknown-linux-gnu",
+    python_version = "3.13.13",
+    sha256 = "0556f1260a9a1fc83210dcecf9d4cbacf17eb4a684541c84798ffc8b4d618c35",
+    urls = ["https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.13.13+20260414-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz"],
+)
+
+python.single_version_platform_override(
+    platform = "x86_64-apple-darwin",
+    python_version = "3.13.13",
+    sha256 = "d34198cd856fa80ebf3aa821fe329a25fab66eeda44f72ac9576591282e31bb7",
+    urls = ["https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.13.13+20260414-x86_64-apple-darwin-install_only_stripped.tar.gz"],
+)
+
+python.single_version_platform_override(
+    platform = "x86_64-unknown-linux-gnu",
+    python_version = "3.13.13",
+    sha256 = "13d3b6d15f4c3c1dd1955a3c81e06bdc5aef4cb5cb65076878374948be3b0412",
+    urls = ["https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.13.13+20260414-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"],
+)
+
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 pip.parse(
     # Fetch wheels per TARGET platform from the index (verified against the
