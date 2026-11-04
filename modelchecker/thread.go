@@ -433,6 +433,7 @@ func (t *Thread) Execute() ([]*Process, bool) {
 			if msg.Label == "checkpoint" && t.Process.EnableCheckpoint {
 				// Checkpoint is enabled if there was already no checkpoint
 				// before or fork or yield before this.
+				t.Process.dirty = true
 				fork := t.Process.Fork()
 				fork.Name = fmt.Sprintf("checkpoint")
 				return []*Process{fork}, false
@@ -524,6 +525,9 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		t.Process.Labels = append(t.Process.Labels, currentFrame.Name+"."+stmt.Label)
 	}
 	t.Process.Fairness = t.Fairness
+	if lazyForksEnabled {
+		t.noteStatement(stmt)
+	}
 	oldRolesCount := len(t.Process.Roles)
 	if stmt.PyStmt != nil {
 		if stmt.PyStmt.GetCode() == "pass" {
@@ -835,6 +839,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		}
 		receiver, stub, def := t.getDefinition(stmt)
 		if def == nil {
+			t.Process.dirty = true
 			// Handle builtin functions. A slightly better way is to use the exact code from the input file
 			// and execute. For now, we will generate the code. This will mess up with error messages later
 			// TODO: Use the exact code from the input file, otherwise the error line numbers and message might be slightly wrong

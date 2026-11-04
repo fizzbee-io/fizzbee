@@ -1,0 +1,45 @@
+# Lazy forks: actions that end at their guard without writing, mixed with
+# actions that write, in a serial action with yields, a role action and an
+# any with no matching element. Every disabled clean clone is reused.
+---
+options:
+  max_actions: 4
+  max_concurrent_actions: 2
+deadlock_detection: false
+---
+
+role Node:
+    action Init:
+        self.val = 0
+        self.inbox = []
+
+    atomic action Bump:
+        require self.val < 1
+        self.val += 1
+
+    atomic action Drain:
+        require len(self.inbox) > 0
+        self.inbox.pop()
+
+action Init:
+    n1 = Node()
+    n2 = Node()
+    nodes = [n1, n2]
+    counter = 0
+    log = []
+
+atomic action Never:
+    require counter > 100
+    counter += 1
+
+atomic action Pick:
+    n = oneof [n for n in nodes if n.val > 5]
+    n.val = 0
+
+action Step:
+    require counter < 2
+    counter += 1
+    log.append(counter)
+
+always assertion Bounded:
+    return counter <= 2
