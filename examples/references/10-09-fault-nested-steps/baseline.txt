@@ -1,0 +1,18 @@
+DeprecationWarning: 'VAR = any COLLECTION' is deprecated, use 'VAR = oneof COLLECTION' instead
+Model checking examples/references/10-09-fault-nested-steps/NestedSteps.json
+configFileName: examples/references/10-09-fault-nested-steps/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2  crash_on_yield:false}
+Nodes: 316, queued: 0, elapsed: 14.751321ms
+Peak (new): queue=99 pendingActionStarts=6
+Time taken for model checking: 14.774932ms
+Skipping dotfile generation. Too many Nodes: 316
+Writen communication diagram dotfile: examples/references/10-09-fault-nested-steps/out/run_2026-11-04_19-22-39/communication.dot
+To generate svg, run: 
+dot -Tsvg examples/references/10-09-fault-nested-steps/out/run_2026-11-04_19-22-39/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 316 Unique states: 228
+Liveness shadow agree Healthy: cycle finder PASS, scc PASS
+IsLive: true
+Time taken to check liveness: 4.150579ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/10-09-fault-nested-steps/out/run_2026-11-04_19-22-39

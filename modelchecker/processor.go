@@ -1092,6 +1092,14 @@ func (l *Link) IsCrashLink() bool {
 // including the steps after its first yield. Like a crash, a fault can
 // happen only finitely often: its steps may be in a liveness
 // counterexample's prefix but never in its loop.
+//
+// This relies on every link a thread takes carrying the fairness of the
+// action that started the thread (Thread.Fairness, copied to the link via
+// Process.Fairness), whatever the step runs: a function, a call on another
+// role, a nested or parallel block, or a choice. Example 10-09 checks this.
+// Whether a fault's continuation must still be taken is a separate
+// question, answered by fairnessLinkName, which treats every thread switch
+// as strongly fair.
 func (l *Link) IsFaultLink() bool {
 	return l.Fairness == ast.FairnessLevel_FAIRNESS_LEVEL_FAULT
 }

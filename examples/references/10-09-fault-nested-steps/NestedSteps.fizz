@@ -1,0 +1,59 @@
+---
+options:
+  crash_on_yield: false
+---
+# Example: Every Step of a Fault Is a Fault
+# Each fault below loops forever through a different construct. If any
+# step inside it lost its fault marking, that step could form a loop that
+# keeps Healthy false, and this example would fail. (A fault that never
+# finishes can't be completed fairly, so a run that starts one has no fair
+# continuation at all; this example only checks the fault marking.)
+# Demonstrates: fair<fault> through function calls, role calls,
+# nested blocks, parallel blocks and fair choices
+
+role Node:
+    action Init:
+        self.healthy = True
+
+    func toggle():
+        self.healthy = False
+        self.healthy = True
+
+action Init:
+    healthy = True
+    node = Node()
+
+serial func toggle():
+    healthy = False
+    healthy = True
+
+serial fair<fault> action ViaFunction:
+    while True:
+        toggle()
+
+serial fair<fault> action ViaRoleCall:
+    while True:
+        node.toggle()
+
+serial fair<fault> action ViaNestedBlocks:
+    while True:
+        atomic:
+            healthy = False
+        serial:
+            healthy = False
+            healthy = True
+
+serial fair<fault> action ViaParallel:
+    while True:
+        parallel:
+            healthy = False
+            healthy = True
+
+serial fair<fault> action ViaFairChoice:
+    while True:
+        v = fair any [False, True]
+        healthy = v
+        healthy = True
+
+eventually always assertion Healthy:
+    return healthy and node.healthy

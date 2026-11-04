@@ -1,0 +1,22 @@
+---
+options:
+  crash_on_yield: false
+deadlock_detection: false
+---
+# Example: Blocked Fault Continuation
+# Fairness only applies to a step that is enabled. Here the rest of Glitch
+# waits on a require that never holds, so the fault stays half done and
+# StaysUp fails.
+# Demonstrates: fair<fault> continuation that is permanently disabled
+
+action Init:
+    up = True
+    unlock = False
+
+serial fair<fault> action Glitch:
+    up = False
+    require unlock
+    up = True
+
+eventually always assertion StaysUp:
+    return up

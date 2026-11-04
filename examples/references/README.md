@@ -477,6 +477,45 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: `serial fair<fault> action`, yields inside a fault
 - **Status**: ✅ PASSED
 
+### 10-07-fault-starved-continuation: Starved Fault Continuation
+- **State space**: 4 nodes, 4 unique states
+- **Purpose**: A started fault can't stop halfway while another action runs forever
+- **Key concepts**: strong fairness of a fault's next step
+- **Status**: ✅ PASSED
+
+### 10-08-fault-blocked-continuation: Blocked Fault Continuation
+- **State space**: 3 nodes, 3 unique states
+- **Purpose**: A fault whose next step is disabled for good can stay half done
+- **Key concepts**: fairness applies only while enabled
+- **Status**: ❌ FAILED (expected)
+
+### 10-09-fault-nested-steps: Every Step of a Fault Is a Fault
+- **State space**: 316 nodes, 228 unique states
+- **Purpose**: Fault marking carries through function calls, role calls, nested and parallel blocks, and fair choices
+- **Key concepts**: `fair<fault>` with `while` loops through each construct
+- **Status**: ✅ PASSED
+
+### 10-10-fault-symmetric-role: Fault Action on a Symmetric Role
+- **State space**: 4 nodes, 4 unique states
+- **Purpose**: A role fault counts across all instances together
+- **Key concepts**: `fair<fault>` on a symmetric role action
+- **Status**: ✅ PASSED
+
+### 10-11-unfair-repeating-fault: Unfair Repeating Fault
+- **State space**: 2 nodes, 2 unique states
+- **Purpose**: Control for 10-04: as a plain unfair action, the fault repeats forever in the counterexample
+- **Key concepts**: why fault actions need `fair<fault>`
+- **Status**: ❌ FAILED (expected)
+
+### 10-12-fault-safety: Faults and Safety
+- **State space**: fails at the first violation
+- **Purpose**: `fair<fault>` doesn't limit exploration, so repeated faults still break safety
+- **Key concepts**: `fair<fault>` with `always` assertions
+- **Status**: ❌ FAILED (expected)
+
+Examples 10-04 to 10-11 run with `FIZZ_LIVENESS_ENGINE=shadow` (from their
+`env.txt`), so their baselines also pin that both liveness engines agree.
+
 ### 11-01-simple-role: Simple Role
 - **State space**: 11 nodes, 11 unique states
 - **Purpose**: Basic role definition with actions

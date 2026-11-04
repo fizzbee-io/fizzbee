@@ -1,0 +1,18 @@
+# Example: Unfair Repeating Fault
+# The control for 10-04-fault-action: the same spec with Break as a plain
+# unfair action. Break, Repair, Break, Repair, ... is now a liveness
+# counterexample, because nothing stops Break from recurring forever.
+# Demonstrates: why fault actions need fair<fault>
+
+action Init:
+    up = True
+
+atomic action Break:
+    up = False
+
+atomic fair action Repair:
+    if not up:
+        up = True
+
+eventually always assertion StaysUp:
+    return up

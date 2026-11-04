@@ -1,0 +1,15 @@
+# Example: Faults and Safety
+# fair<fault> only restricts the loop of a liveness counterexample. Every
+# state is still explored, so a fault that repeats a finite number of
+# times can still break a safety assertion.
+# Demonstrates: fair<fault> does not limit exploration
+
+action Init:
+    faults = 0
+
+atomic fair<fault> action Break:
+    if faults < 3:
+        faults += 1
+
+always assertion FewFaults:
+    return faults < 3

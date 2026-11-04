@@ -1,0 +1,24 @@
+---
+options:
+  crash_on_yield: false
+---
+# Example: Starved Fault Continuation
+# Once a fault has started, its next step is strongly fair while it is
+# enabled. Glitch can't stop halfway while Tick runs forever, so the run
+# Glitch, Tick, Tick, ... is not a counterexample.
+# Demonstrates: fair<fault> continuation fairness
+
+action Init:
+    up = True
+    n = 0
+
+serial fair<fault> action Glitch:
+    require up
+    up = False
+    up = True
+
+atomic fair action Tick:
+    n = (n + 1) % 2
+
+eventually always assertion StaysUp:
+    return up

@@ -114,7 +114,7 @@ After the frontmatter (or at the start if no frontmatter), the FizzBee specifica
 - `fair` - Weak fairness (same as `fair<weak>`)
 - `fair<weak>` - Eventually executes if continuously enabled
 - `fair<strong>` - Eventually executes if infinitely often enabled
-- `fair<fault>` - An injected fault: executes only finitely often (actions only, not `any`/`oneof`)
+- `fair<fault>` - A modeled fault: assumed to execute only finitely often (actions only, not `any`/`oneof`)
 
 ### Assertion Modifiers
 
@@ -759,10 +759,17 @@ fair<strong> action RunsEventually:
 
 ### Fault Actions (`fair<fault>`)
 
-A fault action, like a crash, can happen any finite number of times but not
-forever. Its steps, including the ones after its first yield, may be in a
-liveness counterexample's prefix but never in its loop, and it creates no
-fairness obligation. A fault that has started is still completed fairly.
+A fault action is a fault you model yourself, such as a message drop or a
+partition. Like the crashes FizzBee injects, it is assumed to happen only
+finitely often: any number of times, but not forever. Its steps, including
+the ones after its first yield, may be in a liveness counterexample's prefix
+but never in its loop, and it creates no obligation to ever start.
+
+Once a fault has started, its next step is strongly fair while it is
+enabled, so a run can't leave it half done while other actions run
+forever. If that step is disabled for good (for example, a `require` that
+never holds), the fault can stay unfinished. Exploration is unchanged:
+every state a fault can reach is still checked against safety assertions.
 
 ```python
 atomic fair<fault> action Break:
