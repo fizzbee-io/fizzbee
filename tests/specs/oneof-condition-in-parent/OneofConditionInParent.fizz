@@ -14,6 +14,7 @@ role Node:
         self.w = None
         self.d = {"k": None}
         self.never = None
+        self.a = None
 
     # Field target, condition reads the base object: evaluated in the fork.
     atomic action PickFieldFallback:
@@ -33,6 +34,14 @@ role Node:
         self.w = oneof [1, 2, 3] if self.w != 1
         self.w = self.w * 10
 
+    # The condition reads the field through an alias of self. The parser
+    # rewrites self.a, but `me` is a mutable role, so the condition runs in
+    # the fork and sees the new value.
+    atomic action PickFieldThroughAlias:
+        require self.a == None
+        me = self
+        self.a = oneof [1, 2, 3] if me.a != 2
+
     # No candidate passes: the action is disabled.
     atomic action PickNothing:
         self.never = oneof [1, 2] if self.never > 5
@@ -48,6 +57,7 @@ action Init:
     x = 0
     log = []
     peer = None
+    seen = []
 
 # Name target holding a role, compared with another role.
 atomic action PickPeerByName:
@@ -59,6 +69,12 @@ atomic action PickPeerByName:
 atomic action PickStateVar:
     require x == 0
     x = oneof [1, 2, 3] if x != 2
+
+# A condition with a side effect runs in each candidate's fork, so each
+# fork's seen holds only its own candidate.
+atomic action PickWithSideEffect:
+    require len(seen) == 0
+    s = oneof [1, 2, 3] if seen.append(s) == None
 
 # Local name target.
 atomic action PickLocal:
@@ -73,6 +89,8 @@ always assertion ChoicesRespectConditions:
             and n.w in [None, 2, 3, 20, 30]
             and (peer == None or peer == other)
             and n.never == None
+            and n.a in [None, 1, 3]
+            and len(seen) <= 1
             and all([v in [2, 4] for v in log]))
 
 exists assertion StateVarIs3:
@@ -92,3 +110,9 @@ exists assertion LocalIs4:
 
 exists assertion PeerIsOther:
     return peer == other
+
+exists assertion AliasIs3:
+    return n.a == 3
+
+exists assertion SeenIs3:
+    return seen == [3]
