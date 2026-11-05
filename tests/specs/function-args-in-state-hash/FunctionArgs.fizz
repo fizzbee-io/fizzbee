@@ -1,0 +1,35 @@
+---
+deadlock_detection: false
+---
+
+# Regression: function arguments (CallFrame.vars) must be part of the state
+# hash. Otherwise two states that differ only in a paused call's argument
+# are merged and one of them is never explored.
+
+action Init:
+    a = 0
+    b = 0
+    started = False
+    done = False
+
+action Run:
+    atomic:
+        require not started
+        started = True
+    step(a)
+    done = True
+
+atomic action IncA:
+    require a == 0
+    a = 1
+
+func step(n):
+    atomic:
+        b = 10
+    atomic:
+        b = b + n
+
+# IncA and then Run (so step(1)) must finish with b == 11. A paused step(0)
+# reaches the same heap and pc, so without hashing arguments it was merged.
+always assertion StaleArgumentNeverSeen:
+    return not (done and a == 1 and b == 11)

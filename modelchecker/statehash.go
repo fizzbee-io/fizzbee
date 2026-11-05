@@ -60,6 +60,9 @@ func (c *CallFrame) writeFrame(e *lib.StateEncoder) {
 	}
 	e.WriteUvarint(uint64(depth))
 	c.scope.writeScopeChain(e, memo)
+	// Function arguments live in vars, not in the scope chain. Without them,
+	// two states that differ only in a paused call's argument hash alike.
+	e.WriteStringDict(c.vars)
 	e.WriteString(c.pc)
 	if c.obj != nil {
 		e.WriteString(c.obj.RefString())
