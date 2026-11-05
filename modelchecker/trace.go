@@ -148,7 +148,12 @@ func (p *Processor) ShouldScheduleNode(node *Node) bool {
 	// Schedule only if link name matches
 	if linkName == expectedLinkName {
 		node.guidedTrace.Advance()
-		p.guidedTrace.Advance()
+		// Several branches can follow the trace at once (thread
+		// continuations are not named in it), so the shared trace records
+		// the furthest position any branch reached, not a count of matches.
+		if node.guidedTrace.currentIndex > p.guidedTrace.currentIndex {
+			p.guidedTrace.currentIndex = node.guidedTrace.currentIndex
+		}
 		return true
 	}
 

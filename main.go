@@ -136,7 +136,7 @@ func main() {
 	// Calculate the relative path
 	var stateConfig *ast.StateSpaceOptions
 	if traceFile != "" || trace != "" || traceExtend > 0 {
-		stateConfig = getStateConfigForTraceChecking(stateConfig)
+		stateConfig = getStateConfigForTraceChecking(loadStateOptions(dirPath, f.GetFrontMatter()))
 	} else {
 		stateConfig = loadStateOptions(dirPath, f.GetFrontMatter())
 		fmt.Printf("StateSpaceOptions: %+v\n", stateConfig)
@@ -1199,16 +1199,23 @@ func loadStateOptions(dirPath string, f *ast.FrontMatter) *ast.StateSpaceOptions
 	return stateConfig
 }
 
-func getStateConfigForTraceChecking(stateConfig *ast.StateSpaceOptions) *ast.StateSpaceOptions {
+func getStateConfigForTraceChecking(specConfig *ast.StateSpaceOptions) *ast.StateSpaceOptions {
 	// Trace-specific config: ignore frontmatter and yaml, use defaults for trace mode
 	deadlockDetection := false
 	crashOnYield := false
-	stateConfig = &ast.StateSpaceOptions{
-		Options:           &ast.Options{MaxActions: 100, MaxConcurrentActions: 1, CrashOnYield: &crashOnYield},
+	// Keep the spec's concurrency limits: a trace of interleaved non-atomic
+	// actions can only be replayed with the concurrency it was found with.
+	applyDefaultStateOptions(specConfig)
+	return &ast.StateSpaceOptions{
+		Options: &ast.Options{
+			MaxActions:           100,
+			MaxConcurrentActions: specConfig.Options.MaxConcurrentActions,
+			CrashOnYield:         &crashOnYield,
+		},
+		ActionOptions:     specConfig.ActionOptions,
 		Liveness:          "false",
 		DeadlockDetection: &deadlockDetection,
 	}
-	return stateConfig
 }
 
 func loadInputJSON(jsonFilename string) *ast.File {

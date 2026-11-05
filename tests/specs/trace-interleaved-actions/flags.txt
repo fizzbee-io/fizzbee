@@ -1,0 +1,1 @@
+--trace-file tests/specs/trace-interleaved-actions/interleave.trace
