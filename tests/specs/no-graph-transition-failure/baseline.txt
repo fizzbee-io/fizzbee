@@ -1,0 +1,42 @@
+Model checking tests/specs/no-graph-transition-failure/Counter.json
+configFileName: tests/specs/no-graph-transition-failure/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+WARNING: --experimental_no_graph disables crash-on-yield simulation. Crash variants will NOT be explored. Set crash_on_yield: false to silence this warning, or omit --experimental_no_graph to keep crash simulation.
+Nodes: 3, queued: 0, elapsed: 498.639µs
+Peak (new): queue=1 pendingActionStarts=2
+Time taken for model checking: 515.983µs
+FAILED: Model checker failed. Transition Invariant: NeverDecreases
+Trace (2 steps):
+  Inc
+  Reset
+
+=== Replaying trace with full per-step state ===
+Loaded trace with 2 links
+Nodes: 0, queued: 0, elapsed: 373.55µs
+Peak (new): queue=1 pendingActionStarts=1
+Time taken for model checking: 384.807µs
+Writen graph dotfile: tests/specs/no-graph-transition-failure/out/run_2026-11-05_08-43-17/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/no-graph-transition-failure/out/run_2026-11-05_08-43-17/graph.dot -o graph.svg && open graph.svg
+FAILED: Model checker failed. Transition Invariant: NeverDecreases
+------
+Init
+--
+state: {"count":0}
+------
+Inc
+--
+state: {"count":1}
+------
+Reset
+--
+state: {"count":0}
+------
+Writen graph json: tests/specs/no-graph-transition-failure/out/run_2026-11-05_08-43-17/error-graph.json
+Writen graph dotfile: tests/specs/no-graph-transition-failure/out/run_2026-11-05_08-43-17/error-graph.dot
+To generate an image file, run: 
+dot -Tsvg tests/specs/no-graph-transition-failure/out/run_2026-11-05_08-43-17/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: tests/specs/no-graph-transition-failure/out/run_2026-11-05_08-43-17/error-states.html
+To open: 
+open tests/specs/no-graph-transition-failure/out/run_2026-11-05_08-43-17/error-states.html

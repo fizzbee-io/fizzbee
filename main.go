@@ -859,6 +859,8 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			if failedNode != nil {
 				if failedNode.FailedInvariants != nil && len(failedNode.FailedInvariants) > 0 && len(failedNode.FailedInvariants[0]) > 0 {
 					fmt.Println("FAILED: Model checker failed. Invariant:", f.Invariants[failedNode.FailedInvariants[0][0]].Name)
+				} else if len(failedNode.Inbound) > 0 && len(failedNode.Inbound[0].FailedInvariants[0]) > 0 {
+					fmt.Println("FAILED: Model checker failed. Transition Invariant:", f.Invariants[failedNode.Inbound[0].FailedInvariants[0][0]].Name)
 				} else {
 					fmt.Println("FAILED: Model checker failed")
 				}
