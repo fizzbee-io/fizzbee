@@ -59,6 +59,7 @@ go_test(
         "liveness_incremental_test.go",
         "liveness_scc_test.go",
         "markovchain_test.go",
+        "ordinal_display_test.go",
         "ordinal_respace_test.go",
         "predicate_calls_test.go",
         "processor_test.go",

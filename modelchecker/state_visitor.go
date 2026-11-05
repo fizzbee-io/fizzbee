@@ -3,6 +3,7 @@ package modelchecker
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
@@ -544,4 +545,56 @@ func (p *Process) getUsedSymmetricValuesFromClone() (*Process, map[starlark.Valu
 	}
 
 	return p2, refs, result
+}
+
+// OrdinalDisplayReplacer returns a replacer that rewrites the ordinal
+// symmetric values found along a trace to their ranks, so a trace shows
+// ts0, ts1, ... instead of the sparse internal IDs (ts2305843009213693951).
+// Ranks are computed over every ordinal value seen anywhere in the path, so a
+// value keeps the same label from step to step, and labels within any one
+// state keep the values' order. Returns nil when the path has no ordinal
+// values.
+func OrdinalDisplayReplacer(path []*Link) *strings.Replacer {
+	byPrefix := make(map[string]map[int64]*lib.SymmetricValue)
+	for _, link := range path {
+		if link == nil || link.Node == nil || link.Node.Process == nil {
+			continue
+		}
+		collector := NewUsedSymmetricValuesCollector()
+		link.Node.Process.AcceptVisitor(collector)
+		for prefix, values := range collector.pointers {
+			for id, sv := range values {
+				if sv.GetKind() != lib.SymmetryKindOrdinal {
+					continue
+				}
+				if byPrefix[prefix] == nil {
+					byPrefix[prefix] = make(map[int64]*lib.SymmetricValue)
+				}
+				byPrefix[prefix][id] = sv
+			}
+		}
+	}
+	if len(byPrefix) == 0 {
+		return nil
+	}
+	type pair struct{ from, to string }
+	var pairs []pair
+	for prefix, values := range byPrefix {
+		ids := make([]int64, 0, len(values))
+		for id := range values {
+			ids = append(ids, id)
+		}
+		slices.Sort(ids)
+		for rank, id := range ids {
+			pairs = append(pairs, pair{values[id].String(), fmt.Sprintf("%s%d", prefix, rank)})
+		}
+	}
+	// strings.Replacer tries old strings in argument order at each position:
+	// put longer tokens first so ts12 is never matched as ts1 followed by 2.
+	slices.SortFunc(pairs, func(a, b pair) int { return len(b.from) - len(a.from) })
+	args := make([]string, 0, 2*len(pairs))
+	for _, p := range pairs {
+		args = append(args, p.from, p.to)
+	}
+	return strings.NewReplacer(args...)
 }
