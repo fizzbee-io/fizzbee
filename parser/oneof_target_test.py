@@ -3,6 +3,8 @@ import contextlib
 import io
 import unittest
 
+from google.protobuf.message import Message
+
 import proto.fizz_ast_pb2 as ast
 from parser import oneof_target
 from parser.oneof_target import CHOICE_VAR, classify_target, rewrite_condition
@@ -20,7 +22,8 @@ def any_stmts(msg):
     for field, value in msg.ListFields():
         if field.message_type is None:
             continue
-        for v in (value if field.label == field.LABEL_REPEATED else [value]):
+        # A repeated field's value is a container, not a message.
+        for v in ([value] if isinstance(value, Message) else value):
             yield from any_stmts(v)
 
 
