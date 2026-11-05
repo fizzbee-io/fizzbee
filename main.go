@@ -1495,33 +1495,7 @@ func extractTransitionPath(from *modelchecker.Node, to *modelchecker.Node) []*mo
 }
 
 func GenerateFailurePath(srcFileName string, failurePath []*modelchecker.Link, invariant *modelchecker.InvariantPosition, outDir string) {
-	// Ordinal values are stored as sparse IDs; show them as their ranks.
-	ordinals := modelchecker.OrdinalDisplayReplacer(failurePath)
-	display := func(s string) string {
-		if ordinals != nil {
-			s = ordinals.Replace(s)
-		}
-		return strings.ReplaceAll(s, lib.SymmetryPrefix, "")
-	}
-	for _, link := range failurePath {
-		node := link.Node
-		stepName := link.Name
-
-		fmt.Printf("------\n%s\n", stepName)
-
-		nodeStr := display(node.Heap.ToJson())
-		fmt.Printf("--\nstate: %s\n", nodeStr)
-		if len(node.Returns) > 0 {
-			fmt.Printf("returns: %s\n", display(node.Returns.String()))
-		}
-		if len(node.Roles) > 0 {
-			for _, role := range node.Roles {
-				roleStr := display(role.Fields.String())
-				fmt.Printf("%s: %s\n", role.RefStringShort(), roleStr)
-			}
-		}
-	}
-	fmt.Println("------")
+	modelchecker.WriteFailurePathStates(os.Stdout, failurePath)
 	if !isPlayground {
 		errJsonFileName := filepath.Join(outDir, "error-graph.json")
 		bytes, err := json.MarshalIndent(failurePath, "", "  ")
