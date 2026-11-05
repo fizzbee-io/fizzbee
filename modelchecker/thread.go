@@ -9,6 +9,7 @@ import (
 	"github.com/golang/glog"
 
 	"maps"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -637,14 +638,29 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 				}
 			}
 			if stmt.AnyStmt.Block == nil {
-				fork.updateVariable(stmt.AnyStmt.LoopVars[0], x)
+				if isPlainIdentifier(stmt.AnyStmt.LoopVars[0]) {
+					fork.updateVariable(stmt.AnyStmt.LoopVars[0], x)
+				} else {
+					// A target like self.x, r.x or d[k]: run it as an
+					// ordinary assignment so the field or element is set,
+					// instead of binding a local literally named "self.x".
+					err := fork.assignChoiceToTarget(t.getFileName(), stmt.AnyStmt, x)
+					if err != nil && lib.IsDisableTransitionError(err) {
+						continue
+					}
+					fork.PanicOnError(stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Error assigning to %s", stmt.AnyStmt.LoopVars[0]), err)
+				}
 			} else {
+				t.Process.PanicIfFalse(isPlainIdentifier(stmt.AnyStmt.LoopVars[0]), stmt.AnyStmt.GetSourceInfo(),
+					fmt.Sprintf("oneof loop variable must be a plain name, got %s", stmt.AnyStmt.LoopVars[0]))
 				fork.currentThread().currentFrame().scope.vars[stmt.AnyStmt.LoopVars[0]] = x
 			}
 
 			if stmt.AnyStmt.Condition != "" {
 				vars := fork.envForExpr(stmt.AnyStmt.ConditionExpr)
-				vars[stmt.AnyStmt.LoopVars[0]] = x
+				if isPlainIdentifier(stmt.AnyStmt.LoopVars[0]) {
+					vars[stmt.AnyStmt.LoopVars[0]] = x
+				}
 				symCtx := fork.createSymmetryContext()
 				cond, err := fork.Evaluator.EvalExprWithContext(t.getFileName(), stmt.AnyStmt.ConditionExpr, vars, symCtx)
 				fork.saveRotationalLastAllocated(symCtx)
@@ -1396,4 +1412,36 @@ func convertToStatement(message proto.Message) *ast.Statement {
 
 func convertToWhileStmt(message proto.Message) *ast.WhileStmt {
 	return message.(*ast.WhileStmt)
+}
+
+var plainIdentifierRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+// isPlainIdentifier reports whether target is a bare variable name, as
+// opposed to an attribute or index target such as self.x or d[k].
+func isPlainIdentifier(target string) bool {
+	return plainIdentifierRe.MatchString(target)
+}
+
+// oneofChoiceVar holds the chosen value while a non-identifier oneof target
+// is assigned. Not a valid spec identifier prefix, so it cannot collide.
+const oneofChoiceVar = "__fizz_oneof_choice__"
+
+// assignChoiceToTarget executes `<target> = <val>` for a oneof whose target is
+// not a plain name (self.x, r.x, d[k], ...), with Python assignment semantics.
+func (p *Process) assignChoiceToTarget(filename string, anyStmt *ast.AnyStmt, val starlark.Value) error {
+	pyStmt := &ast.PyStmt{
+		SourceInfo: anyStmt.GetSourceInfo(),
+		Code:       anyStmt.LoopVars[0] + " = " + oneofChoiceVar,
+	}
+	vars := p.envForPyStmt(pyStmt)
+	vars[oneofChoiceVar] = val
+	symCtx := p.createSymmetryContext()
+	_, err := p.Evaluator.ExecPyStmtWithContext(filename, pyStmt, vars, symCtx)
+	p.saveRotationalLastAllocated(symCtx)
+	delete(vars, oneofChoiceVar)
+	if err != nil {
+		return err
+	}
+	p.updateAllVariablesInScope(vars)
+	return nil
 }

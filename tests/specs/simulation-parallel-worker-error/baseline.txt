@@ -1,0 +1,7 @@
+Simulation mode is enabled
+Model checking tests/specs/simulation-parallel-worker-error/WorkerError.json
+Running 2 parallel simulation workers (2 runs each, output: tests/specs/simulation-parallel-worker-error/out/parallel_2026-11-05_06-57-27_3720)
+=== Worker 0 exited with status 1 (output dir: tests/specs/simulation-parallel-worker-error/out/parallel_2026-11-05_06-57-27_3720/worker_0) ===
+Note: --experimental_no_graph auto-enables --experimental_processed_queue.
+Error: simulation does not support --experimental_processed_queue or --experimental_no_graph (each run would stop at Init).
+FAILED: a simulation worker exited with status 1

@@ -522,9 +522,9 @@ if [ "$simulation" = true ] && [ "$parallel" -gt 1 ] && [ "$seed" -eq 0 ]; then
 
   # Pick a base output dir for this parallel run.
   if [ -n "$output_dir" ]; then
-    parallel_base_dir="$output_dir/parallel_$(date +%Y-%m-%d_%H-%M-%S)"
+    parallel_base_dir="$output_dir/parallel_$(date +%Y-%m-%d_%H-%M-%S)_$$"
   else
-    parallel_base_dir="$(dirname "$json_filename")/out/parallel_$(date +%Y-%m-%d_%H-%M-%S)"
+    parallel_base_dir="$(dirname "$json_filename")/out/parallel_$(date +%Y-%m-%d_%H-%M-%S)_$$"
   fi
   mkdir -p "$parallel_base_dir"
   failure_sentinel="$parallel_base_dir/.failure"
@@ -580,6 +580,13 @@ if [ "$simulation" = true ] && [ "$parallel" -gt 1 ] && [ "$seed" -eq 0 ]; then
         --max_runs "$worker_max_runs" --output-dir "$worker_out" \
         "$json_filename" \
         > "$worker_log" 2>&1
+      worker_status=$?
+      # Record the exit status: a worker that errors out (bad flags, crash,
+      # model error) must not be counted as a pass.
+      echo "$worker_status" > "$worker_log.exit"
+      if [ "$worker_status" -ne 0 ]; then
+        touch "$failure_sentinel"
+      fi
       # Binary doesn't exit non-zero on FAILED — detect from output.
       if grep -qE "^FAILED|^DEADLOCK" "$worker_log" 2>/dev/null; then
         # First-writer-wins is fine; sentinel just signals "someone failed".
@@ -640,6 +647,19 @@ if [ "$simulation" = true ] && [ "$parallel" -gt 1 ] && [ "$seed" -eq 0 ]; then
       fi
       i=$(( i + 1 ))
     done
+    # No FAILED/DEADLOCK line: report the first worker that exited non-zero.
+    i=0
+    while [ "$i" -lt "$parallel" ]; do
+      log="$parallel_base_dir/worker_$i.log"
+      code=$(cat "$log.exit" 2>/dev/null)
+      if [ -n "$code" ] && [ "$code" != "0" ]; then
+        echo "=== Worker $i exited with status $code (output dir: $parallel_base_dir/worker_$i) ==="
+        cat "$log"
+        echo "FAILED: a simulation worker exited with status $code"
+        exit 1
+      fi
+      i=$(( i + 1 ))
+    done
     # Sentinel set but no log matched (race / killed mid-write); generic msg.
     echo "FAILED: a worker reported failure but no log captured the trace. Check $parallel_base_dir"
     exit 1
@@ -653,6 +673,17 @@ if [ "$simulation" = true ] && [ "$parallel" -gt 1 ] && [ "$seed" -eq 0 ]; then
     n=$(grep -oE "Stopped after [0-9]+" "$log" 2>/dev/null | grep -oE "[0-9]+" | head -1)
     if [ -n "$n" ]; then
       total=$(( total + n ))
+    fi
+    i=$(( i + 1 ))
+  done
+  # Every worker must have finished cleanly; a worker that was killed or
+  # never wrote its status did not run its share.
+  i=0
+  while [ "$i" -lt "$parallel" ]; do
+    code=$(cat "$parallel_base_dir/worker_$i.log.exit" 2>/dev/null)
+    if [ "$code" != "0" ]; then
+      echo "FAILED: simulation worker $i did not finish cleanly (status: ${code:-unknown}). Check $parallel_base_dir/worker_$i.log"
+      exit 1
     fi
     i=$(( i + 1 ))
   done

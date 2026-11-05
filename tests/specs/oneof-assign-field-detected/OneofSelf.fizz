@@ -1,0 +1,21 @@
+---
+deadlock_detection: false
+---
+# Regression: the field assignment via oneof must be visible, so this
+# assertion must FAIL. It used to pass because self.x stayed None.
+role R:
+    action Init:
+        self.x = None
+        self.y = None
+
+    atomic action Pick:
+        require self.x == None
+        self.x = oneof ["a", "b"]
+        v = oneof ["a", "b"]
+        self.y = v
+
+action Init:
+    r = R()
+
+always assertion XNeverSet:
+    return r.x == None
