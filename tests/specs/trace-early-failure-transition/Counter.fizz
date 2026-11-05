@@ -1,0 +1,16 @@
+# Regression: in --trace-file mode, a transition assertion that fails before
+# the last link of the trace must print FAILED, not "Trace execution
+# incomplete". The trace has three links; Reset fails the assertion at the
+# second.
+
+transition assertion NeverDecreases(before, after):
+    return after.count >= before.count
+
+action Init:
+    count = 0
+
+atomic action Inc:
+    count += 1
+
+atomic action Reset:
+    count = 0

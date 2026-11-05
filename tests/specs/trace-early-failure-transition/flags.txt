@@ -1,0 +1,1 @@
+--trace-file tests/specs/trace-early-failure-transition/early.trace

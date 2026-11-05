@@ -895,8 +895,10 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			return rootNode
 		}
 
-		// Check if trace was fully executed
-		if guidedTrace != nil && !guidedTrace.IsExhausted() {
+		// Check if trace was fully executed. A failure stops exploration, so
+		// an assertion that fails before the last link leaves the trace
+		// unfinished; report the failure below instead of this warning.
+		if guidedTrace != nil && failedNode == nil && !guidedTrace.IsExhausted() {
 			fmt.Printf("WARNING: Trace execution incomplete. Expected %d links, executed %d links.\n",
 				len(guidedTrace.LinkNames), guidedTrace.GetCurrentIndex())
 			fmt.Println("The trace may contain links that don't match the model or are unreachable.")
@@ -1028,6 +1030,10 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			}
 			if simulation {
 				fmt.Println("seed:", p1.Seed)
+			}
+			if guidedTrace != nil && !guidedTrace.IsExhausted() {
+				fmt.Printf("Trace stopped at the failure: executed %d of %d links.\n",
+					guidedTrace.GetCurrentIndex(), len(guidedTrace.LinkNames))
 			}
 			dumpFailedNode(sourceFileName, failedNode, rootNode, outDir)
 			return nil
