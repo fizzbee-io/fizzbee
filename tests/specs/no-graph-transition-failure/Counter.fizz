@@ -1,0 +1,15 @@
+# Regression: with --experimental_no_graph, a failing transition assertion
+# used to crash in Node.Attach (the parent node is released in no-graph
+# mode). It must report FAILED with the assertion name and the trace.
+
+transition assertion NeverDecreases(before, after):
+    return after.count >= before.count
+
+action Init:
+    count = 0
+
+atomic action Inc:
+    count += 1
+
+atomic action Reset:
+    count = 0

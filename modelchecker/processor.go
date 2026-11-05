@@ -1201,6 +1201,12 @@ func (n *Node) Attach() {
 		return
 	}
 	parent := n.Inbound[0].Node
+	if parent == nil {
+		// no_graph mode releases the parent (breakParentRef), so there is
+		// no graph to attach to. The failure report uses the inbound link
+		// and pathTail instead.
+		return
+	}
 	newOutLink := &Link{
 		Node:           n,
 		Type:           n.Inbound[0].Type,
