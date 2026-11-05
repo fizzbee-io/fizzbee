@@ -2,15 +2,16 @@ Model checking OneofConditionInParent.json
 configFileName: fizz.yaml
 fizz.yaml not found. Using default options
 StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}  deadlock_detection:false
-Nodes: 1539, queued: 0, elapsed: 158.502131ms
-Peak (new): queue=182 pendingActionStarts=7
-Time taken for model checking: 158.553294ms
-Skipping dotfile generation. Too many Nodes: 1539
-Writen communication diagram dotfile: out/run_2026-11-05_08-41-57/communication.dot
+Nodes: 20000, queued: 1111, elapsed: 1.696253372s
+Nodes: 21870, queued: 0, elapsed: 1.985822575s
+Peak (new): queue=1894 pendingActionStarts=9
+Time taken for model checking: 1.985863134s
+Skipping dotfile generation. Too many Nodes: 21870
+Writen communication diagram dotfile: out/run_2026-11-05_09-49-34/communication.dot
 To generate svg, run: 
-dot -Tsvg out/run_2026-11-05_08-41-57/communication.dot -o communication.svg && open communication.svg
-Valid Nodes: 1539 Unique states: 486
+dot -Tsvg out/run_2026-11-05_09-49-34/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 21870 Unique states: 5832
 IsLive: true
-Time taken to check liveness: 3.512139ms
+Time taken to check liveness: 70.0467ms
 PASSED: Model checker completed successfully
-Writen 1 node files and 1 link files to dir out/run_2026-11-05_08-41-57
+Writen 1 node files and 1 link files to dir out/run_2026-11-05_09-49-34

@@ -623,10 +623,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 
 		target := stmt.AnyStmt.LoopVars[0]
 		isNameTarget := isNameTarget(stmt.AnyStmt)
-		// The parser sets ChoiceVar when the condition reads the candidate
-		// only through that name. Then the condition is checked here, before
-		// forking, and only the candidates that pass are forked.
-		filterInParent := stmt.AnyStmt.Condition != "" && stmt.AnyStmt.ChoiceVar != ""
+		filterInParent := t.canFilterOneofInParent(stmt.AnyStmt, isNameTarget)
 
 		forks := make([]*Process, 0)
 		var x starlark.Value
@@ -666,9 +663,8 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			}
 
 			if stmt.AnyStmt.Condition != "" && !filterInParent {
-				// The condition reads the candidate through an attribute or
-				// index target the parser couldn't rewrite, so it is checked
-				// after the assignment, in the fork.
+				// Checked after the assignment, in the candidate's own fork,
+				// so its effects and what it reads stay per candidate.
 				if !fork.evalOneofCondition(t.getFileName(), stmt.AnyStmt, "", x) {
 					continue
 				}
@@ -1422,6 +1418,58 @@ func convertToWhileStmt(message proto.Message) *ast.WhileStmt {
 func isNameTarget(anyStmt *ast.AnyStmt) bool {
 	kind := anyStmt.GetTargetKind()
 	return kind == ast.AnyTargetKind_ANY_TARGET_KIND_NAME || kind == ast.AnyTargetKind_ANY_TARGET_KIND_UNKNOWN
+}
+
+// canFilterOneofInParent reports whether the `if` condition of a oneof can be
+// checked before forking, once per candidate in the parent, with the same
+// result as checking it in each candidate's fork after the assignment:
+//
+//   - The parser bound the candidate to a name (ChoiceVar): the target itself
+//     for a name target, or a synthetic name it substituted for an attribute
+//     or index target.
+//   - The condition is pure (see isPureExpr): no method calls and no calls
+//     other than pure builtins, so evaluating it for one candidate can't
+//     change the state the next candidate's fork starts from.
+//   - For an attribute or index target, every other value the condition reads
+//     is immutable. A mutable value (a role, list, dict, ...) could be or
+//     reach the object the assignment changes, as `me.z` does after
+//     `me = self` for target self.z, and would see the old value in the
+//     parent.
+//
+// Otherwise the condition runs in each fork after the assignment.
+func (t *Thread) canFilterOneofInParent(anyStmt *ast.AnyStmt, isNameTarget bool) bool {
+	if anyStmt.Condition == "" || anyStmt.ChoiceVar == "" {
+		return false
+	}
+	if !t.isPureExpr(anyStmt.ConditionExpr) {
+		return false
+	}
+	if isNameTarget {
+		return true
+	}
+	for name, v := range t.Process.envForExpr(anyStmt.ConditionExpr) {
+		if name != anyStmt.ChoiceVar && !isDeeplyImmutable(v) {
+			return false
+		}
+	}
+	return true
+}
+
+// isDeeplyImmutable reports whether v can't be changed through any reference
+// to it: a scalar, a string, a builtin function, or a tuple of those.
+func isDeeplyImmutable(v starlark.Value) bool {
+	switch v := v.(type) {
+	case starlark.NoneType, starlark.Bool, starlark.Int, starlark.Float, starlark.String, starlark.Bytes, *starlark.Builtin:
+		return true
+	case starlark.Tuple:
+		for _, e := range v {
+			if !isDeeplyImmutable(e) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 // evalOneofCondition evaluates the `if` condition of a oneof for candidate x.
