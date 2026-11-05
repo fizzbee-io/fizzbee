@@ -11,6 +11,7 @@ py_library(
         "FizzParser.py",
         "FizzParserListener.py",
         "FizzParserVisitor.py",
+        "oneof_target.py",
         "PythonLexerBase.py",
         "PythonParserBase.py",
         "parser.py",
@@ -34,5 +35,11 @@ py_binary(
 py_test(
     name = "formula_test",
     srcs = ["formula_test.py"],
+    deps = [":fizz"],
+)
+
+py_test(
+    name = "oneof_target_test",
+    srcs = ["oneof_target_test.py"],
     deps = [":fizz"],
 )

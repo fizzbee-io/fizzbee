@@ -144,6 +144,24 @@ message AnyStmt {
   Expr iter_expr = 7;
   Expr condition_expr = 8;
   Fairness fairness = 9;
+
+  // What loop_vars[0] is: a bare name, or an attribute or index expression
+  // such as self.x or d[k]. Set by the parser.
+  AnyTargetKind target_kind = 10;
+  // When set, condition_expr reads the candidate only through this name, so
+  // the checker evaluates it before forking, once per candidate, and forks
+  // only the candidates that pass. For a name target it is the target itself.
+  // For an attribute or index target the parser rewrites condition_expr to use
+  // a synthetic name, or leaves choice_var empty when it can't, and then the
+  // condition is evaluated in each fork after the assignment.
+  string choice_var = 11;
+}
+
+enum AnyTargetKind {
+  ANY_TARGET_KIND_UNKNOWN = 0;
+  ANY_TARGET_KIND_NAME = 1;
+  ANY_TARGET_KIND_ATTRIBUTE = 2;
+  ANY_TARGET_KIND_SUBSCRIPT = 3;
 }
 
 message WhileStmt {
