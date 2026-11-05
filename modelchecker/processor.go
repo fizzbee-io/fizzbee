@@ -984,11 +984,6 @@ type Node struct {
 	forkDepth  int
 	stacktrace string
 
-	// actionLimitHit: an action was not scheduled from this yield point
-	// because a per-action max_actions limit was reached. The state space is
-	// cut here by configuration, so deadlock detection skips the node, as it does at the global max_actions bound.
-	actionLimitHit bool
-
 	DuplicateOf *Node
 
 	// transient marks a mid-action step that --experimental_collapse_steps
@@ -2029,7 +2024,6 @@ func (p *Processor) startProcessedQueue() (init *Node, failedNode *Node, err err
 		if p.config.GetDeadlockDetection() &&
 			p.queue.Len() == queueLenBefore &&
 			p.dedupHitsInExpansion == 0 &&
-			!yp.actionLimitHit &&
 			yp.actionDepth < int(p.config.Options.MaxActions) {
 			if p.earlyDeadlock == nil {
 				p.earlyDeadlock = yp
@@ -3745,14 +3739,7 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 		return
 	}
 
-	if p.exceedsActionLimits(action, statProcess, role, true, false) {
-		// Only the per-action max_actions count limit exempts the node from
-		// deadlock detection. A max_concurrent_actions limit frees up once a
-		// running thread finishes, so a node with no successors is still stuck.
-		node.actionLimitHit = true
-		return
-	}
-	if p.exceedsActionLimits(action, statProcess, role, false, true) {
+	if p.ExceedsActionCountLimits(action, statProcess, role) {
 		return
 	}
 
@@ -3814,12 +3801,6 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 }
 
 func (p *Processor) ExceedsActionCountLimits(action *ast.Action, statProcess *Process, role *lib.Role) bool {
-	return p.exceedsActionLimits(action, statProcess, role, true, true)
-}
-
-// exceedsActionLimits checks the max_actions count limits when checkCount is
-// set, and the max_concurrent_actions limits when checkConcurrent is set.
-func (p *Processor) exceedsActionLimits(action *ast.Action, statProcess *Process, role *lib.Role, checkCount, checkConcurrent bool) bool {
 	actionName := action.Name
 	if role != nil {
 		actionName = role.RefStringShort() + "." + actionName
@@ -3838,11 +3819,11 @@ func (p *Processor) exceedsActionLimits(action *ast.Action, statProcess *Process
 		}
 	}
 	//fmt.Println("Concurrent stats", concurrentStats, actionName, concurrentStats[actionName], p.config.ActionOptions[actionName])
-	if checkCount && p.config.ActionOptions[actionName] != nil &&
+	if p.config.ActionOptions[actionName] != nil &&
 		int(p.config.ActionOptions[actionName].MaxActions) > 0 && statProcess.Stats.Counts[actionName] >= int(p.config.ActionOptions[actionName].MaxActions) {
 		return true
 	}
-	if checkConcurrent && p.config.ActionOptions[actionName] != nil &&
+	if p.config.ActionOptions[actionName] != nil &&
 		int(p.config.ActionOptions[actionName].GetMaxConcurrentActions()) > 0 && concurrentStats[actionName] >= int(p.config.ActionOptions[actionName].GetMaxConcurrentActions()) {
 		return true
 	}
@@ -3853,10 +3834,10 @@ func (p *Processor) exceedsActionLimits(action *ast.Action, statProcess *Process
 		perRoleActionLimit := p.config.ActionOptions[role.Name+"#."+action.Name].MaxActions
 		perRoleActionConcurrency := p.config.ActionOptions[role.Name+"#."+action.Name].GetMaxConcurrentActions()
 		//fmt.Println("Per role action limit", role.Name + "#." + action.Name, perRoleActionLimit)
-		if checkCount && int(perRoleActionLimit) > 0 && statProcess.Stats.Counts[actionName] >= int(perRoleActionLimit) {
+		if int(perRoleActionLimit) > 0 && statProcess.Stats.Counts[actionName] >= int(perRoleActionLimit) {
 			return true
 		}
-		if checkConcurrent && int(perRoleActionConcurrency) > 0 && concurrentStats[actionName] >= int(perRoleActionConcurrency) {
+		if int(perRoleActionConcurrency) > 0 && concurrentStats[actionName] >= int(perRoleActionConcurrency) {
 			return true
 		}
 	}
@@ -3871,13 +3852,13 @@ func (p *Processor) exceedsActionLimits(action *ast.Action, statProcess *Process
 			actionCount += count
 		}
 	}
-	if checkCount && p.config.ActionOptions[actionName] != nil &&
+	if p.config.ActionOptions[actionName] != nil &&
 		int(p.config.ActionOptions[actionName].MaxActions) > 0 &&
 		actionCount >= int(p.config.ActionOptions[actionName].MaxActions) {
 		//fmt.Println("Exceeds action count limit", actionName, actionCount, role.RefStringShort(), action.Name)
 		return true
 	}
-	if checkConcurrent && p.config.ActionOptions[actionName] != nil &&
+	if p.config.ActionOptions[actionName] != nil &&
 		int(p.config.ActionOptions[actionName].GetMaxConcurrentActions()) > 0 &&
 		concurrentStats[actionName] >= int(p.config.ActionOptions[actionName].GetMaxConcurrentActions()) {
 		//fmt.Println("Exceeds concurrent action count limit", actionName, concurrentStats[actionName])
