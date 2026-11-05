@@ -519,7 +519,7 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: `fair<fault>` with `always` assertions
 - **Status**: ❌ FAILED (expected)
 
-Examples 10-04 to 10-11 and 10-13 to 10-16 run with `FIZZ_LIVENESS_ENGINE=shadow` (from their
+Examples 10-04 to 10-11 and 10-13 to 10-17 and 10-19 to 10-20 run with `FIZZ_LIVENESS_ENGINE=shadow` (from their
 `env.txt`), so their baselines also pin that both liveness engines agree.
 
 ### 10-14-assume-finite-and-fair: Assuming Fairness for One Assertion
@@ -539,6 +539,30 @@ Examples 10-04 to 10-11 and 10-13 to 10-16 run with `FIZZ_LIVENESS_ENGINE=shadow
 - **Purpose**: `Role.Action` names, `finite` on a multi-step action, and `unfair=[...]` dropping a role action's fairness
 - **Key concepts**: `@assume` with role actions
 - **Status**: ❌ FAILED (expected, AllUpWithoutRepair)
+
+### 10-17-assume-same-action-twice: Different Assumptions About the Same Action
+- **State space**: 3 nodes, 3 unique states
+- **Purpose**: Four assertions assume different things about Delete; each sees exactly its own, in any order
+- **Key concepts**: `@assume` scoping, `weak_fair` vs `finite` on one action
+- **Status**: ❌ FAILED (expected; only IfDeletesStop passes)
+
+### 10-18-assume-formula: @assume on a Temporal Formula
+- **State space**: 3 nodes, 3 unique states
+- **Purpose**: A formula assertion with `@assume` passes; the same formula without it fails
+- **Key concepts**: `@assume` with formula assertions
+- **Status**: ❌ FAILED (expected, the unassumed formula)
+
+### 10-19-assume-nested-steps: @assume Covers Every Step of an Action
+- **State space**: 316 nodes, 228 unique states
+- **Purpose**: `finite` reaches every step through function calls, role calls, nested and parallel blocks, and fair choices
+- **Key concepts**: `@assume` on multi-step actions
+- **Status**: ❌ FAILED (expected, the unassumed assertion)
+
+### 10-20-assume-per-instance: Assumed Fairness on a Role Action Is per Instance
+- **State space**: 4 nodes, 4 unique states
+- **Purpose**: `weak_fair=["Node.Work"]` keeps one instance from starving another
+- **Key concepts**: per-instance fairness vs aggregate `finite`
+- **Status**: ✅ PASSED
 
 ### 11-01-simple-role: Simple Role
 - **State space**: 11 nodes, 11 unique states

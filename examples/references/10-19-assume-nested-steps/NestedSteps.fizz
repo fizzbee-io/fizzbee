@@ -1,0 +1,63 @@
+---
+options:
+  crash_on_yield: false
+---
+# Example: @assume Covers Every Step of an Action
+# The same probes as 10-09, written as plain unfair actions. Each loops
+# forever through a different construct. HealthyIfTheyStop assumes all of
+# them finite: if any step inside lost its action name, that step would
+# keep its plain fairness and form a loop that keeps Healthy false.
+# HealthyWithoutAssumptions shows that such loops exist.
+# Demonstrates: @assume through function calls, role calls, nested and
+# parallel blocks, and fair choices
+
+role Node:
+    action Init:
+        self.healthy = True
+
+    func toggle():
+        self.healthy = False
+        self.healthy = True
+
+action Init:
+    healthy = True
+    node = Node()
+
+serial func toggle():
+    healthy = False
+    healthy = True
+
+serial action ViaFunction:
+    while True:
+        toggle()
+
+serial action ViaRoleCall:
+    while True:
+        node.toggle()
+
+serial action ViaNestedBlocks:
+    while True:
+        atomic:
+            healthy = False
+        serial:
+            healthy = False
+            healthy = True
+
+serial action ViaParallel:
+    while True:
+        parallel:
+            healthy = False
+            healthy = True
+
+serial action ViaFairChoice:
+    while True:
+        v = fair any [False, True]
+        healthy = v
+        healthy = True
+
+@assume(finite=["ViaFunction", "ViaRoleCall", "ViaNestedBlocks", "ViaParallel", "ViaFairChoice"])
+eventually always assertion HealthyIfTheyStop:
+    return healthy and node.healthy
+
+eventually always assertion HealthyWithoutAssumptions:
+    return healthy and node.healthy

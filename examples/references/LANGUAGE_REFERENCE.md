@@ -810,8 +810,13 @@ eventually always assertion TrashEmpty:
 
 - Name actions as `"Action"` or `"Role.Action"`. An entry overrides the
   action's own modifier for this assertion only, and means exactly what that
-  modifier means: fairness on a role action applies to each instance, and
-  `finite` counts every instance together.
+  modifier means, for every step of the action (including those after its
+  first yield).
+- For role actions, the two kinds differ in scope, as they do on the
+  modifiers. `weak_fair=["Node.Work"]` and `strong_fair=[...]` are **per
+  instance**: each Node's Work must eventually run, so one instance running
+  forever can't starve another. `finite=["Node.Break"]` is **aggregate**:
+  Break happens only finitely often across all instances together.
 - Naming an action that doesn't exist, naming `Init`, or naming the same
   action twice is an error, and so is `@assume` on a safety assertion.
 - Only the default (strict) liveness checker applies assumptions;

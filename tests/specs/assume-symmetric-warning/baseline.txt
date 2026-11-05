@@ -1,0 +1,20 @@
+Model checking tests/specs/assume-symmetric-warning/SymmetricAssume.json
+configFileName: tests/specs/assume-symmetric-warning/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
+WARNING: symmetry reduction can miss liveness violations that depend on the fair actions of symmetric roles (Node.Work). Run with --no-symmetry-reduction to check liveness exactly. See https://github.com/fizzbee-io/fizzbee/issues/427
+Nodes: 4, queued: 0, elapsed: 719.318µs
+Peak (new): queue=2 pendingActionStarts=2
+Time taken for model checking: 733.257µs
+Writen graph dotfile: tests/specs/assume-symmetric-warning/out/run_2026-11-05_22-23-16/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/assume-symmetric-warning/out/run_2026-11-05_22-23-16/graph.dot -o graph.svg && open graph.svg
+Writen communication diagram dotfile: tests/specs/assume-symmetric-warning/out/run_2026-11-05_22-23-16/communication.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/assume-symmetric-warning/out/run_2026-11-05_22-23-16/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 4 Unique states: 4
+Checking eventually always AllDone
+IsLive: true
+Time taken to check liveness: 235.413µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/assume-symmetric-warning/out/run_2026-11-05_22-23-16

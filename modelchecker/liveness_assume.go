@@ -141,7 +141,9 @@ func ValidateAssumptions(file *ast.File) error {
 				if !actions[name] {
 					return fmt.Errorf("assertion %s: @assume(%s=...) names %q, which is not an action; use \"Action\" or \"Role.Action\"", invariant.Name, list.key, name)
 				}
-				if prev, ok := seen[name]; ok {
+				if prev, ok := seen[name]; ok && prev == list.key {
+					return fmt.Errorf("assertion %s: @assume(%s=...) names %q more than once", invariant.Name, list.key, name)
+				} else if ok {
 					return fmt.Errorf("assertion %s: @assume names %q in both %s and %s", invariant.Name, name, prev, list.key)
 				}
 				seen[name] = list.key

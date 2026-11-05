@@ -92,6 +92,13 @@ func TestValidateAssumptions(t *testing.T) {
 	assert.ErrorContains(t, ValidateAssumptions(file(liveness(&ast.Assumption{WeakFair: []string{"Init"}}))), "not an action")
 	assert.ErrorContains(t, ValidateAssumptions(file(liveness(&ast.Assumption{WeakFair: []string{"User.Init"}}))), "not an action")
 	assert.ErrorContains(t, ValidateAssumptions(file(liveness(&ast.Assumption{Finite: []string{"Delete"}, Unfair: []string{"Delete"}}))), "in both")
+	assert.ErrorContains(t, ValidateAssumptions(file(liveness(&ast.Assumption{Finite: []string{"Delete", "Delete"}}))), "more than once")
+	// An empty list next to a non-empty one is fine; an assumption with only
+	// empty lists assumes nothing.
+	assert.NoError(t, ValidateAssumptions(file(liveness(&ast.Assumption{Finite: []string{}, WeakFair: []string{"User.Restore"}}))))
+	assert.False(t, hasAssumptions(liveness(&ast.Assumption{Finite: []string{}})))
+	formula := &ast.Invariant{Name: "F", Formula: &ast.Formula{}, Block: &ast.Block{}, Assumption: &ast.Assumption{Finite: []string{"Delete"}}}
+	assert.NoError(t, ValidateAssumptions(file(formula)))
 	safety := &ast.Invariant{Name: "S", TemporalOperators: []string{"always"}, Block: &ast.Block{}, Assumption: &ast.Assumption{Finite: []string{"Delete"}}}
 	assert.ErrorContains(t, ValidateAssumptions(file(safety)), "only to liveness")
 }

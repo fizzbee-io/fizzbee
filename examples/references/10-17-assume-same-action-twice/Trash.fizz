@@ -1,0 +1,37 @@
+# Example: Different Assumptions About the Same Action
+# Four assertions check the same property under different assumptions
+# about Delete. Each sees exactly its own: whatever was assumed for the one
+# checked before it is gone.
+# - IfDeletesAreFair: Delete and Restore both fair, so the user may delete
+#   and restore forever. Fails.
+# - IfDeletesStop: Delete finite, Restore fair. Passes.
+# - IfDeletesAreFairAgain: the first assumption again, checked after the
+#   second. Fails again.
+# - WithoutAssumptions: nothing is fair. Fails.
+# Demonstrates: @assume is scoped to its assertion, in any order
+
+action Init:
+    trash = 0
+
+atomic action Delete:
+    if trash < 2:
+        trash += 1
+
+atomic action Restore:
+    if trash > 0:
+        trash -= 1
+
+@assume(weak_fair=["Delete", "Restore"])
+eventually always assertion IfDeletesAreFair:
+    return trash == 0
+
+@assume(finite=["Delete"], weak_fair=["Restore"])
+eventually always assertion IfDeletesStop:
+    return trash == 0
+
+@assume(weak_fair=["Delete", "Restore"])
+eventually always assertion IfDeletesAreFairAgain:
+    return trash == 0
+
+eventually always assertion WithoutAssumptions:
+    return trash == 0

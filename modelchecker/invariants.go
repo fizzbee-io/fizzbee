@@ -357,17 +357,20 @@ func CheckStrictLiveness(node *Node, nodes []*Node) ([]*Link, *InvariantPosition
 			if !eventuallyAlways && !alwaysEventually {
 				continue
 			}
-			restore := applyAssumptions(nodes, invariant.GetAssumption())
 			var failurePath []*Link
 			isLive := true
-			if eventuallyAlways {
-				fmt.Println("Checking eventually always", invariant.Name)
-				failurePath, isLive = EventuallyAlwaysFinal(nodes, node, predicate)
-			} else {
-				fmt.Println("Checking always eventually", invariant.Name)
-				failurePath, isLive = AlwaysEventuallyFinal(nodes, node, predicate)
-			}
-			restore()
+			func() {
+				// Restore even if the check panics: the graph is shared by
+				// every assertion's check.
+				defer applyAssumptions(nodes, invariant.GetAssumption())()
+				if eventuallyAlways {
+					fmt.Println("Checking eventually always", invariant.Name)
+					failurePath, isLive = EventuallyAlwaysFinal(nodes, node, predicate)
+				} else {
+					fmt.Println("Checking always eventually", invariant.Name)
+					failurePath, isLive = AlwaysEventuallyFinal(nodes, node, predicate)
+				}
+			}()
 			if !isLive {
 				return failurePath, NewInvariantPosition(i, j)
 			}

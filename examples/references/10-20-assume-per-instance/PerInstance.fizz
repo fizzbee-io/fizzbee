@@ -1,0 +1,23 @@
+# Example: Assumed Fairness on a Role Action Is per Instance
+# weak_fair=["Node.Work"] means the same as `fair action Work` in Node:
+# each instance's Work must eventually run while it stays enabled. So
+# Node#0 running Work forever can't starve Node#1, and AllDone passes.
+# Under aggregate fairness (some instance runs Work) it would fail.
+# (finite=["Node.Work"], by contrast, counts every instance together.)
+# Demonstrates: per-instance fairness through @assume
+
+role Node:
+    action Init:
+        self.done = False
+
+    atomic action Work:
+        self.done = True
+
+action Init:
+    nodes = []
+    for i in range(2):
+        nodes.append(Node())
+
+@assume(weak_fair=["Node.Work"])
+eventually always assertion AllDone:
+    return all([n.done for n in nodes])
