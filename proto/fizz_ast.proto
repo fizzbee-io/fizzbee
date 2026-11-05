@@ -264,6 +264,21 @@ message Invariant {
   // `for x in XS if cond` clauses on the header. The checker expands the
   // assertion into one instance per binding before model checking.
   repeated ForClause for_clauses = 12;
+  // `@assume(...)` on the assertion: fairness to check this assertion with,
+  // overriding the named actions' own modifiers.
+  Assumption assumption = 13;
+}
+
+// Fairness one assertion assumes for actions, each named "Action" or
+// "Role.Action". Each list means what the matching modifier means on the
+// action itself: finite is fair<fault>, weak_fair is fair<weak>,
+// strong_fair is fair<strong>, and unfair drops the action's fairness.
+message Assumption {
+  SourceInfo source_info = 1;
+  repeated string finite = 2;
+  repeated string weak_fair = 3;
+  repeated string strong_fair = 4;
+  repeated string unfair = 5;
 }
 
 // A node of a temporal formula. Atoms are the maximal subexpressions with no

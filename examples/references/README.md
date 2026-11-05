@@ -519,8 +519,26 @@ Examples use **hierarchical numbering** (e.g., `01-01`, `13-02-01`, `99-01`):
 - **Key concepts**: `fair<fault>` with `always` assertions
 - **Status**: ❌ FAILED (expected)
 
-Examples 10-04 to 10-11 and 10-13 run with `FIZZ_LIVENESS_ENGINE=shadow` (from their
+Examples 10-04 to 10-11 and 10-13 to 10-16 run with `FIZZ_LIVENESS_ENGINE=shadow` (from their
 `env.txt`), so their baselines also pin that both liveness engines agree.
+
+### 10-14-assume-finite-and-fair: Assuming Fairness for One Assertion
+- **State space**: 3 nodes, 3 unique states
+- **Purpose**: `@assume(finite=[...], weak_fair=[...])` checks one assertion under assumptions about ordinary actions
+- **Key concepts**: `@assume`, user actions that are neither faults nor fair
+- **Status**: ✅ PASSED
+
+### 10-15-assume-scoped: Assumptions Apply to One Assertion Only
+- **State space**: 3 nodes, 3 unique states
+- **Purpose**: The same property with and without `@assume`; only the assumed one passes
+- **Key concepts**: `@assume` doesn't change other assertions
+- **Status**: ❌ FAILED (expected)
+
+### 10-16-assume-role-actions: Assumptions on Role Actions
+- **State space**: 20 nodes, 20 unique states
+- **Purpose**: `Role.Action` names, `finite` on a multi-step action, and `unfair=[...]` dropping a role action's fairness
+- **Key concepts**: `@assume` with role actions
+- **Status**: ❌ FAILED (expected, AllUpWithoutRepair)
 
 ### 11-01-simple-role: Simple Role
 - **State space**: 11 nodes, 11 unique states

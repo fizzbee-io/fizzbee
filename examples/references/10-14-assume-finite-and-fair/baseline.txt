@@ -1,0 +1,16 @@
+Model checking examples/references/10-14-assume-finite-and-fair/Trash.json
+configFileName: examples/references/10-14-assume-finite-and-fair/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
+Nodes: 3, queued: 0, elapsed: 1.271477ms
+Peak (new): queue=1 pendingActionStarts=2
+Time taken for model checking: 1.348944ms
+Writen graph dotfile: examples/references/10-14-assume-finite-and-fair/out/run_2026-11-05_15-28-45/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/10-14-assume-finite-and-fair/out/run_2026-11-05_15-28-45/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 3 Unique states: 3
+Liveness shadow agree TrashEmpty: cycle finder PASS, scc PASS
+IsLive: true
+Time taken to check liveness: 288.631µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/10-14-assume-finite-and-fair/out/run_2026-11-05_15-28-45

@@ -329,6 +329,15 @@ type Thread struct {
 	Aborted  bool              `json:"-"`
 }
 
+// actionName is the name of the action that started t, as set on its
+// bottom frame: "Action" or "Role.Action".
+func (t *Thread) actionName() string {
+	if frame, ok := t.Stack.Head(); ok && frame != nil {
+		return frame.Name
+	}
+	return ""
+}
+
 func NewThread(Process *Process, files []*ast.File, fileIndex int, action string) *Thread {
 	stack := NewCallStack()
 	frame := &CallFrame{FileIndex: fileIndex, pc: action}
@@ -408,6 +417,7 @@ func (t *Thread) Execute() ([]*Process, bool) {
 			if yield {
 				if !hasNonEndOfBlockStmts && t.Process.GetThreadsCount() < initialThreads && t.Process.Parent != nil && t.Process.Parent.Enabled {
 					t.Process.Fairness = t.Fairness
+					t.Process.Action = t.actionName()
 					t.Process.Enable()
 				}
 				return forks, yield
@@ -424,6 +434,7 @@ func (t *Thread) Execute() ([]*Process, bool) {
 		case *ast.Action:
 			t.Fairness = msg.GetFairness().GetLevel()
 			t.Process.Fairness = t.Fairness
+			t.Process.Action = t.actionName()
 			t.executeAction()
 		case *ast.Invariant:
 			t.executeInvariant()
@@ -525,6 +536,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 		t.Process.Labels = append(t.Process.Labels, currentFrame.Name+"."+stmt.Label)
 	}
 	t.Process.Fairness = t.Fairness
+	t.Process.Action = t.actionName()
 	if lazyForksEnabled {
 		t.noteStatement(stmt)
 	}

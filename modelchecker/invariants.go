@@ -354,19 +354,22 @@ func CheckStrictLiveness(node *Node, nodes []*Node) ([]*Link, *InvariantPosition
 					alwaysEventually = true
 				}
 			}
+			if !eventuallyAlways && !alwaysEventually {
+				continue
+			}
+			restore := applyAssumptions(nodes, invariant.GetAssumption())
+			var failurePath []*Link
+			isLive := true
 			if eventuallyAlways {
 				fmt.Println("Checking eventually always", invariant.Name)
-				failurePath, isLive := EventuallyAlwaysFinal(nodes, node, predicate)
-				if !isLive {
-					return failurePath, NewInvariantPosition(i, j)
-				}
-			} else if alwaysEventually {
+				failurePath, isLive = EventuallyAlwaysFinal(nodes, node, predicate)
+			} else {
 				fmt.Println("Checking always eventually", invariant.Name)
-				// Always Eventually
-				failurePath, isLive := AlwaysEventuallyFinal(nodes, node, predicate)
-				if !isLive {
-					return failurePath, NewInvariantPosition(i, j)
-				}
+				failurePath, isLive = AlwaysEventuallyFinal(nodes, node, predicate)
+			}
+			restore()
+			if !isLive {
+				return failurePath, NewInvariantPosition(i, j)
 			}
 		}
 

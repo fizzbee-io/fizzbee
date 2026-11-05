@@ -138,6 +138,7 @@ func (p *Processor) materializeLazy(node *Node) bool {
 		frame.pc = fmt.Sprintf("Actions[%d]", la.actionIndex)
 		frame.Name = la.action.Name
 	}
+	proc.Action = frame.Name
 	return true
 }
 
@@ -171,6 +172,7 @@ func (p *Processor) resetScratch(proc *Process, parent *Process) {
 	proc.ThreadProgress = false
 	proc.IsYield = false
 	proc.Fairness = 0
+	proc.Action = ""
 	proc.ChoiceFairness = 0
 	proc.EnableCheckpoint = false
 	proc.FailedInvariants = nil

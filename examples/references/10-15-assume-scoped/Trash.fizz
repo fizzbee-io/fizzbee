@@ -1,0 +1,24 @@
+# Example: Assumptions Apply to One Assertion Only
+# The same property twice. TrashEmptyIfUserStops assumes the user stops
+# deleting and keeps restoring, and passes. TrashEmpty assumes nothing, so
+# Delete and Restore stay unfair there, and it fails: the user may never
+# restore.
+# Demonstrates: @assume doesn't change other assertions
+
+action Init:
+    trash = 0
+
+atomic action Delete:
+    if trash < 2:
+        trash += 1
+
+atomic action Restore:
+    if trash > 0:
+        trash -= 1
+
+@assume(finite=["Delete"], weak_fair=["Restore"])
+eventually always assertion TrashEmptyIfUserStops:
+    return trash == 0
+
+eventually always assertion TrashEmpty:
+    return trash == 0

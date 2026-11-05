@@ -151,6 +151,19 @@ func main() {
 		fmt.Println("WARNING: --experimental_no_graph disables crash-on-yield simulation. Crash variants will NOT be explored. Set crash_on_yield: false to silence this warning, or omit --experimental_no_graph to keep crash simulation.")
 	}
 
+	if err := modelchecker.ValidateAssumptions(f); err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
+	}
+	if modelchecker.HasAssumptions(f) {
+		if simulation {
+			fmt.Println("WARNING: simulation doesn't apply @assume on assertions; run without --simulation to check liveness under the assumptions.")
+		} else if !isStrictLiveness(stateConfig) {
+			fmt.Printf("Error: liveness: %s doesn't check @assume on assertions; use the default strict liveness\n", stateConfig.GetLiveness())
+			os.Exit(1)
+		}
+	}
+
 	if !simulation && !noSymmetryReduction && isStrictLiveness(stateConfig) {
 		if actions := modelchecker.SymmetricFairActions(f); len(actions) > 0 {
 			fmt.Printf("WARNING: symmetry reduction can miss liveness violations that depend on the fair actions of symmetric roles (%s). Run with --no-symmetry-reduction to check liveness exactly. See https://github.com/fizzbee-io/fizzbee/issues/427\n", strings.Join(actions, ", "))

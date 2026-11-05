@@ -1,0 +1,5 @@
+Model checking tests/specs/assume-unknown-action/AssumeUnknown.json
+configFileName: tests/specs/assume-unknown-action/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
+Error: assertion TrashEmpty: @assume(weak_fair=...) names "Restore", which is not an action; use "Action" or "Role.Action"

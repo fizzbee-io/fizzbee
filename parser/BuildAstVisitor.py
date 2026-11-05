@@ -1,5 +1,6 @@
 
 from antlr4 import *
+import ast as pyast
 import os
 import sys
 
@@ -344,6 +345,60 @@ class BuildAstVisitor(FizzParserVisitor):
             fairness.level = ast.FairnessLevel.FAIRNESS_LEVEL_WEAK
         return fairness
 
+
+    ASSUME_KEYS = ("finite", "weak_fair", "strong_fair", "unfair")
+
+    # Visit a parse tree produced by FizzParser#assertion_stmt: an assertion
+    # with optional decorators. The only decorator assertions take is
+    # @assume(finite=[...], weak_fair=[...], strong_fair=[...], unfair=[...]).
+    # (Not fair=: fair is a keyword.)
+    def visitAssertion_stmt(self, ctx:FizzParser.Assertion_stmtContext):
+        invariant = None
+        decorators = []
+        for child in ctx.getChildren():
+            if isinstance(child, FizzParser.DecoratorContext):
+                decorators.append((child, self.visit(child)))
+            elif isinstance(child, FizzParser.AssertiondefContext):
+                invariant = self.visit(child)
+        if invariant is None:
+            raise Exception("visitAssertion_stmt: no assertion", ctx.getText())
+        for child, decorator in decorators:
+            if decorator.name != "assume":
+                raise Exception(f"Line {child.start.line}: assertions take only the @assume decorator, not @{decorator.name}")
+            if invariant.HasField("assumption"):
+                raise Exception(f"Line {child.start.line}: assertion {invariant.name} has more than one @assume")
+            invariant.assumption.CopyFrom(self.build_assumption(child))
+        return invariant
+
+    def build_assumption(self, ctx):
+        # Parse the decorator's argument list as a Python call, so each list
+        # is read as a literal rather than as model code.
+        line = ctx.start.line
+        args = [self.get_py_str(a) for a in ctx.arglist().argument()] if ctx.arglist() else []
+        try:
+            call = pyast.parse("assume(" + ", ".join(args) + ")", mode="eval").body
+        except SyntaxError as e:
+            raise Exception(f"Line {line}: @assume arguments: {e}")
+        if call.args:
+            raise Exception(f"Line {line}: @assume takes only keyword arguments: {', '.join(BuildAstVisitor.ASSUME_KEYS)}")
+        assumption = ast.Assumption(source_info=get_source_info(ctx))
+        if not call.keywords:
+            raise Exception(f"Line {line}: @assume needs at least one of {', '.join(BuildAstVisitor.ASSUME_KEYS)}")
+        seen = set()
+        for kw in call.keywords:
+            if kw.arg in seen:
+                raise Exception(f"Line {line}: @assume has {kw.arg}= more than once")
+            seen.add(kw.arg)
+            if kw.arg not in BuildAstVisitor.ASSUME_KEYS:
+                raise Exception(f"Line {line}: @assume has no argument {kw.arg}; use {', '.join(BuildAstVisitor.ASSUME_KEYS)}")
+            try:
+                names = pyast.literal_eval(kw.value)
+            except ValueError:
+                names = None
+            if not isinstance(names, (list, tuple)) or not all(isinstance(n, str) for n in names):
+                raise Exception(f'Line {line}: @assume({kw.arg}=...) must be a list of action names, like ["Action", "Role.Action"]')
+            getattr(assumption, kw.arg).extend(names)
+        return assumption
 
     # Visit a parse tree produced by FizzParser#assertiondef.
     def visitAssertiondef(self, ctx:FizzParser.AssertiondefContext):

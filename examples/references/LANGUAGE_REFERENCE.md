@@ -788,6 +788,38 @@ eventually always assertion StaysUp:
 **Use case**: Faults written as actions (message drops, partitions,
 spurious timeouts) that liveness should assume eventually stop
 
+### Assumptions for One Assertion (`@assume`)
+
+`@assume` on a liveness assertion checks that assertion as if the named
+actions had different modifiers. Other assertions are not affected.
+
+```python
+@assume(finite=["Delete"], weak_fair=["Restore"])
+eventually always assertion TrashEmpty:
+    return trash == 0
+    # If the user eventually stops deleting and keeps restoring,
+    # the trash is eventually empty for good.
+```
+
+| Argument | Same as the action modifier |
+|---|---|
+| `finite=[...]` | `fair<fault>`: happens only finitely often |
+| `weak_fair=[...]` | `fair` / `fair<weak>` |
+| `strong_fair=[...]` | `fair<strong>` |
+| `unfair=[...]` | no fairness modifier |
+
+- Name actions as `"Action"` or `"Role.Action"`. An entry overrides the
+  action's own modifier for this assertion only, and means exactly what that
+  modifier means: fairness on a role action applies to each instance, and
+  `finite` counts every instance together.
+- Naming an action that doesn't exist, naming `Init`, or naming the same
+  action twice is an error, and so is `@assume` on a safety assertion.
+- Only the default (strict) liveness checker applies assumptions;
+  simulation ignores them with a warning.
+
+**Use case**: Properties that hold only under assumptions about users or
+the environment, such as "the user eventually stops deleting"
+
 ### Fairness and Liveness
 
 Fairness is required for liveness properties:

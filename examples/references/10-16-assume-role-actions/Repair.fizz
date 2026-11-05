@@ -1,0 +1,36 @@
+---
+options:
+  crash_on_yield: false
+---
+# Example: Assumptions on Role Actions
+# Role actions are named "Role.Action". Break has two steps; assuming it
+# finite covers both, like fair<fault> on the action would. Repair is fair
+# on the role, so AllUpEventually passes. AllUpWithoutRepair drops Repair's
+# fairness with unfair=[...], and fails.
+# Demonstrates: @assume with Role.Action names, finite on a multi-step
+# action, unfair=[...]
+
+role Node:
+    action Init:
+        self.up = True
+
+    serial action Break:
+        self.up = False
+        self.up = False
+
+    atomic fair action Repair:
+        if not self.up:
+            self.up = True
+
+action Init:
+    nodes = []
+    for i in range(2):
+        nodes.append(Node())
+
+@assume(finite=["Node.Break"])
+eventually always assertion AllUpEventually:
+    return all([n.up for n in nodes])
+
+@assume(finite=["Node.Break"], unfair=["Node.Repair"])
+eventually always assertion AllUpWithoutRepair:
+    return all([n.up for n in nodes])
