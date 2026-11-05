@@ -1,0 +1,33 @@
+---
+# Several roles created in one statement, mixing roles with and without an
+# Init action, an Init that itself creates a role, and the creating
+# statement's locals used after it resumes.
+deadlock_detection: false
+---
+
+role Logger:
+    action Init:
+        self.entries = 0
+
+role Plain:
+    atomic action Noop:
+        pass
+
+role Node:
+    action Init:
+        self.ready = True
+        self.log = Logger()
+
+action Init:
+    marker = 7
+    nodes = [Node(name="a"), Plain(name="p"), Node(name="b"), Node(name="c")]
+    after = marker + len(nodes)
+
+always assertion AllReady:
+    return all([n.ready for n in nodes if hasattr(n, "ready")])
+
+always assertion LoggersInit:
+    return all([n.log.entries == 0 for n in nodes if hasattr(n, "log")])
+
+always assertion LocalsKept:
+    return marker == 7 and after == 11
