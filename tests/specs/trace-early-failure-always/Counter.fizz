@@ -1,0 +1,12 @@
+# Regression: in --trace-file mode, an assertion that fails before the last
+# link of the trace must print FAILED, not "Trace execution incomplete".
+# The trace has three Inc links; the assertion fails after the second.
+
+always assertion BelowTwo:
+    return count < 2
+
+action Init:
+    count = 0
+
+atomic action Inc:
+    count += 1

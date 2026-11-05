@@ -1,0 +1,30 @@
+Model checking tests/specs/trace-early-failure-always/Counter.json
+Loaded trace with 3 links
+Nodes: 0, queued: 0, elapsed: 295.452µs
+Peak (new): queue=1 pendingActionStarts=1
+Time taken for model checking: 303.879µs
+Writen graph dotfile: tests/specs/trace-early-failure-always/out/run_2026-11-05_07-53-00/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/trace-early-failure-always/out/run_2026-11-05_07-53-00/graph.dot -o graph.svg && open graph.svg
+FAILED: Model checker failed. Invariant:  BelowTwo
+Trace stopped at the failure: executed 2 of 3 links.
+------
+Init
+--
+state: {"count":0}
+------
+Inc
+--
+state: {"count":1}
+------
+Inc
+--
+state: {"count":2}
+------
+Writen graph json: tests/specs/trace-early-failure-always/out/run_2026-11-05_07-53-00/error-graph.json
+Writen graph dotfile: tests/specs/trace-early-failure-always/out/run_2026-11-05_07-53-00/error-graph.dot
+To generate an image file, run: 
+dot -Tsvg tests/specs/trace-early-failure-always/out/run_2026-11-05_07-53-00/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: tests/specs/trace-early-failure-always/out/run_2026-11-05_07-53-00/error-states.html
+To open: 
+open tests/specs/trace-early-failure-always/out/run_2026-11-05_07-53-00/error-states.html
