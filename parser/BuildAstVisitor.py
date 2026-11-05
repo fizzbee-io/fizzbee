@@ -6,6 +6,7 @@ import sys
 from parser.FizzParser import FizzParser
 from parser.FizzParserVisitor import FizzParserVisitor
 import proto.fizz_ast_pb2 as ast
+from parser import oneof_target
 
 
 class BuildAstVisitor(FizzParserVisitor):
@@ -1089,6 +1090,7 @@ class BuildAstVisitor(FizzParserVisitor):
                 print("visitAny_stmt child (unknown) type",child.__class__.__name__, dir(child))
                 raise Exception("visitAny_stmt child (unknown) type")
 
+        oneof_target.fill_target_info(any_stmt, is_block=True)
         print("visitAny_stmt any_stmt", any_stmt)
         return any_stmt
 
@@ -1149,6 +1151,7 @@ class BuildAstVisitor(FizzParserVisitor):
                 print("visitAny_assign_stmt child (unknown) type",child.__class__.__name__, dir(child))
                 raise Exception("visitAny_assign_stmt child (unknown) type")
 
+        oneof_target.fill_target_info(any_stmt, is_block=False)
         print("visitAny_assign_stmt any_stmt", any_stmt)
         return any_stmt
 

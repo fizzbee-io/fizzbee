@@ -9,7 +9,6 @@ import (
 	"github.com/golang/glog"
 
 	"maps"
-	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -622,10 +621,20 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			}
 		}
 
+		target := stmt.AnyStmt.LoopVars[0]
+		isNameTarget := isNameTarget(stmt.AnyStmt)
+		// The parser sets ChoiceVar when the condition reads the candidate
+		// only through that name. Then the condition is checked here, before
+		// forking, and only the candidates that pass are forked.
+		filterInParent := stmt.AnyStmt.Condition != "" && stmt.AnyStmt.ChoiceVar != ""
+
 		forks := make([]*Process, 0)
 		var x starlark.Value
 		for iter.Next(&x) {
 			//fmt.Printf("anyVariable: x: %s\n", x.String())
+			if filterInParent && !t.Process.evalOneofCondition(t.getFileName(), stmt.AnyStmt, stmt.AnyStmt.ChoiceVar, x) {
+				continue
+			}
 			fork := t.Process.Fork()
 			fork.Name = fmt.Sprintf("Any:%s=%s", stmt.AnyStmt.LoopVars[0], x.String())
 			fork.ChoiceFairness = stmt.AnyStmt.Fairness.GetLevel()
@@ -638,8 +647,8 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 				}
 			}
 			if stmt.AnyStmt.Block == nil {
-				if isPlainIdentifier(stmt.AnyStmt.LoopVars[0]) {
-					fork.updateVariable(stmt.AnyStmt.LoopVars[0], x)
+				if isNameTarget {
+					fork.updateVariable(target, x)
 				} else {
 					// A target like self.x, r.x or d[k]: run it as an
 					// ordinary assignment so the field or element is set,
@@ -648,27 +657,19 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 					if err != nil && lib.IsDisableTransitionError(err) {
 						continue
 					}
-					fork.PanicOnError(stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Error assigning to %s", stmt.AnyStmt.LoopVars[0]), err)
+					fork.PanicOnError(stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Error assigning to %s", target), err)
 				}
 			} else {
-				t.Process.PanicIfFalse(isPlainIdentifier(stmt.AnyStmt.LoopVars[0]), stmt.AnyStmt.GetSourceInfo(),
-					fmt.Sprintf("oneof loop variable must be a plain name, got %s", stmt.AnyStmt.LoopVars[0]))
-				fork.currentThread().currentFrame().scope.vars[stmt.AnyStmt.LoopVars[0]] = x
+				t.Process.PanicIfFalse(isNameTarget, stmt.AnyStmt.GetSourceInfo(),
+					fmt.Sprintf("oneof loop variable must be a plain name, got %s", target))
+				fork.currentThread().currentFrame().scope.vars[target] = x
 			}
 
-			if stmt.AnyStmt.Condition != "" {
-				vars := fork.envForExpr(stmt.AnyStmt.ConditionExpr)
-				if isPlainIdentifier(stmt.AnyStmt.LoopVars[0]) {
-					vars[stmt.AnyStmt.LoopVars[0]] = x
-				}
-				symCtx := fork.createSymmetryContext()
-				cond, err := fork.Evaluator.EvalExprWithContext(t.getFileName(), stmt.AnyStmt.ConditionExpr, vars, symCtx)
-				fork.saveRotationalLastAllocated(symCtx)
-				//PanicOnError(err)
-				// TODO: This source info should be for the condition not the anyStmt
-				fork.PanicOnError(stmt.AnyStmt.GetSourceInfo(), fmt.Sprintf("Error checking condition: %s", stmt.AnyStmt.Condition), err)
-				fork.updateAllVariablesInScope(vars)
-				if !cond.Truth() {
+			if stmt.AnyStmt.Condition != "" && !filterInParent {
+				// The condition reads the candidate through an attribute or
+				// index target the parser couldn't rewrite, so it is checked
+				// after the assignment, in the fork.
+				if !fork.evalOneofCondition(t.getFileName(), stmt.AnyStmt, "", x) {
 					continue
 				}
 			}
@@ -1414,12 +1415,35 @@ func convertToWhileStmt(message proto.Message) *ast.WhileStmt {
 	return message.(*ast.WhileStmt)
 }
 
-var plainIdentifierRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+// isNameTarget reports whether a oneof assigns to a bare variable name, as
+// opposed to an attribute or index target such as self.x or d[k]. The parser
+// classifies the target; an AST from an older parser has no kind and is
+// treated as a name, which is how such ASTs were always run.
+func isNameTarget(anyStmt *ast.AnyStmt) bool {
+	kind := anyStmt.GetTargetKind()
+	return kind == ast.AnyTargetKind_ANY_TARGET_KIND_NAME || kind == ast.AnyTargetKind_ANY_TARGET_KIND_UNKNOWN
+}
 
-// isPlainIdentifier reports whether target is a bare variable name, as
-// opposed to an attribute or index target such as self.x or d[k].
-func isPlainIdentifier(target string) bool {
-	return plainIdentifierRe.MatchString(target)
+// evalOneofCondition evaluates the `if` condition of a oneof for candidate x.
+// With choiceVar set, x is bound to that name for the evaluation only, and
+// the name is not written back to the process. With choiceVar empty, the
+// condition reads the candidate through the target, which must already hold
+// it.
+func (p *Process) evalOneofCondition(filename string, anyStmt *ast.AnyStmt, choiceVar string, x starlark.Value) bool {
+	vars := p.envForExpr(anyStmt.ConditionExpr)
+	if choiceVar != "" {
+		vars[choiceVar] = x
+	}
+	symCtx := p.createSymmetryContext()
+	cond, err := p.Evaluator.EvalExprWithContext(filename, anyStmt.ConditionExpr, vars, symCtx)
+	p.saveRotationalLastAllocated(symCtx)
+	// TODO: This source info should be for the condition not the anyStmt
+	p.PanicOnError(anyStmt.GetSourceInfo(), fmt.Sprintf("Error checking condition: %s", anyStmt.Condition), err)
+	if choiceVar != "" {
+		delete(vars, choiceVar)
+	}
+	p.updateAllVariablesInScope(vars)
+	return bool(cond.Truth())
 }
 
 // oneofChoiceVar holds the chosen value while a non-identifier oneof target
