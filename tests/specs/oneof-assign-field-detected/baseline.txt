@@ -1,0 +1,39 @@
+Model checking tests/specs/oneof-assign-field-detected/OneofSelf.json
+configFileName: tests/specs/oneof-assign-field-detected/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2} deadlock_detection:false
+Nodes: 5, queued: 0, elapsed: 544.708µs
+Peak (new): queue=1 pendingActionStarts=1
+Time taken for model checking: 560.867µs
+Writen graph dotfile: tests/specs/oneof-assign-field-detected/out/run_2026-11-05_06-56-37/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/oneof-assign-field-detected/out/run_2026-11-05_06-56-37/graph.dot -o graph.svg && open graph.svg
+FAILED: Model checker failed. Invariant:  XNeverSet
+------
+Init
+--
+state: {"r":"role R#0"}
+R#0: fields(x = None, y = None)
+------
+R#0.Pick
+--
+state: {"r":"role R#0"}
+R#0: fields(x = None, y = None)
+------
+Any:self.x="a"
+--
+state: {"r":"role R#0"}
+R#0: fields(x = "a", y = None)
+------
+Any:v="a"
+--
+state: {"r":"role R#0"}
+R#0: fields(x = "a", y = "a")
+------
+Writen graph json: tests/specs/oneof-assign-field-detected/out/run_2026-11-05_06-56-37/error-graph.json
+Writen graph dotfile: tests/specs/oneof-assign-field-detected/out/run_2026-11-05_06-56-37/error-graph.dot
+To generate an image file, run: 
+dot -Tsvg tests/specs/oneof-assign-field-detected/out/run_2026-11-05_06-56-37/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: tests/specs/oneof-assign-field-detected/out/run_2026-11-05_06-56-37/error-states.html
+To open: 
+open tests/specs/oneof-assign-field-detected/out/run_2026-11-05_06-56-37/error-states.html

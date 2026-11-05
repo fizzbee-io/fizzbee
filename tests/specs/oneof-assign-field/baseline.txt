@@ -1,0 +1,16 @@
+Model checking tests/specs/oneof-assign-field/OneofAssignField.json
+configFileName: tests/specs/oneof-assign-field/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2} deadlock_detection:false
+Nodes: 729, queued: 0, elapsed: 36.498116ms
+Peak (new): queue=102 pendingActionStarts=6
+Time taken for model checking: 36.575214ms
+Skipping dotfile generation. Too many Nodes: 729
+Writen communication diagram dotfile: tests/specs/oneof-assign-field/out/run_2026-11-05_06-56-37/communication.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/oneof-assign-field/out/run_2026-11-05_06-56-37/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 729 Unique states: 243
+IsLive: true
+Time taken to check liveness: 1.698167ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/oneof-assign-field/out/run_2026-11-05_06-56-37

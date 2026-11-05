@@ -1,0 +1,8 @@
+# Regression: when every parallel simulation worker exits with an error
+# (here, --experimental_no_graph is rejected in simulation mode), the
+# wrapper must report FAILED, not "PASSED: 0 simulation runs".
+action Init:
+    x = 0
+
+atomic action Inc:
+    x = (x + 1) % 3
