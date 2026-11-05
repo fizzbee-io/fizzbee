@@ -2,6 +2,7 @@ package modelchecker
 
 import (
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 
@@ -547,15 +548,64 @@ func (p *Process) getUsedSymmetricValuesFromClone() (*Process, map[starlark.Valu
 	return p2, refs, result
 }
 
-// OrdinalDisplayReplacer returns a replacer that rewrites the ordinal
-// symmetric values found along a trace to their ranks, so a trace shows
-// ts0, ts1, ... instead of the sparse internal IDs (ts2305843009213693951).
-// Ranks are computed over every ordinal value seen anywhere in the path, so a
-// value keeps the same label from step to step, and labels within any one
-// state keep the values' order. Returns nil when the path has no ordinal
-// values.
-func OrdinalDisplayReplacer(path []*Link) *strings.Replacer {
-	byPrefix := make(map[string]map[int64]*lib.SymmetricValue)
+// WriteFailurePathStates prints each step of a failure path: the step name,
+// the state, the returns and each role's fields.
+//
+// Ordinal values print as their ranks (ts0, ts1, ...) instead of the sparse
+// internal IDs (ts2305843009213693951). Ranks are computed over every ordinal
+// value seen anywhere in the path, so a value keeps the same label from step
+// to step, and labels within any one state keep the values' order. The values
+// come from the same visitor that collects symmetric values for symmetry
+// reduction, which covers the heap, role fields and params, call frames,
+// channel messages and returns.
+//
+// The rewrite happens on the values, not on the printed text: each step's
+// state is cloned with its ordinal values swapped for values whose ID is the
+// rank, the same way symmetry reduction clones a state under a permutation.
+// So a plain string that happens to read like an ordinal value, and values
+// of other domains, print unchanged.
+func WriteFailurePathStates(w io.Writer, path []*Link) {
+	ranks := ordinalRanks(path)
+	strip := func(s string) string { return strings.ReplaceAll(s, lib.SymmetryPrefix, "") }
+	for _, link := range path {
+		node := link.Node
+		fmt.Fprintf(w, "------\n%s\n", link.Name)
+		perm := ordinalDisplayPermutation(node.Process, ranks)
+		refs := make(map[starlark.Value]starlark.Value)
+		state, returns := node.Heap.state, node.Returns
+		if perm != nil {
+			state = CloneDict(state, refs, perm, 0)
+			returns = CloneDict(returns, refs, perm, 0)
+		}
+		fmt.Fprintf(w, "--\nstate: %s\n", strip(StringDictToJsonString(state)))
+		if len(returns) > 0 {
+			fmt.Fprintf(w, "returns: %s\n", strip(returns.String()))
+		}
+		for _, role := range node.Roles {
+			var fields starlark.Value = role.Fields
+			if perm != nil {
+				cloned, err := deepCloneStarlarkValueWithPermutations(role.Fields, refs, perm, 0)
+				if err != nil {
+					panic(err)
+				}
+				fields = cloned
+			}
+			fmt.Fprintf(w, "%s: %s\n", role.RefStringShort(), strip(fields.String()))
+		}
+	}
+	fmt.Fprintln(w, "------")
+}
+
+type ordinalKey struct {
+	prefix string
+	id     int64
+}
+
+// ordinalRanks maps every ordinal value seen along path to its rank among the
+// values of its domain on the whole path. Returns nil if there are none.
+func ordinalRanks(path []*Link) map[ordinalKey]int64 {
+	ids := make(map[string][]int64)
+	seen := make(map[ordinalKey]bool)
 	for _, link := range path {
 		if link == nil || link.Node == nil || link.Node.Process == nil {
 			continue
@@ -564,37 +614,52 @@ func OrdinalDisplayReplacer(path []*Link) *strings.Replacer {
 		link.Node.Process.AcceptVisitor(collector)
 		for prefix, values := range collector.pointers {
 			for id, sv := range values {
-				if sv.GetKind() != lib.SymmetryKindOrdinal {
+				k := ordinalKey{prefix, id}
+				if sv.GetKind() != lib.SymmetryKindOrdinal || seen[k] {
 					continue
 				}
-				if byPrefix[prefix] == nil {
-					byPrefix[prefix] = make(map[int64]*lib.SymmetricValue)
-				}
-				byPrefix[prefix][id] = sv
+				seen[k] = true
+				ids[prefix] = append(ids[prefix], id)
 			}
 		}
 	}
-	if len(byPrefix) == 0 {
+	if len(ids) == 0 {
 		return nil
 	}
-	type pair struct{ from, to string }
-	var pairs []pair
-	for prefix, values := range byPrefix {
-		ids := make([]int64, 0, len(values))
-		for id := range values {
-			ids = append(ids, id)
-		}
-		slices.Sort(ids)
-		for rank, id := range ids {
-			pairs = append(pairs, pair{values[id].String(), fmt.Sprintf("%s%d", prefix, rank)})
+	ranks := make(map[ordinalKey]int64, len(seen))
+	for prefix, list := range ids {
+		slices.Sort(list)
+		for rank, id := range list {
+			ranks[ordinalKey{prefix, id}] = int64(rank)
 		}
 	}
-	// strings.Replacer tries old strings in argument order at each position:
-	// put longer tokens first so ts12 is never matched as ts1 followed by 2.
-	slices.SortFunc(pairs, func(a, b pair) int { return len(b.from) - len(a.from) })
-	args := make([]string, 0, 2*len(pairs))
-	for _, p := range pairs {
-		args = append(args, p.from, p.to)
+	return ranks
+}
+
+// ordinalDisplayPermutation returns the substitution that clones p's values
+// for display: each ordinal value maps to one with its rank as ID, and every
+// other symmetric value maps to itself (the clone needs an entry for each).
+// Returns nil when p holds no ordinal value.
+func ordinalDisplayPermutation(p *Process, ranks map[ordinalKey]int64) map[*lib.SymmetricValue][]*lib.SymmetricValue {
+	if ranks == nil || p == nil {
+		return nil
 	}
-	return strings.NewReplacer(args...)
+	collector := NewUsedSymmetricValuesCollector()
+	p.AcceptVisitor(collector)
+	perm := make(map[*lib.SymmetricValue][]*lib.SymmetricValue)
+	anyOrdinal := false
+	for prefix, values := range collector.pointers {
+		for id, sv := range values {
+			display := sv
+			if rank, ok := ranks[ordinalKey{prefix, id}]; ok && sv.GetKind() == lib.SymmetryKindOrdinal {
+				display = lib.NewSymmetricValueWithKind(prefix, rank, lib.SymmetryKindOrdinal)
+				anyOrdinal = true
+			}
+			perm[sv] = []*lib.SymmetricValue{display}
+		}
+	}
+	if !anyOrdinal {
+		return nil
+	}
+	return perm
 }
