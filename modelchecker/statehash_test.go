@@ -25,6 +25,7 @@ func TestProcessHashCoversEveryPart(t *testing.T) {
 		p.NewThread()
 		frame := p.currentThread().currentFrame()
 		frame.pc = "Actions[0].Block.Stmts[0]"
+		frame.vars = starlark.StringDict{"arg": starlark.MakeInt(1)}
 		frame.scope = &Scope{vars: starlark.StringDict{"x": starlark.MakeInt(1)},
 			flow: ast.Flow_FLOW_SERIAL, loopVars: []string{"i"}, loopRange: []starlark.Value{starlark.MakeInt(1)}}
 		p.Roles = []*lib.Role{testRole("Node", 1)}
@@ -44,6 +45,13 @@ func TestProcessHashCoversEveryPart(t *testing.T) {
 		},
 		"scope var": func(p *Process) {
 			p.currentThread().currentFrame().scope.vars["x"] = starlark.MakeInt(2)
+		},
+		// Function arguments live in the frame, not the scope chain.
+		"function argument": func(p *Process) {
+			p.currentThread().currentFrame().vars["arg"] = starlark.MakeInt(2)
+		},
+		"extra function argument": func(p *Process) {
+			p.currentThread().currentFrame().vars["arg2"] = starlark.MakeInt(1)
 		},
 		"nested scope": func(p *Process) {
 			f := p.currentThread().currentFrame()
