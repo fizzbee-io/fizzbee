@@ -73,14 +73,14 @@ state: {"events":["ts0","ts2"]}
 }
 
 // Only the ordinal values themselves change. A plain string with the same
-// text as an ordinal value, a nominal value of the same domain name, and a
-// value of another domain whose text starts with an ordinal's text all print
-// as they are.
+// text as an ordinal value, a nominal value of another domain, and a value
+// of another domain whose text starts with an ordinal's text all print as
+// they are.
 func TestFailureTraceLeavesOtherValuesAlone(t *testing.T) {
 	path := []*Link{traceStep(t, "S", starlark.StringDict{
 		"o":         ordinal("ts", ordA),
 		"plain":     starlark.String("ts2305843009213693951"),
-		"nominal":   nominal("ts", 7),
+		"nominal":   nominal("key", 7),
 		"other":     ordinal("tsx", ordB),
 		"lookalike": nominal("ts2", 3058430092136939510),
 	})}
@@ -88,7 +88,7 @@ func TestFailureTraceLeavesOtherValuesAlone(t *testing.T) {
 	assert.Contains(t, got, `"o":"ts0"`)
 	assert.Contains(t, got, `"other":"tsx0"`)
 	assert.Contains(t, got, `"plain":"ts2305843009213693951"`, "plain strings are never rewritten")
-	assert.Contains(t, got, `"nominal":"ts7"`)
+	assert.Contains(t, got, `"nominal":"key7"`)
 	assert.Contains(t, got, `"lookalike":"ts23058430092136939510"`)
 }
 
@@ -122,4 +122,27 @@ Worker#0: fields(epoch = e0, note = "e2305843009213693951")
 func TestFailureTraceWithoutOrdinals(t *testing.T) {
 	path := []*Link{traceStep(t, "S", starlark.StringDict{"k": nominal("key", 3), "s": starlark.String("x")})}
 	assert.Equal(t, "------\nS\n--\nstate: {\"k\":\"key3\",\"s\":\"x\"}\n------\n", printTrace(path))
+}
+
+// Symmetric values compare by domain name and ID, not kind. A nominal value
+// whose ID equals a rank must not merge with a ranked ordinal value of the
+// same domain name, so a domain name shared across kinds keeps its raw IDs.
+func TestFailureTraceDomainNameSharedAcrossKinds(t *testing.T) {
+	set := starlark.NewSet(2)
+	require.NoError(t, set.Insert(ordinal("ts", ordA)))
+	require.NoError(t, set.Insert(nominal("ts", 0)))
+	path := []*Link{traceStep(t, "S", starlark.StringDict{
+		"both":  set,
+		"other": ordinal("e", ordB),
+	})}
+	got := printTrace(path)
+	assert.Contains(t, got, `"both":["ts0","ts2305843009213693951"]`, "both values, raw IDs")
+	assert.Contains(t, got, `"other":"e0"`, "other ordinal domains are still ranked")
+	assert.Equal(t, 2, set.Len(), "the original set is unchanged")
+}
+
+// Nil links are skipped rather than dereferenced.
+func TestFailureTraceSkipsNilLinks(t *testing.T) {
+	path := []*Link{nil, {Name: "no-node"}, traceStep(t, "S", starlark.StringDict{"o": ordinal("ts", ordA)})}
+	assert.Equal(t, "------\nS\n--\nstate: {\"o\":\"ts0\"}\n------\n", printTrace(path))
 }

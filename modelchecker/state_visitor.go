@@ -564,10 +564,20 @@ func (p *Process) getUsedSymmetricValuesFromClone() (*Process, map[starlark.Valu
 // rank, the same way symmetry reduction clones a state under a permutation.
 // So a plain string that happens to read like an ordinal value, and values
 // of other domains, print unchanged.
+//
+// Symmetric values compare and hash by domain name and ID only, not kind. If
+// a domain name is used by both ordinal and non-ordinal values on the path,
+// a rank could equal another value's ID and the two would merge in a set or
+// dict of the clone, so that domain keeps its raw IDs.
+//
+// Nil links, or links without a node, are skipped, as in ordinalRanks.
 func WriteFailurePathStates(w io.Writer, path []*Link) {
 	ranks := ordinalRanks(path)
 	strip := func(s string) string { return strings.ReplaceAll(s, lib.SymmetryPrefix, "") }
 	for _, link := range path {
+		if link == nil || link.Node == nil || link.Node.Process == nil {
+			continue
+		}
 		node := link.Node
 		fmt.Fprintf(w, "------\n%s\n", link.Name)
 		perm := ordinalDisplayPermutation(node.Process, ranks)
@@ -602,10 +612,13 @@ type ordinalKey struct {
 }
 
 // ordinalRanks maps every ordinal value seen along path to its rank among the
-// values of its domain on the whole path. Returns nil if there are none.
+// values of its domain on the whole path. A domain name that also has
+// non-ordinal values on the path is left out (see WriteFailurePathStates).
+// Returns nil if no domain is ranked.
 func ordinalRanks(path []*Link) map[ordinalKey]int64 {
 	ids := make(map[string][]int64)
 	seen := make(map[ordinalKey]bool)
+	mixed := make(map[string]bool)
 	for _, link := range path {
 		if link == nil || link.Node == nil || link.Node.Process == nil {
 			continue
@@ -615,13 +628,20 @@ func ordinalRanks(path []*Link) map[ordinalKey]int64 {
 		for prefix, values := range collector.pointers {
 			for id, sv := range values {
 				k := ordinalKey{prefix, id}
-				if sv.GetKind() != lib.SymmetryKindOrdinal || seen[k] {
+				if sv.GetKind() != lib.SymmetryKindOrdinal {
+					mixed[prefix] = true
+					continue
+				}
+				if seen[k] {
 					continue
 				}
 				seen[k] = true
 				ids[prefix] = append(ids[prefix], id)
 			}
 		}
+	}
+	for prefix := range mixed {
+		delete(ids, prefix)
 	}
 	if len(ids) == 0 {
 		return nil
