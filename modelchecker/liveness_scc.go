@@ -22,6 +22,11 @@ type sccGraph struct {
 	actionKeys []string // action identities, for diagnostics
 	reverse    [][]int  // predecessors over non-crash edges, built on first use
 	quiet      bool     // don't announce each property checked
+
+	// What the graph was built from, to rebuild it for an assertion that
+	// assumes different fairness (withAssumptions).
+	rootNode *Node
+	isOpen   func(*Node) bool
 }
 
 func (s *sccGraph) announce(what, name string) {
@@ -61,8 +66,10 @@ func newPartialSccGraph(root *Node, nodes []*Node, isOpen func(*Node) bool) *scc
 		index[n] = i
 	}
 	s := &sccGraph{
-		nodes: nodes,
-		index: index,
+		nodes:    nodes,
+		index:    index,
+		rootNode: root,
+		isOpen:   isOpen,
 		g: &liveness.Graph{
 			NumNodes:       len(nodes),
 			Enabled:        make([][]int, len(nodes)),
@@ -396,7 +403,13 @@ func CheckFormulaAssertions(root *Node, nodes []*Node, classic bool) ([]*Link, *
 	}
 	s := newSccGraph(root, nodes)
 	for j, invariant := range process.Files[0].Invariants {
-		checked, path, notes, err := s.checkFormulaAssertion(invariant, j, classic)
+		var checked bool
+		var path []*Link
+		var notes []string
+		var err error
+		s.withAssumptions(invariant, func(s *sccGraph) {
+			checked, path, notes, err = s.checkFormulaAssertion(invariant, j, classic)
+		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("assertion %s: %w", invariant.Name, err)
 		}
@@ -447,6 +460,11 @@ func SymmetricFairActions(file *ast.File) []string {
 			}
 		}
 	}
+	for _, name := range assumedFairSymmetricActions(file) {
+		if !slices.Contains(actions, name) {
+			actions = append(actions, name)
+		}
+	}
 	return actions
 }
 
@@ -467,34 +485,49 @@ func (s *sccGraph) checkStrictLiveness(files []*ast.File, skip func(*ast.Invaria
 			if skip != nil && skip(invariant) {
 				continue
 			}
-			if checked, path, notes, err := s.checkFormulaAssertion(invariant, j, false); checked {
-				if err != nil {
-					return nil, nil, fmt.Errorf("assertion %s: %w", invariant.Name, err)
-				}
-				if path != nil {
-					pos := NewInvariantPosition(i, j)
-					pos.Note = strings.Join(notes, "\n")
-					return path, pos, nil
-				}
-				continue
-			}
-			alwaysEventually, eventuallyAlways := livenessOperators(invariant)
-			if !alwaysEventually && !eventuallyAlways {
-				continue
-			}
-			if eventuallyAlways {
-				s.announce("Checking eventually always", invariant.Name)
-			} else {
-				s.announce("Checking always eventually", invariant.Name)
-			}
-			path, err := s.check(strictLivenessPredicate(s.nodes, i, j, eventuallyAlways), eventuallyAlways)
-			if err != nil {
-				return nil, nil, fmt.Errorf("liveness %s: %w", invariant.Name, err)
-			}
-			if path != nil {
-				return path, NewInvariantPosition(i, j), nil
+			var path []*Link
+			var pos *InvariantPosition
+			var err error
+			s.withAssumptions(invariant, func(s *sccGraph) {
+				path, pos, err = s.checkLivenessAssertion(invariant, i, j)
+			})
+			if err != nil || path != nil {
+				return path, pos, err
 			}
 		}
+	}
+	return nil, nil, nil
+}
+
+// checkLivenessAssertion checks invariant j of file i if it is a liveness or
+// formula assertion, and returns its counterexample.
+func (s *sccGraph) checkLivenessAssertion(invariant *ast.Invariant, i, j int) ([]*Link, *InvariantPosition, error) {
+	if checked, path, notes, err := s.checkFormulaAssertion(invariant, j, false); checked {
+		if err != nil {
+			return nil, nil, fmt.Errorf("assertion %s: %w", invariant.Name, err)
+		}
+		if path != nil {
+			pos := NewInvariantPosition(i, j)
+			pos.Note = strings.Join(notes, "\n")
+			return path, pos, nil
+		}
+		return nil, nil, nil
+	}
+	alwaysEventually, eventuallyAlways := livenessOperators(invariant)
+	if !alwaysEventually && !eventuallyAlways {
+		return nil, nil, nil
+	}
+	if eventuallyAlways {
+		s.announce("Checking eventually always", invariant.Name)
+	} else {
+		s.announce("Checking always eventually", invariant.Name)
+	}
+	path, err := s.check(strictLivenessPredicate(s.nodes, i, j, eventuallyAlways), eventuallyAlways)
+	if err != nil {
+		return nil, nil, fmt.Errorf("liveness %s: %w", invariant.Name, err)
+	}
+	if path != nil {
+		return path, NewInvariantPosition(i, j), nil
 	}
 	return nil, nil, nil
 }
@@ -575,7 +608,7 @@ func CheckStrictLivenessShadow(root *Node, nodes []*Node) ([]*Link, *InvariantPo
 	s := newSccGraph(root, nodes)
 	var failurePath []*Link
 	var failed *InvariantPosition
-	verdict := func(path []*Link) string {
+	verdict := func(s *sccGraph, path []*Link) string {
 		if path == nil {
 			return "PASS"
 		}
@@ -606,30 +639,33 @@ func CheckStrictLivenessShadow(root *Node, nodes []*Node) ([]*Link, *InvariantPo
 				return n.Process.GetThreadsCount() == 0 || n.Name == "yield", n.Process.Witness[i][j]
 			}
 			q := strictLivenessPredicate(nodes, i, j, eventuallyAlways)
-			var oldPath []*Link
-			var live bool
-			if eventuallyAlways {
-				oldPath, live = EventuallyAlwaysFinal(nodes, root, predicate)
-			} else {
-				oldPath, live = AlwaysEventuallyFinal(nodes, root, predicate)
-			}
-			if live {
-				oldPath = nil
-			}
-			newPath, err := s.check(q, eventuallyAlways)
-			newVerdict := verdict(newPath)
-			if err != nil {
-				newVerdict = "ERROR " + err.Error()
-			}
-			oldVerdict := verdict(oldPath)
-			tag := "agree"
-			if (oldPath == nil) != (newPath == nil) || err != nil {
-				tag = "DISAGREE"
-			}
-			fmt.Printf("Liveness shadow %s %s: cycle finder %s, scc %s\n", tag, invariant.Name, oldVerdict, newVerdict)
-			if oldPath != nil && failed == nil {
-				failurePath, failed = oldPath, NewInvariantPosition(i, j)
-			}
+			// Both engines see the fairness the assertion assumes.
+			s.withAssumptions(invariant, func(s *sccGraph) {
+				var oldPath []*Link
+				var live bool
+				if eventuallyAlways {
+					oldPath, live = EventuallyAlwaysFinal(nodes, root, predicate)
+				} else {
+					oldPath, live = AlwaysEventuallyFinal(nodes, root, predicate)
+				}
+				if live {
+					oldPath = nil
+				}
+				newPath, err := s.check(q, eventuallyAlways)
+				newVerdict := verdict(s, newPath)
+				if err != nil {
+					newVerdict = "ERROR " + err.Error()
+				}
+				oldVerdict := verdict(s, oldPath)
+				tag := "agree"
+				if (oldPath == nil) != (newPath == nil) || err != nil {
+					tag = "DISAGREE"
+				}
+				fmt.Printf("Liveness shadow %s %s: cycle finder %s, scc %s\n", tag, invariant.Name, oldVerdict, newVerdict)
+				if oldPath != nil && failed == nil {
+					failurePath, failed = oldPath, NewInvariantPosition(i, j)
+				}
+			})
 		}
 	}
 	return failurePath, failed

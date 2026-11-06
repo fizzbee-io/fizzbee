@@ -51,6 +51,7 @@ const (
 	pfFairness
 	pfChoiceFairness
 	pfTopLevelVars
+	pfAction
 )
 
 // Bits of pfFlags.
@@ -373,6 +374,10 @@ func writeProcess(w *lib.StateWriter, p *Process) error {
 		w.WriteUvarint(pfChoiceFairness)
 		w.WriteUvarint(uint64(p.ChoiceFairness))
 	}
+	if p.Action != "" {
+		w.WriteUvarint(pfAction)
+		w.WriteString(p.Action)
+	}
 	if p.topLevelVars != nil {
 		w.WriteUvarint(pfTopLevelVars)
 		w.WriteStrings(p.topLevelVars)
@@ -678,6 +683,8 @@ func readProcessFields(r *lib.StateReader, p *Process) error {
 			p.Fairness = ast.FairnessLevel(r.ReadUvarint())
 		case pfChoiceFairness:
 			p.ChoiceFairness = ast.FairnessLevel(r.ReadUvarint())
+		case pfAction:
+			p.Action = r.ReadString()
 		case pfTopLevelVars:
 			p.topLevelVars = r.ReadStrings()
 			if p.topLevelVars == nil {

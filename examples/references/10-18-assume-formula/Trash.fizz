@@ -1,0 +1,23 @@
+# Example: @assume on a Temporal Formula
+# Formula assertions take @assume like prefixed ones do. The first passes
+# under its assumption; the second, without one, fails.
+# Demonstrates: @assume with a formula assertion
+
+action Init:
+    trash = 0
+
+atomic action Delete:
+    if trash < 2:
+        trash += 1
+
+atomic action Restore:
+    if trash > 0:
+        trash -= 1
+
+@assume(finite=["Delete"], weak_fair=["Restore"])
+assertion EmptiedAfterEveryDelete:
+    return always (trash > 0 implies eventually trash == 0)
+
+# The same formula without the assumption fails: the user may never restore.
+assertion EmptiedAfterEveryDeleteWithoutAssumptions:
+    return always (trash > 0 implies eventually trash == 0)

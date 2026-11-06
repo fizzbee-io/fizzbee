@@ -39,6 +39,12 @@ py_test(
 )
 
 py_test(
+    name = "assume_test",
+    srcs = ["assume_test.py"],
+    deps = [":fizz"],
+)
+
+py_test(
     name = "oneof_target_test",
     srcs = ["oneof_target_test.py"],
     deps = [":fizz"],

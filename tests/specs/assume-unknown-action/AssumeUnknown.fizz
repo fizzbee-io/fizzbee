@@ -1,0 +1,17 @@
+# @assume must name an action of the spec, as "Action" or "Role.Action".
+# Restore is a role action, so it needs its role's name.
+
+role User:
+    action Init:
+        self.trash = 0
+
+    atomic action Restore:
+        if self.trash > 0:
+            self.trash -= 1
+
+action Init:
+    user = User()
+
+@assume(weak_fair=["Restore"])
+eventually always assertion TrashEmpty:
+    return user.trash == 0

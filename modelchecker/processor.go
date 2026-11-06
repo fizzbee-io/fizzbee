@@ -185,6 +185,10 @@ type Process struct {
 	// of the action that started. If that thread executed a statement, that process becomes fair,
 	// that in-turn makes the link fair.
 	Fairness ast.FairnessLevel `json:"-"`
+	// Action names the action whose thread last stepped, as "Action" or
+	// "Role.Action", alongside Fairness. Liveness assertions with @assume
+	// override the fairness of links by this name.
+	Action string `json:"-"`
 
 	Enabled        bool `json:"-"`
 	ThreadProgress bool `json:"-"`
@@ -1050,12 +1054,15 @@ func (n *Node) PathNames() []string {
 }
 
 type Link struct {
-	Node             *Node
-	Type             string
-	Name             string
-	Labels           []string
-	Fairness         ast.FairnessLevel
-	ChoiceFairness   ast.FairnessLevel
+	Node           *Node
+	Type           string
+	Name           string
+	Labels         []string
+	Fairness       ast.FairnessLevel
+	ChoiceFairness ast.FairnessLevel
+	// Action is the action this step belongs to ("Action" or "Role.Action"),
+	// for every step of its thread, like Fairness. Empty when no statement ran.
+	Action           string
 	Messages         []*ast.Message
 	ReqId            int
 	ThreadsMap       map[int]int
@@ -1155,6 +1162,7 @@ func (n *Node) Duplicate(other *Node, yield bool) {
 		Labels:         n.Inbound[0].Labels,
 		Fairness:       n.Inbound[0].Fairness,
 		ChoiceFairness: n.Inbound[0].ChoiceFairness,
+		Action:         n.Inbound[0].Action,
 		Messages:       n.Inbound[0].Messages,
 		ReqId:          n.Inbound[0].ReqId,
 		Returns:        n.Inbound[0].Returns,
@@ -1214,6 +1222,7 @@ func (n *Node) Attach() {
 		Labels:         n.Inbound[0].Labels,
 		Fairness:       n.Inbound[0].Fairness,
 		ChoiceFairness: n.Inbound[0].ChoiceFairness,
+		Action:         n.Inbound[0].Action,
 		Messages:       n.Inbound[0].Messages,
 		ReqId:          n.Inbound[0].ReqId,
 		Returns:        n.Inbound[0].Returns,
@@ -1297,6 +1306,7 @@ func mergeCollapsedLink(top *Link, cur *Link) *Link {
 		Name:           top.Name,
 		Fairness:       top.Fairness,
 		ChoiceFairness: top.ChoiceFairness,
+		Action:         top.Action,
 		ReqId:          top.ReqId,
 		Weight:         linkWeight(top) * linkWeight(cur),
 	}
@@ -2699,6 +2709,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	if len(node.Inbound) > 0 {
 		node.Inbound[0].Labels = append(node.Inbound[0].Labels, node.Process.Labels...)
 		node.Inbound[0].Fairness = node.Process.Fairness
+		node.Inbound[0].Action = node.Process.Action
 
 		node.Inbound[0].Messages = append(node.Inbound[0].Messages, node.Process.Messages...)
 
@@ -3813,6 +3824,7 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 		frame.pc = fmt.Sprintf("Actions[%d]", actionIndex)
 		frame.Name = action.Name
 	}
+	newNode.Process.Action = frame.Name
 
 	if p.ShouldScheduleNode(newNode) {
 		// In no_graph mode, extend the lightweight action-name chain before

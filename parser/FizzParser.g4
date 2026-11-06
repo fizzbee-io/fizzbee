@@ -82,7 +82,7 @@ compound_stmt
     | fairness? (ANY | ONEOF) exprlist IN testlist COLON suite                       # any_stmt
     | INIT COLON suite                                                               # init_stmt
     | INVARIANTS COLON invariants_suite                                              # invariants_stmt
-    | assertiondef                                                                   # assertion_stmt
+    | decorator* assertiondef                                                        # assertion_stmt
     | actiondef                                                                      # action_stmt
     | functiondef                                                                    # function_stmt
     | composedef                                                                     # compose_stmt

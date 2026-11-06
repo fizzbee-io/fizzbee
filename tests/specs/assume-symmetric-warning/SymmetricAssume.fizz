@@ -1,0 +1,18 @@
+# Fairness assumed for a symmetric role's action joins the issue #427
+# warning, like a fair action declared on the role would.
+
+symmetric role Node:
+    action Init:
+        self.done = False
+
+    atomic action Work:
+        self.done = True
+
+action Init:
+    nodes = []
+    for i in range(2):
+        nodes.append(Node())
+
+@assume(weak_fair=["Node.Work"])
+eventually always assertion AllDone:
+    return all([n.done for n in nodes])

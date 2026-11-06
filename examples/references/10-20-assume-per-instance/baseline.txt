@@ -1,0 +1,19 @@
+Model checking examples/references/10-20-assume-per-instance/PerInstance.json
+configFileName: examples/references/10-20-assume-per-instance/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
+Nodes: 4, queued: 0, elapsed: 587.935µs
+Peak (new): queue=2 pendingActionStarts=2
+Time taken for model checking: 600.735µs
+Writen graph dotfile: examples/references/10-20-assume-per-instance/out/run_2026-11-05_22-22-40/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/10-20-assume-per-instance/out/run_2026-11-05_22-22-40/graph.dot -o graph.svg && open graph.svg
+Writen communication diagram dotfile: examples/references/10-20-assume-per-instance/out/run_2026-11-05_22-22-40/communication.dot
+To generate svg, run: 
+dot -Tsvg examples/references/10-20-assume-per-instance/out/run_2026-11-05_22-22-40/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 4 Unique states: 4
+Liveness shadow agree AllDone: cycle finder PASS, scc PASS
+IsLive: true
+Time taken to check liveness: 280.268µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/10-20-assume-per-instance/out/run_2026-11-05_22-22-40

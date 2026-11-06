@@ -1,0 +1,52 @@
+Model checking examples/references/10-16-assume-role-actions/Repair.json
+configFileName: examples/references/10-16-assume-role-actions/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2  crash_on_yield:false}
+Nodes: 20, queued: 0, elapsed: 6.030002ms
+Peak (new): queue=8 pendingActionStarts=5
+Time taken for model checking: 6.083529ms
+Writen graph dotfile: examples/references/10-16-assume-role-actions/out/run_2026-11-05_15-28-46/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/10-16-assume-role-actions/out/run_2026-11-05_15-28-46/graph.dot -o graph.svg && open graph.svg
+Writen communication diagram dotfile: examples/references/10-16-assume-role-actions/out/run_2026-11-05_15-28-46/communication.dot
+To generate svg, run: 
+dot -Tsvg examples/references/10-16-assume-role-actions/out/run_2026-11-05_15-28-46/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 20 Unique states: 20
+Liveness shadow agree AllUpEventually: cycle finder PASS, scc PASS
+Liveness shadow agree AllUpWithoutRepair: cycle finder FAIL (counterexample valid, stutter), scc FAIL (counterexample valid, stutter)
+IsLive: false
+Time taken to check liveness: 2.633087ms
+FAILED: Liveness check failed
+Invariant: AllUpWithoutRepair
+------
+Init
+--
+state: {"nodes":["role Node#0","role Node#1"]}
+Node#0: fields(up = True)
+Node#1: fields(up = True)
+------
+Node#0.Break
+--
+state: {"nodes":["role Node#0","role Node#1"]}
+Node#0: fields(up = False)
+Node#1: fields(up = True)
+------
+thread-0
+--
+state: {"nodes":["role Node#0","role Node#1"]}
+Node#0: fields(up = False)
+Node#1: fields(up = True)
+------
+stutter
+--
+state: {"nodes":["role Node#0","role Node#1"]}
+Node#0: fields(up = False)
+Node#1: fields(up = True)
+------
+Writen graph json: examples/references/10-16-assume-role-actions/out/run_2026-11-05_15-28-46/error-graph.json
+Writen graph dotfile: examples/references/10-16-assume-role-actions/out/run_2026-11-05_15-28-46/error-graph.dot
+To generate an image file, run: 
+dot -Tsvg examples/references/10-16-assume-role-actions/out/run_2026-11-05_15-28-46/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: examples/references/10-16-assume-role-actions/out/run_2026-11-05_15-28-46/error-states.html
+To open: 
+open examples/references/10-16-assume-role-actions/out/run_2026-11-05_15-28-46/error-states.html
