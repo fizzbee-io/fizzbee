@@ -1,11 +1,13 @@
 Model checking tests/specs/trace-early-failure-transition/Counter.json
+configFileName: tests/specs/trace-early-failure-transition/fizz.yaml
+fizz.yaml not found. Using default options
 Loaded trace with 3 links
-Nodes: 0, queued: 0, elapsed: 368.801µs
+Nodes: 2, queued: 0, elapsed: 1.671756ms
 Peak (new): queue=1 pendingActionStarts=1
-Time taken for model checking: 379.647µs
-Writen graph dotfile: tests/specs/trace-early-failure-transition/out/run_2026-11-05_07-53-00/graph.dot
+Time taken for model checking: 1.684114ms
+Writen graph dotfile: tests/specs/trace-early-failure-transition/out/run_2026-11-06_10-23-33/graph.dot
 To generate svg, run: 
-dot -Tsvg tests/specs/trace-early-failure-transition/out/run_2026-11-05_07-53-00/graph.dot -o graph.svg && open graph.svg
+dot -Tsvg tests/specs/trace-early-failure-transition/out/run_2026-11-06_10-23-33/graph.dot -o graph.svg && open graph.svg
 FAILED: Model checker failed. Transition Invariant: NeverDecreases
 Trace stopped at the failure: executed 2 of 3 links.
 ------
@@ -21,10 +23,10 @@ Reset
 --
 state: {"count":0}
 ------
-Writen graph json: tests/specs/trace-early-failure-transition/out/run_2026-11-05_07-53-00/error-graph.json
-Writen graph dotfile: tests/specs/trace-early-failure-transition/out/run_2026-11-05_07-53-00/error-graph.dot
+Writen graph json: tests/specs/trace-early-failure-transition/out/run_2026-11-06_10-23-33/error-graph.json
+Writen graph dotfile: tests/specs/trace-early-failure-transition/out/run_2026-11-06_10-23-33/error-graph.dot
 To generate an image file, run: 
-dot -Tsvg tests/specs/trace-early-failure-transition/out/run_2026-11-05_07-53-00/error-graph.dot -o error-graph.svg && open error-graph.svg
-Writen error states as html: tests/specs/trace-early-failure-transition/out/run_2026-11-05_07-53-00/error-states.html
+dot -Tsvg tests/specs/trace-early-failure-transition/out/run_2026-11-06_10-23-33/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: tests/specs/trace-early-failure-transition/out/run_2026-11-06_10-23-33/error-states.html
 To open: 
-open tests/specs/trace-early-failure-transition/out/run_2026-11-05_07-53-00/error-states.html
+open tests/specs/trace-early-failure-transition/out/run_2026-11-06_10-23-33/error-states.html
