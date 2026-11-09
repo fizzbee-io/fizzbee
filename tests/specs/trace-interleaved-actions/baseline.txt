@@ -1,0 +1,35 @@
+Model checking tests/specs/trace-interleaved-actions/Interleave.json
+configFileName: tests/specs/trace-interleaved-actions/fizz.yaml
+fizz.yaml not found. Using default options
+Loaded trace with 3 links
+Nodes: 8, queued: 2, elapsed: 492.472µs
+Peak (new): queue=3 pendingActionStarts=2
+Time taken for model checking: 507.686µs
+Writen graph dotfile: tests/specs/trace-interleaved-actions/out/run_2026-11-05_09-09-48/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/trace-interleaved-actions/out/run_2026-11-05_09-09-48/graph.dot -o graph.svg && open graph.svg
+FAILED: Model checker failed. Invariant:  BNotBetweenASteps
+------
+Init
+--
+state: {"x":0,"y":0}
+------
+A
+--
+state: {"x":1,"y":0}
+------
+B
+--
+state: {"x":1,"y":11}
+------
+C
+--
+state: {"x":1,"y":111}
+------
+Writen graph json: tests/specs/trace-interleaved-actions/out/run_2026-11-05_09-09-48/error-graph.json
+Writen graph dotfile: tests/specs/trace-interleaved-actions/out/run_2026-11-05_09-09-48/error-graph.dot
+To generate an image file, run: 
+dot -Tsvg tests/specs/trace-interleaved-actions/out/run_2026-11-05_09-09-48/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: tests/specs/trace-interleaved-actions/out/run_2026-11-05_09-09-48/error-states.html
+To open: 
+open tests/specs/trace-interleaved-actions/out/run_2026-11-05_09-09-48/error-states.html

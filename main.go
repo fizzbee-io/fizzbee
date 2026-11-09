@@ -136,7 +136,7 @@ func main() {
 	// Calculate the relative path
 	var stateConfig *ast.StateSpaceOptions
 	if traceFile != "" || trace != "" || traceExtend > 0 {
-		stateConfig = getStateConfigForTraceChecking(stateConfig)
+		stateConfig = getStateConfigForTraceChecking(loadStateOptions(dirPath, f.GetFrontMatter()))
 	} else {
 		stateConfig = loadStateOptions(dirPath, f.GetFrontMatter())
 		fmt.Printf("StateSpaceOptions: %+v\n", stateConfig)
@@ -910,9 +910,11 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			return rootNode
 		}
 
-		// Check if trace was fully executed. A failure stops exploration, so
-		// an assertion that fails before the last link leaves the trace
-		// unfinished; report the failure below instead of this warning.
+		// Check if trace was fully executed: some branch followed every link
+		// (the shared position is the furthest any branch got). A failure
+		// stops exploration, so an assertion that fails before the last link
+		// leaves the trace unfinished; report the failure below instead of
+		// this warning.
 		if guidedTrace != nil && failedNode == nil && !guidedTrace.IsExhausted() {
 			fmt.Printf("WARNING: Trace execution incomplete. Expected %d links, executed %d links.\n",
 				len(guidedTrace.LinkNames), guidedTrace.GetCurrentIndex())
@@ -1046,9 +1048,11 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			if simulation {
 				fmt.Println("seed:", p1.Seed)
 			}
-			if guidedTrace != nil && !guidedTrace.IsExhausted() {
+			// Report the failing branch's own position: another branch may
+			// have followed the trace further, or to the end.
+			if guidedTrace != nil && failedNode.Process.GuidedTraceIndex() < len(guidedTrace.LinkNames) {
 				fmt.Printf("Trace stopped at the failure: executed %d of %d links.\n",
-					guidedTrace.GetCurrentIndex(), len(guidedTrace.LinkNames))
+					failedNode.Process.GuidedTraceIndex(), len(guidedTrace.LinkNames))
 			}
 			dumpFailedNode(sourceFileName, failedNode, rootNode, outDir)
 			return nil
@@ -1199,16 +1203,23 @@ func loadStateOptions(dirPath string, f *ast.FrontMatter) *ast.StateSpaceOptions
 	return stateConfig
 }
 
-func getStateConfigForTraceChecking(stateConfig *ast.StateSpaceOptions) *ast.StateSpaceOptions {
+func getStateConfigForTraceChecking(specConfig *ast.StateSpaceOptions) *ast.StateSpaceOptions {
 	// Trace-specific config: ignore frontmatter and yaml, use defaults for trace mode
 	deadlockDetection := false
 	crashOnYield := false
-	stateConfig = &ast.StateSpaceOptions{
-		Options:           &ast.Options{MaxActions: 100, MaxConcurrentActions: 1, CrashOnYield: &crashOnYield},
+	// Keep the spec's concurrency limits: a trace of interleaved non-atomic
+	// actions can only be replayed with the concurrency it was found with.
+	applyDefaultStateOptions(specConfig)
+	return &ast.StateSpaceOptions{
+		Options: &ast.Options{
+			MaxActions:           100,
+			MaxConcurrentActions: specConfig.Options.MaxConcurrentActions,
+			CrashOnYield:         &crashOnYield,
+		},
+		ActionOptions:     specConfig.ActionOptions,
 		Liveness:          "false",
 		DeadlockDetection: &deadlockDetection,
 	}
-	return stateConfig
 }
 
 func loadInputJSON(jsonFilename string) *ast.File {

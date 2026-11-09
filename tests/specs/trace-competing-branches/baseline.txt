@@ -1,0 +1,40 @@
+Model checking tests/specs/trace-competing-branches/Competing.json
+configFileName: tests/specs/trace-competing-branches/fizz.yaml
+fizz.yaml not found. Using default options
+Loaded trace with 3 links
+Nodes: 10, queued: 3, elapsed: 555.489µs
+Peak (new): queue=4 pendingActionStarts=2
+Time taken for model checking: 567.583µs
+Writen graph dotfile: tests/specs/trace-competing-branches/out/run_2026-11-09_22-13-07/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/trace-competing-branches/out/run_2026-11-09_22-13-07/graph.dot -o graph.svg && open graph.svg
+FAILED: Model checker failed. Invariant:  BNotMidA
+Trace stopped at the failure: executed 2 of 3 links.
+------
+Init
+--
+state: {"c_done":false,"x":0,"y":0}
+------
+A
+--
+state: {"c_done":false,"x":1,"y":0}
+------
+thread-0
+--
+state: {"c_done":false,"x":1,"y":0}
+------
+B
+--
+state: {"c_done":false,"x":1,"y":1}
+------
+thread-0
+--
+state: {"c_done":false,"x":2,"y":1}
+------
+Writen graph json: tests/specs/trace-competing-branches/out/run_2026-11-09_22-13-07/error-graph.json
+Writen graph dotfile: tests/specs/trace-competing-branches/out/run_2026-11-09_22-13-07/error-graph.dot
+To generate an image file, run: 
+dot -Tsvg tests/specs/trace-competing-branches/out/run_2026-11-09_22-13-07/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: tests/specs/trace-competing-branches/out/run_2026-11-09_22-13-07/error-states.html
+To open: 
+open tests/specs/trace-competing-branches/out/run_2026-11-09_22-13-07/error-states.html

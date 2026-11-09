@@ -43,6 +43,8 @@ KEEP_PREFIXES = (
     "Checking ",           # liveness assertion names
     "PASSED:",
     "FAILED:",
+    "Trace stopped at the failure",   # trace replay: how far the failing branch got
+    "WARNING: Trace execution incomplete",
     "Skipping dotfile",    # "Skipping dotfile generation. Too many Nodes: N"
     "TIMEOUT:",            # synthesized by run_spec; cannot appear in real output
 )

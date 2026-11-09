@@ -1,0 +1,24 @@
+# Regression: --trace-file must replay traces where non-atomic actions
+# interleave. The trace names only action starts (A, B, C); B runs between
+# A's two steps, which needs the spec's max_concurrent_actions (default 2).
+# Trace mode used to force max_concurrent_actions to 1, so B only ran after
+# A finished and the assertion failure was never reached.
+
+action Init:
+    x = 0
+    y = 0
+
+action A:
+    atomic:
+        x = 1
+    atomic:
+        x = 2
+
+atomic action B:
+    y = x + 10
+
+atomic action C:
+    y = y + 100
+
+always assertion BNotBetweenASteps:
+    return y != 111

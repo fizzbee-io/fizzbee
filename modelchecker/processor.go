@@ -1911,9 +1911,6 @@ func (p *Processor) expandToYield(node *Node, startTime time.Time, prevCount *in
 			*prevCount = len(p.visited)
 		}
 		invariantFailure, symmetryFound = p.processNode(finalNode)
-		if p.guidedTrace != nil {
-			p.visited = make(map[string]*Node)
-		}
 
 		// no_graph mode disables crash simulation: crashRole/crashThread
 		// rely on visited/Attach/Inbound to register the crash variant in
@@ -3046,6 +3043,20 @@ func (p *Process) minHashCode(hashes []string) string {
 // findVisitedSymmetric looks up a node in the visited map by trying all symmetry
 // permutation hashes. Returns the matching node and true if found, nil and false otherwise.
 func (p *Processor) findVisitedSymmetric(node *Node) (*Node, bool, string) {
+	other, ok, hash := p.findVisitedSymmetricState(node)
+	if p.guidedTrace == nil {
+		return other, ok, hash
+	}
+	// In trace mode, a state reached at two positions in the trace is two
+	// search nodes: thread continuations are not named in the trace, so
+	// interleavings of non-atomic actions can reach one state at different
+	// trace positions. Key visited by state and trace position.
+	hash = fmt.Sprintf("%s#trace%d", hash, node.guidedTrace.GetCurrentIndex())
+	other, ok = p.visited[hash]
+	return other, ok, hash
+}
+
+func (p *Processor) findVisitedSymmetricState(node *Node) (*Node, bool, string) {
 	// Skip symmetry reduction in simulation mode (we only check one path
 	// anyway) or when explicitly disabled. Disabling keeps every persisted
 	// state concrete — no canonical renaming of symmetric values/roles —
