@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "modelchecker",
     srcs = [
+        "cardinality.go",
         "channel_message.go",
         "checker.go",
         "clone.go",
@@ -50,6 +51,7 @@ go_library(
 go_test(
     name = "modelchecker_test",
     srcs = [
+        "cardinality_test.go",
         "checker_test.go",
         "clone_segment_test.go",
         "clone_test.go",
