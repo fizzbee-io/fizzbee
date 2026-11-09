@@ -1,0 +1,34 @@
+---
+deadlock_detection: false
+---
+
+# Regression: with interleaving, several branches follow a trace at once and
+# reach different positions. A failure must report how far its own branch got,
+# not how far the furthest branch got.
+#
+# Trace A, B, C. After A's first step and B, one branch takes C and finishes
+# the trace; another lets A continue, and fails at x == 2 having followed only
+# A and B. Its trace position is 2 of 3, even though the trace is already
+# finished on the first branch.
+
+action Init:
+    x = 0
+    y = 0
+    c_done = False
+
+serial action A:
+    atomic:
+        x = 1
+    atomic:
+        pass
+    atomic:
+        x = 2
+
+atomic action B:
+    y = x
+
+atomic action C:
+    c_done = True
+
+always assertion BNotMidA:
+    return not (x == 2 and y == 1 and not c_done)

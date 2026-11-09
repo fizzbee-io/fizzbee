@@ -89,6 +89,13 @@ func (t *GuidedTrace) IsExhausted() bool {
 }
 
 // GetCurrentIndex returns the current link index
+// GuidedTraceIndex is how many trace links this process's own branch has
+// followed. It differs from the processor's shared position (the furthest
+// any branch got) when several branches follow the trace.
+func (p *Process) GuidedTraceIndex() int {
+	return p.guidedTrace.GetCurrentIndex()
+}
+
 func (t *GuidedTrace) GetCurrentIndex() int {
 	return t.currentIndex
 }
@@ -151,6 +158,11 @@ func (p *Processor) ShouldScheduleNode(node *Node) bool {
 		// Several branches can follow the trace at once (thread
 		// continuations are not named in it), so the shared trace records
 		// the furthest position any branch reached, not a count of matches.
+		// Each branch's own position only advances on a matching link, so
+		// the shared trace is exhausted exactly when some branch has
+		// followed every link: replay succeeds if any interleaving matches
+		// the whole trace. A failure reports its own branch's position
+		// (Process.GuidedTraceIndex), not this one.
 		if node.guidedTrace.currentIndex > p.guidedTrace.currentIndex {
 			p.guidedTrace.currentIndex = node.guidedTrace.currentIndex
 		}

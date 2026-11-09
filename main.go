@@ -910,9 +910,11 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			return rootNode
 		}
 
-		// Check if trace was fully executed. A failure stops exploration, so
-		// an assertion that fails before the last link leaves the trace
-		// unfinished; report the failure below instead of this warning.
+		// Check if trace was fully executed: some branch followed every link
+		// (the shared position is the furthest any branch got). A failure
+		// stops exploration, so an assertion that fails before the last link
+		// leaves the trace unfinished; report the failure below instead of
+		// this warning.
 		if guidedTrace != nil && failedNode == nil && !guidedTrace.IsExhausted() {
 			fmt.Printf("WARNING: Trace execution incomplete. Expected %d links, executed %d links.\n",
 				len(guidedTrace.LinkNames), guidedTrace.GetCurrentIndex())
@@ -1046,9 +1048,11 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 			if simulation {
 				fmt.Println("seed:", p1.Seed)
 			}
-			if guidedTrace != nil && !guidedTrace.IsExhausted() {
+			// Report the failing branch's own position: another branch may
+			// have followed the trace further, or to the end.
+			if guidedTrace != nil && failedNode.Process.GuidedTraceIndex() < len(guidedTrace.LinkNames) {
 				fmt.Printf("Trace stopped at the failure: executed %d of %d links.\n",
-					guidedTrace.GetCurrentIndex(), len(guidedTrace.LinkNames))
+					failedNode.Process.GuidedTraceIndex(), len(guidedTrace.LinkNames))
 			}
 			dumpFailedNode(sourceFileName, failedNode, rootNode, outDir)
 			return nil
