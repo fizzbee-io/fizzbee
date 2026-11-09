@@ -59,6 +59,7 @@ const (
 	tagChannel byte = 'C'
 	tagSegment byte = 'G'
 	tagOther   byte = 'X'
+	tagCard    byte = 'K'
 )
 
 var encoderPool = sync.Pool{New: func() any { return &StateEncoder{buf: make([]byte, 0, 4096)} }}
@@ -225,6 +226,8 @@ func (e *StateEncoder) WriteValue(v starlark.Value, depth int) {
 		e.WriteTaggedString(x.FullString())
 	case *ModelValue:
 		e.WriteTaggedString(x.FullString())
+	case *CardinalityCounter:
+		e.buf = append(e.buf, tagCard, x.ValueCode())
 	case *Struct:
 		e.buf = append(e.buf, tagMap)
 		e.buf = binary.AppendUvarint(e.buf, uint64(len(x.entries)))

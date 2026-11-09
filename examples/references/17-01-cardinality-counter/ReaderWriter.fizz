@@ -1,0 +1,32 @@
+# Example 17-01: Cardinality counter (0, 1, MANY)
+# A reader-writer lock with any number of readers.
+# Demonstrates: cardinality.counter, inc(), oneof c.dec(), is_zero()
+#
+# With a plain int, readers would need an artificial bound and the check
+# would only cover counts up to it. A cardinality counter keeps just 0, 1 or
+# MANY (two or more), so the few states checked here stand for every number
+# of readers. dec() on MANY returns both ONE and MANY: with an unknown count
+# of two or more, removing one can leave one or still several.
+
+action Init:
+    readers = cardinality.counter(0)
+    writing = False
+
+atomic action StartRead:
+    require not writing
+    readers = readers.inc()
+
+atomic action EndRead:
+    require not readers.is_zero()
+    readers = oneof readers.dec()
+
+atomic action StartWrite:
+    require not writing and readers.is_zero()
+    writing = True
+
+atomic action EndWrite:
+    require writing
+    writing = False
+
+always assertion NoReadDuringWrite:
+    return not (writing and not readers.is_zero())

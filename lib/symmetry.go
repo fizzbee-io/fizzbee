@@ -139,6 +139,10 @@ type SymmetryContext struct {
 	// constructor builtins shared by every process find the right ones.
 	Roles    *[]*Role
 	Channels map[int]*Channel
+
+	// CardinalityStep is the running step's counter tracking, published to
+	// the thread as CardinalityStepKey. Nil outside a tracked step.
+	CardinalityStep *CardinalityStep
 }
 
 // RolesKey is the starlark Thread local holding the running process's
