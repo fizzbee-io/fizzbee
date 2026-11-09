@@ -1,0 +1,25 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+---
+# Work is a serial action: the increment and the decrement are separate
+# steps (yield to yield). With two Work threads in flight, pending need never
+# return to zero (Int: 1 <-> 2). That loop has increment steps, so it must be
+# kept: the Counter version must never PASS where Int FAILS (Empty).
+# AtMostOne: with ints pending is at most the 2 threads in flight and drops
+# to 1 on every lap; the counter forgets that bound (MANY -> dec -> MANY), so
+# Counter FAILS where Int PASSES. That is the abstraction, not the loop rule.
+
+action Init:
+    pending = cardinality.counter(0)
+
+fair action Work:
+    pending = pending.inc()
+    pending = oneof pending.dec()
+
+always eventually assertion Empty:
+    return pending.is_zero()
+
+always eventually assertion AtMostOne:
+    return not pending.is_many()

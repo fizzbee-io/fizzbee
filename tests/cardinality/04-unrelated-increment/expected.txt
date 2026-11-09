@@ -1,0 +1,4 @@
+# Int: A1Zero, A2Zero PASS for N=2..5.
+reason: increments of b1/b2 are at other locations, even when made in the same step as the decrement of a2, so loops keeping a1/a2 nonzero decrement them without incrementing and are dropped.
+A1Zero: PASS int=PASS
+A2Zero: PASS int=PASS

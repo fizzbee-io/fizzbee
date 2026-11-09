@@ -1,0 +1,27 @@
+---
+deadlock_detection: false
+---
+# Int stand-in: every operation that is an error on a counter calls fail().
+
+action Init:
+    pending = 1
+
+atomic action Send:
+    require pending < 3
+    pending = pending + 1
+
+always assertion Plus:
+    fail("unsupported")
+    return True
+
+always assertion Minus:
+    fail("unsupported")
+    return True
+
+always assertion Less:
+    fail("unsupported")
+    return True
+
+always assertion IntConv:
+    fail("unsupported")
+    return True

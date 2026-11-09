@@ -1,0 +1,5 @@
+# Int (no N): PendingZero, QZero, RZero PASS.
+reason: dec,inc,dec in one step is net -1 (a decrement) so a Churn-only loop is dropped; inc-then-dec and dec-then-inc are net 0 and record nothing, so the Wiggle steps do not justify the Drain loops.
+PendingZero: PASS int=PASS
+QZero: PASS int=PASS
+RZero: PASS int=PASS

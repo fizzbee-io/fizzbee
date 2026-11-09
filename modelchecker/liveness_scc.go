@@ -82,6 +82,7 @@ func newPartialSccGraph(root *Node, nodes []*Node, isOpen func(*Node) bool) *scc
 		s.g.Init = []int{r}
 	}
 	actions := map[string]int{}
+	counters := map[string]int{}
 	actionOf := func(key string, f liveness.Fairness) int {
 		key = fmt.Sprintf("%s#%v", key, f)
 		if a, ok := actions[key]; ok {
@@ -142,10 +143,13 @@ func newPartialSccGraph(root *Node, nodes []*Node, isOpen func(*Node) bool) *scc
 			if open {
 				continue
 			}
-			s.g.Edges = append(s.g.Edges, liveness.Edge{From: i, To: to, Action: a})
+			edge := liveness.Edge{From: i, To: to, Action: a}
+			edge.Dec, edge.Inc = cardinalityEvents(link.Labels, counters)
+			s.g.Edges = append(s.g.Edges, edge)
 			s.links = append(s.links, link)
 		}
 	}
+	s.g.NumCounters = len(counters)
 	return s
 }
 

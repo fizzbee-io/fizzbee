@@ -1,0 +1,3 @@
+# Int: ERROR (fail() stands in for the counter error), N=2..5.
+reason: Ack is enabled at ZERO right after Init and ZERO.dec() is an error, not an empty oneof.
+Trivial: ERROR int=ERROR

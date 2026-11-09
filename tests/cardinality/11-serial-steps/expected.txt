@@ -1,0 +1,4 @@
+# Int (no N; bounded by 2 concurrent threads): Empty FAIL, AtMostOne PASS.
+reason: inc and dec are separate steps of a serial action, so the two-thread loop has increment steps and is kept (Empty FAIL like Int); AtMostOne fails only because MANY forgets the 2-thread bound, not because of the loop rule.
+Empty: FAIL int=FAIL loop_includes=Work
+AtMostOne: FAIL imprecision int=PASS

@@ -1,0 +1,21 @@
+---
+deadlock_detection: false
+---
+# Sends never stop, so Send/Ack can cycle at MANY forever. That loop
+# increments `pending`, so it is kept and the assertions fail.
+
+action Init:
+    pending = cardinality.counter(0)
+
+atomic action Send:
+    pending = pending.inc()
+
+atomic fair action Ack:
+    require not pending.is_zero()
+    pending = oneof pending.dec()
+
+always eventually assertion AtMostOne:
+    return not pending.is_many()
+
+always eventually assertion Empty:
+    return pending.is_zero()

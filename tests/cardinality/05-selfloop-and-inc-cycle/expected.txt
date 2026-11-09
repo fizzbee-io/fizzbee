@@ -1,0 +1,4 @@
+# Int: Empty FAIL, DrainedAfterStop PASS, for N=2..5.
+reason: the Ack self-loops are dropped but the Produce->Finish->Ack cycle in the same component increments pending and is kept, so Empty FAILS with Produce in the loop; after Stop only the self-loops remain.
+Empty: FAIL int=FAIL loop_includes=Produce
+DrainedAfterStop: PASS int=PASS

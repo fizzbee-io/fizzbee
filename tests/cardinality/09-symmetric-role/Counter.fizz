@@ -1,0 +1,50 @@
+---
+deadlock_detection: false
+---
+# A counter as a field of a symmetric role. The location is coarsened to
+# Server/pending, so an increment at one server and a decrement at another
+# count as the same key.
+# Drained: after the global Close no server receives, so all loops only
+#   decrement Server/pending and are dropped.
+# ClosedServerDrains: each server closes on its own. A closed server's Ack
+#   loop runs next to another server's Recv, which increments the same
+#   coarsened key, so the loop is kept: a known imprecision.
+
+NUM_SERVERS = 2
+
+symmetric role Server:
+    action Init:
+        self.pending = cardinality.counter(0)
+        self.closed = False
+
+    atomic action Recv:
+        require not all_closed
+        require not self.closed
+        self.pending = self.pending.inc()
+
+    atomic action CloseOne:
+        require not self.closed
+        self.closed = True
+
+    atomic fair action Ack:
+        require not self.pending.is_zero()
+        self.pending = oneof self.pending.dec()
+
+action Init:
+    all_closed = False
+    servers = bag()
+    for i in range(NUM_SERVERS):
+        servers.add(Server())
+
+atomic action Close:
+    require not all_closed
+    all_closed = True
+
+eventually always assertion Drained:
+    return not all_closed or all([s.pending.is_zero() for s in servers])
+
+always eventually assertion AllSometimesLow:
+    return all([not s.pending.is_many() for s in servers])
+
+eventually always assertion ClosedServerDrains:
+    return all([s.pending.is_zero() for s in servers if s.closed])

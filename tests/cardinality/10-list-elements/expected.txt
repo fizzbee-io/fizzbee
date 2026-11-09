@@ -1,0 +1,5 @@
+# Int: Drained PASS, Q0SometimesLow N=2 PASS / N=3..5 FAIL, Q0DrainsAfterClose0 PASS, for N=2..5.
+reason: list elements coarsen to queues[*]; after Close nothing increments it (Drained PASS), but after Close0 a Send to queue 1 increments the shared key, so queue 0's draining loop is kept (allowed imprecision).
+Drained: PASS int=PASS
+Q0SometimesLow: FAIL int=FAIL loop_includes=Send
+Q0DrainsAfterClose0: FAIL imprecision int=PASS

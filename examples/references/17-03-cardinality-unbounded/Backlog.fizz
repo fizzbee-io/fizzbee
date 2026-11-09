@@ -1,0 +1,19 @@
+# Example 17-03: A real liveness failure with a cardinality counter
+# Messages keep arriving and are acked one at a time. Nothing stops Send, so
+# the backlog may never shrink to one: the counterexample alternates Send and
+# Ack forever, which a real queue can do.
+# Demonstrates: loops that increment are kept; only decrement-only loops are
+# ignored.
+
+action Init:
+    pending = cardinality.counter(0)
+
+atomic fair action Send:
+    pending = pending.inc()
+
+atomic fair action Ack:
+    require not pending.is_zero()
+    pending = oneof pending.dec()
+
+always eventually assertion BacklogShrinks:
+    return not pending.is_many()

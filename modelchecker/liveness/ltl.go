@@ -218,7 +218,7 @@ func NewProduct(g *Graph, f *Formula, labeled []bool, letter []uint64, canStop [
 		letter  uint64
 		s       uint64
 	}
-	p := &Product{Graph: &Graph{Actions: g.Actions, NumAcceptSets: len(a.untils)}}
+	p := &Product{Graph: &Graph{Actions: g.Actions, NumAcceptSets: len(a.untils), NumCounters: g.NumCounters}}
 	pg := p.Graph
 	ids := map[key]int{}
 	var keys []key
@@ -281,7 +281,7 @@ func NewProduct(g *Graph, f *Formula, labeled []bool, letter []uint64, canStop [
 		for _, e := range g.out[k.n] {
 			ge := g.Edges[e]
 			next(&k, ge.To, func(id int) {
-				pg.Edges = append(pg.Edges, Edge{From: i, To: id, Action: ge.Action})
+				pg.Edges = append(pg.Edges, Edge{From: i, To: id, Action: ge.Action, Dec: ge.Dec, Inc: ge.Inc})
 				p.Edge = append(p.Edge, e)
 			})
 		}

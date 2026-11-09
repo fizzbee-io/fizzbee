@@ -43,6 +43,16 @@ func Check(g *Graph) (*Lasso, error) {
 			}
 			continue
 		}
+		if drop := c.uncompassionate(comp); drop != nil {
+			// Refined in the same loop as fairness: without these edges an
+			// action may no longer be taken, so the component is analyzed
+			// again from scratch.
+			for _, e := range drop {
+				g.dropped[e] = true
+			}
+			work = append(work, t.components(nodes)...)
+			continue
+		}
 		entry := nodes[0]
 		for _, n := range nodes {
 			if c.depth[n] < c.depth[entry] || (c.depth[n] == c.depth[entry] && n < entry) {
@@ -161,7 +171,7 @@ func (c *checker) analyze(nodes []int) *component {
 		}
 		for _, e := range g.out[n] {
 			edge := g.Edges[e]
-			if g.Actions[edge.Action] != Crash && c.mark[edge.To] == c.stamp {
+			if g.loopEdge(e) && c.mark[edge.To] == c.stamp {
 				comp.edges = append(comp.edges, e)
 				comp.taken[edge.Action] = true
 			}
@@ -204,6 +214,34 @@ func (c *checker) unfairNodes(comp *component) []int {
 		}
 	}
 	return remove
+}
+
+// uncompassionate returns the edges of comp that lower a counter no edge of
+// comp raises, or nil when there are none. A counter is a finite,
+// nonnegative integer, so no run takes such an edge infinitely often, and no
+// loop inside comp may use one. Raising edges are kept, so a loop that
+// lowers a counter can always be extended to raise it too (see stitch).
+func (c *checker) uncompassionate(comp *component) []int {
+	g := c.g
+	if g.NumCounters == 0 {
+		return nil
+	}
+	inc := make([]bool, g.NumCounters)
+	for _, e := range comp.edges {
+		for _, k := range g.Edges[e].Inc {
+			inc[k] = true
+		}
+	}
+	var drop []int
+	for _, e := range comp.edges {
+		for _, k := range g.Edges[e].Dec {
+			if !inc[k] {
+				drop = append(drop, e)
+				break
+			}
+		}
+	}
+	return drop
 }
 
 func (c *checker) without(nodes, remove []int) []int {

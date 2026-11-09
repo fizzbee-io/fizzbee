@@ -87,6 +87,9 @@ func newEvalThread(symCtx *lib.SymmetryContext) *starlark.Thread {
 		if symCtx.Channels != nil {
 			thread.SetLocal(lib.ChannelsKey, symCtx.Channels)
 		}
+		if symCtx.CardinalityStep != nil {
+			thread.SetLocal(lib.CardinalityStepKey, symCtx.CardinalityStep)
+		}
 	}
 	return thread
 }

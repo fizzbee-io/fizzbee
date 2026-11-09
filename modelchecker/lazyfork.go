@@ -168,6 +168,7 @@ func (p *Processor) resetScratch(proc *Process, parent *Process) {
 	proc.Labels = make([]string, 0)
 	proc.Messages = make([]*ast.Message, 0)
 	proc.Stats = parent.Stats.Clone()
+	proc.cardStep = parent.cardStep
 	proc.Enabled = false
 	proc.ThreadProgress = false
 	proc.IsYield = false

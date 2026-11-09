@@ -1,0 +1,29 @@
+---
+deadlock_detection: false
+---
+# Int version of Counter.fizz; pending starts at 3 (MANY) and never rises
+# above it, so there is no N.
+
+action Init:
+    pending = 3
+    phase = 0
+
+atomic fair action LapDec1:
+    require phase == 0
+    require pending >= 2
+    pending = pending - 1
+    phase = 1
+
+atomic fair action LapDec2:
+    require phase == 1
+    require pending > 0
+    pending = pending - 1
+    phase = 2
+
+atomic fair action LapInc:
+    require phase == 2
+    pending = pending + 1
+    phase = 0
+
+eventually always assertion AtMostOne:
+    return pending <= 1

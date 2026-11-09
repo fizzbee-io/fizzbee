@@ -1,0 +1,4 @@
+# Int: AZero N=2..5 PASS; BAtMostOne N=2 PASS, N=3..5 FAIL.
+reason: a is only decremented, so every loop with a at MANY or ONE is dropped (AZero PASS); b's IncB/DecB cycle is a real run (BAtMostOne FAIL, loop shows IncB).
+AZero: PASS int=PASS
+BAtMostOne: FAIL int=FAIL loop_includes=IncB

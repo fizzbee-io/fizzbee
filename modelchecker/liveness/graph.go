@@ -40,9 +40,15 @@ func (f Fairness) String() string {
 }
 
 // Edge is a link between two nodes, labelled with the action it takes.
+//
+// Dec and Inc list the counters (0..NumCounters-1) the link lowers and
+// raises. A counter stands for a finite, nonnegative integer, so no run
+// lowers it infinitely often without raising it infinitely often
+// (compassion). Loops that would are not runs, and Check ignores them.
 type Edge struct {
 	From, To int
 	Action   int
+	Dec, Inc []int
 }
 
 // Graph is the input to Check. Nodes are the integers 0..NumNodes-1, which
@@ -86,7 +92,13 @@ type Graph struct {
 	// no weak or strong action is enabled at n. Nil means never.
 	FailsIfStuck []bool
 
+	// NumCounters is the number of counters edges' Dec and Inc refer to.
+	NumCounters int
+
 	out [][]int
+	// dropped[e] marks edges no run can take infinitely often (see Edge).
+	// Check sets it; loops never use them, prefixes may.
+	dropped []bool
 }
 
 // EnabledFromEdges sets Enabled[n] to the distinct actions of n's outgoing
@@ -156,6 +168,11 @@ func (g *Graph) validate() error {
 		if e.Action < 0 || e.Action >= len(g.Actions) {
 			return fmt.Errorf("edge %d has unknown action %d", i, e.Action)
 		}
+		for _, k := range append(append([]int(nil), e.Dec...), e.Inc...) {
+			if k < 0 || k >= g.NumCounters {
+				return fmt.Errorf("edge %d has unknown counter %d", i, k)
+			}
+		}
 	}
 	for name, s := range map[string]int{
 		"Enabled":        len(g.Enabled),
@@ -180,10 +197,16 @@ func (g *Graph) validate() error {
 }
 
 func (g *Graph) buildOut() {
+	g.dropped = make([]bool, len(g.Edges))
 	g.out = make([][]int, g.NumNodes)
 	for i, e := range g.Edges {
 		g.out[e.From] = append(g.out[e.From], i)
 	}
+}
+
+// loopEdge reports whether a loop may use edge e.
+func (g *Graph) loopEdge(e int) bool {
+	return g.Actions[g.Edges[e].Action] != Crash && (g.dropped == nil || !g.dropped[e])
 }
 
 func (g *Graph) readsEnabled(n int) bool {

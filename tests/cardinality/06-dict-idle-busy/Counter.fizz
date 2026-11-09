@@ -1,0 +1,35 @@
+---
+deadlock_detection: false
+---
+# Workers move between counts["idle"] and counts["busy"]. The two dict
+# entries are separate locations: after Shutdown, Finish decrements
+# counts["busy"] and increments counts["idle"], and the idle increment must
+# not keep the busy-draining loop alive.
+
+action Init:
+    counts = {"idle": cardinality.counter(3), "busy": cardinality.counter(0)}
+    closing = False
+
+atomic action Start:
+    require not closing
+    require not counts["idle"].is_zero()
+    counts["idle"] = oneof counts["idle"].dec()
+    counts["busy"] = counts["busy"].inc()
+
+atomic fair action Finish:
+    require not counts["busy"].is_zero()
+    counts["busy"] = oneof counts["busy"].dec()
+    counts["idle"] = counts["idle"].inc()
+
+atomic action Shutdown:
+    require not closing
+    closing = True
+
+always eventually assertion SometimesIdle:
+    return counts["busy"].is_zero()
+
+eventually always assertion DrainedAfterShutdown:
+    return not closing or counts["busy"].is_zero()
+
+eventually always assertion AllIdleAfterShutdown:
+    return not closing or counts["idle"].is_many()

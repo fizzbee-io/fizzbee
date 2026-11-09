@@ -91,10 +91,48 @@ func (c *checker) stitch(comp *component, entry int) ([]int, bool) {
 	if len(loop) == 0 && !follow(c.pathToEdge(cur, func(int) bool { return true })) {
 		return nil, false
 	}
-	if !follow(c.pathToNode(cur, func(n int) bool { return n == entry })) {
-		return nil, false
+	// Close the loop, then make sure it raises every counter it lowers:
+	// a loop that only lowers one is not a run. Each round raises at least
+	// one more counter, and a raised counter stays raised, so this ends.
+	for {
+		if !follow(c.pathToNode(cur, func(n int) bool { return n == entry })) {
+			return nil, false
+		}
+		missing := uncompensated(g, loop)
+		if len(missing) == 0 {
+			return loop, true
+		}
+		for _, k := range missing {
+			raises := func(e int) bool { return containsInt(g.Edges[e].Inc, k) }
+			if !follow(c.pathToEdge(cur, raises)) {
+				return nil, false
+			}
+		}
 	}
-	return loop, true
+}
+
+// uncompensated returns the counters edges lower but never raise.
+func uncompensated(g *Graph, edges []int) []int {
+	if g.NumCounters == 0 {
+		return nil
+	}
+	inc := map[int]bool{}
+	for _, e := range edges {
+		for _, k := range g.Edges[e].Inc {
+			inc[k] = true
+		}
+	}
+	var missing []int
+	seen := map[int]bool{}
+	for _, e := range edges {
+		for _, k := range g.Edges[e].Dec {
+			if !inc[k] && !seen[k] {
+				seen[k] = true
+				missing = append(missing, k)
+			}
+		}
+	}
+	return missing
 }
 
 // pathToEdge returns the shortest path from 'from' inside the marked
@@ -108,7 +146,7 @@ func (c *checker) pathToEdge(from int, pred func(int) bool) ([]int, bool) {
 		queue = queue[1:]
 		for _, e := range g.out[v] {
 			edge := g.Edges[e]
-			if g.Actions[edge.Action] == Crash || c.mark[edge.To] != c.stamp {
+			if !g.loopEdge(e) || c.mark[edge.To] != c.stamp {
 				continue
 			}
 			if pred(e) {
@@ -205,6 +243,9 @@ func ValidateLasso(g *Graph, l *Lasso) error {
 	}
 	if want := g.acceptMask(); accept != want {
 		return fmt.Errorf("loop visits acceptance sets %b, want %b", accept, want)
+	}
+	if missing := uncompensated(g, l.Loop); len(missing) > 0 {
+		return fmt.Errorf("loop lowers counters %v and never raises them", missing)
 	}
 	return fairLoop(g, nodes, l.Loop)
 }

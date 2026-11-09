@@ -1,0 +1,33 @@
+---
+# After closing and draining, nothing is enabled; that's the intended end.
+deadlock_detection: false
+---
+
+# Example 17-02: Cardinality counter liveness
+# Messages are sent until the channel closes; every message is eventually
+# acked. Liveness: after closing, pending eventually drains to zero.
+# Demonstrates: liveness with cardinality counters
+#
+# Ack can turn MANY into MANY again, so the abstract graph has a loop where
+# Ack runs forever and pending stays MANY. No real count can shrink forever,
+# and the liveness engine ignores loops that decrement a counter without
+# ever incrementing it. Send is unfair: sending may stop at any time.
+
+action Init:
+    pending = cardinality.counter(0)
+    closing = False
+
+atomic action Send:
+    require not closing
+    pending = pending.inc()
+
+atomic fair action Close:
+    require not closing
+    closing = True
+
+atomic fair action Ack:
+    require not pending.is_zero()
+    pending = oneof pending.dec()
+
+eventually always assertion Drained:
+    return closing and pending.is_zero()

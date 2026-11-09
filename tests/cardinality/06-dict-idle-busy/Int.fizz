@@ -1,0 +1,35 @@
+---
+deadlock_detection: false
+---
+# Int version of Counter.fizz. The worker count bounds the values:
+# idle + busy == N.
+
+N = 3
+
+action Init:
+    counts = {"idle": N, "busy": 0}
+    closing = False
+
+atomic action Start:
+    require not closing
+    require counts["idle"] > 0
+    counts["idle"] = counts["idle"] - 1
+    counts["busy"] = counts["busy"] + 1
+
+atomic fair action Finish:
+    require counts["busy"] > 0
+    counts["busy"] = counts["busy"] - 1
+    counts["idle"] = counts["idle"] + 1
+
+atomic action Shutdown:
+    require not closing
+    closing = True
+
+always eventually assertion SometimesIdle:
+    return counts["busy"] == 0
+
+eventually always assertion DrainedAfterShutdown:
+    return not closing or counts["busy"] == 0
+
+eventually always assertion AllIdleAfterShutdown:
+    return not closing or counts["idle"] >= 2

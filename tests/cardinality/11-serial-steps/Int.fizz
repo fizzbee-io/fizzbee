@@ -1,0 +1,20 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+---
+# Int version of Counter.fizz. pending is bounded by the number of Work
+# threads in flight (max_concurrent_actions, default 2), so there is no N.
+
+action Init:
+    pending = 0
+
+fair action Work:
+    pending = pending + 1
+    pending = pending - 1
+
+always eventually assertion Empty:
+    return pending == 0
+
+always eventually assertion AtMostOne:
+    return pending <= 1

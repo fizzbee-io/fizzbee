@@ -1,0 +1,28 @@
+---
+deadlock_detection: false
+---
+# Arithmetic, ordering and int() on a counter are errors. Each assertion
+# applies one such operation, so each run (one assertion at a time) must
+# end in an error.
+
+action Init:
+    pending = cardinality.counter(1)
+
+atomic action Send:
+    pending = pending.inc()
+
+always assertion Plus:
+    x = pending + 1
+    return True
+
+always assertion Minus:
+    x = pending - 1
+    return True
+
+always assertion Less:
+    x = pending < cardinality.counter(2)
+    return True
+
+always assertion IntConv:
+    x = int(pending)
+    return True

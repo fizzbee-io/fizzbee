@@ -1,0 +1,4 @@
+# Int: AllZeroAfterStop PASS, ASometimesZero FAIL, for N=2..5.
+reason: after Stop, dropping a's decrement loops removes b's only increment (AtoB), then c's (BtoC), then CDrain's loops, and finally the Noise loops fail weak fairness of AtoB/BtoC/CDrain; before Stop Refill makes the cycle real.
+AllZeroAfterStop: PASS int=PASS
+ASometimesZero: FAIL int=FAIL loop_includes=Refill

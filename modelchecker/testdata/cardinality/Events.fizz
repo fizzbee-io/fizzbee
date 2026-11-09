@@ -1,0 +1,80 @@
+---
+options:
+  max_actions: 2
+deadlock_detection: false
+---
+
+def take(c):
+    return c.dec()
+
+role Server:
+    action Init:
+        self.pending = cardinality.counter(5)
+
+    atomic action Drain:
+        require not self.pending.is_zero()
+        self.pending = oneof self.pending.dec()
+
+symmetric role Worker:
+    action Init:
+        self.pending = cardinality.counter(5)
+
+    atomic action Drain:
+        require not self.pending.is_zero()
+        self.pending = oneof self.pending.dec()
+
+action Init:
+    a = cardinality.counter(5)
+    b = a
+    d = {"idle": cardinality.counter(5), "busy": cardinality.counter(0)}
+    l = [cardinality.counter(5), cardinality.counter(5)]
+    server = Server()
+    workers = [Worker(), Worker()]
+
+atomic action Dec:
+    require not a.is_zero()
+    a = oneof a.dec()
+
+atomic action DecIncDec:
+    require a.is_many()
+    a = oneof a.dec()
+    a = a.inc()
+    a = oneof a.dec()
+
+atomic action IncDec:
+    a = a.inc()
+    a = oneof a.dec()
+
+atomic action ThroughLocals:
+    require not a.is_zero()
+    x = a
+    y = oneof x.dec()
+    a = y
+
+atomic action ThroughFunction:
+    require not a.is_zero()
+    a = oneof take(a)
+
+atomic action Move:
+    require not d["idle"].is_zero()
+    d["idle"] = oneof d["idle"].dec()
+    d["busy"] = d["busy"].inc()
+
+atomic action Copy:
+    b = d["idle"]
+
+atomic action ReadOnly:
+    require not a.is_zero()
+    x = oneof a.dec()
+
+atomic action Reset:
+    a = cardinality.counter(0)
+
+atomic action ListElement:
+    require not l[1].is_zero()
+    l[1] = oneof l[1].dec()
+
+atomic action Swap:
+    tmp = l[0]
+    l[0] = l[1]
+    l[1] = tmp

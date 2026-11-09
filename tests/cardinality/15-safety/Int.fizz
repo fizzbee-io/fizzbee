@@ -1,0 +1,65 @@
+---
+deadlock_detection: false
+---
+# Int version of Counter.fizz: pending is bounded by N. The value API
+# assertions are written as the same facts about the abstraction of an int.
+
+N = 3
+
+def abstract(n):
+    if n == 0:
+        return "0"
+    if n == 1:
+        return "1"
+    return "MANY"
+
+action Init:
+    pending = 0
+    closed = False
+    done = False
+
+atomic action Send:
+    require not closed
+    require pending < N
+    pending = pending + 1
+
+atomic action Close:
+    require not closed
+    closed = True
+
+atomic fair action Ack:
+    require pending > 0
+    pending = pending - 1
+
+atomic fair action Finish:
+    require closed and not done
+    require pending == 0
+    done = True
+
+always assertion DoneImpliesEmpty:
+    return not done or pending == 0
+
+always assertion ExactlyOneAbstractValue:
+    return len([v for v in [pending == 0, pending == 1, pending >= 2] if v]) == 1
+
+always assertion BoolIsNonZero:
+    return bool(pending) == (pending != 0)
+
+always assertion StrForm:
+    s = abstract(pending)
+    return s in ("0", "1", "MANY") and (s == "MANY") == (pending >= 2) and (s == "0") == (pending == 0)
+
+always assertion EqualityIsAbstract:
+    return (abstract(2) == abstract(7)
+            and abstract(1) != abstract(2)
+            and (abstract(pending) == abstract(5)) == (pending >= 2)
+            and (abstract(pending) == abstract(0)) == (pending == 0))
+
+always assertion IncDecShape:
+    return True
+
+always assertion NeverMany:
+    return pending < 2
+
+eventually always assertion EventuallyDoneAfterClose:
+    return not closed or done

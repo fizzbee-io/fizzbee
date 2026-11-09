@@ -1,0 +1,27 @@
+---
+deadlock_detection: false
+---
+# Two independent counters. `a` starts at MANY and is only ever
+# decremented (DecA is fair), so every loop with `a` at MANY decrements `a`
+# without incrementing it and is dropped. `b` has real inc/dec cycles.
+
+action Init:
+    a = cardinality.counter(3)
+    b = cardinality.counter(0)
+
+atomic fair action DecA:
+    require not a.is_zero()
+    a = oneof a.dec()
+
+atomic action IncB:
+    b = b.inc()
+
+atomic fair action DecB:
+    require not b.is_zero()
+    b = oneof b.dec()
+
+eventually always assertion AZero:
+    return a.is_zero()
+
+always eventually assertion BAtMostOne:
+    return not b.is_many()

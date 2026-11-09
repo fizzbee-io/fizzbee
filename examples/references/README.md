@@ -909,6 +909,18 @@ Examples 10-04 to 10-11 and 10-13 to 10-17 and 10-19 to 10-20 run with `FIZZ_LIV
 - **Key concepts**: `cardinality.counter`, `inc()`, `oneof c.dec()`, `is_zero()`
 - **Status**: ✅ PASSED
 
+### 17-02-cardinality-drain: Cardinality Counter Liveness
+- **State space**: 10 nodes, 6 unique states
+- **Purpose**: Pending messages drain after close, with any number sent
+- **Key concepts**: liveness with `cardinality.counter`; loops that only decrement a counter are ignored
+- **Status**: ✅ PASSED
+
+### 17-03-cardinality-unbounded: A Real Liveness Failure with a Counter
+- **State space**: 5 nodes, 3 unique states
+- **Purpose**: With sends that never stop, the backlog may stay MANY forever
+- **Key concepts**: loops that also increment are kept
+- **Status**: ❌ FAILED (expected)
+
 ### 99-01-checkpoints: Visualization Checkpoints
 - **State space**: 12 nodes, 10 unique states
 - **Purpose**: Using backtick labels to create visualization breakpoints

@@ -1,0 +1,25 @@
+---
+deadlock_detection: false
+---
+# Sends until Close; Ack is fair. After Close, Ack is a MANY -> MANY
+# self-loop that only decrements `pending`: the cardinality rule drops it,
+# so the queue is seen to drain.
+
+action Init:
+    pending = cardinality.counter(0)
+    closed = False
+
+atomic action Send:
+    require not closed
+    pending = pending.inc()
+
+atomic action Close:
+    require not closed
+    closed = True
+
+atomic fair action Ack:
+    require not pending.is_zero()
+    pending = oneof pending.dec()
+
+eventually always assertion Drained:
+    return not closed or pending.is_zero()

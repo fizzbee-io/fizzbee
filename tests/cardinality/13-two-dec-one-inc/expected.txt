@@ -1,0 +1,3 @@
+# Int (no N): AtMostOne PASS.
+reason: events are per step, so a lap of two decrement steps and one increment step has an increment and is kept although its net is -1: known, sound imprecision.
+AtMostOne: FAIL imprecision int=PASS loop_includes=LapInc

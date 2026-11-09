@@ -1,0 +1,10 @@
+# Int: all PASS except NeverMany FAIL, for N=2..5.
+reason: safety is unaffected by the loop rule: guarded decrements never hit ZERO, the value API facts hold in every reachable state, and NeverMany fails as with ints.
+DoneImpliesEmpty: PASS int=PASS
+ExactlyOneAbstractValue: PASS int=PASS
+BoolIsNonZero: PASS int=PASS
+StrForm: PASS int=PASS
+EqualityIsAbstract: PASS int=PASS
+IncDecShape: PASS int=PASS
+NeverMany: FAIL int=FAIL
+EventuallyDoneAfterClose: PASS int=PASS

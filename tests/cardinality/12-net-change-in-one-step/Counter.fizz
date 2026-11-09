@@ -1,0 +1,46 @@
+---
+deadlock_detection: false
+---
+# Several counter operations in one atomic step; only the net change counts.
+# Churn: dec, inc, dec on pending = net -1, a decrement. A loop of Churn
+#   alone is dropped.
+# WiggleQ: inc then dec on q = net 0, nothing recorded; so the DrainQ loop
+#   with WiggleQ in it still has no increment at q and is dropped.
+# WiggleR: dec then inc on r = net 0, likewise.
+
+action Init:
+    pending = cardinality.counter(3)
+    q = cardinality.counter(3)
+    r = cardinality.counter(3)
+
+atomic fair action Churn:
+    require not pending.is_zero()
+    pending = oneof pending.dec()
+    pending = pending.inc()
+    pending = oneof pending.dec()
+
+atomic fair action DrainQ:
+    require not q.is_zero()
+    q = oneof q.dec()
+
+atomic action WiggleQ:
+    q = q.inc()
+    q = oneof q.dec()
+
+atomic fair action DrainR:
+    require not r.is_zero()
+    r = oneof r.dec()
+
+atomic action WiggleR:
+    require not r.is_zero()
+    r = oneof r.dec()
+    r = r.inc()
+
+eventually always assertion PendingZero:
+    return pending.is_zero()
+
+eventually always assertion QZero:
+    return q.is_zero()
+
+eventually always assertion RZero:
+    return r.is_zero()

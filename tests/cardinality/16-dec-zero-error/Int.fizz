@@ -1,0 +1,22 @@
+---
+deadlock_detection: false
+---
+# Int version of Counter.fizz: decrementing at 0 calls fail(), the int
+# stand-in for the counter's error.
+
+N = 3
+
+action Init:
+    pending = 0
+
+atomic action Send:
+    require pending < N
+    pending = pending + 1
+
+atomic fair action Ack:
+    if pending == 0:
+        fail("dec on zero")
+    pending = pending - 1
+
+always assertion Trivial:
+    return True

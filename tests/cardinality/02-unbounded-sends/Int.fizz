@@ -1,0 +1,24 @@
+---
+deadlock_detection: false
+---
+# Int version of Counter.fizz: pending is bounded by N.
+# AtMostOne needs N >= 3 to fail (a 2 <-> 3 cycle); Empty fails for N >= 2.
+
+N = 3
+
+action Init:
+    pending = 0
+
+atomic action Send:
+    require pending < N
+    pending = pending + 1
+
+atomic fair action Ack:
+    require pending > 0
+    pending = pending - 1
+
+always eventually assertion AtMostOne:
+    return pending <= 1
+
+always eventually assertion Empty:
+    return pending == 0

@@ -1,0 +1,36 @@
+---
+deadlock_detection: false
+---
+# Int version of Counter.fizz: pending starts at 3 (MANY), bounded by N.
+
+N = 3
+
+action Init:
+    pending = 3
+    busy = False
+    stopped = False
+
+atomic action Produce:
+    require not stopped
+    require not busy
+    require pending < N
+    busy = True
+    pending = pending + 1
+
+atomic fair action Finish:
+    require busy
+    busy = False
+
+atomic fair action Ack:
+    require pending > 0
+    pending = pending - 1
+
+atomic action Stop:
+    require not stopped
+    stopped = True
+
+always eventually assertion Empty:
+    return pending == 0
+
+eventually always assertion DrainedAfterStop:
+    return not stopped or pending == 0

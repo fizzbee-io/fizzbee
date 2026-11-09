@@ -1,0 +1,42 @@
+---
+deadlock_detection: false
+---
+# Int version of Counter.fizz; all three start at 3 (MANY). No bound is
+# needed: no step raises a value above its start.
+
+action Init:
+    pending = 3
+    q = 3
+    r = 3
+
+atomic fair action Churn:
+    require pending > 0
+    pending = pending - 1
+    pending = pending + 1
+    pending = pending - 1
+
+atomic fair action DrainQ:
+    require q > 0
+    q = q - 1
+
+atomic action WiggleQ:
+    q = q + 1
+    q = q - 1
+
+atomic fair action DrainR:
+    require r > 0
+    r = r - 1
+
+atomic action WiggleR:
+    require r > 0
+    r = r - 1
+    r = r + 1
+
+eventually always assertion PendingZero:
+    return pending == 0
+
+eventually always assertion QZero:
+    return q == 0
+
+eventually always assertion RZero:
+    return r == 0

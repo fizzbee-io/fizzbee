@@ -1,0 +1,6 @@
+# Int (run with --no-symmetry-reduction, see int_flags.txt): Drained PASS, AllSometimesLow FAIL, ClosedServerDrains PASS, for N=2..5.
+# With symmetry reduction the Int run FAILS ClosedServerDrains too (symmetry merges the closed and the open server).
+reason: keys coarsen to Server/pending, so after the global Close all loops only decrement it (Drained PASS), but one closed server's Ack loop next to another server's Recv shares the key and is kept (ClosedServerDrains: allowed imprecision).
+Drained: PASS int=PASS
+AllSometimesLow: FAIL int=FAIL loop_includes=Recv
+ClosedServerDrains: FAIL imprecision int=PASS

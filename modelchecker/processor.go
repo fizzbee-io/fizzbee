@@ -238,6 +238,11 @@ type Process struct {
 	// assertionBindings holds, for each assertion instance a `for` header
 	// expanded to, the values its clause names are bound to.
 	assertionBindings map[string]starlark.StringDict
+
+	// cardStep tracks cardinality counters through the running step, from
+	// the yield point it started at to the next; see cardinality.go. Shared
+	// by the forks within the step, nil at yield points.
+	cardStep *lib.CardinalityStep
 }
 
 func NewProcess(name string, files []*ast.File, parent *Process) *Process {
@@ -387,6 +392,7 @@ func (p *Process) Fork() *Process {
 		Stats:       p.Stats.Clone(),
 
 		assertionBindings: p.assertionBindings,
+		cardStep:          p.cardStep,
 	}
 
 	if p.Stats.TotalActions <= 1 {
@@ -713,6 +719,7 @@ func (p *Process) createSymmetryContext() *lib.SymmetryContext {
 	ctx.FizzCall = p.fizzCall
 	ctx.Roles = &p.Roles
 	ctx.Channels = p.Channels
+	ctx.CardinalityStep = p.cardStep
 	return ctx
 }
 
@@ -1699,6 +1706,7 @@ func NewProcessorWithVisitedTracking(files []*ast.File, options *ast.StateSpaceO
 	}
 	lib.ClearRoleRefs()
 	lib.ResetSymmetryUsed()
+	lib.ResetCardinalityUsed()
 	durabilitySpec := &DurabilitySpec{RoleDurabilitySpec: make(map[string]RoleDurabilitySpec)}
 	mc := NewModelChecker("example")
 	for _, file := range files {
@@ -2676,7 +2684,14 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 
 	}
 	node.CachedHashCode = ""
+	if lib.CardinalityUsed() && node.Process.cardStep == nil {
+		node.Process.startCardinalityStep()
+	}
 	forks, yield := node.currentThread().Execute()
+	if yield && lib.CardinalityUsed() {
+		// Checked again: the step may have created the first counter.
+		node.Process.endCardinalityStep()
+	}
 	if len(forks) == 0 && !node.Enabled && !node.ThreadProgress {
 		p.offerScratch(node.Process)
 		return false, false

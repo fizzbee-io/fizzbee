@@ -1,0 +1,5 @@
+# Int: PendingDrainsAfterFreeze PASS, OtherDrainsAfterFreeze PASS, OtherDrains FAIL, for N=2..5.
+reason: `other = pending` is an unknown change (increment) at other only; after Freeze every loop still decrements pending without incrementing it, so it is dropped; before Freeze Refill+Snapshot keep other up for real.
+PendingDrainsAfterFreeze: PASS int=PASS
+OtherDrainsAfterFreeze: PASS int=PASS
+OtherDrains: FAIL int=FAIL loop_includes=Snapshot

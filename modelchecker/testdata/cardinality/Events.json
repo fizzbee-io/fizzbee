@@ -1,0 +1,1881 @@
+{
+  "sourceInfo": {
+    "fileName": "Events.fizz",
+    "start": {
+      "line": 7,
+      "column": 1
+    },
+    "end": {
+      "line": 81
+    }
+  },
+  "actions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 26,
+          "column": 1
+        },
+        "end": {
+          "line": 34
+        }
+      },
+      "name": "Init",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 27,
+            "column": 5
+          },
+          "end": {
+            "line": 34
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 27,
+                "column": 5
+              },
+              "end": {
+                "line": 28,
+                "column": 4
+              }
+            },
+            "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 27,
+                  "column": 5
+                },
+                "end": {
+                  "line": 27,
+                  "column": 30
+                }
+              },
+              "vars": [
+                "a"
+              ],
+              "name": "counter",
+              "args": [
+                {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 27,
+                      "column": 29
+                    },
+                    "end": {
+                      "line": 27,
+                      "column": 29
+                    }
+                  },
+                  "pyExpr": "5",
+                  "expr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 27,
+                        "column": 29
+                      },
+                      "end": {
+                        "line": 27,
+                        "column": 29
+                      }
+                    },
+                    "pyExpr": "5"
+                  }
+                }
+              ],
+              "receiver": "cardinality"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 28,
+                "column": 5
+              },
+              "end": {
+                "line": 29,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 28,
+                  "column": 5
+                },
+                "end": {
+                  "line": 28,
+                  "column": 9
+                }
+              },
+              "code": "b = a"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 29,
+                "column": 5
+              },
+              "end": {
+                "line": 30,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 29,
+                  "column": 5
+                },
+                "end": {
+                  "line": 29,
+                  "column": 72
+                }
+              },
+              "code": "d = {\"idle\": cardinality.counter(5), \"busy\": cardinality.counter(0)}"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 30,
+                "column": 5
+              },
+              "end": {
+                "line": 31,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 30,
+                  "column": 5
+                },
+                "end": {
+                  "line": 30,
+                  "column": 56
+                }
+              },
+              "code": "l = [cardinality.counter(5), cardinality.counter(5)]"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 31,
+                "column": 5
+              },
+              "end": {
+                "line": 32,
+                "column": 4
+              }
+            },
+            "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 31,
+                  "column": 5
+                },
+                "end": {
+                  "line": 31,
+                  "column": 21
+                }
+              },
+              "vars": [
+                "server"
+              ],
+              "name": "Server"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 32,
+                "column": 5
+              },
+              "end": {
+                "line": 34
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 32,
+                  "column": 5
+                },
+                "end": {
+                  "line": 32,
+                  "column": 34
+                }
+              },
+              "code": "workers = [Worker(), Worker()]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 34,
+          "column": 1
+        },
+        "end": {
+          "line": 38
+        }
+      },
+      "name": "Dec",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 35,
+            "column": 5
+          },
+          "end": {
+            "line": 38
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 35,
+                "column": 5
+              },
+              "end": {
+                "line": 36,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 35,
+                  "column": 5
+                },
+                "end": {
+                  "line": 35,
+                  "column": 27
+                }
+              },
+              "condition": "not a.is_zero()",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 35,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 35,
+                    "column": 27
+                  }
+                },
+                "pyExpr": "not a.is_zero()"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 36,
+                "column": 5
+              },
+              "end": {
+                "line": 38
+              }
+            },
+            "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 36,
+                  "column": 5
+                },
+                "end": {
+                  "line": 36,
+                  "column": 21
+                }
+              },
+              "loopVars": [
+                "a"
+              ],
+              "pyExpr": "a.dec()",
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 36,
+                    "column": 15
+                  },
+                  "end": {
+                    "line": 36,
+                    "column": 21
+                  }
+                },
+                "pyExpr": "a.dec()"
+              },
+              "targetKind": "ANY_TARGET_KIND_NAME",
+              "choiceVar": "a"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 38,
+          "column": 1
+        },
+        "end": {
+          "line": 44
+        }
+      },
+      "name": "DecIncDec",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 39,
+            "column": 5
+          },
+          "end": {
+            "line": 44
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 39,
+                "column": 5
+              },
+              "end": {
+                "line": 40,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 39,
+                  "column": 5
+                },
+                "end": {
+                  "line": 39,
+                  "column": 23
+                }
+              },
+              "condition": "a.is_many()",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 39,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 39,
+                    "column": 23
+                  }
+                },
+                "pyExpr": "a.is_many()"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 40,
+                "column": 5
+              },
+              "end": {
+                "line": 41,
+                "column": 4
+              }
+            },
+            "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 40,
+                  "column": 5
+                },
+                "end": {
+                  "line": 40,
+                  "column": 21
+                }
+              },
+              "loopVars": [
+                "a"
+              ],
+              "pyExpr": "a.dec()",
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 40,
+                    "column": 15
+                  },
+                  "end": {
+                    "line": 40,
+                    "column": 21
+                  }
+                },
+                "pyExpr": "a.dec()"
+              },
+              "targetKind": "ANY_TARGET_KIND_NAME",
+              "choiceVar": "a"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 41,
+                "column": 5
+              },
+              "end": {
+                "line": 42,
+                "column": 4
+              }
+            },
+            "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 41,
+                  "column": 5
+                },
+                "end": {
+                  "line": 41,
+                  "column": 15
+                }
+              },
+              "vars": [
+                "a"
+              ],
+              "name": "inc",
+              "receiver": "a"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 42,
+                "column": 5
+              },
+              "end": {
+                "line": 44
+              }
+            },
+            "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 42,
+                  "column": 5
+                },
+                "end": {
+                  "line": 42,
+                  "column": 21
+                }
+              },
+              "loopVars": [
+                "a"
+              ],
+              "pyExpr": "a.dec()",
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 42,
+                    "column": 15
+                  },
+                  "end": {
+                    "line": 42,
+                    "column": 21
+                  }
+                },
+                "pyExpr": "a.dec()"
+              },
+              "targetKind": "ANY_TARGET_KIND_NAME",
+              "choiceVar": "a"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 44,
+          "column": 1
+        },
+        "end": {
+          "line": 48
+        }
+      },
+      "name": "IncDec",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 45,
+            "column": 5
+          },
+          "end": {
+            "line": 48
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 45,
+                "column": 5
+              },
+              "end": {
+                "line": 46,
+                "column": 4
+              }
+            },
+            "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 45,
+                  "column": 5
+                },
+                "end": {
+                  "line": 45,
+                  "column": 15
+                }
+              },
+              "vars": [
+                "a"
+              ],
+              "name": "inc",
+              "receiver": "a"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 46,
+                "column": 5
+              },
+              "end": {
+                "line": 48
+              }
+            },
+            "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 46,
+                  "column": 5
+                },
+                "end": {
+                  "line": 46,
+                  "column": 21
+                }
+              },
+              "loopVars": [
+                "a"
+              ],
+              "pyExpr": "a.dec()",
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 46,
+                    "column": 15
+                  },
+                  "end": {
+                    "line": 46,
+                    "column": 21
+                  }
+                },
+                "pyExpr": "a.dec()"
+              },
+              "targetKind": "ANY_TARGET_KIND_NAME",
+              "choiceVar": "a"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 48,
+          "column": 1
+        },
+        "end": {
+          "line": 54
+        }
+      },
+      "name": "ThroughLocals",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 49,
+            "column": 5
+          },
+          "end": {
+            "line": 54
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 49,
+                "column": 5
+              },
+              "end": {
+                "line": 50,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 49,
+                  "column": 5
+                },
+                "end": {
+                  "line": 49,
+                  "column": 27
+                }
+              },
+              "condition": "not a.is_zero()",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 49,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 49,
+                    "column": 27
+                  }
+                },
+                "pyExpr": "not a.is_zero()"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 50,
+                "column": 5
+              },
+              "end": {
+                "line": 51,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 50,
+                  "column": 5
+                },
+                "end": {
+                  "line": 50,
+                  "column": 9
+                }
+              },
+              "code": "x = a"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 51,
+                "column": 5
+              },
+              "end": {
+                "line": 52,
+                "column": 4
+              }
+            },
+            "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 51,
+                  "column": 5
+                },
+                "end": {
+                  "line": 51,
+                  "column": 21
+                }
+              },
+              "loopVars": [
+                "y"
+              ],
+              "pyExpr": "x.dec()",
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 51,
+                    "column": 15
+                  },
+                  "end": {
+                    "line": 51,
+                    "column": 21
+                  }
+                },
+                "pyExpr": "x.dec()"
+              },
+              "targetKind": "ANY_TARGET_KIND_NAME",
+              "choiceVar": "y"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 52,
+                "column": 5
+              },
+              "end": {
+                "line": 54
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 52,
+                  "column": 5
+                },
+                "end": {
+                  "line": 52,
+                  "column": 9
+                }
+              },
+              "code": "a = y"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 54,
+          "column": 1
+        },
+        "end": {
+          "line": 58
+        }
+      },
+      "name": "ThroughFunction",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 55,
+            "column": 5
+          },
+          "end": {
+            "line": 58
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 55,
+                "column": 5
+              },
+              "end": {
+                "line": 56,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 55,
+                  "column": 5
+                },
+                "end": {
+                  "line": 55,
+                  "column": 27
+                }
+              },
+              "condition": "not a.is_zero()",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 55,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 55,
+                    "column": 27
+                  }
+                },
+                "pyExpr": "not a.is_zero()"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 56,
+                "column": 5
+              },
+              "end": {
+                "line": 58
+              }
+            },
+            "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 56,
+                  "column": 5
+                },
+                "end": {
+                  "line": 56,
+                  "column": 21
+                }
+              },
+              "loopVars": [
+                "a"
+              ],
+              "pyExpr": "take(a)",
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 56,
+                    "column": 15
+                  },
+                  "end": {
+                    "line": 56,
+                    "column": 21
+                  }
+                },
+                "pyExpr": "take(a)"
+              },
+              "targetKind": "ANY_TARGET_KIND_NAME",
+              "choiceVar": "a"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 58,
+          "column": 1
+        },
+        "end": {
+          "line": 63
+        }
+      },
+      "name": "Move",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 59,
+            "column": 5
+          },
+          "end": {
+            "line": 63
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 59,
+                "column": 5
+              },
+              "end": {
+                "line": 60,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 59,
+                  "column": 5
+                },
+                "end": {
+                  "line": 59,
+                  "column": 35
+                }
+              },
+              "condition": "not d[\"idle\"].is_zero()",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 59,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 59,
+                    "column": 35
+                  }
+                },
+                "pyExpr": "not d[\"idle\"].is_zero()"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 60,
+                "column": 5
+              },
+              "end": {
+                "line": 61,
+                "column": 4
+              }
+            },
+            "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 60,
+                  "column": 5
+                },
+                "end": {
+                  "line": 60,
+                  "column": 37
+                }
+              },
+              "loopVars": [
+                "d[\"idle\"]"
+              ],
+              "pyExpr": "d[\"idle\"].dec()",
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 60,
+                    "column": 23
+                  },
+                  "end": {
+                    "line": 60,
+                    "column": 37
+                  }
+                },
+                "pyExpr": "d[\"idle\"].dec()"
+              },
+              "targetKind": "ANY_TARGET_KIND_SUBSCRIPT"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 61,
+                "column": 5
+              },
+              "end": {
+                "line": 63
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 61,
+                  "column": 5
+                },
+                "end": {
+                  "line": 61,
+                  "column": 31
+                }
+              },
+              "code": "d[\"busy\"] = d[\"busy\"].inc()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 63,
+          "column": 1
+        },
+        "end": {
+          "line": 66
+        }
+      },
+      "name": "Copy",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 64,
+            "column": 5
+          },
+          "end": {
+            "line": 66
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 64,
+                "column": 5
+              },
+              "end": {
+                "line": 66
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 64,
+                  "column": 5
+                },
+                "end": {
+                  "line": 64,
+                  "column": 17
+                }
+              },
+              "code": "b = d[\"idle\"]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 66,
+          "column": 1
+        },
+        "end": {
+          "line": 70
+        }
+      },
+      "name": "ReadOnly",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 67,
+            "column": 5
+          },
+          "end": {
+            "line": 70
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 67,
+                "column": 5
+              },
+              "end": {
+                "line": 68,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 67,
+                  "column": 5
+                },
+                "end": {
+                  "line": 67,
+                  "column": 27
+                }
+              },
+              "condition": "not a.is_zero()",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 67,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 67,
+                    "column": 27
+                  }
+                },
+                "pyExpr": "not a.is_zero()"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 68,
+                "column": 5
+              },
+              "end": {
+                "line": 70
+              }
+            },
+            "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 68,
+                  "column": 5
+                },
+                "end": {
+                  "line": 68,
+                  "column": 21
+                }
+              },
+              "loopVars": [
+                "x"
+              ],
+              "pyExpr": "a.dec()",
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 68,
+                    "column": 15
+                  },
+                  "end": {
+                    "line": 68,
+                    "column": 21
+                  }
+                },
+                "pyExpr": "a.dec()"
+              },
+              "targetKind": "ANY_TARGET_KIND_NAME",
+              "choiceVar": "x"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 70,
+          "column": 1
+        },
+        "end": {
+          "line": 73
+        }
+      },
+      "name": "Reset",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 71,
+            "column": 5
+          },
+          "end": {
+            "line": 73
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 71,
+                "column": 5
+              },
+              "end": {
+                "line": 73
+              }
+            },
+            "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 71,
+                  "column": 5
+                },
+                "end": {
+                  "line": 71,
+                  "column": 30
+                }
+              },
+              "vars": [
+                "a"
+              ],
+              "name": "counter",
+              "args": [
+                {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 71,
+                      "column": 29
+                    },
+                    "end": {
+                      "line": 71,
+                      "column": 29
+                    }
+                  },
+                  "pyExpr": "0",
+                  "expr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 71,
+                        "column": 29
+                      },
+                      "end": {
+                        "line": 71,
+                        "column": 29
+                      }
+                    },
+                    "pyExpr": "0"
+                  }
+                }
+              ],
+              "receiver": "cardinality"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 73,
+          "column": 1
+        },
+        "end": {
+          "line": 77
+        }
+      },
+      "name": "ListElement",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 74,
+            "column": 5
+          },
+          "end": {
+            "line": 77
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 74,
+                "column": 5
+              },
+              "end": {
+                "line": 75,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 74,
+                  "column": 5
+                },
+                "end": {
+                  "line": 74,
+                  "column": 30
+                }
+              },
+              "condition": "not l[1].is_zero()",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 74,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 74,
+                    "column": 30
+                  }
+                },
+                "pyExpr": "not l[1].is_zero()"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 75,
+                "column": 5
+              },
+              "end": {
+                "line": 77
+              }
+            },
+            "anyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 75,
+                  "column": 5
+                },
+                "end": {
+                  "line": 75,
+                  "column": 27
+                }
+              },
+              "loopVars": [
+                "l[1]"
+              ],
+              "pyExpr": "l[1].dec()",
+              "iterExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 75,
+                    "column": 18
+                  },
+                  "end": {
+                    "line": 75,
+                    "column": 27
+                  }
+                },
+                "pyExpr": "l[1].dec()"
+              },
+              "targetKind": "ANY_TARGET_KIND_SUBSCRIPT"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 77,
+          "column": 1
+        },
+        "end": {
+          "line": 81
+        }
+      },
+      "name": "Swap",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 78,
+            "column": 5
+          },
+          "end": {
+            "line": 81
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 78,
+                "column": 5
+              },
+              "end": {
+                "line": 79,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 78,
+                  "column": 5
+                },
+                "end": {
+                  "line": 78,
+                  "column": 14
+                }
+              },
+              "code": "tmp = l[0]"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 79,
+                "column": 5
+              },
+              "end": {
+                "line": 80,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 79,
+                  "column": 5
+                },
+                "end": {
+                  "line": 79,
+                  "column": 15
+                }
+              },
+              "code": "l[0] = l[1]"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 80,
+                "column": 5
+              },
+              "end": {
+                "line": 81
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 80,
+                  "column": 5
+                },
+                "end": {
+                  "line": 80,
+                  "column": 14
+                }
+              },
+              "code": "l[1] = tmp"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "stmts": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 7,
+          "column": 1
+        },
+        "end": {
+          "line": 10
+        }
+      },
+      "pyStmt": {
+        "sourceInfo": {
+          "start": {
+            "line": 7,
+            "column": 1
+          },
+          "end": {
+            "line": 10
+          }
+        },
+        "code": "def take(c):\n    return c.dec()\n\n"
+      }
+    }
+  ],
+  "roles": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 10,
+          "column": 1
+        },
+        "end": {
+          "line": 18
+        }
+      },
+      "name": "Server",
+      "actions": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 11,
+              "column": 5
+            },
+            "end": {
+              "line": 14,
+              "column": 4
+            }
+          },
+          "name": "Init",
+          "flow": "FLOW_ATOMIC",
+          "fairness": {
+            "level": "FAIRNESS_LEVEL_STRONG"
+          },
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 12,
+                "column": 9
+              },
+              "end": {
+                "line": 14,
+                "column": 4
+              }
+            },
+            "flow": "FLOW_ATOMIC",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 12,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 14,
+                    "column": 4
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 12,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 12,
+                      "column": 45
+                    }
+                  },
+                  "code": "self.pending = cardinality.counter(5)"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 14,
+              "column": 5
+            },
+            "end": {
+              "line": 18
+            }
+          },
+          "name": "Drain",
+          "flow": "FLOW_ATOMIC",
+          "fairness": {
+            "level": "FAIRNESS_LEVEL_UNFAIR"
+          },
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 15,
+                "column": 9
+              },
+              "end": {
+                "line": 18
+              }
+            },
+            "flow": "FLOW_ATOMIC",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 15,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 16,
+                    "column": 8
+                  }
+                },
+                "requireStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 15,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 15,
+                      "column": 42
+                    }
+                  },
+                  "condition": "not self.pending.is_zero()",
+                  "conditionExpr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 15,
+                        "column": 17
+                      },
+                      "end": {
+                        "line": 15,
+                        "column": 42
+                      }
+                    },
+                    "pyExpr": "not self.pending.is_zero()"
+                  }
+                }
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 16,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 18
+                  }
+                },
+                "anyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 16,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 16,
+                      "column": 47
+                    }
+                  },
+                  "loopVars": [
+                    "self.pending"
+                  ],
+                  "pyExpr": "self.pending.dec()",
+                  "iterExpr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 16,
+                        "column": 30
+                      },
+                      "end": {
+                        "line": 16,
+                        "column": 47
+                      }
+                    },
+                    "pyExpr": "self.pending.dec()"
+                  },
+                  "targetKind": "ANY_TARGET_KIND_ATTRIBUTE"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 18,
+          "column": 1
+        },
+        "end": {
+          "line": 26
+        }
+      },
+      "name": "Worker",
+      "modifiers": [
+        "symmetric"
+      ],
+      "actions": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 19,
+              "column": 5
+            },
+            "end": {
+              "line": 22,
+              "column": 4
+            }
+          },
+          "name": "Init",
+          "flow": "FLOW_ATOMIC",
+          "fairness": {
+            "level": "FAIRNESS_LEVEL_STRONG"
+          },
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 20,
+                "column": 9
+              },
+              "end": {
+                "line": 22,
+                "column": 4
+              }
+            },
+            "flow": "FLOW_ATOMIC",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 20,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 22,
+                    "column": 4
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 20,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 20,
+                      "column": 45
+                    }
+                  },
+                  "code": "self.pending = cardinality.counter(5)"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 22,
+              "column": 5
+            },
+            "end": {
+              "line": 26
+            }
+          },
+          "name": "Drain",
+          "flow": "FLOW_ATOMIC",
+          "fairness": {
+            "level": "FAIRNESS_LEVEL_UNFAIR"
+          },
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 23,
+                "column": 9
+              },
+              "end": {
+                "line": 26
+              }
+            },
+            "flow": "FLOW_ATOMIC",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 23,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 24,
+                    "column": 8
+                  }
+                },
+                "requireStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 23,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 23,
+                      "column": 42
+                    }
+                  },
+                  "condition": "not self.pending.is_zero()",
+                  "conditionExpr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 23,
+                        "column": 17
+                      },
+                      "end": {
+                        "line": 23,
+                        "column": 42
+                      }
+                    },
+                    "pyExpr": "not self.pending.is_zero()"
+                  }
+                }
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 24,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 26
+                  }
+                },
+                "anyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 24,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 24,
+                      "column": 47
+                    }
+                  },
+                  "loopVars": [
+                    "self.pending"
+                  ],
+                  "pyExpr": "self.pending.dec()",
+                  "iterExpr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 24,
+                        "column": 30
+                      },
+                      "end": {
+                        "line": 24,
+                        "column": 47
+                      }
+                    },
+                    "pyExpr": "self.pending.dec()"
+                  },
+                  "targetKind": "ANY_TARGET_KIND_ATTRIBUTE"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "frontMatter": {
+    "yaml": "\noptions:\n  max_actions: 2\ndeadlock_detection: false\n"
+  }
+}

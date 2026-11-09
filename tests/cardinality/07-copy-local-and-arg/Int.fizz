@@ -1,0 +1,44 @@
+---
+deadlock_detection: false
+---
+# Int version of Counter.fizz: Start is bounded by N.
+
+N = 3
+
+atomic func take_one(c):
+    return c - 1
+
+action Init:
+    counts = {"busy": 0}
+    other = {"busy": 0}
+    closing = False
+
+atomic action Start:
+    require not closing
+    require counts["busy"] < N and other["busy"] < N
+    counts["busy"] = counts["busy"] + 1
+    other["busy"] = other["busy"] + 1
+
+atomic fair action FinishLocal:
+    require counts["busy"] > 0
+    x = counts["busy"]
+    y = x - 1
+    counts["busy"] = y
+
+atomic fair action FinishFunc:
+    require other["busy"] > 0
+    y = take_one(other["busy"])
+    other["busy"] = y
+
+atomic action Shutdown:
+    require not closing
+    closing = True
+
+eventually always assertion LocalDrains:
+    return not closing or counts["busy"] == 0
+
+eventually always assertion FuncDrains:
+    return not closing or other["busy"] == 0
+
+always eventually assertion LocalSometimesLow:
+    return counts["busy"] <= 1

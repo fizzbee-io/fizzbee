@@ -1,0 +1,45 @@
+---
+deadlock_detection: false
+---
+# Int version of Counter.fizz: each server's pending is bounded by N.
+
+N = 3
+NUM_SERVERS = 2
+
+symmetric role Server:
+    action Init:
+        self.pending = 0
+        self.closed = False
+
+    atomic action Recv:
+        require not all_closed
+        require not self.closed
+        require self.pending < N
+        self.pending = self.pending + 1
+
+    atomic action CloseOne:
+        require not self.closed
+        self.closed = True
+
+    atomic fair action Ack:
+        require self.pending > 0
+        self.pending = self.pending - 1
+
+action Init:
+    all_closed = False
+    servers = bag()
+    for i in range(NUM_SERVERS):
+        servers.add(Server())
+
+atomic action Close:
+    require not all_closed
+    all_closed = True
+
+eventually always assertion Drained:
+    return not all_closed or all([s.pending == 0 for s in servers])
+
+always eventually assertion AllSometimesLow:
+    return all([s.pending <= 1 for s in servers])
+
+eventually always assertion ClosedServerDrains:
+    return all([s.pending == 0 for s in servers if s.closed])

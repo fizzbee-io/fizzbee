@@ -1,0 +1,17 @@
+---
+deadlock_detection: false
+---
+# Ack decrements without a guard. Right after Init pending is ZERO, so
+# pending.dec() must be an error, not an empty choice.
+
+action Init:
+    pending = cardinality.counter(0)
+
+atomic action Send:
+    pending = pending.inc()
+
+atomic fair action Ack:
+    pending = oneof pending.dec()
+
+always assertion Trivial:
+    return True

@@ -1,0 +1,5 @@
+# Int: LocalDrains PASS, FuncDrains PASS for N=2..5; LocalSometimesLow N=2 PASS, N=3..5 FAIL.
+reason: the stored value derives from the start counter through a local or a function argument and return, so the net change is -1 (a decrement) and the post-Shutdown loops are dropped; Start makes the pre-Shutdown cycle real.
+LocalDrains: PASS int=PASS
+FuncDrains: PASS int=PASS
+LocalSometimesLow: FAIL int=FAIL loop_includes=Start

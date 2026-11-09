@@ -1,0 +1,1 @@
+--no-symmetry-reduction  # symmetry reduction gives a spurious FAIL for ClosedServerDrains

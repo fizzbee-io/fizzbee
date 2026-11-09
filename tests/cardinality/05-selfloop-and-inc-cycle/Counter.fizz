@@ -1,0 +1,37 @@
+---
+deadlock_detection: false
+---
+# One strongly connected component at pending=MANY holds both Ack
+# self-loops (decrement only) and the cycle Produce -> Finish -> Ack, which
+# increments `pending`. Dropping the self-loops must keep the cycle: it is a
+# real run, and its counterexample must show Produce (the increment).
+# After Stop only the Ack self-loops remain, and they are dropped.
+
+action Init:
+    pending = cardinality.counter(3)
+    busy = False
+    stopped = False
+
+atomic action Produce:
+    require not stopped
+    require not busy
+    busy = True
+    pending = pending.inc()
+
+atomic fair action Finish:
+    require busy
+    busy = False
+
+atomic fair action Ack:
+    require not pending.is_zero()
+    pending = oneof pending.dec()
+
+atomic action Stop:
+    require not stopped
+    stopped = True
+
+always eventually assertion Empty:
+    return pending.is_zero()
+
+eventually always assertion DrainedAfterStop:
+    return not stopped or pending.is_zero()

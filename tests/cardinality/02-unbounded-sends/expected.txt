@@ -1,0 +1,4 @@
+# Int: AtMostOne N=2 PASS, N=3..5 FAIL (needs a 2<->3 cycle); Empty N=2..5 FAIL.
+reason: Send never stops, so Send/Ack cycles at MANY are real runs that increment pending; the loop is kept and must show Send.
+AtMostOne: FAIL int=FAIL loop_includes=Send
+Empty: FAIL int=FAIL loop_includes=Send

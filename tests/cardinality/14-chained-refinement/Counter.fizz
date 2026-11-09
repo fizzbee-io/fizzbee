@@ -1,0 +1,50 @@
+---
+deadlock_detection: false
+---
+# Work flows a -> b -> c -> out. After Stop nothing increments a, so:
+#   round 1: loops that decrement a (AtoB) are dropped; AtoB was b's only
+#            increment, so
+#   round 2: loops that decrement b (BtoC) are dropped; BtoC was c's only
+#            increment, so
+#   round 3: loops that decrement c (CDrain) are dropped;
+#   round 4: only Noise loops are left, where the fair AtoB/BtoC/CDrain are
+#            enabled but never taken: ordinary weak fairness drops them.
+# Before Stop, Refill keeps a up and the full cycle is a real run.
+
+action Init:
+    a = cardinality.counter(3)
+    b = cardinality.counter(0)
+    c = cardinality.counter(0)
+    stopped = False
+    flag = False
+
+atomic action Refill:
+    require not stopped
+    a = a.inc()
+
+atomic action Stop:
+    require not stopped
+    stopped = True
+
+atomic fair action AtoB:
+    require not a.is_zero()
+    a = oneof a.dec()
+    b = b.inc()
+
+atomic fair action BtoC:
+    require not b.is_zero()
+    b = oneof b.dec()
+    c = c.inc()
+
+atomic fair action CDrain:
+    require not c.is_zero()
+    c = oneof c.dec()
+
+atomic action Noise:
+    flag = not flag
+
+eventually always assertion AllZeroAfterStop:
+    return not stopped or (a.is_zero() and b.is_zero() and c.is_zero())
+
+always eventually assertion ASometimesZero:
+    return a.is_zero()

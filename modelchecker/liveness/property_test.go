@@ -97,6 +97,23 @@ func randomGraph(r source) *liveness.Graph {
 			g.FailsIfStuck = randomBools(r, n)
 		}
 	}
+	// Counters, drawn last so the graphs above stay as they were.
+	if r.Intn(3) == 0 {
+		g.NumCounters = 1 + r.Intn(3)
+		for i := range g.Edges {
+			for k := 0; k < g.NumCounters; k++ {
+				switch r.Intn(5) {
+				case 0:
+					g.Edges[i].Dec = append(g.Edges[i].Dec, k)
+				case 1:
+					g.Edges[i].Inc = append(g.Edges[i].Inc, k)
+				case 2:
+					g.Edges[i].Dec = append(g.Edges[i].Dec, k)
+					g.Edges[i].Inc = append(g.Edges[i].Inc, k)
+				}
+			}
+		}
+	}
 	return g
 }
 
@@ -143,13 +160,13 @@ func TestMatchesOracle(t *testing.T) {
 // permute relabels nodes and shuffles edge and Enabled order.
 func permute(g *liveness.Graph, r *rand.Rand) *liveness.Graph {
 	p := r.Perm(g.NumNodes)
-	h := &liveness.Graph{NumNodes: g.NumNodes, Actions: g.Actions, NumAcceptSets: g.NumAcceptSets}
+	h := &liveness.Graph{NumNodes: g.NumNodes, Actions: g.Actions, NumAcceptSets: g.NumAcceptSets, NumCounters: g.NumCounters}
 	for _, n := range g.Init {
 		h.Init = append(h.Init, p[n])
 	}
 	for _, i := range r.Perm(len(g.Edges)) {
 		e := g.Edges[i]
-		h.Edges = append(h.Edges, liveness.Edge{From: p[e.From], To: p[e.To], Action: e.Action})
+		h.Edges = append(h.Edges, liveness.Edge{From: p[e.From], To: p[e.To], Action: e.Action, Dec: e.Dec, Inc: e.Inc})
 	}
 	if g.Enabled != nil {
 		h.Enabled = make([][]int, g.NumNodes)

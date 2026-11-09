@@ -1,0 +1,16 @@
+Model checking examples/references/17-02-cardinality-drain/Drain.json
+configFileName: examples/references/17-02-cardinality-drain/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2} deadlock_detection:false
+Nodes: 10, queued: 0, elapsed: 668.639µs
+Peak (new): queue=3 pendingActionStarts=3
+Time taken for model checking: 700.794µs
+Writen graph dotfile: examples/references/17-02-cardinality-drain/out/run_2026-11-09_21-47-39/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/17-02-cardinality-drain/out/run_2026-11-09_21-47-39/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 10 Unique states: 6
+Checking eventually always Drained
+IsLive: true
+Time taken to check liveness: 330.744µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/17-02-cardinality-drain/out/run_2026-11-09_21-47-39

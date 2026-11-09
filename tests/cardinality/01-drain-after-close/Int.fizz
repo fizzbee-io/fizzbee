@@ -1,0 +1,26 @@
+---
+deadlock_detection: false
+---
+# Int version of Counter.fizz: pending is bounded by N.
+
+N = 3
+
+action Init:
+    pending = 0
+    closed = False
+
+atomic action Send:
+    require not closed
+    require pending < N
+    pending = pending + 1
+
+atomic action Close:
+    require not closed
+    closed = True
+
+atomic fair action Ack:
+    require pending > 0
+    pending = pending - 1
+
+eventually always assertion Drained:
+    return not closed or pending == 0

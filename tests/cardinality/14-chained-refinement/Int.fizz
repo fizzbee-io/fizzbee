@@ -1,0 +1,47 @@
+---
+deadlock_detection: false
+---
+# Int version of Counter.fizz: a starts at 3 (MANY). Refill keeps the total
+# a + b + c below N, so every counter stays bounded (an unbounded b runs
+# into max_actions, whose cut-off states look like a stutter and FAIL).
+
+N = 3
+
+action Init:
+    a = 3
+    b = 0
+    c = 0
+    stopped = False
+    flag = False
+
+atomic action Refill:
+    require not stopped
+    require a + b + c < N
+    a = a + 1
+
+atomic action Stop:
+    require not stopped
+    stopped = True
+
+atomic fair action AtoB:
+    require a > 0
+    a = a - 1
+    b = b + 1
+
+atomic fair action BtoC:
+    require b > 0
+    b = b - 1
+    c = c + 1
+
+atomic fair action CDrain:
+    require c > 0
+    c = c - 1
+
+atomic action Noise:
+    flag = not flag
+
+eventually always assertion AllZeroAfterStop:
+    return not stopped or (a == 0 and b == 0 and c == 0)
+
+always eventually assertion ASometimesZero:
+    return a == 0

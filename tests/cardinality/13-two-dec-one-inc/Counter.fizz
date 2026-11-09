@@ -1,0 +1,35 @@
+---
+deadlock_detection: false
+---
+# Each lap decrements pending twice and increments it once, in three
+# separate steps (LapDec1, LapDec2, LapInc): net -1 per lap, so with ints
+# the laps stop. The cardinality rule looks at single steps, so the MANY
+# loop (dec, dec, inc) has an increment and is kept: a known imprecision,
+# Counter FAILS where Int PASSES.
+# The steps are separate atomic actions, not one serial action: in a serial
+# action `x = oneof ...` is not followed by a yield point, and the steps
+# merged into one with net -1 (a plain decrement).
+
+action Init:
+    pending = cardinality.counter(3)
+    phase = 0
+
+atomic fair action LapDec1:
+    require phase == 0
+    require pending.is_many()
+    pending = oneof pending.dec()
+    phase = 1
+
+atomic fair action LapDec2:
+    require phase == 1
+    require not pending.is_zero()
+    pending = oneof pending.dec()
+    phase = 2
+
+atomic fair action LapInc:
+    require phase == 2
+    pending = pending.inc()
+    phase = 0
+
+eventually always assertion AtMostOne:
+    return not pending.is_many()

@@ -295,3 +295,80 @@ func TestInvalidGraph(t *testing.T) {
 		}
 	}
 }
+
+// A counter decremented forever and never incremented is not a run.
+func TestCompassionDropsDecrementOnlyLoop(t *testing.T) {
+	g := &liveness.Graph{
+		NumNodes:    1,
+		Init:        []int{0},
+		Actions:     []liveness.Fairness{liveness.Weak},
+		NumCounters: 1,
+		Edges:       []liveness.Edge{{From: 0, To: 0, Action: 0, Dec: []int{0}}},
+	}
+	g.EnabledFromEdges()
+	g.SetAlwaysEventually([]bool{false})
+	if l := mustCheck(t, g); l != nil {
+		t.Fatalf("decrement-only loop reported: %+v", *l)
+	}
+}
+
+// A component with a decrement self-loop at A and a separate cycle through B
+// that increments: alternating is a real run, so the component stays, and
+// the reported loop must include the increment, not only the self-loop.
+func TestCompassionWitnessIncludesIncrement(t *testing.T) {
+	const a, b = 0, 1
+	g := &liveness.Graph{
+		NumNodes:    2,
+		Init:        []int{a},
+		Actions:     []liveness.Fairness{liveness.Weak, liveness.Unfair},
+		NumCounters: 1,
+		Edges: []liveness.Edge{
+			{From: a, To: a, Action: 0, Dec: []int{0}},
+			{From: a, To: b, Action: 1},
+			{From: b, To: a, Action: 1, Inc: []int{0}},
+		},
+	}
+	g.EnabledFromEdges()
+	g.SetAlwaysEventually([]bool{false, false})
+	g.FailsIfStuck = nil // only loops count here
+	l := mustCheck(t, g)
+	if l == nil {
+		t.Fatal("real loop dropped")
+	}
+	inc := false
+	for _, e := range l.Loop {
+		if len(g.Edges[e].Inc) > 0 {
+			inc = true
+		}
+	}
+	if !inc {
+		t.Fatalf("loop %v has no increment", l.Loop)
+	}
+}
+
+// Dropping counter 0's decrement removes counter 1's only increment from the
+// loop through all three nodes and splits the component. In the pieces,
+// counter 2's decrement at A and counter 1's at C have no increment left, so
+// each piece needs another round, and no loop survives.
+func TestCompassionCascade(t *testing.T) {
+	const a, b, c = 0, 1, 2
+	const w, u = 0, 1
+	g := &liveness.Graph{
+		NumNodes:    3,
+		Init:        []int{a},
+		Actions:     []liveness.Fairness{liveness.Weak, liveness.Unfair},
+		NumCounters: 3,
+		Edges: []liveness.Edge{
+			{From: a, To: b, Action: u, Dec: []int{0}, Inc: []int{1}},
+			{From: b, To: c, Action: u, Dec: []int{1}},
+			{From: c, To: a, Action: u, Inc: []int{2}},
+			{From: c, To: c, Action: w, Dec: []int{1}, Inc: []int{2}},
+			{From: a, To: a, Action: u, Dec: []int{2}},
+		},
+		Enabled: [][]int{{u, w}, {u, w}, {u, w}},
+	}
+	g.SetAlwaysEventually([]bool{false, false, false})
+	if l := mustCheck(t, g); l != nil {
+		t.Fatalf("expected no fair loop, got %+v", *l)
+	}
+}

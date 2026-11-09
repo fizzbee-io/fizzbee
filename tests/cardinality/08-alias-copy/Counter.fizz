@@ -1,0 +1,40 @@
+---
+deadlock_detection: false
+---
+# `other = pending` copies the counter value into a second location. Each
+# location is tracked on its own: the copy counts as an increment (unknown
+# change) at `other` only, never at `pending`. Before Freeze, pending is
+# kept up by Refill; after it, pending only drains.
+
+action Init:
+    pending = cardinality.counter(3)
+    other = cardinality.counter(0)
+    frozen = False
+
+atomic action Refill:
+    require not frozen
+    pending = pending.inc()
+
+atomic action Snapshot:
+    other = pending
+
+atomic fair action DecPending:
+    require not pending.is_zero()
+    pending = oneof pending.dec()
+
+atomic fair action DecOther:
+    require not other.is_zero()
+    other = oneof other.dec()
+
+atomic action Freeze:
+    require not frozen
+    frozen = True
+
+eventually always assertion PendingDrainsAfterFreeze:
+    return not frozen or pending.is_zero()
+
+eventually always assertion OtherDrainsAfterFreeze:
+    return not frozen or other.is_zero()
+
+eventually always assertion OtherDrains:
+    return other.is_zero()

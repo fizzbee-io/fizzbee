@@ -1,0 +1,3 @@
+# Int (N=2..5): Drained PASS.
+reason: after Close the only loop is Ack decrementing pending at MANY with no increment, which the rule drops; without the rule MANY->MANY Ack would be a FAIL (checked with a hand-written 0/1/MANY string abstraction).
+Drained: PASS int=PASS

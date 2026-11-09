@@ -1,0 +1,31 @@
+---
+deadlock_detection: false
+---
+# Int version of Counter.fizz: b1 is bounded by N; a1, a2 start at 3 (MANY).
+
+N = 3
+
+action Init:
+    a1 = 3
+    b1 = 0
+    a2 = 3
+    b2 = 0
+
+atomic fair action DecA1:
+    require a1 > 0
+    a1 = a1 - 1
+
+atomic action IncB1:
+    require b1 < N
+    b1 = b1 + 1
+
+atomic fair action Transfer:
+    require a2 > 0
+    a2 = a2 - 1
+    b2 = b2 + 1
+
+eventually always assertion A1Zero:
+    return a1 == 0
+
+eventually always assertion A2Zero:
+    return a2 == 0

@@ -1,0 +1,45 @@
+---
+deadlock_detection: false
+---
+# The decremented value reaches its location through a local variable
+# (FinishLocal) or through a function argument and return value
+# (FinishFunc). The net change at the location is still -1, so after
+# Shutdown the draining loops are dropped.
+
+atomic func take_one(c):
+    r = oneof c.dec()
+    return r
+
+action Init:
+    counts = {"busy": cardinality.counter(0)}
+    other = {"busy": cardinality.counter(0)}
+    closing = False
+
+atomic action Start:
+    require not closing
+    counts["busy"] = counts["busy"].inc()
+    other["busy"] = other["busy"].inc()
+
+atomic fair action FinishLocal:
+    require not counts["busy"].is_zero()
+    x = counts["busy"]
+    y = oneof x.dec()
+    counts["busy"] = y
+
+atomic fair action FinishFunc:
+    require not other["busy"].is_zero()
+    y = take_one(other["busy"])
+    other["busy"] = y
+
+atomic action Shutdown:
+    require not closing
+    closing = True
+
+eventually always assertion LocalDrains:
+    return not closing or counts["busy"].is_zero()
+
+eventually always assertion FuncDrains:
+    return not closing or other["busy"].is_zero()
+
+always eventually assertion LocalSometimesLow:
+    return not counts["busy"].is_many()

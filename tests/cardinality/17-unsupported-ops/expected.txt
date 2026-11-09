@@ -1,0 +1,6 @@
+# Int: every assertion ERROR (each calls fail()).
+reason: +, -, < and int() on a counter are errors.
+Plus: ERROR int=ERROR
+Minus: ERROR int=ERROR
+Less: ERROR int=ERROR
+IntConv: ERROR int=ERROR

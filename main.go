@@ -961,6 +961,11 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 				}
 			}
 			if !simulation && !p1.Stopped() && guidedTrace == nil {
+				otherEngine := (isStrictLiveness(stateConfig) && (os.Getenv("FIZZ_LIVENESS_ENGINE") == "cycles" || os.Getenv("FIZZ_LIVENESS_ENGINE") == "shadow")) ||
+					stateConfig.GetLiveness() == "eventual" || stateConfig.GetLiveness() == "nondeterministic"
+				if lib.CardinalityUsed() && otherEngine {
+					fmt.Println("Warning: only the default liveness engine knows that a cardinality counter can't decrease forever; this one may report loops that only decrement a counter")
+				}
 				if isStrictLiveness(stateConfig) {
 					// FIZZ_LIVENESS_ENGINE=cycles falls back to the old cycle finder,
 					// and "shadow" runs both and reports how they compare.

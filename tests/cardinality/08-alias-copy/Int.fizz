@@ -1,0 +1,40 @@
+---
+deadlock_detection: false
+---
+# Int version of Counter.fizz: pending starts at 3 (MANY), Refill bounded by N.
+
+N = 3
+
+action Init:
+    pending = 3
+    other = 0
+    frozen = False
+
+atomic action Refill:
+    require not frozen
+    require pending < N
+    pending = pending + 1
+
+atomic action Snapshot:
+    other = pending
+
+atomic fair action DecPending:
+    require pending > 0
+    pending = pending - 1
+
+atomic fair action DecOther:
+    require other > 0
+    other = other - 1
+
+atomic action Freeze:
+    require not frozen
+    frozen = True
+
+eventually always assertion PendingDrainsAfterFreeze:
+    return not frozen or pending == 0
+
+eventually always assertion OtherDrainsAfterFreeze:
+    return not frozen or other == 0
+
+eventually always assertion OtherDrains:
+    return other == 0

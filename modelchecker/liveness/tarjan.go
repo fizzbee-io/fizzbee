@@ -2,7 +2,8 @@ package liveness
 
 // tarjan finds strongly connected components of subgraphs of a Graph,
 // iteratively so deep graphs cannot overflow the goroutine stack. Only
-// non-crash edges between nodes of the current subgraph are followed.
+// non-crash, non-dropped edges between nodes of the current subgraph are
+// followed.
 type tarjan struct {
 	g       *Graph
 	index   []int
@@ -24,7 +25,7 @@ func newTarjan(g *Graph) *tarjan {
 
 func (t *tarjan) followable(edge int) bool {
 	e := t.g.Edges[edge]
-	return t.g.Actions[e.Action] != Crash && t.inSet[e.To] == t.stamp
+	return t.g.loopEdge(edge) && t.inSet[e.To] == t.stamp
 }
 
 // components returns the SCCs of the subgraph induced by nodes.

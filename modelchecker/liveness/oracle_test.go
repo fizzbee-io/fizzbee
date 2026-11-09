@@ -119,6 +119,27 @@ func oracle(g *liveness.Graph) bool {
 			continue
 		}
 
+		// Compassion: a counter lowered infinitely often is raised
+		// infinitely often.
+		lowered, raised := map[int]bool{}, map[int]bool{}
+		for _, e := range edges {
+			for _, k := range e.Dec {
+				lowered[k] = true
+			}
+			for _, k := range e.Inc {
+				raised[k] = true
+			}
+		}
+		compassionate := true
+		for k := range lowered {
+			if !raised[k] {
+				compassionate = false
+			}
+		}
+		if !compassionate {
+			continue
+		}
+
 		taken := make([]bool, len(g.Actions))
 		for _, e := range edges {
 			taken[e.Action] = true

@@ -1,0 +1,31 @@
+---
+deadlock_detection: false
+---
+# A decrement loop at `a` while an unrelated counter is incremented.
+# a1/b1: the increment of b1 is a separate action (IncB1).
+# a2/b2: the same step that decrements a2 increments b2 (Transfer).
+# Either way the loop never increments `a1`/`a2`, so it is dropped.
+
+action Init:
+    a1 = cardinality.counter(3)
+    b1 = cardinality.counter(0)
+    a2 = cardinality.counter(3)
+    b2 = cardinality.counter(0)
+
+atomic fair action DecA1:
+    require not a1.is_zero()
+    a1 = oneof a1.dec()
+
+atomic action IncB1:
+    b1 = b1.inc()
+
+atomic fair action Transfer:
+    require not a2.is_zero()
+    a2 = oneof a2.dec()
+    b2 = b2.inc()
+
+eventually always assertion A1Zero:
+    return a1.is_zero()
+
+eventually always assertion A2Zero:
+    return a2.is_zero()

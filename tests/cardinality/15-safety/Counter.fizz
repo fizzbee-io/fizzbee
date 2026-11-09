@@ -1,0 +1,61 @@
+---
+deadlock_detection: false
+---
+# Safety with a guarded decrement: dec is only reached when
+# `require not pending.is_zero()` holds, so no error. The always
+# assertions check the value API; NeverMany must fail as with ints.
+
+action Init:
+    pending = cardinality.counter(0)
+    closed = False
+    done = False
+
+atomic action Send:
+    require not closed
+    pending = pending.inc()
+
+atomic action Close:
+    require not closed
+    closed = True
+
+atomic fair action Ack:
+    require not pending.is_zero()
+    pending = oneof pending.dec()
+
+atomic fair action Finish:
+    require closed and not done
+    require pending.is_zero()
+    done = True
+
+always assertion DoneImpliesEmpty:
+    return not done or pending.is_zero()
+
+always assertion ExactlyOneAbstractValue:
+    return len([v for v in [pending.is_zero(), pending.is_one(), pending.is_many()] if v]) == 1
+
+always assertion BoolIsNonZero:
+    return bool(pending) == (not pending.is_zero())
+
+always assertion StrForm:
+    s = str(pending)
+    return s in ("0", "1", "MANY") and (s == "MANY") == pending.is_many() and (s == "0") == pending.is_zero()
+
+always assertion EqualityIsAbstract:
+    return (cardinality.counter(2) == cardinality.counter(7)
+            and cardinality.counter(1) != cardinality.counter(2)
+            and (pending == cardinality.counter(5)) == pending.is_many()
+            and (pending == cardinality.counter(0)) == pending.is_zero())
+
+always assertion IncDecShape:
+    return (cardinality.counter(0).inc().is_one()
+            and cardinality.counter(1).inc().is_many()
+            and cardinality.counter(9).inc().is_many()
+            and len(cardinality.counter(1).dec()) == 1
+            and cardinality.counter(1).dec()[0].is_zero()
+            and len(cardinality.counter(2).dec()) == 2)
+
+always assertion NeverMany:
+    return not pending.is_many()
+
+eventually always assertion EventuallyDoneAfterClose:
+    return not closed or done

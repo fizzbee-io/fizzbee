@@ -1,0 +1,45 @@
+---
+deadlock_detection: false
+---
+# Counters as list elements. The location is coarsened to queues/*, so an
+# increment of queues[1] and a decrement of queues[0] count as the same key.
+# Drained: after Close nothing increments any element, so loops are dropped.
+# Q0DrainsAfterClose0: queue 0 closes on its own while queue 1 keeps
+#   receiving; the coarsened key keeps queue 0's Ack loop alive: a known
+#   imprecision.
+
+action Init:
+    queues = [cardinality.counter(0), cardinality.counter(0)]
+    closed = False
+    closed0 = False
+
+atomic action Send:
+    require not closed
+    i = oneof [0, 1]
+    require i != 0 or not closed0
+    queues[i] = queues[i].inc()
+
+atomic action Close:
+    require not closed
+    closed = True
+
+atomic action Close0:
+    require not closed0
+    closed0 = True
+
+atomic fair action Ack0:
+    require not queues[0].is_zero()
+    queues[0] = oneof queues[0].dec()
+
+atomic fair action Ack1:
+    require not queues[1].is_zero()
+    queues[1] = oneof queues[1].dec()
+
+eventually always assertion Drained:
+    return not closed or (queues[0].is_zero() and queues[1].is_zero())
+
+always eventually assertion Q0SometimesLow:
+    return not queues[0].is_many()
+
+eventually always assertion Q0DrainsAfterClose0:
+    return not closed0 or queues[0].is_zero()

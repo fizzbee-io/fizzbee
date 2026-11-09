@@ -1,0 +1,43 @@
+---
+deadlock_detection: false
+---
+# Int version of Counter.fizz: each queue is bounded by N.
+
+N = 3
+
+action Init:
+    queues = [0, 0]
+    closed = False
+    closed0 = False
+
+atomic action Send:
+    require not closed
+    i = oneof [0, 1]
+    require i != 0 or not closed0
+    require queues[i] < N
+    queues[i] = queues[i] + 1
+
+atomic action Close:
+    require not closed
+    closed = True
+
+atomic action Close0:
+    require not closed0
+    closed0 = True
+
+atomic fair action Ack0:
+    require queues[0] > 0
+    queues[0] = queues[0] - 1
+
+atomic fair action Ack1:
+    require queues[1] > 0
+    queues[1] = queues[1] - 1
+
+eventually always assertion Drained:
+    return not closed or (queues[0] == 0 and queues[1] == 0)
+
+always eventually assertion Q0SometimesLow:
+    return queues[0] <= 1
+
+eventually always assertion Q0DrainsAfterClose0:
+    return not closed0 or queues[0] == 0

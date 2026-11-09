@@ -1,0 +1,48 @@
+Model checking examples/references/17-03-cardinality-unbounded/Backlog.json
+configFileName: examples/references/17-03-cardinality-unbounded/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+Nodes: 5, queued: 0, elapsed: 378.152µs
+Peak (new): queue=1 pendingActionStarts=2
+Time taken for model checking: 440.432µs
+Writen graph dotfile: examples/references/17-03-cardinality-unbounded/out/run_2026-11-09_21-47-29/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/17-03-cardinality-unbounded/out/run_2026-11-09_21-47-29/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 5 Unique states: 3
+Checking always eventually BacklogShrinks
+IsLive: false
+Time taken to check liveness: 337.887µs
+FAILED: Liveness check failed
+Invariant: BacklogShrinks
+------
+Init
+--
+state: {"pending":"0"}
+------
+Send
+--
+state: {"pending":"1"}
+------
+Send
+--
+state: {"pending":"MANY"}
+------
+Send
+--
+state: {"pending":"MANY"}
+------
+Ack
+--
+state: {"pending":"MANY"}
+------
+Any:pending=MANY
+--
+state: {"pending":"MANY"}
+------
+Writen graph json: examples/references/17-03-cardinality-unbounded/out/run_2026-11-09_21-47-29/error-graph.json
+Writen graph dotfile: examples/references/17-03-cardinality-unbounded/out/run_2026-11-09_21-47-29/error-graph.dot
+To generate an image file, run: 
+dot -Tsvg examples/references/17-03-cardinality-unbounded/out/run_2026-11-09_21-47-29/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: examples/references/17-03-cardinality-unbounded/out/run_2026-11-09_21-47-29/error-states.html
+To open: 
+open examples/references/17-03-cardinality-unbounded/out/run_2026-11-09_21-47-29/error-states.html

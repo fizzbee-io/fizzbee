@@ -1,0 +1,5 @@
+# Int: SometimesIdle FAIL, DrainedAfterShutdown PASS, AllIdleAfterShutdown PASS, for N=2..5.
+reason: counts["busy"] and counts["idle"] are separate keys: after Shutdown Finish decrements busy and increments idle, and the idle increment does not keep the busy loop; before Shutdown Start increments busy, so SometimesIdle FAILS.
+SometimesIdle: FAIL int=FAIL loop_includes=Start
+DrainedAfterShutdown: PASS int=PASS
+AllIdleAfterShutdown: PASS int=PASS
