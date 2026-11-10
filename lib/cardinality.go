@@ -30,9 +30,13 @@ const (
 )
 
 // NewCardinalityCounter returns the abstraction of the concrete count n.
+// A negative count is a bug in the caller, so it panics; Starlark input is
+// checked by cardinality.counter before it gets here.
 func NewCardinalityCounter(n int64) *CardinalityCounter {
 	switch {
-	case n <= 0:
+	case n < 0:
+		panic(fmt.Sprintf("cardinality counter: negative count %d", n))
+	case n == 0:
 		return &CardinalityCounter{value: cardZero}
 	case n == 1:
 		return &CardinalityCounter{value: cardOne}

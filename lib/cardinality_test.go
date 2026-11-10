@@ -105,3 +105,77 @@ func TestCardinalityCounterCodecRoundTrip(t *testing.T) {
 	}
 	assert.Equal(t, CardinalityCounterType, out[0].Type())
 }
+
+// Counters nested in lists and dicts still hash apart from the strings and
+// ints they print as. JSON shows them as strings, for display only.
+func TestCardinalityCounterNestedHashIsTypeTagged(t *testing.T) {
+	list := func(v starlark.Value) starlark.Value { return starlark.NewList([]starlark.Value{v}) }
+	dict := func(k, v starlark.Value) starlark.Value {
+		d := starlark.NewDict(1)
+		require.NoError(t, d.SetKey(k, v))
+		return d
+	}
+	many, one := NewCardinalityCounter(5), NewCardinalityCounter(1)
+	assert.NotEqual(t, encode(list(many)), encode(list(starlark.String("MANY"))))
+	assert.NotEqual(t, encode(list(one)), encode(list(starlark.MakeInt(1))))
+	assert.NotEqual(t, encode(dict(starlark.String("k"), many)), encode(dict(starlark.String("k"), starlark.String("MANY"))))
+	assert.NotEqual(t, encode(dict(one, starlark.None)), encode(dict(starlark.MakeInt(1), starlark.None)))
+	assert.Equal(t, encode(list(NewCardinalityCounter(2))), encode(list(NewCardinalityCounter(9))))
+
+	assert.Equal(t, `["MANY"]`, string(mustJSON(t, list(many))))
+}
+
+func TestNewCardinalityCounterRejectsNegative(t *testing.T) {
+	assert.Panics(t, func() { NewCardinalityCounter(-1) })
+}
+
+// The API as specs use it, through Starlark.
+func TestCardinalityCounterStarlarkAPI(t *testing.T) {
+	run := func(src string) error {
+		thread := &starlark.Thread{Name: "test"}
+		_, err := starlark.ExecFileOptions(&syntax.FileOptions{GlobalReassign: true}, thread, "test.star", src,
+			starlark.StringDict{"cardinality": CardinalityModule})
+		return err
+	}
+	require.NoError(t, run(`
+def check(cond, msg):
+    if not cond:
+        fail(msg)
+
+c = cardinality.counter()
+check(c.is_zero(), "default is zero")
+check(not c, "zero is falsy")
+c = c.inc()
+check(c.is_one(), "inc of 0")
+c = c.inc()
+check(c.is_many(), "inc of 1")
+check(bool(c), "MANY is truthy")
+choices = c.dec()
+check(len(choices) == 2, "dec of MANY has two results")
+check(choices[0].is_one() and choices[1].is_many(), "dec of MANY is [1, MANY]")
+check(len(cardinality.counter(1).dec()) == 1, "dec of 1 has one result")
+check(cardinality.counter(1).dec()[0].is_zero(), "dec of 1 is 0")
+check(cardinality.counter(5) == cardinality.counter(2), "MANY equals MANY")
+check(cardinality.counter(1) != cardinality.counter(2), "1 is not MANY")
+check(not (cardinality.counter(2) == 2), "never equal to an int")
+check({cardinality.counter(3): "x"}[cardinality.counter(7)] == "x", "equal counters are the same dict key")
+check(str(cardinality.counter(4)) == "MANY", "str")
+`))
+
+	for _, tc := range []struct{ src, err string }{
+		{`cardinality.counter(-1)`, "must be non-negative"},
+		{`cardinality.counter().dec()`, "dec() on 0"},
+		{`cardinality.counter().inc(1)`, "inc: got 1 arguments, want 0"},
+		{`cardinality.counter(1).dec(1)`, "dec: got 1 arguments, want 0"},
+		{`cardinality.counter().is_zero(1)`, "is_zero: got 1 arguments, want 0"},
+		{`cardinality.counter(1) + 1`, "use inc() or oneof c.dec()"},
+		{`cardinality.counter(1) < cardinality.counter(2)`, "use is_zero(), is_one() or is_many()"},
+		{`cardinality.counter(1) < 2`, "cardinality_counter < int not implemented"},
+		{`int(cardinality.counter(1))`, "cannot convert cardinality_counter to int"},
+	} {
+		err := run("x = " + tc.src)
+		if assert.Error(t, err, tc.src) {
+			assert.Contains(t, err.Error(), tc.err, tc.src)
+		}
+	}
+}

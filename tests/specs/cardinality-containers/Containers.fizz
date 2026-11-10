@@ -1,0 +1,48 @@
+# Counters stored in a role field, a dict value, a tuple, a dict key and a
+# message payload. Each container's counter runs from 0 up to MANY and back.
+
+---
+deadlock_detection: false
+---
+
+role Server:
+    action Init:
+        self.jobs = cardinality.counter()
+
+    atomic func Receive(n):
+        # n arrives as a message payload.
+        if n.is_many():
+            self.jobs = self.jobs.inc()
+
+    atomic action Finish:
+        require self.jobs
+        self.jobs = oneof self.jobs.dec()
+
+action Init:
+    server = Server()
+    d = {"jobs": cardinality.counter()}
+    t = (cardinality.counter(), "tag")
+    keys = {cardinality.counter(2): "many"}
+
+atomic action AddJob:
+    d["jobs"] = d["jobs"].inc()
+    t = (d["jobs"], t[1])
+
+atomic action DoneJob:
+    require d["jobs"]
+    d["jobs"] = oneof d["jobs"].dec()
+    t = (d["jobs"], t[1])
+
+atomic action Send:
+    require d["jobs"].is_many()
+    server.Receive(d["jobs"])
+
+atomic action ReKey:
+    # Equal counters are the same dict key.
+    keys[cardinality.counter(7)] = "still many"
+
+always assertion TupleTracksDict:
+    return t[0] == d["jobs"]
+
+always assertion OneKey:
+    return len(keys) == 1 and keys[cardinality.counter(3)] != None

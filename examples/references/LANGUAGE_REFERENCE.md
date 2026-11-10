@@ -2321,7 +2321,7 @@ atomic action Ack:
 - `+`, `-`, `<` and `int(c)` are errors. `c == 2` is always False, because Starlark compares values of different types as unequal; use the `is_*` methods.
 - Counters are values: they can sit in state variables, role fields, dicts, lists and records.
 
-**Liveness.** Because `dec()` on MANY can return MANY, the abstract graph has loops where a counter is decremented forever, which no real count can do. Liveness assertions over counters may report such loops as false failures. If the increments eventually stop, marking the incrementing action `@assume(finite=[...])` and the decrementing action fair avoids them.
+**Liveness.** Because `dec()` on MANY can return MANY, the abstract graph has loops where a counter is decremented forever, which no real count can do. Liveness assertions over counters may report such loops as false failures, and fairness does not remove them: a fair run can take the MANY to MANY step forever. Use counters for safety properties; for a liveness property that depends on a count reaching zero, model the count with a bounded int.
 
 ---
 
