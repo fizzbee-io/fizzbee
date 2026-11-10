@@ -1,0 +1,37 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+action_options:
+  Worker:
+    max_concurrent_actions: -1
+---
+# Capped thread copies (max_concurrent_actions: -1): any number of Worker
+# threads can be in flight, grouped per program point as ONE or MANY
+# copies. A lock keeps the critical section exclusive. Crashes are off:
+# crashing one copy of a group is not supported yet.
+
+BUGGY = False
+
+action Init:
+    locked = False
+    in_cs = False
+    violated = False
+
+fair action Worker:
+    atomic:
+        require BUGGY or not locked
+        locked = True
+    atomic:
+        if in_cs:
+            violated = True
+        in_cs = True
+    in_cs = False
+    locked = False
+
+always assertion MutualExclusion:
+    return not violated
+
+@assume(finite=["Worker"])
+eventually always assertion Unlocked:
+    return not locked

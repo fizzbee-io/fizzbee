@@ -44,6 +44,7 @@ var experimentalNoGraph bool
 var experimentalNoStateReturns bool
 var experimentalCollapseSteps bool
 var experimentalLazyFork bool
+var experimentalCappedThreads bool
 var noSymmetryReduction bool
 var experimentalIncrementalLiveness bool
 
@@ -1156,7 +1157,13 @@ func applyDefaultStateOptions(stateConfig *ast.StateSpaceOptions) {
 		stateConfig.Options.MaxActions = 100
 	}
 	if stateConfig.Options.MaxConcurrentActions == 0 {
-		stateConfig.Options.MaxConcurrentActions = min(2, stateConfig.Options.MaxActions)
+		if experimentalCappedThreads {
+			// MANY: threads of actions with no limit of their own are
+			// grouped into ONE or MANY copies (modelchecker/copies.go).
+			stateConfig.Options.MaxConcurrentActions = -1
+		} else {
+			stateConfig.Options.MaxConcurrentActions = min(2, stateConfig.Options.MaxActions)
+		}
 	}
 	if stateConfig.DeadlockDetection == nil {
 		deadlockDetection := true
@@ -1171,20 +1178,29 @@ func applyDefaultStateOptions(stateConfig *ast.StateSpaceOptions) {
 func loadStateOptions(dirPath string, f *ast.FrontMatter) *ast.StateSpaceOptions {
 	configFileName := filepath.Join(dirPath, "fizz.yaml")
 	fmt.Println("configFileName:", configFileName)
-	stateConfig, err := modelchecker.ReadOptionsFromYaml(configFileName)
+	readOptions := modelchecker.ReadOptionsFromYaml
+	// The default concurrency limit, 2 or MANY, applies once the frontmatter
+	// is merged in. Without --experimental_capped_threads it is filled in
+	// here as before, so the printed options don't change.
+	defaultConcurrency := int64(2)
+	if experimentalCappedThreads {
+		readOptions = modelchecker.ReadOptionsFromYamlRaw
+		defaultConcurrency = 0
+	}
+	stateConfig, err := readOptions(configFileName)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			if isPlayground {
 				deadlockDetection := true
 				crashOnYield := true
 				stateConfig = &ast.StateSpaceOptions{
-					Options:           &ast.Options{MaxActions: 100, MaxConcurrentActions: 2, CrashOnYield: &crashOnYield},
+					Options:           &ast.Options{MaxActions: 100, MaxConcurrentActions: defaultConcurrency, CrashOnYield: &crashOnYield},
 					Liveness:          "strict",
 					DeadlockDetection: &deadlockDetection,
 				}
 			} else {
 				fmt.Println("fizz.yaml not found. Using default options")
-				stateConfig = &ast.StateSpaceOptions{Options: &ast.Options{MaxActions: 100, MaxConcurrentActions: 2}}
+				stateConfig = &ast.StateSpaceOptions{Options: &ast.Options{MaxActions: 100, MaxConcurrentActions: defaultConcurrency}}
 			}
 		} else {
 			fmt.Println("Error reading fizz.yaml:", err)
@@ -1276,6 +1292,7 @@ func parseFlags() []string {
 	//    and the transition-invariant check later assigns over it; only
 	//    visible with continue_path_on_invariant_failures.
 	flag.BoolVar(&experimentalCollapseSteps, "experimental_collapse_steps", false, "EXPERIMENTAL: do not store mid-action steps that are neither yield points nor fair `any` choices. Once an action's internal steps are explored to the next yield point, that yield point links directly from the previous one. Same unique states and assertion outcomes; far fewer stored nodes. Ignored with --trace, refinements, simulation, and --experimental_processed_queue unless --experimental_no_graph is set. Without --experimental_no_graph, turns off the default processed queue. Default=false.")
+	flag.BoolVar(&experimentalCappedThreads, "experimental_capped_threads", false, "EXPERIMENTAL: when max_concurrent_actions is not set in the options, make it MANY instead of 2: any number of threads can be in flight, and the threads of an action without a limit of its own are counted per program point as ONE or MANY identical copies. Actions with a fixed max_concurrent_actions keep ordinary threads and their limit. Copies stay finite only when the threads' combined effect on the state is bounded (flags, sets); a counter the threads change grows without bound. Default=false.")
 	flag.BoolVar(&experimentalLazyFork, "experimental_lazy_fork", false, "EXPERIMENTAL: fork the state for an action when the action start is dequeued instead of when it is scheduled, and reuse the clone of an action that was disabled without writing to the state for the next action of the same state. Same states and verdicts; less cloning and a smaller queue. Ignored in simulation and trace modes. Default=false.")
 	flag.BoolVar(&noSymmetryReduction, "no-symmetry-reduction", false, "Disable symmetry reduction: dedup uses only the plain state hash, so every persisted state keeps its concrete symmetric values/role identities (no canonical renaming). Larger state space. Required when generating state graphs for MBT replay from specs that use symmetric roles or symmetry values. Default=false.")
 	flag.Parse()

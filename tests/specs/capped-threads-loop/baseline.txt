@@ -1,0 +1,16 @@
+Model checking tests/specs/capped-threads-loop/Loop.json
+configFileName: tests/specs/capped-threads-loop/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:10  crash_on_yield:false}  action_options:{key:"Worker"  value:{max_concurrent_actions:-1}}  deadlock_detection:false
+Nodes: 109, queued: 0, elapsed: 10.983179ms
+Peak (new): queue=19 pendingActionStarts=3
+Time taken for model checking: 11.005486ms
+Writen graph dotfile: tests/specs/capped-threads-loop/out/run_2026-11-10_05-42-48/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/capped-threads-loop/out/run_2026-11-10_05-42-48/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 109 Unique states: 73
+Checking always eventually Zero
+IsLive: true
+Time taken to check liveness: 7.772428ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/capped-threads-loop/out/run_2026-11-10_05-42-48

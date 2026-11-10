@@ -1,0 +1,41 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+action_options:
+  Admin:
+    max_concurrent_actions: 1
+---
+# No global limit is set, so with --experimental_capped_threads it is MANY:
+# Worker threads are grouped into copies. Admin keeps a fixed limit of 1,
+# so it has ordinary threads, at most one in flight.
+BUGGY = False
+
+action Init:
+    gate = False
+    busy = False
+    started = False
+    admins = 0
+
+fair action Worker:
+    atomic:
+        require not gate
+        started = True
+    atomic:
+        require gate
+        busy = True
+    busy = False
+
+atomic fair action Open:
+    require not gate
+    gate = True
+
+fair action Admin:
+    admins += 1
+    admins -= 1
+
+always assertion OneAdmin:
+    return admins <= (2 if BUGGY else 1)
+
+eventually always assertion Quiet:
+    return not busy

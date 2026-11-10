@@ -395,6 +395,11 @@ func writeThread(w *lib.StateWriter, t *Thread) error {
 	w.WriteVarint(int64(t.Id))
 	w.WriteUvarint(uint64(t.Fairness))
 	w.WriteBool(t.Aborted)
+	if t.Copies != nil {
+		w.WriteUvarint(uint64(t.Copies.ValueCode()) + 1)
+	} else {
+		w.WriteUvarint(0)
+	}
 	frames := t.Stack.RawArray()
 	w.WriteUvarint(uint64(len(frames)))
 	for _, f := range frames {
@@ -713,6 +718,13 @@ func readThread(r *lib.StateReader, p *Process) (*Thread, error) {
 		Stack:    NewCallStack(),
 		Fairness: ast.FairnessLevel(r.ReadUvarint()),
 		Aborted:  r.ReadBool(),
+	}
+	if code := r.ReadUvarint(); code > 0 {
+		c, err := lib.CardinalityCounterFromCode(uint8(code - 1))
+		if err != nil {
+			return nil, err
+		}
+		t.Copies = c
 	}
 	n := r.ReadCount()
 	for i := 0; i < n; i++ {

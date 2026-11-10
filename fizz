@@ -199,6 +199,9 @@ usage() {
   echo "        Does not store mid-action steps (only yield points and fair"
   echo "        any choices); yield points link directly to each other."
   echo "        Same states and results, fewer stored nodes, less memory."
+  echo "    --experimental_capped_threads"
+  echo "        Makes MANY the default for an unset max_concurrent_actions:"
+  echo "        an action's threads are counted as ONE or MANY copies."
   echo "    --experimental_lazy_fork"
   echo "        Forks the state for an action when the action start is"
   echo "        dequeued, and reuses the clone of a disabled action."
@@ -234,6 +237,7 @@ experimental_no_state_returns=false
 experimental_incremental_liveness=false
 experimental_collapse_steps=false
 experimental_lazy_fork=false
+experimental_capped_threads=false
 no_symmetry_reduction=false
 parallel=1
 
@@ -378,6 +382,10 @@ while [[ "$1" =~ ^- ]]; do
       experimental_lazy_fork=true
       shift
       ;;
+    --experimental_capped_threads )
+      experimental_capped_threads=true
+      shift
+      ;;
     --no-symmetry-reduction )
       no_symmetry_reduction=true
       shift
@@ -460,6 +468,9 @@ if [ "$experimental_incremental_liveness" = true ]; then
 fi
 if [ "$experimental_lazy_fork" = true ]; then
   args+=("--experimental_lazy_fork")
+fi
+if [ "$experimental_capped_threads" = true ]; then
+  args+=("--experimental_capped_threads")
 fi
 if [ "$no_symmetry_reduction" = true ]; then
   args+=("--no-symmetry-reduction")

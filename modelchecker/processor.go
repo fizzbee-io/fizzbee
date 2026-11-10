@@ -365,6 +365,16 @@ func (p *Process) IsYieldNode() bool {
 }
 
 func (p *Process) Fork() *Process {
+	p2, _ := p.forkWithRefs()
+	if stateCodecRoundTrip {
+		return roundTripProcess(p2)
+	}
+	return p2
+}
+
+// forkWithRefs is Fork, also returning the map from p's values to the
+// fork's, so that more of p can be cloned into the fork sharing them.
+func (p *Process) forkWithRefs() (*Process, map[starlark.Value]starlark.Value) {
 	refs := make(map[starlark.Value]starlark.Value)
 
 	p2 := &Process{
@@ -426,10 +436,7 @@ func (p *Process) Fork() *Process {
 		}
 	}
 
-	if stateCodecRoundTrip {
-		return roundTripProcess(p2)
-	}
-	return p2
+	return p2, refs
 }
 
 func (p *Process) CloneForAssert(permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) *Process {
@@ -2678,6 +2685,9 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		p.offerScratch(node.Process)
 		return false, false
 	}
+	if yield {
+		node.Process.mergeCopies()
+	}
 	if node.ThreadProgress {
 		node.Enable()
 	}
@@ -3684,7 +3694,7 @@ func (p *Processor) YieldNode(node *Node) {
 	}
 	p.scheduleChannelMessages(node)
 	if node.actionDepth >= int(p.config.Options.MaxActions) ||
-		node.GetThreadsCount() >= int(p.config.Options.MaxConcurrentActions) {
+		(p.config.Options.MaxConcurrentActions > 0 && node.ordinaryThreadsCount() >= int(p.config.Options.MaxConcurrentActions)) {
 		return
 	}
 
@@ -3735,7 +3745,7 @@ func (p *Processor) YieldFork(node *Node, process *Process) {
 	}
 	p.scheduleChannelMessages(node)
 	if node.actionDepth >= int(p.config.Options.MaxActions) ||
-		process.GetThreadsCount() >= int(p.config.Options.MaxConcurrentActions) {
+		(p.config.Options.MaxConcurrentActions > 0 && process.ordinaryThreadsCount() >= int(p.config.Options.MaxConcurrentActions)) {
 
 		return
 	}
@@ -3836,6 +3846,9 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 		frame.Name = action.Name
 	}
 	newNode.Process.Action = frame.Name
+	if p.cappedCopies(frame.Name) {
+		thread.Copies = lib.NewCardinalityCounter(1)
+	}
 
 	if p.ShouldScheduleNode(newNode) {
 		// In no_graph mode, extend the lightweight action-name chain before
@@ -4062,6 +4075,10 @@ func (p *Processor) ResetEphemeralVariables(node *Node, oldRole *lib.Role) {
 
 func (p *Processor) shouldThreadCrash(node *Node) bool {
 	if node.Process.GetThreadsCount() == 0 || node.Process.Current == -1 || !p.config.Options.GetCrashOnYield() {
+		return false
+	}
+	if node.Process.currentThread().Copies != nil {
+		// Crashing one copy of a group is not supported yet.
 		return false
 	}
 	frameName := node.Process.currentThread().Stack.RawArray()[0].Name

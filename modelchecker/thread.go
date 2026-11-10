@@ -327,6 +327,11 @@ type Thread struct {
 
 	Fairness ast.FairnessLevel `json:"fairness"`
 	Aborted  bool              `json:"-"`
+
+	// Copies, when set, makes this slot a group of identical threads of an
+	// action with capped concurrency: ONE or MANY copies. nil is an
+	// ordinary, single thread. See copies.go.
+	Copies *lib.CardinalityCounter `json:"copies,omitempty"`
 }
 
 // actionName is the name of the action that started t, as set on its
@@ -402,13 +407,16 @@ func (t *Thread) popFrame() *CallFrame {
 
 func (t *Thread) Clone(refs map[starlark.Value]starlark.Value, permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) *Thread {
 	// TODO: handle symmetry in stack.Clone()
-	return &Thread{Id: t.Id, Process: t.Process, Files: t.Files, Stack: t.Stack.Clone(refs, permutations, alt), Fairness: t.Fairness}
+	return &Thread{Id: t.Id, Process: t.Process, Files: t.Files, Stack: t.Stack.Clone(refs, permutations, alt), Fairness: t.Fairness, Copies: t.Copies}
 }
 
 func (t *Thread) Execute() ([]*Process, bool) {
 	var forks []*Process
 	yield := false
 	hasNonEndOfBlockStmts := false
+	if t.Copies != nil && t.Copies.IsMany() {
+		return t.splitCopies(), false
+	}
 	initialThreads := t.Process.GetThreadsCount()
 	defer t.Process.propagateEnabled()
 	for t.Stack.Len() > 0 {
