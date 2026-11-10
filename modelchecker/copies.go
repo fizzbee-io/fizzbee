@@ -115,11 +115,12 @@ func (t *Thread) splitCopies() []*Process {
 // their counts, so that the state is the same however the copies got
 // there. The lowest slot of each group survives, and Current moves to it.
 //
-// The key is the frames (scopes, locals, pc and receiver of every frame)
-// plus the thread's fairness. Fairness is set from the action at the root
-// frame, so identical frames already imply it; it is in the key so that a
-// merge can never change it. The other thread fields are not state: Id is
-// not hashed, and Aborted is set only on a disabled fork, which never
+// The key is the frames: scopes, locals, pc and receiver of every frame.
+// The other thread fields need not match. Fairness is set only from the
+// action at the root frame, so identical frames already imply it, and the
+// liveness checker treats every thread continuation as strongly fair
+// anyway: a thread's fairness only marks its action's start link. Id is
+// not state, and Aborted is set only on a disabled fork, which never
 // reaches a yield.
 func (p *Process) mergeCopies() {
 	store := lib.NewCappedCountStore[int]()
@@ -128,7 +129,7 @@ func (p *Process) mergeCopies() {
 		if t == nil || t.Copies == nil {
 			continue
 		}
-		key := t.framesHash() + "|" + t.Fairness.String()
+		key := t.framesHash()
 		keep, ok := store.Get(key)
 		store.AddCount(key, i, t.Copies)
 		if !ok {
