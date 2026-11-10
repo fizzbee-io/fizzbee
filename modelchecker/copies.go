@@ -109,6 +109,8 @@ func (t *Thread) splitCopies() []*Process {
 		forks = append(forks, f)
 	}
 	// As for a oneof: keep this step apart from the yield it started from.
+	// The name only labels the split node in the graph and traces.
+	p.Name = "Split copies: " + t.actionName()
 	p.Enable()
 	t.currentFrame().pc = t.currentFrame().pc + ".copies"
 	return forks
