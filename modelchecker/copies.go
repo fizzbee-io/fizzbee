@@ -8,9 +8,9 @@ package modelchecker
 // action's threads are counted as groups. A thread slot with Copies set
 // stands for ONE or MANY identical threads: same frames, same program
 // point, same locals. Any number of the action's threads can be in flight.
-// The state stays finite as long as the threads' combined effect on it is
-// bounded: MANY copies can each act again, so a counter they change has
-// no bound.
+// Caution: as with an action that can run forever, a MANY group can act
+// again and again, so state that grows with every step, such as a
+// counter, makes the state space infinite. The spec has to bound it.
 //
 //   - A new thread of the action starts as a group of ONE.
 //   - At every yield, groups with identical frames merge, and their counts

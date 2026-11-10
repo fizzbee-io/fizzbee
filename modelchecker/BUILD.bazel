@@ -6,6 +6,7 @@ go_library(
         "channel_message.go",
         "checker.go",
         "clone.go",
+        "copies.go",
         "composition_types.go",
         "durability.go",
         "error.go",
