@@ -1,0 +1,26 @@
+# Two symmetric workers, each with a counter. Each counter takes 3 values,
+# so there are 3 x 3 = 9 states without symmetry and 6 with it (unordered
+# pairs). Unique States should be 6.
+
+---
+deadlock_detection: false
+---
+
+symmetric role Worker:
+    action Init:
+        self.jobs = cardinality.counter()
+
+    atomic action Add:
+        self.jobs = self.jobs.inc()
+
+    atomic action Remove:
+        require self.jobs
+        self.jobs = oneof self.jobs.dec()
+
+action Init:
+    workers = bag()
+    for i in range(2):
+        workers.add(Worker())
+
+always assertion JobsAreCounters:
+    return all([w.jobs.is_zero() or w.jobs.is_one() or w.jobs.is_many() for w in workers])
