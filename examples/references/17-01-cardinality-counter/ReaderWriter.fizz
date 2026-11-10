@@ -1,6 +1,6 @@
 # Example 17-01: Cardinality counter (0, 1, MANY)
 # A reader-writer lock with any number of readers.
-# Demonstrates: cardinality.counter, inc(), oneof c.dec(), is_zero()
+# Demonstrates: cardinality.counter, inc(), oneof c.dec(), is_zero(), liveness
 #
 # With a plain int, readers would need an artificial bound and the check
 # would only cover counts up to it. A cardinality counter keeps just 0, 1 or
@@ -30,3 +30,11 @@ atomic action EndWrite:
 
 always assertion NoReadDuringWrite:
     return not (writing and not readers.is_zero())
+
+# If readers eventually stop arriving and those reading keep finishing, the
+# lock is eventually free for good. EndRead on MANY can return MANY, so a
+# fair run could take EndRead forever without reaching zero; the checker
+# drops that loop, because no real count goes down forever.
+@assume(finite=["StartRead"], weak_fair=["EndRead"])
+eventually always assertion ReadersDrain:
+    return readers.is_zero()
