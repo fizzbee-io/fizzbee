@@ -1,0 +1,31 @@
+---
+deadlock_detection: false
+options:
+    max_concurrent_actions: -1
+    crash_on_yield: false
+---
+# Capped thread copies with next_states(). When a MANY group runs one
+# copy, the explorer splits it into "ONE left" and "MANY left". Both have
+# the same state, so next_states() must list that continuation once.
+
+action Init:
+  value = 0
+
+action Add:
+  require value == 0
+  x = value
+  x = x + 1
+  value = x
+
+always assertion NoDuplicateSuccessors:
+  seen = []
+  for n in next_states():
+    k = (n.name, str(n.state))
+    if k in seen:
+      return False
+    seen.append(k)
+  return True
+
+# A thread paused before its write can always finish it.
+exists assertion WriteIsNext:
+  return value == 0 and len([n for n in next_states() if n.name.startswith("thread") and n.state.value == 1]) > 0
