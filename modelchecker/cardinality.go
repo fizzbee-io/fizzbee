@@ -26,7 +26,8 @@ package modelchecker
 // Recording an increment is always sound: it only keeps more loops. Events
 // are keyed by location, coarsened where symmetry or list shifts can rename
 // locations between states: fields of symmetric roles become Role/field,
-// list elements list[*], dict entries keyed by symmetric values dict[*].
+// list elements list[*], dict and genericmap entries keyed by symmetric
+// values dict[*].
 // Coarsening merges counts, and a decrease of the merged count still can't
 // go on forever, so it is sound too.
 
@@ -49,8 +50,6 @@ const (
 // location within one state; key is the possibly coarser name events use.
 type cardLocation struct {
 	path, key string
-	// absentIsZero: the container treats a missing entry as zero.
-	absentIsZero bool
 	value     *lib.CardinalityCounter
 	// set replaces the value at the location; nil when it can't be.
 	set func(*lib.CardinalityCounter)
@@ -99,21 +98,12 @@ func (p *Process) cardinalityLocations() []cardLocation {
 }
 
 func collectCardinality(v starlark.Value, path, key string, set func(*lib.CardinalityCounter), out *[]cardLocation, depth int) {
-	collectCardinalityIn(v, path, key, set, false, out, depth)
-}
-
-func collectCardinalityIn(v starlark.Value, path, key string, set func(*lib.CardinalityCounter), absentIsZero bool, out *[]cardLocation, depth int) {
 	if depth > 20 || v == nil {
 		return
 	}
 	switch x := v.(type) {
 	case *lib.CardinalityCounter:
-		*out = append(*out, cardLocation{path: path, key: key, value: x, set: set, absentIsZero: absentIsZero})
-	case lib.CardinalityHolder:
-		zero := x.AbsentIsZero()
-		for _, e := range x.CardinalityEntries() {
-			collectCardinalityIn(e.Value, path+e.PathSuffix, key+e.KeySuffix, e.Set, zero, out, depth+1)
-		}
+		*out = append(*out, cardLocation{path: path, key: key, value: x, set: set})
 	case *starlark.List:
 		for i := 0; i < x.Len(); i++ {
 			i := i
@@ -126,7 +116,7 @@ func collectCardinalityIn(v starlark.Value, path, key string, set func(*lib.Card
 		for i, el := range x {
 			collectCardinality(el, path+"["+strconv.Itoa(i)+"]", key+"["+strconv.Itoa(i)+"]", nil, out, depth+1)
 		}
-	case *starlark.Dict:
+	case mapping:
 		for _, item := range x.Items() {
 			k := item[0]
 			ks := k.String()
@@ -160,6 +150,12 @@ func collectCardinalityIn(v starlark.Value, path, key string, set func(*lib.Card
 	}
 }
 
+// mapping is what dict and genericmap share.
+type mapping interface {
+	Items() []starlark.Tuple
+	SetKey(k, v starlark.Value) error
+}
+
 func containsSymmetricValue(v starlark.Value) bool {
 	switch x := v.(type) {
 	case *lib.SymmetricValue, *lib.Role:
@@ -186,11 +182,6 @@ func (p *Process) startCardinalityStep() {
 		start[loc.value] = loc.path
 	}
 	p.cardStep = lib.NewCardinalityStep(start)
-	for _, loc := range p.cardinalityLocations() {
-		if loc.absentIsZero && !loc.value.IsZero() {
-			p.cardStep.Vanish[loc.path] = loc.key
-		}
-	}
 }
 
 // endCardinalityStep runs at the yield point ending the step. It adds the
@@ -202,9 +193,7 @@ func (p *Process) endCardinalityStep() {
 	locs := p.cardinalityLocations()
 	events := map[string]bool{}
 	seen := map[*lib.CardinalityCounter]bool{}
-	present := map[string]bool{}
 	for _, loc := range locs {
-		present[loc.path] = true
 		if label := cardinalityEvent(step, loc); label != "" {
 			events[label] = true
 		}
@@ -212,13 +201,6 @@ func (p *Process) endCardinalityStep() {
 			loc.set(lib.CloneCardinalityCounter(loc.value))
 		}
 		seen[loc.value] = true
-	}
-	if step != nil {
-		for path, key := range step.Vanish {
-			if !present[path] {
-				events[cardDecLabel+key] = true
-			}
-		}
 	}
 	labels := make([]string, 0, len(events))
 	for l := range events {

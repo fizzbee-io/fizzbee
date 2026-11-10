@@ -28,6 +28,9 @@ type CardinalityCounter struct {
 	// Scratch for liveness tracking, valid only while epoch is the epoch
 	// of the running step: the counter of the step's start state this one
 	// was derived from with inc() and dec(), and the net change since.
+	// The epoch makes the scratch go stale when the step ends: a counter
+	// kept in a local variable across a yield is never seen by the
+	// tracker, so its scratch can't be cleared any other way.
 	epoch uint64
 	base  *CardinalityCounter
 	delta int
@@ -79,40 +82,13 @@ const CardinalityStepKey = "fizz_cardinality_step"
 type CardinalityStep struct {
 	Epoch uint64
 	Start map[*CardinalityCounter]string
-	// Vanish maps the path of each nonzero counter at the start whose
-	// container treats an absent entry as zero (CardinalityHolder) to its
-	// event key: if the entry is gone at the end of the step, its count
-	// went down.
-	Vanish map[string]string
-}
-
-// CardinalityEntry is one counter inside a CardinalityHolder.
-type CardinalityEntry struct {
-	// PathSuffix is appended to the holder's path to name the entry within
-	// one state, for example "[x]". KeySuffix is the same for liveness
-	// event keys, coarsened where symmetry can rename the entry between
-	// states, for example "[*]".
-	PathSuffix, KeySuffix string
-	Value                 *CardinalityCounter
-	// Set replaces the entry's counter, or is nil when it can't be.
-	Set func(*CardinalityCounter)
-}
-
-// CardinalityHolder is a container of counters other than the built-in
-// lists, tuples, dicts and records, such as a multiset. The liveness
-// tracking walks its entries. AbsentIsZero reports whether a missing entry
-// means a count of zero, so an entry that disappears during a step counts
-// as a decrement.
-type CardinalityHolder interface {
-	CardinalityEntries() []CardinalityEntry
-	AbsentIsZero() bool
 }
 
 var cardinalityEpochs atomic.Uint64
 
 // NewCardinalityStep returns a step with a fresh epoch.
 func NewCardinalityStep(start map[*CardinalityCounter]string) *CardinalityStep {
-	return &CardinalityStep{Epoch: cardinalityEpochs.Add(1), Start: start, Vanish: map[string]string{}}
+	return &CardinalityStep{Epoch: cardinalityEpochs.Add(1), Start: start}
 }
 
 // Lineage returns the start-state counter c was derived from in step and

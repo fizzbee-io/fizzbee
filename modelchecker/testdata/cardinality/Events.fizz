@@ -28,6 +28,8 @@ action Init:
     b = a
     d = {"idle": cardinality.counter(5), "busy": cardinality.counter(0)}
     l = [cardinality.counter(5), cardinality.counter(5)]
+    g = genericmap()
+    g[[1]] = cardinality.counter(5)
     server = Server()
     workers = [Worker(), Worker()]
 
@@ -78,3 +80,7 @@ atomic action Swap:
     tmp = l[0]
     l[0] = l[1]
     l[1] = tmp
+
+atomic action GenericMapEntry:
+    require not g[[1]].is_zero()
+    g[[1]] = oneof g[[1]].dec()

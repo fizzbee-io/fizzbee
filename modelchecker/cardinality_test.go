@@ -82,6 +82,8 @@ func TestCardinalityEvents(t *testing.T) {
 		// List elements share one key.
 		"ListElement": {"dec:l[*]"},
 		"Swap":        {"inc:l[*]"},
+		// genericmap entries are walked like dict entries.
+		"GenericMapEntry": {"dec:g[[1]]"},
 		// Role fields; a symmetric role's fields share one key per field.
 		"Server.Drain": {"dec:Server#0.pending"},
 		"Worker.Drain": {"dec:Worker/pending"},
