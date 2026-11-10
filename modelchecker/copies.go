@@ -23,9 +23,12 @@ package modelchecker
 //     Why fair: a run that splits a group infinitely often and always
 //     keeps MANY is real only if copies keep joining the group (new
 //     starts, or copies looping back), since finitely many copies run
-//     out. Such a run has a fair counterpart with the same states between
-//     joins: choose ONE left at a split just before a join, and the join
-//     makes the group MANY again, as MANY left would. Without joins the
+//     out. Such a run has a fair counterpart with the same observable
+//     behaviour: choose ONE left at a split just before a join. Until the
+//     join the two runs differ only in the waiting group's count (ONE
+//     instead of MANY), with the same heap and the same frames for every
+//     thread; the join makes the group MANY again, and from there the
+//     checker states are identical. Without joins the
 //     run needs infinitely many threads, which is no run of the spec, and
 //     fairness rules it out. capped-threads-fair-split checks the draining
 //     case (it fails with an unfair split) and capped-threads-loop the
