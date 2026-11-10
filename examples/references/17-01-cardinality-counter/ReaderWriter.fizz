@@ -33,12 +33,8 @@ always assertion NoReadDuringWrite:
     return not (writing and not readers.is_zero())
 
 # If readers eventually stop arriving and those reading keep finishing, the
-# lock is eventually free for good. Once StartRead stops, a real count only
-# goes down, so it reaches zero. In the abstraction EndRead can take MANY to
-# MANY forever; fair oneof rules that out. Fair oneof alone is not enough:
-# while StartRead keeps running, a real count can stay at two or more
-# forever, and fairness would hide that. So it relies on the finite
-# assumption on every action that increments the counter.
+# lock is eventually free for good. fair oneof on dec() makes MANY eventually
+# become ONE, as a real count that only goes down does.
 @assume(finite=["StartRead"], weak_fair=["EndRead"])
 eventually always assertion ReadersDrain:
     return readers.is_zero()
