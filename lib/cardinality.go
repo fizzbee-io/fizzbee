@@ -58,6 +58,19 @@ func (c *CardinalityCounter) Inc() *CardinalityCounter {
 	return &CardinalityCounter{value: cardMany}
 }
 
+// Plus returns the abstract sum of two counts: ZERO is the identity, and
+// any sum of two non-ZERO counts is MANY.
+func (c *CardinalityCounter) Plus(o *CardinalityCounter) *CardinalityCounter {
+	switch {
+	case c.value == cardZero:
+		return o
+	case o.value == cardZero:
+		return c
+	default:
+		return &CardinalityCounter{value: cardMany}
+	}
+}
+
 // Dec returns every counter reachable by removing one.
 func (c *CardinalityCounter) Dec() ([]*CardinalityCounter, error) {
 	switch c.value {

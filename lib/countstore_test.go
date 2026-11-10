@@ -122,3 +122,95 @@ func TestCappedCountStoreCloneAndRekey(t *testing.T) {
 	assert.Equal(t, "y1", s.Entries()[0].Key)
 	assert.Equal(t, 2, s.Entries()[0].Value[0])
 }
+
+func TestCappedCountStoreAPIContracts(t *testing.T) {
+	s := NewCappedCountStore[string]()
+	s.Add("a", "a")
+	s.Add("a", "a")
+	s.Add("b", "b")
+
+	// A nil outcome is an error, not a panic.
+	assert.ErrorContains(t, s.Remove("a", nil), "nil outcome")
+
+	// Changing the slice Entries returns does not change the store.
+	es := s.Entries()
+	es[0].Key = "zzz"
+	es[0].Count = NewCardinalityCounter(0)
+	assert.Equal(t, "MANY", s.Count("a").String())
+	assert.Equal(t, 2, s.Len())
+	assert.Equal(t, "a", s.Entries()[0].Key)
+
+	// The key is the identity: Add under an existing key keeps the first
+	// value and counts the copy.
+	s.Add("b", "other")
+	v, _ := s.Get("b")
+	assert.Equal(t, "b", v)
+	assert.Equal(t, "MANY", s.Count("b").String())
+
+	// A clone is independent of later changes to either store.
+	c := s.Clone(nil)
+	require.NoError(t, c.Remove("a", NewCardinalityCounter(1)))
+	c.Add("c", "c")
+	assert.Equal(t, "MANY", s.Count("a").String())
+	assert.False(t, s.Has("c"))
+
+	// The empty store.
+	e := NewCappedCountStore[string]()
+	assert.Equal(t, 0, e.Len())
+	assert.Equal(t, "0", e.Total().String())
+	assert.Equal(t, "0", e.Count("a").String())
+	assert.Empty(t, e.Entries())
+	assert.True(t, e.Equal(NewCappedCountStore[string]()))
+}
+
+func TestCappedCountStoreRekeyMerges(t *testing.T) {
+	mk := func() *CappedCountStore[int] {
+		s := NewCappedCountStore[int]()
+		for _, v := range []int{1, 1, 2, 2, 3, 4} { // 1: MANY, 2: MANY, 3: ONE, 4: ONE
+			s.Add(fmt.Sprint(v), v)
+		}
+		return s
+	}
+	parity := func(v int) string { return fmt.Sprint(v % 2) }
+
+	// MANY + MANY, and ONE + ONE, are MANY; ONE alone stays ONE.
+	s := mk()
+	s.Rekey(parity)
+	assert.Equal(t, "[0:MANY 1:MANY]", entriesString(s))
+	s = mk()
+	s.Rekey(func(v int) string {
+		if v == 3 {
+			return "odd"
+		}
+		return "rest"
+	})
+	assert.Equal(t, "[odd:1 rest:MANY]", entriesString(s))
+
+	// Idempotent.
+	s = mk()
+	s.Rekey(parity)
+	before := entriesString(s)
+	s.Rekey(parity)
+	assert.Equal(t, before, entriesString(s))
+
+	// A panicking key leaves the store unchanged.
+	s = mk()
+	before = entriesString(s)
+	assert.Panics(t, func() {
+		s.Rekey(func(v int) string {
+			if v == 3 {
+				panic("boom")
+			}
+			return "x"
+		})
+	})
+	assert.Equal(t, before, entriesString(s))
+}
+
+func entriesString[T any](s *CappedCountStore[T]) string {
+	var parts []string
+	for _, e := range s.Entries() {
+		parts = append(parts, e.Key+":"+e.Count.String())
+	}
+	return fmt.Sprint(parts)
+}

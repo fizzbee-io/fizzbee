@@ -6,7 +6,14 @@ package lib
 // checker can use it for its own state, such as identical threads of a
 // process, as well as any spec-visible type built on top of it.
 //
-// Elements are identified by a caller-supplied canonical key. Entries are
+// Elements are identified by a caller-supplied canonical key, which must be
+// the element's identity: equal keys mean equal values. The key is either
+// a complete canonical encoding of the value or a collision-resistant hash
+// of one, which is the same assumption the checker already makes for state
+// hashes. The store does not compare values: Add keeps the first value
+// stored under a key, and Equal compares keys and counts only.
+//
+// Entries are
 // kept sorted by key and a ZERO count is never stored, so two stores with
 // the same counts per key have the same entries in the same order, however
 // they were built. That makes hashing and encoding canonical by
@@ -19,6 +26,7 @@ package lib
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 )
 
@@ -39,7 +47,10 @@ func NewCappedCountStore[T any]() *CappedCountStore[T] {
 	return &CappedCountStore[T]{}
 }
 
-var zeroCount = NewCardinalityCounter(0)
+var (
+	zeroCount = NewCardinalityCounter(0)
+	manyCount = NewCardinalityCounter(2)
+)
 
 func (s *CappedCountStore[T]) find(key string) (int, bool) {
 	i := sort.Search(len(s.entries), func(i int) bool { return s.entries[i].Key >= key })
@@ -80,13 +91,13 @@ func (s *CappedCountStore[T]) Total() *CardinalityCounter {
 	case len(s.entries) == 1:
 		return s.entries[0].Count
 	default:
-		return NewCardinalityCounter(2)
+		return manyCount
 	}
 }
 
-// Entries returns the entries in key order. The slice is the store's own;
-// callers must not change it.
-func (s *CappedCountStore[T]) Entries() []CountEntry[T] { return s.entries }
+// Entries returns a copy of the entries, in key order. Changing it does not
+// change the store. Values are shared, not copied.
+func (s *CappedCountStore[T]) Entries() []CountEntry[T] { return slices.Clone(s.entries) }
 
 // Add adds one copy of value under key. When key is already present its
 // stored value is kept: equal keys must mean equal values.
@@ -115,6 +126,9 @@ func (s *CappedCountStore[T]) RemoveOutcomes(key string) ([]*CardinalityCounter,
 // Remove removes one copy of key, leaving outcome, which must be one of
 // RemoveOutcomes(key).
 func (s *CappedCountStore[T]) Remove(key string, outcome *CardinalityCounter) error {
+	if outcome == nil {
+		return fmt.Errorf("remove(%s): nil outcome", key)
+	}
 	outs, err := s.RemoveOutcomes(key)
 	if err != nil {
 		return err
@@ -155,8 +169,10 @@ func (s *CappedCountStore[T]) Equal(o *CappedCountStore[T]) bool {
 	return true
 }
 
-// Clone returns a copy, with each value passed through clone (nil keeps
-// values as they are). Counters are immutable and are shared.
+// Clone returns a copy, with each value passed through clone. With a nil
+// clone it is shallow: values are shared, which is safe only for values
+// that are immutable or otherwise safe to share. Counters are immutable and
+// are always shared.
 func (s *CappedCountStore[T]) Clone(clone func(T) T) *CappedCountStore[T] {
 	out := &CappedCountStore[T]{entries: make([]CountEntry[T], len(s.entries))}
 	copy(out.entries, s.entries)
@@ -169,21 +185,22 @@ func (s *CappedCountStore[T]) Clone(clone func(T) T) *CappedCountStore[T] {
 }
 
 // Rekey recomputes every key with key and restores the order. Entries that
-// now share a key merge, and their counts add up to MANY. Use it after a
-// change that can change keys, such as a symmetry permutation of the
-// values.
+// now share a key merge, keeping the first value, and their counts add
+// (CardinalityCounter.Plus). Use it after a change that can change keys,
+// such as a symmetry permutation of the values. The store is replaced only
+// once every key is computed, so a panicking key leaves it unchanged.
 func (s *CappedCountStore[T]) Rekey(key func(T) string) {
-	old := s.entries
-	s.entries = make([]CountEntry[T], 0, len(old))
-	for _, e := range old {
+	out := &CappedCountStore[T]{entries: make([]CountEntry[T], 0, len(s.entries))}
+	for _, e := range s.entries {
 		k := key(e.Value)
-		i, ok := s.find(k)
+		i, ok := out.find(k)
 		if ok {
-			s.entries[i].Count = NewCardinalityCounter(2)
+			out.entries[i].Count = out.entries[i].Count.Plus(e.Count)
 			continue
 		}
-		s.entries = append(s.entries, CountEntry[T]{})
-		copy(s.entries[i+1:], s.entries[i:])
-		s.entries[i] = CountEntry[T]{Key: k, Value: e.Value, Count: e.Count}
+		out.entries = append(out.entries, CountEntry[T]{})
+		copy(out.entries[i+1:], out.entries[i:])
+		out.entries[i] = CountEntry[T]{Key: k, Value: e.Value, Count: e.Count}
 	}
+	s.entries = out.entries
 }
