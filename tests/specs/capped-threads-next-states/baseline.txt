@@ -1,0 +1,15 @@
+Model checking tests/specs/capped-threads-next-states/NextStates.json
+configFileName: tests/specs/capped-threads-next-states/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:-1  crash_on_yield:false}  deadlock_detection:false
+Nodes: 38, queued: 0, elapsed: 3.407153ms
+Peak (new): queue=10 pendingActionStarts=3
+Time taken for model checking: 3.445544ms
+Writen graph dotfile: tests/specs/capped-threads-next-states/out/run_2026-11-10_21-08-42/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/capped-threads-next-states/out/run_2026-11-10_21-08-42/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 38 Unique states: 26
+IsLive: true
+Time taken to check liveness: 860.852µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/capped-threads-next-states/out/run_2026-11-10_21-08-42

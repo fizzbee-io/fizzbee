@@ -2269,6 +2269,12 @@ func (p *Processor) probeNextStates(process *Process) []*NextTransition {
 		nn := base.ForkForAlternatePaths(thread.Process.Fork(), name)
 		nn.Current = i
 		nn.ThreadProgress = true
+		if t := nn.Threads[i]; t.Copies != nil && t.Copies.IsMany() {
+			// One copy of a MANY group runs. Splitting would give two
+			// successors with the same state, differing only in how many
+			// copies are left, and next_states() shows only the state.
+			t.Copies = lib.NewCardinalityCounter(1)
+		}
 		starts = append(starts, &probeStart{node: nn, name: name, kind: "thread"})
 	}
 

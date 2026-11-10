@@ -8,8 +8,8 @@ action_options:
 ---
 # Capped thread copies (max_concurrent_actions: -1): any number of Worker
 # threads can be in flight, grouped per program point as ONE or MANY
-# copies. A lock keeps the critical section exclusive. Crashes are off:
-# crashing one copy of a group is not supported yet.
+# copies. A lock keeps the critical section exclusive. Crashes are off
+# here; capped-threads-crash covers crashing one copy of a group.
 
 BUGGY = False
 
