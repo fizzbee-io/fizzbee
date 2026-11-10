@@ -4,6 +4,7 @@ go_library(
     name = "lib",
     srcs = [
         "cardinality.go",
+        "countstore.go",
         "counter.go",
         "function.go",
         "jsonmarshaller.go",
@@ -46,6 +47,7 @@ go_test(
     name = "lib_test",
     srcs = [
         "cardinality_test.go",
+        "countstore_test.go",
         "empty_test.go",
         "function_test.go",
         "jsonmarshaller_test.go",
