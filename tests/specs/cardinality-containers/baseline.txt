@@ -1,0 +1,18 @@
+Model checking tests/specs/cardinality-containers/Containers.json
+configFileName: tests/specs/cardinality-containers/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}  deadlock_detection:false
+Nodes: 42, queued: 0, elapsed: 3.193633ms
+Peak (new): queue=5 pendingActionStarts=5
+Time taken for model checking: 3.223618ms
+Writen graph dotfile: tests/specs/cardinality-containers/out/run_2026-11-10_00-27-29/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/cardinality-containers/out/run_2026-11-10_00-27-29/graph.dot -o graph.svg && open graph.svg
+Writen communication diagram dotfile: tests/specs/cardinality-containers/out/run_2026-11-10_00-27-29/communication.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/cardinality-containers/out/run_2026-11-10_00-27-29/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 42 Unique states: 18
+IsLive: true
+Time taken to check liveness: 1.80147ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/cardinality-containers/out/run_2026-11-10_00-27-29

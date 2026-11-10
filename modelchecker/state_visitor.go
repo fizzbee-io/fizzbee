@@ -116,7 +116,7 @@ func visitStarlarkValue(value starlark.Value, visitor StateVisitor, visited map[
 	switch value.Type() {
 	case "NoneType", "int", "float", "bool", "string", "bytes", "function",
 		"builtin_function_or_method", "range", "symmetric_values",
-		"model_value", "Channel":
+		"model_value", "Channel", "cardinality_counter":
 		return
 
 	case "symmetric_value":

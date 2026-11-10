@@ -40,6 +40,7 @@ var (
 		"math":             math.Module,
 		"itertools":        ItertoolsModule,
 		"symmetry":         SymmetryModule,
+		"cardinality":      CardinalityModule,
 		"sum":              starlark.NewBuiltin("sum", builtinSum),
 	}
 

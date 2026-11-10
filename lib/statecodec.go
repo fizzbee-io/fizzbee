@@ -84,6 +84,7 @@ const (
 	vtRange  // start, stop, step
 	vtOpaque // index into the CodecContext's opaque table
 	vtGlobal // name of a spec-level global (a function or builtin)
+	vtCard   // cardinality counter: value code
 	tagExt   = 0xFF
 )
 
@@ -773,6 +774,8 @@ func (w *StateWriter) writeValue(v starlark.Value) error {
 		w.WriteVarint(x.id)
 		w.WriteString(string(x.Kind))
 		w.WriteVarint(int64(x.Limit))
+	case *CardinalityCounter:
+		w.buf = append(w.buf, vtCard, x.ValueCode())
 	case *ModelValue:
 		if w.ref(v) {
 			return nil
@@ -1391,6 +1394,8 @@ func (r *StateReader) readValue() (starlark.Value, error) {
 		sv := &SymmetricValue{ModelValue: ModelValue{prefix: prefix, id: id}, Kind: kind, Limit: limit}
 		r.register(sv)
 		return sv, r.err
+	case vtCard:
+		return CardinalityCounterFromCode(r.ReadUint8())
 	case vtModel:
 		mv := NewModelValue(r.ReadString(), r.ReadVarint())
 		r.register(mv)

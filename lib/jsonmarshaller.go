@@ -301,7 +301,7 @@ func MarshalJSONStarlarkValue(m starlark.Value, depth int) ([]byte, error) {
 		buf.Write(b)
 		buf.WriteString("}")
 		return []byte(buf.String()), nil
-	case "model_value", "symmetric_value", "Channel", "symmetry_segment":
+	case "model_value", "symmetric_value", "Channel", "symmetry_segment", "cardinality_counter":
 		return json.Marshal(m)
 	case "function":
 		if fn, ok := m.(*starlark.Function); ok {

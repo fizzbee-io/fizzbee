@@ -903,6 +903,12 @@ Examples 10-04 to 10-11 and 10-13 to 10-17 and 10-19 to 10-20 run with `FIZZ_LIV
 - **Key concepts**: ordinal `fresh()`, ordinal ID respacing
 - **Status**: ✅ PASSED
 
+### 17-01-cardinality-counter: Cardinality Counter (0, 1, MANY)
+- **State space**: 6 nodes, 4 unique states
+- **Purpose**: A reader-writer lock with any number of readers, checked without a bound
+- **Key concepts**: `cardinality.counter`, `inc()`, `oneof c.dec()`, `is_zero()`
+- **Status**: ✅ PASSED
+
 ### 99-01-checkpoints: Visualization Checkpoints
 - **State space**: 12 nodes, 10 unique states
 - **Purpose**: Using backtick labels to create visualization breakpoints

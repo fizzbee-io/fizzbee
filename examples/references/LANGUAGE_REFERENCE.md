@@ -2290,6 +2290,41 @@ Works with all symmetry types. For interval, values start at `start`: e.g., `sym
 
 8. **`require` is a guard, not an assertion.** `require cond` disables the transition when `cond` is false -- the action simply doesn't execute. It does **not** report a failure. To check properties, use `always assertion`. Prefer `require` over `if not cond: return` for enabling conditions -- they have the same effect but `require` is more concise and idiomatic.
 
+### Cardinality Module: Counting Without a Bound
+
+`cardinality.counter(n)` is an immutable counter that keeps only whether a count is 0, 1 or MANY (two or more). Use it when something can grow without a natural bound, such as readers holding a lock, messages in flight, or members in some state, and the spec only cares whether there are none, one or several. One abstract state then stands for every count, so safety results hold for any number, with no artificial bound.
+
+| Call | Result |
+|:---|:---|
+| `cardinality.counter(n)` | 0, 1 or MANY for `n` = 0, 1 or 2 and more (`n` defaults to 0) |
+| `c.inc()` | A new counter: 0 → 1, 1 → MANY, MANY → MANY |
+| `c.dec()` | A list of the possible results, for `oneof`: 1 → [0], MANY → [1, MANY]. An error on 0 |
+| `c.is_zero()`, `c.is_one()`, `c.is_many()` | Exact checks |
+| `bool(c)` | True unless 0 |
+| `c == d` | True when both have the same abstract value. MANY == MANY doesn't mean the counts are equal |
+
+```python
+action Init:
+    pending = cardinality.counter(0)
+
+atomic action Send:
+    pending = pending.inc()
+
+atomic action Ack:
+    require not pending.is_zero()
+    pending = oneof pending.dec()   # MANY may become 1 or stay MANY
+```
+
+**Rules:**
+- `dec()` returns a list, so write `c = oneof c.dec()`. On MANY both results are real possibilities, which is what makes the abstraction sound.
+- Guard every `dec()` with `require not c.is_zero()`. `dec()` on 0 is an error, like a count going negative.
+- `+`, `-`, `<` and `int(c)` are errors. `c == 2` is always False, because Starlark compares values of different types as unequal; use the `is_*` methods.
+- Counters are values: they can sit in state variables, role fields, dicts, lists and records.
+
+**Liveness.** `dec()` on MANY can return MANY, so the checker sees runs where a counter goes down forever, which no real count can do. For a liveness property that holds once the count stops growing, say both things (see `ReadersDrain` in [17-01-cardinality-counter](17-01-cardinality-counter/)):
+- `@assume(finite=[...])` on the assertion, naming the actions that increment the counter, and
+- `fair oneof c.dec()`, so MANY eventually becomes ONE.
+
 ---
 
 ## Best Practices

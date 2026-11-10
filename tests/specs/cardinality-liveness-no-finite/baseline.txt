@@ -1,0 +1,84 @@
+Model checking tests/specs/cardinality-liveness-no-finite/ReaderWriter.json
+configFileName: tests/specs/cardinality-liveness-no-finite/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
+Nodes: 6, queued: 0, elapsed: 1.552542ms
+Peak (new): queue=2 pendingActionStarts=4
+Time taken for model checking: 1.58198ms
+Writen graph dotfile: tests/specs/cardinality-liveness-no-finite/out/run_2026-11-10_01-13-14/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/cardinality-liveness-no-finite/out/run_2026-11-10_01-13-14/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 6 Unique states: 4
+Checking eventually always ReadersDrain
+IsLive: false
+Time taken to check liveness: 310.86µs
+FAILED: Liveness check failed
+Invariant: ReadersDrain
+------
+Init
+--
+state: {"readers":"0","writing":false}
+------
+StartRead
+--
+state: {"readers":"1","writing":false}
+------
+EndRead
+--
+state: {"readers":"1","writing":false}
+------
+Any:readers=0
+--
+state: {"readers":"0","writing":false}
+------
+StartRead
+--
+state: {"readers":"1","writing":false}
+------
+StartRead
+--
+state: {"readers":"MANY","writing":false}
+------
+EndRead
+--
+state: {"readers":"MANY","writing":false}
+------
+Any:readers=1
+--
+state: {"readers":"1","writing":false}
+------
+StartRead
+--
+state: {"readers":"MANY","writing":false}
+------
+EndRead
+--
+state: {"readers":"MANY","writing":false}
+------
+Any:readers=MANY
+--
+state: {"readers":"MANY","writing":false}
+------
+EndRead
+--
+state: {"readers":"MANY","writing":false}
+------
+Any:readers=1
+--
+state: {"readers":"1","writing":false}
+------
+EndRead
+--
+state: {"readers":"1","writing":false}
+------
+Any:readers=0
+--
+state: {"readers":"0","writing":false}
+------
+Writen graph json: tests/specs/cardinality-liveness-no-finite/out/run_2026-11-10_01-13-14/error-graph.json
+Writen graph dotfile: tests/specs/cardinality-liveness-no-finite/out/run_2026-11-10_01-13-14/error-graph.dot
+To generate an image file, run: 
+dot -Tsvg tests/specs/cardinality-liveness-no-finite/out/run_2026-11-10_01-13-14/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: tests/specs/cardinality-liveness-no-finite/out/run_2026-11-10_01-13-14/error-states.html
+To open: 
+open tests/specs/cardinality-liveness-no-finite/out/run_2026-11-10_01-13-14/error-states.html

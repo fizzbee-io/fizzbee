@@ -1,0 +1,44 @@
+Model checking tests/specs/cardinality-liveness-no-fair/ReaderWriter.json
+configFileName: tests/specs/cardinality-liveness-no-fair/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
+Nodes: 6, queued: 0, elapsed: 737.406µs
+Peak (new): queue=2 pendingActionStarts=4
+Time taken for model checking: 767.594µs
+Writen graph dotfile: tests/specs/cardinality-liveness-no-fair/out/run_2026-11-10_01-13-14/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/cardinality-liveness-no-fair/out/run_2026-11-10_01-13-14/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 6 Unique states: 4
+Checking eventually always ReadersDrain
+IsLive: false
+Time taken to check liveness: 393.059µs
+FAILED: Liveness check failed
+Invariant: ReadersDrain
+------
+Init
+--
+state: {"readers":"0","writing":false}
+------
+StartRead
+--
+state: {"readers":"1","writing":false}
+------
+StartRead
+--
+state: {"readers":"MANY","writing":false}
+------
+EndRead
+--
+state: {"readers":"MANY","writing":false}
+------
+Any:readers=MANY
+--
+state: {"readers":"MANY","writing":false}
+------
+Writen graph json: tests/specs/cardinality-liveness-no-fair/out/run_2026-11-10_01-13-14/error-graph.json
+Writen graph dotfile: tests/specs/cardinality-liveness-no-fair/out/run_2026-11-10_01-13-14/error-graph.dot
+To generate an image file, run: 
+dot -Tsvg tests/specs/cardinality-liveness-no-fair/out/run_2026-11-10_01-13-14/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: tests/specs/cardinality-liveness-no-fair/out/run_2026-11-10_01-13-14/error-states.html
+To open: 
+open tests/specs/cardinality-liveness-no-fair/out/run_2026-11-10_01-13-14/error-states.html

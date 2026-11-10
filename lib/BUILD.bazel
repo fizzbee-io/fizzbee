@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "lib",
     srcs = [
+        "cardinality.go",
         "counter.go",
         "function.go",
         "jsonmarshaller.go",
@@ -44,6 +45,7 @@ go_library(
 go_test(
     name = "lib_test",
     srcs = [
+        "cardinality_test.go",
         "empty_test.go",
         "function_test.go",
         "jsonmarshaller_test.go",
@@ -58,6 +60,7 @@ go_test(
         "@com_github_stretchr_testify//require",
         "@net_starlark_go//starlark",
         "@net_starlark_go//starlarkstruct",
+        "@net_starlark_go//syntax",
     ],
 )
 
