@@ -1,0 +1,62 @@
+digraph G {
+  "0x28580497680" [label="yield
+Actions: 0, Forks: 0
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = False)\nNode#1: fields(admins = 0, busy = False)
+", color="black" penwidth="2" ];
+  "0x28580497680" -> "0x28580497c20" [label="Node#0.Work", color="black" penwidth="1" ];
+  "0x28580497c20" [label="yield
+Actions: 1, Forks: 1
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = True)\nNode#1: fields(admins = 0, busy = False)
+Threads: 0/1
+", color="black" penwidth="2" ];
+  "0x28580497c20" -> "0x28580497680" [label="thread-0", color="black" penwidth="1" ];
+  "0x28580497c20" -> "0x285804ca640" [label="Node#0.Admin", color="black" penwidth="1" ];
+  "0x285804ca640" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = True)\nNode#1: fields(admins = 0, busy = False)
+Threads: 1/2
+", color="black" penwidth="2" ];
+  "0x28580497c20" -> "0x285804ca6e0" [label="Node#1.Work", color="black" penwidth="1" ];
+  "0x285804ca6e0" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = True)\nNode#1: fields(admins = 0, busy = True)
+Threads: 1/2
+", color="black" penwidth="2" ];
+  "0x28580497c20" -> "0x285804ca780" [label="Node#1.Admin", color="black" penwidth="1" ];
+  "0x285804ca780" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = True)\nNode#1: fields(admins = 1, busy = False)
+Threads: 1/2
+", color="black" penwidth="2" ];
+  "0x28580497680" -> "0x28580497cc0" [label="Node#0.Admin", color="black" penwidth="1" ];
+  "0x28580497cc0" [label="yield
+Actions: 1, Forks: 1
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = False)\nNode#1: fields(admins = 0, busy = False)
+Threads: 0/1
+", color="black" penwidth="2" ];
+  "0x28580497cc0" -> "0x28580497680" [label="thread-0", color="black" penwidth="1" ];
+  "0x28580497cc0" -> "0x285804caa00" [label="Node#0.Work", color="black" penwidth="1" ];
+  "0x285804caa00" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = True)\nNode#1: fields(admins = 0, busy = False)
+Threads: 1/2
+", color="black" penwidth="2" ];
+  "0x28580497cc0" -> "0x285804caaa0" [label="Node#0.Admin", color="black" penwidth="1" ];
+  "0x285804caaa0" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 2, busy = False)\nNode#1: fields(admins = 0, busy = False)
+Threads: 1/2
+", color="red" penwidth="2" ];
+  "0x28580497680" -> "0x28580497d60" [label="Node#1.Work", color="black" penwidth="1" ];
+  "0x28580497d60" [label="yield
+Actions: 1, Forks: 1
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = False)\nNode#1: fields(admins = 0, busy = True)
+Threads: 0/1
+", color="black" penwidth="2" ];
+  "0x28580497680" -> "0x28580497e00" [label="Node#1.Admin", color="black" penwidth="1" ];
+  "0x28580497e00" [label="yield
+Actions: 1, Forks: 1
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = False)\nNode#1: fields(admins = 1, busy = False)
+Threads: 0/1
+", color="black" penwidth="2" ];
+}

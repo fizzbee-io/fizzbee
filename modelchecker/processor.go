@@ -3863,7 +3863,7 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 		frame.Name = action.Name
 	}
 	newNode.Process.Action = frame.Name
-	if p.cappedCopies(frame.Name) {
+	if p.cappedCopies(action.Name, role) {
 		thread.Copies = lib.NewCardinalityCounter(1)
 	}
 

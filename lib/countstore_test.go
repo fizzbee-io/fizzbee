@@ -214,3 +214,24 @@ func entriesString[T any](s *CappedCountStore[T]) string {
 	}
 	return fmt.Sprint(parts)
 }
+
+func TestCappedCountStoreAddCount(t *testing.T) {
+	s := NewCappedCountStore[string]()
+	s.AddCount("a", "a", NewCardinalityCounter(0))
+	assert.False(t, s.Has("a"), "adding ZERO stores nothing")
+	s.AddCount("a", "a", NewCardinalityCounter(2))
+	assert.Equal(t, "MANY", s.Count("a").String())
+	s.AddCount("b", "b", NewCardinalityCounter(1))
+	s.AddCount("b", "other", NewCardinalityCounter(1))
+	assert.Equal(t, "MANY", s.Count("b").String(), "ONE + ONE is MANY")
+	v, _ := s.Get("b")
+	assert.Equal(t, "b", v, "the first value is kept")
+
+	// AddCount(ONE) is Add, and AddCount(MANY) is two Adds.
+	x, y := NewCappedCountStore[int](), NewCappedCountStore[int]()
+	x.AddCount("k", 1, NewCardinalityCounter(2))
+	y.Add("k", 1)
+	y.Add("k", 1)
+	assert.True(t, x.Equal(y))
+	assert.Equal(t, "[a:MANY b:MANY]", entriesString(s))
+}

@@ -1,0 +1,394 @@
+digraph G {
+  "0x15fc94880a0" [label="yield
+Actions: 0, Forks: 0
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = False)\nNode#1: fields(admins = 0, busy = False)
+", color="black" penwidth="2" ];
+  "0x15fc94880a0" -> "0x15fc9488640" [label="Node#0.Work", color="black" penwidth="1" ];
+  "0x15fc9488640" [label="yield
+Actions: 1, Forks: 1
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = True)\nNode#1: fields(admins = 0, busy = False)
+Threads: 0/1
+", color="black" penwidth="2" ];
+  "0x15fc9488640" -> "0x15fc94880a0" [label="thread-0", color="black" penwidth="1" ];
+  "0x15fc9488640" -> "0x15fc9488f00" [label="Node#0.Admin", color="black" penwidth="1" ];
+  "0x15fc9488f00" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = True)\nNode#1: fields(admins = 0, busy = False)
+Threads: 1/2
+", color="black" penwidth="2" ];
+  "0x15fc9488f00" -> "0x15fc94886e0" [label="thread-0
+ ThreadsMap: map[0:1]", color="black" penwidth="1" ];
+  "0x15fc94886e0" [label="yield
+Actions: 1, Forks: 1
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = False)\nNode#1: fields(admins = 0, busy = False)
+Threads: 0/1
+", color="black" penwidth="2" ];
+  "0x15fc94886e0" -> "0x15fc94880a0" [label="thread-0", color="black" penwidth="1" ];
+  "0x15fc94886e0" -> "0x15fc94892c0" [label="Node#0.Work", color="black" penwidth="1" ];
+  "0x15fc94892c0" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = True)\nNode#1: fields(admins = 0, busy = False)
+Threads: 1/2
+", color="black" penwidth="2" ];
+  "0x15fc94892c0" -> "0x15fc9488640" [label="thread-0
+ ThreadsMap: map[0:1]", color="black" penwidth="1" ];
+  "0x15fc94892c0" -> "0x15fc94886e0" [label="thread-1
+ ThreadsMap: map[0:0]", color="black" penwidth="1" ];
+  "0x15fc94892c0" -> "0x15fc9489d60" [label="Node#1.Work
+ ThreadsMap: map[0:1 1:0 2:2]", color="black" penwidth="1" ];
+  "0x15fc9489d60" [label="yield
+Actions: 3, Forks: 3
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = True)\nNode#1: fields(admins = 0, busy = True)
+Threads: 2/3
+", color="black" penwidth="2" ];
+  "0x15fc9489d60" -> "0x15fc9489720" [label="thread-0
+ ThreadsMap: map[0:2 1:1]", color="black" penwidth="1" ];
+  "0x15fc9489720" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = False)\nNode#1: fields(admins = 0, busy = True)
+Threads: 1/2
+", color="black" penwidth="2" ];
+  "0x15fc9489720" -> "0x15fc94886e0" [label="thread-0
+ ThreadsMap: map[0:1]", color="black" penwidth="1" ];
+  "0x15fc9489720" -> "0x15fc9488780" [label="thread-1
+ ThreadsMap: map[0:0]", color="black" penwidth="1" ];
+  "0x15fc9488780" [label="yield
+Actions: 1, Forks: 1
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = False)\nNode#1: fields(admins = 0, busy = True)
+Threads: 0/1
+", color="black" penwidth="2" ];
+  "0x15fc9488780" -> "0x15fc94880a0" [label="thread-0", color="black" penwidth="1" ];
+  "0x15fc9488780" -> "0x15fc9489680" [label="Node#0.Work", color="black" penwidth="1" ];
+  "0x15fc9489680" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = True)\nNode#1: fields(admins = 0, busy = True)
+Threads: 1/2
+", color="black" penwidth="2" ];
+  "0x15fc9489680" -> "0x15fc9488640" [label="thread-0
+ ThreadsMap: map[0:1]", color="black" penwidth="1" ];
+  "0x15fc9489680" -> "0x15fc9488780" [label="thread-1
+ ThreadsMap: map[0:0]", color="black" penwidth="1" ];
+  "0x15fc9489680" -> "0x15fc96321e0" [label="Node#0.Admin
+ ThreadsMap: map[0:1 1:0 2:2]", color="black" penwidth="1" ];
+  "0x15fc96321e0" [label="yield
+Actions: 3, Forks: 3
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = True)\nNode#1: fields(admins = 0, busy = True)
+Threads: 2/3
+", color="black" penwidth="2" ];
+  "0x15fc96321e0" -> "0x15fc9489360" [label="thread-0
+ ThreadsMap: map[0:2 1:1]", color="black" penwidth="1" ];
+  "0x15fc9489360" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = False)\nNode#1: fields(admins = 0, busy = True)
+Threads: 1/2
+", color="black" penwidth="2" ];
+  "0x15fc9489360" -> "0x15fc9488780" [label="thread-0
+ ThreadsMap: map[0:1]", color="black" penwidth="1" ];
+  "0x15fc9489360" -> "0x15fc94886e0" [label="thread-1
+ ThreadsMap: map[0:0]", color="black" penwidth="1" ];
+  "0x15fc9489360" -> "0x15fc9632b40" [label="Node#0.Work", color="black" penwidth="1" ];
+  "0x15fc9632b40" [label="yield
+Actions: 3, Forks: 3
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = True)\nNode#1: fields(admins = 0, busy = True)
+Threads: 2/3
+", color="black" penwidth="2" ];
+  "0x15fc9632b40" -> "0x15fc9488fa0" [label="thread-0
+ ThreadsMap: map[0:2 1:1]", color="black" penwidth="1" ];
+  "0x15fc9488fa0" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = True)\nNode#1: fields(admins = 0, busy = True)
+Threads: 1/2
+", color="black" penwidth="2" ];
+  "0x15fc9488fa0" -> "0x15fc9488780" [label="thread-0
+ ThreadsMap: map[0:1]", color="black" penwidth="1" ];
+  "0x15fc9488fa0" -> "0x15fc9488640" [label="thread-1
+ ThreadsMap: map[0:0]", color="black" penwidth="1" ];
+  "0x15fc9488fa0" -> "0x15fc96321e0" [label="Node#0.Admin", color="black" penwidth="1" ];
+  "0x15fc9488fa0" -> "0x15fc9632320" [label="Node#1.Admin", color="black" penwidth="1" ];
+  "0x15fc9632320" [label="yield
+Actions: 3, Forks: 3
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = True)\nNode#1: fields(admins = 1, busy = True)
+Threads: 2/3
+", color="black" penwidth="2" ];
+  "0x15fc9632320" -> "0x15fc9489ae0" [label="thread-0
+ ThreadsMap: map[0:2 1:1]", color="black" penwidth="1" ];
+  "0x15fc9489ae0" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = False)\nNode#1: fields(admins = 1, busy = True)
+Threads: 1/2
+", color="black" penwidth="2" ];
+  "0x15fc9489ae0" -> "0x15fc9488780" [label="thread-0
+ ThreadsMap: map[0:1]", color="black" penwidth="1" ];
+  "0x15fc9489ae0" -> "0x15fc9488820" [label="thread-1
+ ThreadsMap: map[0:0]", color="black" penwidth="1" ];
+  "0x15fc9488820" [label="yield
+Actions: 1, Forks: 1
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = False)\nNode#1: fields(admins = 1, busy = False)
+Threads: 0/1
+", color="black" penwidth="2" ];
+  "0x15fc9488820" -> "0x15fc94880a0" [label="thread-0", color="black" penwidth="1" ];
+  "0x15fc9488820" -> "0x15fc94899a0" [label="Node#0.Work", color="black" penwidth="1" ];
+  "0x15fc94899a0" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = True)\nNode#1: fields(admins = 1, busy = False)
+Threads: 1/2
+", color="black" penwidth="2" ];
+  "0x15fc94899a0" -> "0x15fc9488640" [label="thread-0
+ ThreadsMap: map[0:1]", color="black" penwidth="1" ];
+  "0x15fc94899a0" -> "0x15fc9488820" [label="thread-1
+ ThreadsMap: map[0:0]", color="black" penwidth="1" ];
+  "0x15fc94899a0" -> "0x15fc96325a0" [label="Node#0.Admin
+ ThreadsMap: map[0:1 1:0 2:2]", color="black" penwidth="1" ];
+  "0x15fc96325a0" [label="yield
+Actions: 3, Forks: 3
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = True)\nNode#1: fields(admins = 1, busy = False)
+Threads: 2/3
+", color="black" penwidth="2" ];
+  "0x15fc96325a0" -> "0x15fc9489400" [label="thread-0
+ ThreadsMap: map[0:2 1:1]", color="black" penwidth="1" ];
+  "0x15fc9489400" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = False)\nNode#1: fields(admins = 1, busy = False)
+Threads: 1/2
+", color="black" penwidth="2" ];
+  "0x15fc9489400" -> "0x15fc9488820" [label="thread-0
+ ThreadsMap: map[0:1]", color="black" penwidth="1" ];
+  "0x15fc9489400" -> "0x15fc94886e0" [label="thread-1
+ ThreadsMap: map[0:0]", color="black" penwidth="1" ];
+  "0x15fc9489400" -> "0x15fc9632e60" [label="Node#0.Work", color="black" penwidth="1" ];
+  "0x15fc9632e60" [label="yield
+Actions: 3, Forks: 3
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = True)\nNode#1: fields(admins = 1, busy = False)
+Threads: 2/3
+", color="black" penwidth="2" ];
+  "0x15fc9632e60" -> "0x15fc9489040" [label="thread-0
+ ThreadsMap: map[0:2 1:1]", color="black" penwidth="1" ];
+  "0x15fc9489040" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = True)\nNode#1: fields(admins = 1, busy = False)
+Threads: 1/2
+", color="black" penwidth="2" ];
+  "0x15fc9489040" -> "0x15fc9488820" [label="thread-0
+ ThreadsMap: map[0:1]", color="black" penwidth="1" ];
+  "0x15fc9489040" -> "0x15fc9488640" [label="thread-1
+ ThreadsMap: map[0:0]", color="black" penwidth="1" ];
+  "0x15fc9489040" -> "0x15fc96325a0" [label="Node#0.Admin", color="black" penwidth="1" ];
+  "0x15fc9489040" -> "0x15fc9632640" [label="Node#1.Work", color="black" penwidth="1" ];
+  "0x15fc9632640" [label="yield
+Actions: 3, Forks: 3
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = True)\nNode#1: fields(admins = 1, busy = True)
+Threads: 2/3
+", color="black" penwidth="2" ];
+  "0x15fc9632640" -> "0x15fc9489860" [label="thread-0
+ ThreadsMap: map[0:2 1:1]", color="black" penwidth="1" ];
+  "0x15fc9489860" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = False)\nNode#1: fields(admins = 1, busy = True)
+Threads: 1/2
+", color="black" penwidth="2" ];
+  "0x15fc9489860" -> "0x15fc9488820" [label="thread-0
+ ThreadsMap: map[0:1]", color="black" penwidth="1" ];
+  "0x15fc9489860" -> "0x15fc9488780" [label="thread-1
+ ThreadsMap: map[0:0]", color="black" penwidth="1" ];
+  "0x15fc9489860" -> "0x15fc96337c0" [label="Node#0.Work", color="black" penwidth="1" ];
+  "0x15fc96337c0" [label="yield
+Actions: 3, Forks: 3
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 0, busy = True)\nNode#1: fields(admins = 1, busy = True)
+Threads: 2/3
+", color="black" penwidth="2" ];
+  "0x15fc96337c0" -> "0x15fc9489040" [label="thread-0
+ ThreadsMap: map[0:2 1:1]", color="black" penwidth="1" ];
+  "0x15fc96337c0" -> "0x15fc9488fa0" [label="thread-1
+ ThreadsMap: map[0:2 1:0]", color="black" penwidth="1" ];
+  "0x15fc96337c0" -> "0x15fc9489ae0" [label="thread-2
+ ThreadsMap: map[0:1 1:0]", color="black" penwidth="1" ];
+  "0x15fc96337c0" -> "0x15fc96af0e0" [label="Node#0.Admin
+ ThreadsMap: map[0:2 1:0 2:1 3:3]", color="black" penwidth="1" ];
+  "0x15fc96af0e0" [label="yield
+Actions: 4, Forks: 4
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = True)\nNode#1: fields(admins = 1, busy = True)
+Threads: 3/4
+", color="black" penwidth="2" ];
+  "0x15fc96af0e0" -> "0x15fc9632f00" [label="thread-0
+ ThreadsMap: map[0:3 1:2 2:1]", color="black" penwidth="1" ];
+  "0x15fc9632f00" [label="yield
+Actions: 3, Forks: 3
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = False)\nNode#1: fields(admins = 1, busy = True)
+Threads: 2/3
+", color="black" penwidth="2" ];
+  "0x15fc9632f00" -> "0x15fc9489860" [label="thread-0
+ ThreadsMap: map[0:2 1:1]", color="black" penwidth="1" ];
+  "0x15fc9632f00" -> "0x15fc9489720" [label="thread-1
+ ThreadsMap: map[0:2 1:0]", color="black" penwidth="1" ];
+  "0x15fc9632f00" -> "0x15fc9489a40" [label="thread-2
+ ThreadsMap: map[0:1 1:0]", color="black" penwidth="1" ];
+  "0x15fc9489a40" [label="yield
+Actions: 2, Forks: 2
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = False)\nNode#1: fields(admins = 1, busy = False)
+Threads: 1/2
+", color="black" penwidth="2" ];
+  "0x15fc9489a40" -> "0x15fc94886e0" [label="thread-0
+ ThreadsMap: map[0:1]", color="black" penwidth="1" ];
+  "0x15fc9489a40" -> "0x15fc9488820" [label="thread-1
+ ThreadsMap: map[0:0]", color="black" penwidth="1" ];
+  "0x15fc9489a40" -> "0x15fc9632e60" [label="Node#0.Work
+ ThreadsMap: map[0:1 1:0 2:2]", color="black" penwidth="1" ];
+  "0x15fc9489a40" -> "0x15fc9632f00" [label="Node#1.Work
+ ThreadsMap: map[0:1 1:0 2:2]", color="black" penwidth="1" ];
+  "0x15fc9632f00" -> "0x15fc9720000" [label="Node#0.Work
+ ThreadsMap: map[0:0 1:2 2:1 3:3]", color="black" penwidth="1" ];
+  "0x15fc9720000" [label="yield
+Actions: 4, Forks: 4
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = True)\nNode#1: fields(admins = 1, busy = True)
+Threads: 3/4
+", color="black" penwidth="2" ];
+  "0x15fc9720000" -> "0x15fc9632640" [label="thread-0
+ ThreadsMap: map[0:3 1:2 2:1]", color="black" penwidth="1" ];
+  "0x15fc9720000" -> "0x15fc96325a0" [label="thread-1
+ ThreadsMap: map[0:3 1:2 2:0]", color="black" penwidth="1" ];
+  "0x15fc9720000" -> "0x15fc96321e0" [label="thread-2
+ ThreadsMap: map[0:3 1:1 2:0]", color="black" penwidth="1" ];
+  "0x15fc9720000" -> "0x15fc9633860" [label="thread-3
+ ThreadsMap: map[0:1 1:2 2:0]", color="black" penwidth="1" ];
+  "0x15fc9633860" [label="yield
+Actions: 3, Forks: 3
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = False)\nNode#1: fields(admins = 1, busy = True)
+Threads: 2/3
+", color="black" penwidth="2" ];
+  "0x15fc9633860" -> "0x15fc9489400" [label="thread-0
+ ThreadsMap: map[0:2 1:1]", color="black" penwidth="1" ];
+  "0x15fc9633860" -> "0x15fc9489360" [label="thread-1
+ ThreadsMap: map[0:2 1:0]", color="black" penwidth="1" ];
+  "0x15fc9633860" -> "0x15fc9489ae0" [label="thread-2
+ ThreadsMap: map[0:1 1:0]", color="black" penwidth="1" ];
+  "0x15fc9633860" -> "0x15fc9720000" [label="Node#0.Work
+ ThreadsMap: map[0:2 1:0 2:1 3:3]", color="black" penwidth="1" ];
+  "0x15fc96af0e0" -> "0x15fc9632e60" [label="thread-1
+ ThreadsMap: map[0:3 1:2 2:0]", color="black" penwidth="1" ];
+  "0x15fc96af0e0" -> "0x15fc9632b40" [label="thread-2
+ ThreadsMap: map[0:3 1:1 2:0]", color="black" penwidth="1" ];
+  "0x15fc96af0e0" -> "0x15fc96337c0" [label="thread-3
+ ThreadsMap: map[0:1 1:2 2:0]", color="black" penwidth="1" ];
+  "0x15fc9489860" -> "0x15fc9633860" [label="Node#0.Admin", color="black" penwidth="1" ];
+  "0x15fc9632640" -> "0x15fc9489680" [label="thread-1
+ ThreadsMap: map[0:2 1:0]", color="black" penwidth="1" ];
+  "0x15fc9632640" -> "0x15fc94899a0" [label="thread-2
+ ThreadsMap: map[0:1 1:0]", color="black" penwidth="1" ];
+  "0x15fc9632640" -> "0x15fc96af0e0" [label="Node#0.Admin
+ ThreadsMap: map[0:0 1:2 2:1 3:3]", color="black" penwidth="1" ];
+  "0x15fc9632e60" -> "0x15fc9488f00" [label="thread-1
+ ThreadsMap: map[0:2 1:0]", color="black" penwidth="1" ];
+  "0x15fc9632e60" -> "0x15fc9489a40" [label="thread-2
+ ThreadsMap: map[0:1 1:0]", color="black" penwidth="1" ];
+  "0x15fc9632e60" -> "0x15fc96aea00" [label="Node#1.Work
+ ThreadsMap: map[0:2 1:0 2:1 3:3]", color="black" penwidth="1" ];
+  "0x15fc96aea00" [label="yield
+Actions: 4, Forks: 4
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = True)\nNode#1: fields(admins = 1, busy = True)
+Threads: 3/4
+", color="black" penwidth="2" ];
+  "0x15fc96aea00" -> "0x15fc9633860" [label="thread-0
+ ThreadsMap: map[0:3 1:2 2:1]", color="black" penwidth="1" ];
+  "0x15fc96aea00" -> "0x15fc96337c0" [label="thread-1
+ ThreadsMap: map[0:3 1:2 2:0]", color="black" penwidth="1" ];
+  "0x15fc96aea00" -> "0x15fc9632b40" [label="thread-2
+ ThreadsMap: map[0:1 1:3 2:0]", color="black" penwidth="1" ];
+  "0x15fc96aea00" -> "0x15fc9632e60" [label="thread-3
+ ThreadsMap: map[0:1 1:2 2:0]", color="black" penwidth="1" ];
+  "0x15fc9489400" -> "0x15fc9632f00" [label="Node#1.Work", color="black" penwidth="1" ];
+  "0x15fc96325a0" -> "0x15fc94892c0" [label="thread-1
+ ThreadsMap: map[0:2 1:0]", color="black" penwidth="1" ];
+  "0x15fc96325a0" -> "0x15fc94899a0" [label="thread-2
+ ThreadsMap: map[0:1 1:0]", color="black" penwidth="1" ];
+  "0x15fc96325a0" -> "0x15fc96aea00" [label="Node#1.Work
+ ThreadsMap: map[0:0 1:2 2:1 3:3]", color="black" penwidth="1" ];
+  "0x15fc94899a0" -> "0x15fc9632640" [label="Node#1.Work
+ ThreadsMap: map[0:1 1:0 2:2]", color="black" penwidth="1" ];
+  "0x15fc9488820" -> "0x15fc9489a40" [label="Node#0.Admin", color="black" penwidth="1" ];
+  "0x15fc9488820" -> "0x15fc9489ae0" [label="Node#1.Work", color="black" penwidth="1" ];
+  "0x15fc9489ae0" -> "0x15fc96337c0" [label="Node#0.Work
+ ThreadsMap: map[0:1 1:0 2:2]", color="black" penwidth="1" ];
+  "0x15fc9489ae0" -> "0x15fc9633860" [label="Node#0.Admin
+ ThreadsMap: map[0:1 1:0 2:2]", color="black" penwidth="1" ];
+  "0x15fc9632320" -> "0x15fc94899a0" [label="thread-1
+ ThreadsMap: map[0:2 1:0]", color="black" penwidth="1" ];
+  "0x15fc9632320" -> "0x15fc9489680" [label="thread-2
+ ThreadsMap: map[0:1 1:0]", color="black" penwidth="1" ];
+  "0x15fc9632320" -> "0x15fc96af0e0" [label="Node#0.Admin", color="black" penwidth="1" ];
+  "0x15fc9632b40" -> "0x15fc9488f00" [label="thread-1
+ ThreadsMap: map[0:2 1:0]", color="black" penwidth="1" ];
+  "0x15fc9632b40" -> "0x15fc9489720" [label="thread-2
+ ThreadsMap: map[0:1 1:0]", color="black" penwidth="1" ];
+  "0x15fc9632b40" -> "0x15fc96ae6e0" [label="Node#1.Admin
+ ThreadsMap: map[0:2 1:0 2:1 3:3]", color="black" penwidth="1" ];
+  "0x15fc96ae6e0" [label="yield
+Actions: 4, Forks: 4
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = True)\nNode#1: fields(admins = 1, busy = True)
+Threads: 3/4
+", color="black" penwidth="2" ];
+  "0x15fc96ae6e0" -> "0x15fc9633860" [label="thread-0
+ ThreadsMap: map[0:2 1:3 2:1]", color="black" penwidth="1" ];
+  "0x15fc96ae6e0" -> "0x15fc96337c0" [label="thread-1
+ ThreadsMap: map[0:2 1:3 2:0]", color="black" penwidth="1" ];
+  "0x15fc96ae6e0" -> "0x15fc9632e60" [label="thread-2
+ ThreadsMap: map[0:1 1:3 2:0]", color="black" penwidth="1" ];
+  "0x15fc96ae6e0" -> "0x15fc9632b40" [label="thread-3
+ ThreadsMap: map[0:1 1:2 2:0]", color="black" penwidth="1" ];
+  "0x15fc9489360" -> "0x15fc9632c80" [label="Node#1.Admin", color="black" penwidth="1" ];
+  "0x15fc9632c80" [label="yield
+Actions: 3, Forks: 3
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = False)\nNode#1: fields(admins = 1, busy = True)
+Threads: 2/3
+", color="black" penwidth="2" ];
+  "0x15fc9632c80" -> "0x15fc9489ae0" [label="thread-0
+ ThreadsMap: map[0:2 1:1]", color="black" penwidth="1" ];
+  "0x15fc9632c80" -> "0x15fc9489a40" [label="thread-1
+ ThreadsMap: map[0:2 1:0]", color="black" penwidth="1" ];
+  "0x15fc9632c80" -> "0x15fc9489720" [label="thread-2
+ ThreadsMap: map[0:1 1:0]", color="black" penwidth="1" ];
+  "0x15fc9632c80" -> "0x15fc9720000" [label="Node#0.Work", color="black" penwidth="1" ];
+  "0x15fc96321e0" -> "0x15fc94892c0" [label="thread-1
+ ThreadsMap: map[0:2 1:0]", color="black" penwidth="1" ];
+  "0x15fc96321e0" -> "0x15fc9489680" [label="thread-2
+ ThreadsMap: map[0:1 1:0]", color="black" penwidth="1" ];
+  "0x15fc96321e0" -> "0x15fc96ae6e0" [label="Node#1.Admin
+ ThreadsMap: map[0:0 1:2 2:1 3:3]", color="black" penwidth="1" ];
+  "0x15fc9489680" -> "0x15fc9632320" [label="Node#1.Admin
+ ThreadsMap: map[0:1 1:0 2:2]", color="black" penwidth="1" ];
+  "0x15fc9488780" -> "0x15fc9489720" [label="Node#0.Admin", color="black" penwidth="1" ];
+  "0x15fc9488780" -> "0x15fc9489860" [label="Node#1.Admin", color="black" penwidth="1" ];
+  "0x15fc9489720" -> "0x15fc9632b40" [label="Node#0.Work
+ ThreadsMap: map[0:1 1:0 2:2]", color="black" penwidth="1" ];
+  "0x15fc9489720" -> "0x15fc9632c80" [label="Node#1.Admin
+ ThreadsMap: map[0:1 1:0 2:2]", color="black" penwidth="1" ];
+  "0x15fc9489d60" -> "0x15fc9489680" [label="thread-1
+ ThreadsMap: map[0:2 1:0]", color="black" penwidth="1" ];
+  "0x15fc9489d60" -> "0x15fc94892c0" [label="thread-2
+ ThreadsMap: map[0:1 1:0]", color="black" penwidth="1" ];
+  "0x15fc9489d60" -> "0x15fc96ae6e0" [label="Node#1.Admin", color="black" penwidth="1" ];
+  "0x15fc94892c0" -> "0x15fc9489e00" [label="Node#1.Admin
+ ThreadsMap: map[0:1 1:0 2:2]", color="black" penwidth="1" ];
+  "0x15fc9489e00" [label="yield
+Actions: 3, Forks: 3
+State: {\"nodes\":[\"role Node#0\",\"role Node#1\"]}\nNode#0: fields(admins = 1, busy = True)\nNode#1: fields(admins = 1, busy = False)
+Threads: 2/3
+", color="black" penwidth="2" ];
+  "0x15fc9489e00" -> "0x15fc9489a40" [label="thread-0
+ ThreadsMap: map[0:2 1:1]", color="black" penwidth="1" ];
+  "0x15fc9489e00" -> "0x15fc94899a0" [label="thread-1
+ ThreadsMap: map[0:2 1:0]", color="black" penwidth="1" ];
+  "0x15fc9489e00" -> "0x15fc94892c0" [label="thread-2
+ ThreadsMap: map[0:1 1:0]", color="black" penwidth="1" ];
+  "0x15fc9489e00" -> "0x15fc96aea00" [label="Node#1.Work", color="black" penwidth="1" ];
+  "0x15fc94886e0" -> "0x15fc9489360" [label="Node#1.Work", color="black" penwidth="1" ];
+  "0x15fc94886e0" -> "0x15fc9489400" [label="Node#1.Admin", color="black" penwidth="1" ];
+  "0x15fc9488f00" -> "0x15fc9488640" [label="thread-1
+ ThreadsMap: map[0:0]", color="black" penwidth="1" ];
+  "0x15fc9488f00" -> "0x15fc9489d60" [label="Node#1.Work", color="black" penwidth="1" ];
+  "0x15fc9488f00" -> "0x15fc9489e00" [label="Node#1.Admin", color="black" penwidth="1" ];
+  "0x15fc9488640" -> "0x15fc9488fa0" [label="Node#1.Work", color="black" penwidth="1" ];
+  "0x15fc9488640" -> "0x15fc9489040" [label="Node#1.Admin", color="black" penwidth="1" ];
+  "0x15fc94880a0" -> "0x15fc94886e0" [label="Node#0.Admin", color="black" penwidth="1" ];
+  "0x15fc94880a0" -> "0x15fc9488780" [label="Node#1.Work", color="black" penwidth="1" ];
+  "0x15fc94880a0" -> "0x15fc9488820" [label="Node#1.Admin", color="black" penwidth="1" ];
+}

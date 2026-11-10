@@ -1,0 +1,464 @@
+{
+  "sourceInfo": {
+    "fileName": "Roles.fizz",
+    "start": {
+      "line": 15,
+      "column": 1
+    },
+    "end": {
+      "line": 35
+    }
+  },
+  "invariants": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 33,
+          "column": 1
+        },
+        "end": {
+          "line": 35
+        }
+      },
+      "name": "OneAdminPerNode",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 34,
+            "column": 5
+          },
+          "end": {
+            "line": 35
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 34,
+                "column": 5
+              },
+              "end": {
+                "line": 35
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 34,
+                  "column": 5
+                },
+                "end": {
+                  "line": 34,
+                  "column": 46
+                }
+              },
+              "pyExpr": "all([n.admins <= 1 for n in nodes])",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 34,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 34,
+                    "column": 46
+                  }
+                },
+                "pyExpr": "all([n.admins <= 1 for n in nodes])"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def OneAdminPerNode():\n    return all([n.admins <= 1 for n in nodes])\n"
+    }
+  ],
+  "actions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 30,
+          "column": 1
+        },
+        "end": {
+          "line": 33
+        }
+      },
+      "name": "Init",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 31,
+            "column": 5
+          },
+          "end": {
+            "line": 33
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 31,
+                "column": 5
+              },
+              "end": {
+                "line": 33
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 31,
+                  "column": 5
+                },
+                "end": {
+                  "line": 31,
+                  "column": 28
+                }
+              },
+              "code": "nodes = [Node(), Node()]"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "roles": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 15,
+          "column": 1
+        },
+        "end": {
+          "line": 30
+        }
+      },
+      "name": "Node",
+      "actions": [
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 16,
+              "column": 5
+            },
+            "end": {
+              "line": 20,
+              "column": 4
+            }
+          },
+          "name": "Init",
+          "flow": "FLOW_ATOMIC",
+          "fairness": {
+            "level": "FAIRNESS_LEVEL_STRONG"
+          },
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 17,
+                "column": 9
+              },
+              "end": {
+                "line": 20,
+                "column": 4
+              }
+            },
+            "flow": "FLOW_ATOMIC",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 17,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 18,
+                    "column": 8
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 17,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 17,
+                      "column": 25
+                    }
+                  },
+                  "code": "self.busy = False"
+                }
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 18,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 4
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 18,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 18,
+                      "column": 23
+                    }
+                  },
+                  "code": "self.admins = 0"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 20,
+              "column": 5
+            },
+            "end": {
+              "line": 26,
+              "column": 4
+            }
+          },
+          "name": "Work",
+          "flow": "FLOW_SERIAL",
+          "fairness": {
+            "level": "FAIRNESS_LEVEL_UNFAIR"
+          },
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 21,
+                "column": 9
+              },
+              "end": {
+                "line": 26,
+                "column": 4
+              }
+            },
+            "flow": "FLOW_SERIAL",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 21,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 24,
+                    "column": 8
+                  }
+                },
+                "block": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 22,
+                      "column": 13
+                    },
+                    "end": {
+                      "line": 24,
+                      "column": 8
+                    }
+                  },
+                  "flow": "FLOW_ATOMIC",
+                  "stmts": [
+                    {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 22,
+                          "column": 13
+                        },
+                        "end": {
+                          "line": 23,
+                          "column": 12
+                        }
+                      },
+                      "requireStmt": {
+                        "sourceInfo": {
+                          "start": {
+                            "line": 22,
+                            "column": 13
+                          },
+                          "end": {
+                            "line": 22,
+                            "column": 33
+                          }
+                        },
+                        "condition": "not self.busy",
+                        "conditionExpr": {
+                          "sourceInfo": {
+                            "start": {
+                              "line": 22,
+                              "column": 21
+                            },
+                            "end": {
+                              "line": 22,
+                              "column": 33
+                            }
+                          },
+                          "pyExpr": "not self.busy"
+                        }
+                      }
+                    },
+                    {
+                      "sourceInfo": {
+                        "start": {
+                          "line": 23,
+                          "column": 13
+                        },
+                        "end": {
+                          "line": 24,
+                          "column": 8
+                        }
+                      },
+                      "pyStmt": {
+                        "sourceInfo": {
+                          "start": {
+                            "line": 23,
+                            "column": 13
+                          },
+                          "end": {
+                            "line": 23,
+                            "column": 28
+                          }
+                        },
+                        "code": "self.busy = True"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 24,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 26,
+                    "column": 4
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 24,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 24,
+                      "column": 25
+                    }
+                  },
+                  "code": "self.busy = False"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "sourceInfo": {
+            "start": {
+              "line": 26,
+              "column": 5
+            },
+            "end": {
+              "line": 30
+            }
+          },
+          "name": "Admin",
+          "flow": "FLOW_SERIAL",
+          "fairness": {
+            "level": "FAIRNESS_LEVEL_UNFAIR"
+          },
+          "block": {
+            "sourceInfo": {
+              "start": {
+                "line": 27,
+                "column": 9
+              },
+              "end": {
+                "line": 30
+              }
+            },
+            "flow": "FLOW_SERIAL",
+            "stmts": [
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 27,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 28,
+                    "column": 8
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 27,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 27,
+                      "column": 24
+                    }
+                  },
+                  "code": "self.admins += 1"
+                }
+              },
+              {
+                "sourceInfo": {
+                  "start": {
+                    "line": 28,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 30
+                  }
+                },
+                "pyStmt": {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 28,
+                      "column": 9
+                    },
+                    "end": {
+                      "line": 28,
+                      "column": 24
+                    }
+                  },
+                  "code": "self.admins -= 1"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "frontMatter": {
+    "yaml": "\ndeadlock_detection: false\noptions:\n  crash_on_yield: false\naction_options:\n  \"Node#.Admin\":\n    max_concurrent_actions: 1\n"
+  }
+}

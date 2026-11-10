@@ -1,0 +1,249 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error States Comparison</title>
+</head>
+<style>
+/* styles.css */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body, html {
+  height: 100%;
+  font-family: Arial, sans-serif;
+}
+
+.container {
+  display: flex;
+  height: 100vh;
+  padding: 10px;
+}
+
+.content {
+  flex: 1;
+  padding-right: 20px;
+}
+.content td, .content th {
+  padding: 4px 8px;
+}
+.code-container {
+  width: 50%;
+  position: relative;
+  overflow: hidden;
+}
+
+.code {
+  counter-reset: lineNumber;
+  overflow-y: auto;
+  height: 100%;
+  white-space: nowrap;
+  padding-top: 10px;
+}
+
+.code-line-numbers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding-top: 10px;
+  padding-right: 10px;
+  text-align: right;
+  font-family: monospace;
+  background-color: #f4f4f4;
+  color: #888;
+  user-select: none;
+}
+.line-number {
+  line-height: 1.6;
+}
+.line-num:hover {
+    cursor: pointer;
+}
+.code pre {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  font-family: monospace;
+  line-height: 1.6;
+  padding-left: 3em;
+  position: relative;
+}
+.code pre:before {
+    counter-increment: lineNumber;
+    content: counter(lineNumber) " ";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 2.5em;
+    text-align: right;
+    color: #888;
+    background-color: #f4f4f4;
+    user-select: none;
+    font-family: monospace;
+}
+
+code {
+  display: block;
+}
+
+.highlight {
+  background-color: yellow;
+  animation: highlight 1s ease-out;
+}
+
+@keyframes highlight {
+  0% {
+    background-color: yellow;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+</style>
+<body>
+<div class="container">
+  <!-- Main content area (left) -->
+  <div class="content">
+    <h1>Error States Diff</h1>
+    <table border="1">
+        <tr>
+            <th>Row</th><th>Thread 0</th><th>Thread 1</th>
+            <th>Yield?</th>
+            <th style="min-width:6em; text-align:center;">Diff Link</th>
+            <th style="min-width:6em; text-align:center;">Yield Diff</th>
+        </tr>
+
+<tr>
+	<td>1</td>
+	 
+		<td>Init</td>
+	 
+		<td></td>
+	
+	<td>yield</td>
+	<td style="min-width:6em; text-align:center;"></td>
+	<td style="min-width:6em; text-align:center;"></td>
+</tr>
+
+<tr>
+	<td>2</td>
+	 
+		<td>Node#0.Admin<br><p id="line-27-ref" class="line-num">Next Instr: 27<p></td>
+	 
+		<td></td>
+	
+	<td>yield</td>
+	<td style="min-width:6em; text-align:center;"><a href="https://jsondiff.com/#left=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbeyJuYW1lIjoiTm9kZSIsInJlZiI6MCwicmVmX3N0cmluZyI6Ik5vZGUjMCIsInBhcmFtcyI6e30sImZpZWxkcyI6eyJhZG1pbnMiOjAsImJ1c3kiOmZhbHNlfX0seyJuYW1lIjoiTm9kZSIsInJlZiI6MSwicmVmX3N0cmluZyI6Ik5vZGUjMSIsInBhcmFtcyI6e30sImZpZWxkcyI6eyJhZG1pbnMiOjAsImJ1c3kiOmZhbHNlfX1dLCJzdGF0ZSI6eyJub2RlcyI6WyJyb2xlIE5vZGUjMCIsInJvbGUgTm9kZSMxIl19LCJzdGF0cyI6eyJ0b3RhbEFjdGlvbnMiOjAsImNvdW50cyI6e319LCJ0aHJlYWRzIjpbXSwid2l0bmVzcyI6W1tmYWxzZV1dfSwiVHlwZSI6IiIsIk5hbWUiOiJJbml0IiwiTGFiZWxzIjpudWxsLCJGYWlybmVzcyI6MywiQ2hvaWNlRmFpcm5lc3MiOjAsIkFjdGlvbiI6IiIsIk1lc3NhZ2VzIjpudWxsLCJSZXFJZCI6MCwiVGhyZWFkc01hcCI6bnVsbCwiRmFpbGVkSW52YXJpYW50cyI6bnVsbCwiUmV0dXJucyI6bnVsbCwiV2VpZ2h0IjowLCJDaG9pY2VzIjpudWxsfQ==&amp;right=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbeyJuYW1lIjoiTm9kZSIsInJlZiI6MCwicmVmX3N0cmluZyI6Ik5vZGUjMCIsInBhcmFtcyI6e30sImZpZWxkcyI6eyJhZG1pbnMiOjEsImJ1c3kiOmZhbHNlfX0seyJuYW1lIjoiTm9kZSIsInJlZiI6MSwicmVmX3N0cmluZyI6Ik5vZGUjMSIsInBhcmFtcyI6e30sImZpZWxkcyI6eyJhZG1pbnMiOjAsImJ1c3kiOmZhbHNlfX1dLCJzdGF0ZSI6eyJub2RlcyI6WyJyb2xlIE5vZGUjMCIsInJvbGUgTm9kZSMxIl19LCJzdGF0cyI6eyJ0b3RhbEFjdGlvbnMiOjEsImNvdW50cyI6eyJOb2RlIzAuQWRtaW4iOjF9fSwidGhyZWFkcyI6W3siaWQiOjQsInN0YWNrIjpbeyJmaWxlSW5kZXgiOjAsIm5hbWUiOiJOb2RlLkFkbWluIiwicGMiOiJSb2xlc1swXS5BY3Rpb25zWzJdLkJsb2NrLlN0bXRzWzFdIiwic2NvcGUiOnsibG9vcFJhbmdlIjpudWxsLCJwYXJlbnQiOm51bGwsInNraXBzdG10cyI6bnVsbCwidmFycyI6Int9In0sInZhcnMiOiJ7fSJ9XSwiZmFpcm5lc3MiOjF9XSwid2l0bmVzcyI6W1tmYWxzZV1dfSwiVHlwZSI6ImFjdGlvbiIsIk5hbWUiOiJOb2RlIzAuQWRtaW4iLCJMYWJlbHMiOm51bGwsIkZhaXJuZXNzIjoxLCJDaG9pY2VGYWlybmVzcyI6MCwiQWN0aW9uIjoiTm9kZS5BZG1pbiIsIk1lc3NhZ2VzIjpudWxsLCJSZXFJZCI6MCwiVGhyZWFkc01hcCI6bnVsbCwiRmFpbGVkSW52YXJpYW50cyI6bnVsbCwiUmV0dXJucyI6bnVsbCwiV2VpZ2h0IjowLCJDaG9pY2VzIjpudWxsfQ==" target="_blank">Show diff</a></td>
+	<td style="min-width:6em; text-align:center;"><a href="https://jsondiff.com/#left=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbeyJuYW1lIjoiTm9kZSIsInJlZiI6MCwicmVmX3N0cmluZyI6Ik5vZGUjMCIsInBhcmFtcyI6e30sImZpZWxkcyI6eyJhZG1pbnMiOjAsImJ1c3kiOmZhbHNlfX0seyJuYW1lIjoiTm9kZSIsInJlZiI6MSwicmVmX3N0cmluZyI6Ik5vZGUjMSIsInBhcmFtcyI6e30sImZpZWxkcyI6eyJhZG1pbnMiOjAsImJ1c3kiOmZhbHNlfX1dLCJzdGF0ZSI6eyJub2RlcyI6WyJyb2xlIE5vZGUjMCIsInJvbGUgTm9kZSMxIl19LCJzdGF0cyI6eyJ0b3RhbEFjdGlvbnMiOjAsImNvdW50cyI6e319LCJ0aHJlYWRzIjpbXSwid2l0bmVzcyI6W1tmYWxzZV1dfSwiVHlwZSI6IiIsIk5hbWUiOiJJbml0IiwiTGFiZWxzIjpudWxsLCJGYWlybmVzcyI6MywiQ2hvaWNlRmFpcm5lc3MiOjAsIkFjdGlvbiI6IiIsIk1lc3NhZ2VzIjpudWxsLCJSZXFJZCI6MCwiVGhyZWFkc01hcCI6bnVsbCwiRmFpbGVkSW52YXJpYW50cyI6bnVsbCwiUmV0dXJucyI6bnVsbCwiV2VpZ2h0IjowLCJDaG9pY2VzIjpudWxsfQ==&amp;right=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbeyJuYW1lIjoiTm9kZSIsInJlZiI6MCwicmVmX3N0cmluZyI6Ik5vZGUjMCIsInBhcmFtcyI6e30sImZpZWxkcyI6eyJhZG1pbnMiOjEsImJ1c3kiOmZhbHNlfX0seyJuYW1lIjoiTm9kZSIsInJlZiI6MSwicmVmX3N0cmluZyI6Ik5vZGUjMSIsInBhcmFtcyI6e30sImZpZWxkcyI6eyJhZG1pbnMiOjAsImJ1c3kiOmZhbHNlfX1dLCJzdGF0ZSI6eyJub2RlcyI6WyJyb2xlIE5vZGUjMCIsInJvbGUgTm9kZSMxIl19LCJzdGF0cyI6eyJ0b3RhbEFjdGlvbnMiOjEsImNvdW50cyI6eyJOb2RlIzAuQWRtaW4iOjF9fSwidGhyZWFkcyI6W3siaWQiOjQsInN0YWNrIjpbeyJmaWxlSW5kZXgiOjAsIm5hbWUiOiJOb2RlLkFkbWluIiwicGMiOiJSb2xlc1swXS5BY3Rpb25zWzJdLkJsb2NrLlN0bXRzWzFdIiwic2NvcGUiOnsibG9vcFJhbmdlIjpudWxsLCJwYXJlbnQiOm51bGwsInNraXBzdG10cyI6bnVsbCwidmFycyI6Int9In0sInZhcnMiOiJ7fSJ9XSwiZmFpcm5lc3MiOjF9XSwid2l0bmVzcyI6W1tmYWxzZV1dfSwiVHlwZSI6ImFjdGlvbiIsIk5hbWUiOiJOb2RlIzAuQWRtaW4iLCJMYWJlbHMiOm51bGwsIkZhaXJuZXNzIjoxLCJDaG9pY2VGYWlybmVzcyI6MCwiQWN0aW9uIjoiTm9kZS5BZG1pbiIsIk1lc3NhZ2VzIjpudWxsLCJSZXFJZCI6MCwiVGhyZWFkc01hcCI6bnVsbCwiRmFpbGVkSW52YXJpYW50cyI6bnVsbCwiUmV0dXJucyI6bnVsbCwiV2VpZ2h0IjowLCJDaG9pY2VzIjpudWxsfQ==" target="_blank">Show yield diff</a></td>
+</tr>
+
+<tr>
+	<td>3</td>
+	 
+		<td></td>
+	 
+		<td>Node#0.Admin<br><p id="line-27-ref" class="line-num">Next Instr: 27<p></td>
+	
+	<td>yield</td>
+	<td style="min-width:6em; text-align:center;"><a href="https://jsondiff.com/#left=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbeyJuYW1lIjoiTm9kZSIsInJlZiI6MCwicmVmX3N0cmluZyI6Ik5vZGUjMCIsInBhcmFtcyI6e30sImZpZWxkcyI6eyJhZG1pbnMiOjEsImJ1c3kiOmZhbHNlfX0seyJuYW1lIjoiTm9kZSIsInJlZiI6MSwicmVmX3N0cmluZyI6Ik5vZGUjMSIsInBhcmFtcyI6e30sImZpZWxkcyI6eyJhZG1pbnMiOjAsImJ1c3kiOmZhbHNlfX1dLCJzdGF0ZSI6eyJub2RlcyI6WyJyb2xlIE5vZGUjMCIsInJvbGUgTm9kZSMxIl19LCJzdGF0cyI6eyJ0b3RhbEFjdGlvbnMiOjEsImNvdW50cyI6eyJOb2RlIzAuQWRtaW4iOjF9fSwidGhyZWFkcyI6W3siaWQiOjQsInN0YWNrIjpbeyJmaWxlSW5kZXgiOjAsIm5hbWUiOiJOb2RlLkFkbWluIiwicGMiOiJSb2xlc1swXS5BY3Rpb25zWzJdLkJsb2NrLlN0bXRzWzFdIiwic2NvcGUiOnsibG9vcFJhbmdlIjpudWxsLCJwYXJlbnQiOm51bGwsInNraXBzdG10cyI6bnVsbCwidmFycyI6Int9In0sInZhcnMiOiJ7fSJ9XSwiZmFpcm5lc3MiOjF9XSwid2l0bmVzcyI6W1tmYWxzZV1dfSwiVHlwZSI6ImFjdGlvbiIsIk5hbWUiOiJOb2RlIzAuQWRtaW4iLCJMYWJlbHMiOm51bGwsIkZhaXJuZXNzIjoxLCJDaG9pY2VGYWlybmVzcyI6MCwiQWN0aW9uIjoiTm9kZS5BZG1pbiIsIk1lc3NhZ2VzIjpudWxsLCJSZXFJZCI6MCwiVGhyZWFkc01hcCI6bnVsbCwiRmFpbGVkSW52YXJpYW50cyI6bnVsbCwiUmV0dXJucyI6bnVsbCwiV2VpZ2h0IjowLCJDaG9pY2VzIjpudWxsfQ==&amp;right=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjEsImZhaWxlZEludmFyaWFudHMiOnsiMCI6WzBdfSwibmFtZSI6InlpZWxkIiwicmV0dXJucyI6Int9Iiwicm9sZXMiOlt7Im5hbWUiOiJOb2RlIiwicmVmIjowLCJyZWZfc3RyaW5nIjoiTm9kZSMwIiwicGFyYW1zIjp7fSwiZmllbGRzIjp7ImFkbWlucyI6MiwiYnVzeSI6ZmFsc2V9fSx7Im5hbWUiOiJOb2RlIiwicmVmIjoxLCJyZWZfc3RyaW5nIjoiTm9kZSMxIiwicGFyYW1zIjp7fSwiZmllbGRzIjp7ImFkbWlucyI6MCwiYnVzeSI6ZmFsc2V9fV0sInN0YXRlIjp7Im5vZGVzIjpbInJvbGUgTm9kZSMwIiwicm9sZSBOb2RlIzEiXX0sInN0YXRzIjp7InRvdGFsQWN0aW9ucyI6MiwiY291bnRzIjp7Ik5vZGUjMC5BZG1pbiI6Mn19LCJ0aHJlYWRzIjpbeyJpZCI6NCwic3RhY2siOlt7ImZpbGVJbmRleCI6MCwibmFtZSI6Ik5vZGUuQWRtaW4iLCJwYyI6IlJvbGVzWzBdLkFjdGlvbnNbMl0uQmxvY2suU3RtdHNbMV0iLCJzY29wZSI6eyJsb29wUmFuZ2UiOm51bGwsInBhcmVudCI6bnVsbCwic2tpcHN0bXRzIjpudWxsLCJ2YXJzIjoie30ifSwidmFycyI6Int9In1dLCJmYWlybmVzcyI6MX0seyJpZCI6MTksInN0YWNrIjpbeyJmaWxlSW5kZXgiOjAsIm5hbWUiOiJOb2RlLkFkbWluIiwicGMiOiJSb2xlc1swXS5BY3Rpb25zWzJdLkJsb2NrLlN0bXRzWzFdIiwic2NvcGUiOnsibG9vcFJhbmdlIjpudWxsLCJwYXJlbnQiOm51bGwsInNraXBzdG10cyI6bnVsbCwidmFycyI6Int9In0sInZhcnMiOiJ7fSJ9XSwiZmFpcm5lc3MiOjF9XSwid2l0bmVzcyI6W1tmYWxzZV1dfSwiVHlwZSI6ImFjdGlvbiIsIk5hbWUiOiJOb2RlIzAuQWRtaW4iLCJMYWJlbHMiOm51bGwsIkZhaXJuZXNzIjoxLCJDaG9pY2VGYWlybmVzcyI6MCwiQWN0aW9uIjoiTm9kZS5BZG1pbiIsIk1lc3NhZ2VzIjpudWxsLCJSZXFJZCI6MSwiVGhyZWFkc01hcCI6bnVsbCwiRmFpbGVkSW52YXJpYW50cyI6bnVsbCwiUmV0dXJucyI6bnVsbCwiV2VpZ2h0IjowLCJDaG9pY2VzIjpudWxsfQ==" target="_blank">Show diff</a></td>
+	<td style="min-width:6em; text-align:center;"><a href="https://jsondiff.com/#left=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjAsImZhaWxlZEludmFyaWFudHMiOm51bGwsIm5hbWUiOiJ5aWVsZCIsInJldHVybnMiOiJ7fSIsInJvbGVzIjpbeyJuYW1lIjoiTm9kZSIsInJlZiI6MCwicmVmX3N0cmluZyI6Ik5vZGUjMCIsInBhcmFtcyI6e30sImZpZWxkcyI6eyJhZG1pbnMiOjEsImJ1c3kiOmZhbHNlfX0seyJuYW1lIjoiTm9kZSIsInJlZiI6MSwicmVmX3N0cmluZyI6Ik5vZGUjMSIsInBhcmFtcyI6e30sImZpZWxkcyI6eyJhZG1pbnMiOjAsImJ1c3kiOmZhbHNlfX1dLCJzdGF0ZSI6eyJub2RlcyI6WyJyb2xlIE5vZGUjMCIsInJvbGUgTm9kZSMxIl19LCJzdGF0cyI6eyJ0b3RhbEFjdGlvbnMiOjEsImNvdW50cyI6eyJOb2RlIzAuQWRtaW4iOjF9fSwidGhyZWFkcyI6W3siaWQiOjQsInN0YWNrIjpbeyJmaWxlSW5kZXgiOjAsIm5hbWUiOiJOb2RlLkFkbWluIiwicGMiOiJSb2xlc1swXS5BY3Rpb25zWzJdLkJsb2NrLlN0bXRzWzFdIiwic2NvcGUiOnsibG9vcFJhbmdlIjpudWxsLCJwYXJlbnQiOm51bGwsInNraXBzdG10cyI6bnVsbCwidmFycyI6Int9In0sInZhcnMiOiJ7fSJ9XSwiZmFpcm5lc3MiOjF9XSwid2l0bmVzcyI6W1tmYWxzZV1dfSwiVHlwZSI6ImFjdGlvbiIsIk5hbWUiOiJOb2RlIzAuQWRtaW4iLCJMYWJlbHMiOm51bGwsIkZhaXJuZXNzIjoxLCJDaG9pY2VGYWlybmVzcyI6MCwiQWN0aW9uIjoiTm9kZS5BZG1pbiIsIk1lc3NhZ2VzIjpudWxsLCJSZXFJZCI6MCwiVGhyZWFkc01hcCI6bnVsbCwiRmFpbGVkSW52YXJpYW50cyI6bnVsbCwiUmV0dXJucyI6bnVsbCwiV2VpZ2h0IjowLCJDaG9pY2VzIjpudWxsfQ==&amp;right=data:base64,eyJOb2RlIjp7ImNoYW5uZWxfbWVzc2FnZXMiOnt9LCJjaGFubmVscyI6e30sImN1cnJlbnQiOjEsImZhaWxlZEludmFyaWFudHMiOnsiMCI6WzBdfSwibmFtZSI6InlpZWxkIiwicmV0dXJucyI6Int9Iiwicm9sZXMiOlt7Im5hbWUiOiJOb2RlIiwicmVmIjowLCJyZWZfc3RyaW5nIjoiTm9kZSMwIiwicGFyYW1zIjp7fSwiZmllbGRzIjp7ImFkbWlucyI6MiwiYnVzeSI6ZmFsc2V9fSx7Im5hbWUiOiJOb2RlIiwicmVmIjoxLCJyZWZfc3RyaW5nIjoiTm9kZSMxIiwicGFyYW1zIjp7fSwiZmllbGRzIjp7ImFkbWlucyI6MCwiYnVzeSI6ZmFsc2V9fV0sInN0YXRlIjp7Im5vZGVzIjpbInJvbGUgTm9kZSMwIiwicm9sZSBOb2RlIzEiXX0sInN0YXRzIjp7InRvdGFsQWN0aW9ucyI6MiwiY291bnRzIjp7Ik5vZGUjMC5BZG1pbiI6Mn19LCJ0aHJlYWRzIjpbeyJpZCI6NCwic3RhY2siOlt7ImZpbGVJbmRleCI6MCwibmFtZSI6Ik5vZGUuQWRtaW4iLCJwYyI6IlJvbGVzWzBdLkFjdGlvbnNbMl0uQmxvY2suU3RtdHNbMV0iLCJzY29wZSI6eyJsb29wUmFuZ2UiOm51bGwsInBhcmVudCI6bnVsbCwic2tpcHN0bXRzIjpudWxsLCJ2YXJzIjoie30ifSwidmFycyI6Int9In1dLCJmYWlybmVzcyI6MX0seyJpZCI6MTksInN0YWNrIjpbeyJmaWxlSW5kZXgiOjAsIm5hbWUiOiJOb2RlLkFkbWluIiwicGMiOiJSb2xlc1swXS5BY3Rpb25zWzJdLkJsb2NrLlN0bXRzWzFdIiwic2NvcGUiOnsibG9vcFJhbmdlIjpudWxsLCJwYXJlbnQiOm51bGwsInNraXBzdG10cyI6bnVsbCwidmFycyI6Int9In0sInZhcnMiOiJ7fSJ9XSwiZmFpcm5lc3MiOjF9XSwid2l0bmVzcyI6W1tmYWxzZV1dfSwiVHlwZSI6ImFjdGlvbiIsIk5hbWUiOiJOb2RlIzAuQWRtaW4iLCJMYWJlbHMiOm51bGwsIkZhaXJuZXNzIjoxLCJDaG9pY2VGYWlybmVzcyI6MCwiQWN0aW9uIjoiTm9kZS5BZG1pbiIsIk1lc3NhZ2VzIjpudWxsLCJSZXFJZCI6MSwiVGhyZWFkc01hcCI6bnVsbCwiRmFpbGVkSW52YXJpYW50cyI6bnVsbCwiUmV0dXJucyI6bnVsbCwiV2VpZ2h0IjowLCJDaG9pY2VzIjpudWxsfQ==" target="_blank">Show yield diff</a></td>
+</tr>
+
+    </table>
+  </div>
+    <!-- Code block area (right) -->
+    <div class="code-container">
+      <div class="code-line-numbers" id="line-numbers">
+        <!-- Line numbers will be added dynamically here -->
+      </div>
+      <div class="code" id="code"><pre><code>---</code></pre>
+<pre><code>deadlock_detection: false</code></pre>
+<pre><code>options:</code></pre>
+<pre><code>  crash_on_yield: false</code></pre>
+<pre><code>action_options:</code></pre>
+<pre><code>  &#34;Node#.Admin&#34;:</code></pre>
+<pre><code>    max_concurrent_actions: 2</code></pre>
+<pre><code>---</code></pre>
+<pre><code># As capped-threads-role-limit, with the per-role limit raised to 2: two</code></pre>
+<pre><code># Admin threads can be in flight on one node, so OneAdminPerNode fails.</code></pre>
+<pre><code># The fixed limit keeps Admin threads ordinary even though the global</code></pre>
+<pre><code># limit is MANY.</code></pre>
+<pre><code>&nbsp;</code></pre>
+<pre><code>role Node:</code></pre>
+<pre><code>    action Init:</code></pre>
+<pre><code>        self.busy = False</code></pre>
+<pre><code>        self.admins = 0</code></pre>
+<pre><code>&nbsp;</code></pre>
+<pre><code>    action Work:</code></pre>
+<pre><code>        atomic:</code></pre>
+<pre><code>            require not self.busy</code></pre>
+<pre><code>            self.busy = True</code></pre>
+<pre><code>        self.busy = False</code></pre>
+<pre><code>&nbsp;</code></pre>
+<pre><code>    action Admin:</code></pre>
+<pre><code>        self.admins += 1</code></pre>
+<pre><code>        self.admins -= 1</code></pre>
+<pre><code>&nbsp;</code></pre>
+<pre><code>action Init:</code></pre>
+<pre><code>    nodes = [Node(), Node()]</code></pre>
+<pre><code>&nbsp;</code></pre>
+<pre><code>always assertion OneAdminPerNode:</code></pre>
+<pre><code>    return all([n.admins &lt;= 1 for n in nodes])</code></pre>
+<pre><code>&nbsp;</code></pre>
+
+      </div>
+    </div>
+</div>
+</body>
+<script>
+// script.js
+
+document.addEventListener("DOMContentLoaded", function() {
+  const codeLines = document.querySelectorAll("#code pre");
+  //const lineNumbers = document.getElementById("line-numbers");
+  const codeDiv = document.getElementById("code");
+  
+  //// Function to create line numbers and assign them as clickable
+  //codeLines.forEach((line, index) => {
+  //  const lineNumber = document.createElement("div");
+  //  lineNumber.textContent = index + 1; // Line numbers are 1-indexed
+  //  lineNumber.classList.add("line-number");
+  //  lineNumber.addEventListener("click", () => highlightLine(index));
+  //  lineNumbers.appendChild(lineNumber);
+  //});
+
+  // Function to highlight a line in the code block
+  function highlightLine(lineIndex) {
+    // Remove existing highlight
+    const highlighted = codeDiv.querySelector(".highlight");
+    if (highlighted) {
+      highlighted.classList.remove("highlight");
+    }
+  
+    // Add highlight to clicked line
+    const targetLine = codeLines[lineIndex];
+    if (!targetLine) return;
+    targetLine.classList.add("highlight");
+  
+    // Scroll the code block to the target line
+    targetLine.scrollIntoView({ behavior: "auto",  block: "center" });
+  }
+
+  // Scroll the code block to make a specific line visible when a reference in content is clicked
+  document.querySelectorAll("[id^='line-']").forEach(element => {
+    element.addEventListener("click", function() {
+      const lineNumber = parseInt(this.id.split('-')[1], 10) - 1; // Get line number from ID
+      highlightLine(lineNumber);
+    });
+  });
+});
+
+</script>
+</html>

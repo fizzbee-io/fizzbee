@@ -139,7 +139,7 @@ func (p *Processor) materializeLazy(node *Node) bool {
 		frame.Name = la.action.Name
 	}
 	proc.Action = frame.Name
-	if p.cappedCopies(frame.Name) {
+	if p.cappedCopies(la.action.Name, la.role) {
 		thread.Copies = lib.NewCardinalityCounter(1)
 	}
 	return true

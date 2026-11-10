@@ -1,0 +1,34 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+action_options:
+  "Node#.Admin":
+    max_concurrent_actions: 1
+---
+# With --experimental_capped_threads the global limit is MANY. Node.Work
+# has no limit of its own, so its threads are grouped into copies, one
+# group per node (the frames hold the node). Node.Admin has a fixed per-role limit of 1 (the
+# "Node#.Admin" key), so its threads stay ordinary and at most one is in
+# flight on each node.
+
+role Node:
+    action Init:
+        self.busy = False
+        self.admins = 0
+
+    action Work:
+        atomic:
+            require not self.busy
+            self.busy = True
+        self.busy = False
+
+    action Admin:
+        self.admins += 1
+        self.admins -= 1
+
+action Init:
+    nodes = [Node(), Node()]
+
+always assertion OneAdminPerNode:
+    return all([n.admins <= 1 for n in nodes])

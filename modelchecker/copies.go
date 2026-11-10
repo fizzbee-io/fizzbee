@@ -17,8 +17,19 @@ package modelchecker
 //     add (CardinalityCounter.Plus): ONE + ONE is MANY.
 //   - Scheduling a group of MANY splits one copy off to run. The copies
 //     left behind are ONE or MANY, so the split forks two ways, as a
-//     oneof would, with weak fairness: MANY can't be chosen forever, since
-//     every real step takes a copy closer to running out.
+//     `fair oneof` would: liveness treats both options of a fair choice as
+//     strongly fair, keyed by the group's slot and pc.
+//
+//     Why fair: a run that splits a group infinitely often and always
+//     keeps MANY is real only if copies keep joining the group (new
+//     starts, or copies looping back), since finitely many copies run
+//     out. Such a run has a fair counterpart with the same states between
+//     joins: choose ONE left at a split just before a join, and the join
+//     makes the group MANY again, as MANY left would. Without joins the
+//     run needs infinitely many threads, which is no run of the spec, and
+//     fairness rules it out. capped-threads-fair-split checks the draining
+//     case (it fails with an unfair split) and capped-threads-loop the
+//     returning one.
 //   - A group of ONE runs as an ordinary thread and leaves no copy behind.
 //   - On crash_on_yield, one copy of the group that yielded crashes: a
 //     group of ONE goes away, and a group of MANY leaves ONE or MANY.
@@ -28,21 +39,21 @@ package modelchecker
 // and tests/specs/capped-threads-* check the engine against it.
 
 import (
-	"strings"
-
 	ast "fizz/proto"
 	"github.com/fizzbee-io/fizzbee/lib"
 )
 
-// cappedCopies reports whether threads of the action whose root frame is
-// named frameName ("Action" or "Role.Action") are grouped into copies: its
-// action_options set max_concurrent_actions to MANY (-1), or set no limit
-// while the global max_concurrent_actions is MANY. A fixed limit keeps
-// ordinary threads.
-func (p *Processor) cappedCopies(frameName string) bool {
-	keys := []string{frameName}
-	if role, action, ok := strings.Cut(frameName, "."); ok {
-		keys = append(keys, role+"#."+action)
+// cappedCopies reports whether threads of action, started by role (nil
+// for a top-level action), are grouped into copies. The action_options
+// keys that apply are the ones the concurrency limits use: "Action", or
+// for a role action "Role.Action", "Role#.Action" and the instance's
+// "Role#0.Action". A fixed limit under any of them keeps ordinary
+// threads, so that the limit is enforced exactly. Otherwise MANY (-1)
+// under any of them, or a MANY global max_concurrent_actions, groups them.
+func (p *Processor) cappedCopies(action string, role *lib.Role) bool {
+	keys := []string{action}
+	if role != nil {
+		keys = []string{role.Name + "." + action, role.Name + "#." + action, role.RefStringShort() + "." + action}
 	}
 	many := false
 	for _, k := range keys {
@@ -102,41 +113,35 @@ func (t *Thread) splitCopies() []*Process {
 
 // mergeCopies merges groups with identical frames into one slot, adding
 // their counts, so that the state is the same however the copies got
-// there. Current moves to the surviving slot of its group.
+// there. The lowest slot of each group survives, and Current moves to it.
+//
+// The key is the frames (scopes, locals, pc and receiver of every frame)
+// plus the thread's fairness. Fairness is set from the action at the root
+// frame, so identical frames already imply it; it is in the key so that a
+// merge can never change it. The other thread fields are not state: Id is
+// not hashed, and Aborted is set only on a disabled fork, which never
+// reaches a yield.
 func (p *Process) mergeCopies() {
 	store := lib.NewCappedCountStore[int]()
-	n := 0
+	merged := false
 	for i, t := range p.Threads {
 		if t == nil || t.Copies == nil {
 			continue
 		}
-		n++
-		key := t.framesHash()
-		if !store.Has(key) {
-			store.Add(key, i)
-			if t.Copies.IsMany() {
-				store.Add(key, i)
-			}
+		key := t.framesHash() + "|" + t.Fairness.String()
+		keep, ok := store.Get(key)
+		store.AddCount(key, i, t.Copies)
+		if !ok {
 			continue
 		}
-		store.Add(key, i)
-	}
-	if n < 2 || store.Len() == n {
-		return
-	}
-	for _, e := range store.Entries() {
-		keep := e.Value
-		for i, t := range p.Threads {
-			if t == nil || t.Copies == nil || i == keep || t.framesHash() != e.Key {
-				continue
-			}
-			if p.Current == i {
-				p.Current = keep
-			}
-			p.Threads[i] = nil
+		p.Threads[keep].Copies = store.Count(key)
+		if p.Current == i {
+			p.Current = keep
 		}
-		p.Threads[keep].Copies = e.Count
+		p.Threads[i] = nil
+		merged = true
 	}
-	p.CachedHashCode = ""
+	if merged {
+		p.CachedHashCode = ""
+	}
 }
-
