@@ -1,0 +1,31 @@
+---
+deadlock_detection: false
+action_options:
+  Worker:
+    max_concurrent_actions: -1
+---
+# As capped-threads-fair-split, with crash_on_yield on. One copy of a
+# MANY group can crash, leaving ONE or MANY copies. A copy that crashes
+# after setting busy leaves it set, so Quiet fails, as it does with exact
+# limits of 1 to 3 threads.
+
+action Init:
+    gate = False
+    busy = False
+    started = False
+
+fair action Worker:
+    atomic:
+        require not gate
+        started = True
+    atomic:
+        require gate
+        busy = True
+    busy = False
+
+atomic fair action Open:
+    require not gate
+    gate = True
+
+eventually always assertion Quiet:
+    return not busy

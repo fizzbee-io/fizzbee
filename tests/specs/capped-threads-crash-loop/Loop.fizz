@@ -1,0 +1,22 @@
+---
+deadlock_detection: false
+action_options:
+  Worker:
+    max_concurrent_actions: -1
+---
+# As capped-threads-loop, with crash_on_yield on: copies of a looping
+# group crash one at a time, and the remaining workers still keep x
+# cycling through 0.
+
+action Init:
+    x = 0
+    y = 0
+
+fair action Worker:
+    while True:
+        atomic:
+            x = (x + 1) % 3
+        y = (y + x) % 2
+
+always eventually assertion Zero:
+    return x == 0

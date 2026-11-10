@@ -2994,9 +2994,26 @@ func (p *Processor) crashRole(node *Node, role *lib.Role) (*Node, *Node) {
 }
 
 func (p *Processor) crashThread(node *Node) {
+	if t := node.Process.currentThread(); t.Copies != nil && t.Copies.IsMany() {
+		// One copy of a MANY group crashes: the copies left are ONE or
+		// MANY, so the crash has two outcomes, as a split does.
+		for _, left := range []*lib.CardinalityCounter{lib.NewCardinalityCounter(1), lib.NewCardinalityCounter(2)} {
+			crashFork := node.Process.Fork()
+			crashFork.Threads[crashFork.Current].Copies = left
+			crashFork.CachedHashCode = ""
+			p.attachCrashFork(node, crashFork)
+		}
+		return
+	}
 	crashFork := node.Process.Fork()
-	crashFork.Name = "crash"
 	crashFork.removeCurrentThread()
+	p.attachCrashFork(node, crashFork)
+}
+
+// attachCrashFork adds crashFork, a copy of node's process with the
+// crashed thread gone, as node's crash successor.
+func (p *Processor) attachCrashFork(node *Node, crashFork *Process) {
+	crashFork.Name = "crash"
 	crashNode := node.ForkForAlternatePaths(crashFork, "crash")
 	if !p.ShouldScheduleNode(crashNode) {
 		return
@@ -4075,10 +4092,6 @@ func (p *Processor) ResetEphemeralVariables(node *Node, oldRole *lib.Role) {
 
 func (p *Processor) shouldThreadCrash(node *Node) bool {
 	if node.Process.GetThreadsCount() == 0 || node.Process.Current == -1 || !p.config.Options.GetCrashOnYield() {
-		return false
-	}
-	if node.Process.currentThread().Copies != nil {
-		// Crashing one copy of a group is not supported yet.
 		return false
 	}
 	frameName := node.Process.currentThread().Stack.RawArray()[0].Name

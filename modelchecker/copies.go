@@ -20,6 +20,8 @@ package modelchecker
 //     oneof would, with weak fairness: MANY can't be chosen forever, since
 //     every real step takes a copy closer to running out.
 //   - A group of ONE runs as an ordinary thread and leaves no copy behind.
+//   - On crash_on_yield, one copy of the group that yielded crashes: a
+//     group of ONE goes away, and a group of MANY leaves ONE or MANY.
 //
 // Ordinary threads (Copies nil) are untouched and hash exactly as before.
 // The scheduling rule is specified in tests/specs/capped-thread-copies,
