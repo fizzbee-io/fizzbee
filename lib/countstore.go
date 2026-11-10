@@ -13,9 +13,11 @@ package lib
 //
 // The count policy is fixed per store:
 //   - CountExact keeps exact counts. Remove has one outcome.
-//   - CountCapped keeps 0, 1 or Many. Adding to Many stays Many, and
-//     removing from Many has two outcomes, 1 or Many; the caller picks one
-//     (with a oneof, or by forking).
+//   - CountCapped keeps 0, 1 or Many, with the arithmetic of
+//     CardinalityCounter (cardinality.counter): adding to Many stays Many,
+//     and removing from Many has two outcomes, 1 or Many; the caller picks
+//     one (with a oneof, or by forking). A capped count is the counter's
+//     ValueCode.
 
 import (
 	"fmt"
@@ -30,8 +32,21 @@ const (
 	CountCapped
 )
 
-// Many is the count a CountCapped store uses for "more than one".
+// Many is the count a CountCapped store uses for "more than one": the
+// ValueCode of a MANY CardinalityCounter.
 const Many = 2
+
+// capped is the capped count for an exact count n.
+func capped(n int) int { return int(NewCardinalityCounter(int64(n)).ValueCode()) }
+
+// counter is the CardinalityCounter for a capped count.
+func counter(n int) *CardinalityCounter {
+	c, err := CardinalityCounterFromCode(uint8(n))
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
 
 // CountEntry is one distinct element and its count, which is never 0.
 type CountEntry[T any] struct {
@@ -90,8 +105,8 @@ func (s *CountStore[T]) Total() int {
 	for _, e := range s.entries {
 		n += e.Count
 	}
-	if s.policy == CountCapped && n > Many {
-		return Many
+	if s.policy == CountCapped {
+		return capped(n)
 	}
 	return n
 }
@@ -114,8 +129,8 @@ func (s *CountStore[T]) Add(key string, value T) {
 }
 
 func (s *CountStore[T]) inc(n int) int {
-	if s.policy == CountCapped && n >= Many {
-		return Many
+	if s.policy == CountCapped {
+		return int(counter(n).Inc().ValueCode())
 	}
 	return n + 1
 }
@@ -125,14 +140,21 @@ func (s *CountStore[T]) inc(n int) int {
 // {1, Many} from Many. It is an error when key is absent.
 func (s *CountStore[T]) RemoveOutcomes(key string) ([]int, error) {
 	n := s.Count(key)
-	switch {
-	case n == 0:
+	if n == 0 {
 		return nil, fmt.Errorf("remove(%s): not present", key)
-	case s.policy == CountCapped && n == Many:
-		return []int{1, Many}, nil
-	default:
+	}
+	if s.policy == CountExact {
 		return []int{n - 1}, nil
 	}
+	choices, err := counter(n).Dec()
+	if err != nil {
+		return nil, err
+	}
+	outs := make([]int, len(choices))
+	for i, c := range choices {
+		outs[i] = int(c.ValueCode())
+	}
+	return outs, nil
 }
 
 // Remove removes one copy of key, taking outcome, which must be one of
@@ -208,8 +230,8 @@ func (s *CountStore[T]) Rekey(key func(T) string) {
 		i, ok := s.find(k)
 		if ok {
 			n := s.entries[i].Count + e.Count
-			if s.policy == CountCapped && n > Many {
-				n = Many
+			if s.policy == CountCapped {
+				n = capped(n)
 			}
 			s.entries[i].Count = n
 			continue

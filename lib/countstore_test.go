@@ -127,6 +127,25 @@ func TestCountStoreOutcomesAndErrors(t *testing.T) {
 	assert.Equal(t, []int{4}, outs)
 }
 
+// Capped counts follow cardinality.counter exactly.
+func TestCountStoreCappedMatchesCounter(t *testing.T) {
+	assert.Equal(t, int(NewCardinalityCounter(5).ValueCode()), Many)
+	s := NewCountStore[int](CountCapped)
+	c := NewCardinalityCounter(0)
+	for i := 0; i < 3; i++ {
+		s.Add("a", 0)
+		c = c.Inc()
+		assert.Equal(t, int(c.ValueCode()), s.Count("a"))
+	}
+	outs, err := s.RemoveOutcomes("a")
+	require.NoError(t, err)
+	decs, _ := c.Dec()
+	require.Len(t, outs, len(decs))
+	for i, d := range decs {
+		assert.Equal(t, int(d.ValueCode()), outs[i])
+	}
+}
+
 func TestCountStoreCloneAndRekey(t *testing.T) {
 	s := NewCountStore[[]int](CountExact)
 	s.Add("x1", []int{1})
