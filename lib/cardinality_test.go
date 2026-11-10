@@ -179,3 +179,13 @@ check(str(cardinality.counter(4)) == "MANY", "str")
 		}
 	}
 }
+
+// Plus is the abstraction of adding two concrete counts.
+func TestCardinalityCounterPlus(t *testing.T) {
+	for a := int64(0); a <= 3; a++ {
+		for b := int64(0); b <= 3; b++ {
+			got := NewCardinalityCounter(a).Plus(NewCardinalityCounter(b))
+			assert.Equal(t, NewCardinalityCounter(a+b).String(), got.String(), "%d + %d", a, b)
+		}
+	}
+}
