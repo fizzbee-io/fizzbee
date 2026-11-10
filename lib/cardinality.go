@@ -3,7 +3,6 @@ package lib
 import (
 	"encoding/json"
 	"fmt"
-	"sync/atomic"
 
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
@@ -18,19 +17,8 @@ import (
 // It is immutable: inc() returns a new counter, dec() returns the list of
 // counters the decrement can reach (ONE -> [ZERO], MANY -> [ONE, MANY]) for
 // the spec to choose from with oneof.
-//
-// Besides the value, a counter carries scratch fields that the liveness
-// tracking uses within one step (see modelchecker/cardinality.go).
-// They never affect equality, hashing, serialization or symmetry.
 type CardinalityCounter struct {
 	value uint8
-
-	// Scratch for liveness tracking, valid only while epoch is the epoch
-	// of the running step: the counter of the step's start state this one
-	// was derived from with inc() and dec(), and the net change since.
-	epoch uint64
-	base  *CardinalityCounter
-	delta int
 }
 
 const CardinalityCounterType = "cardinality_counter"
@@ -41,18 +29,8 @@ const (
 	cardMany
 )
 
-var cardinalityUsed atomic.Bool
-
-// CardinalityUsed reports whether the spec created any counter, so the
-// checker only pays for location tracking when it is needed.
-func CardinalityUsed() bool { return cardinalityUsed.Load() }
-
-// ResetCardinalityUsed clears CardinalityUsed for a new model-checking run.
-func ResetCardinalityUsed() { cardinalityUsed.Store(false) }
-
 // NewCardinalityCounter returns the abstraction of the concrete count n.
 func NewCardinalityCounter(n int64) *CardinalityCounter {
-	cardinalityUsed.Store(true)
 	switch {
 	case n <= 0:
 		return &CardinalityCounter{value: cardZero}
@@ -68,93 +46,21 @@ func (c *CardinalityCounter) IsZero() bool { return c.value == cardZero }
 func (c *CardinalityCounter) IsOne() bool  { return c.value == cardOne }
 func (c *CardinalityCounter) IsMany() bool { return c.value == cardMany }
 
-// CardinalityStepKey is the starlark thread local holding the running
-// step's *CardinalityStep.
-const CardinalityStepKey = "fizz_cardinality_step"
-
-// CardinalityStep is what inc() and dec() need to know about the running
-// step (from one yield point to the next): an epoch unique to the step, and
-// the counters of the step's start state, each mapped to the location it
-// was found at ("" when it was found at more than one).
-type CardinalityStep struct {
-	Epoch uint64
-	Start map[*CardinalityCounter]string
-	// Vanish maps the path of each nonzero counter at the start whose
-	// container treats an absent entry as zero (CardinalityHolder) to its
-	// event key: if the entry is gone at the end of the step, its count
-	// went down.
-	Vanish map[string]string
-}
-
-// CardinalityEntry is one counter inside a CardinalityHolder.
-type CardinalityEntry struct {
-	// PathSuffix is appended to the holder's path to name the entry within
-	// one state, for example "[x]". KeySuffix is the same for liveness
-	// event keys, coarsened where symmetry can rename the entry between
-	// states, for example "[*]".
-	PathSuffix, KeySuffix string
-	Value                 *CardinalityCounter
-	// Set replaces the entry's counter, or is nil when it can't be.
-	Set func(*CardinalityCounter)
-}
-
-// CardinalityHolder is a container of counters other than the built-in
-// lists, tuples, dicts and records, such as a multiset. The liveness
-// tracking walks its entries. AbsentIsZero reports whether a missing entry
-// means a count of zero, so an entry that disappears during a step counts
-// as a decrement.
-type CardinalityHolder interface {
-	CardinalityEntries() []CardinalityEntry
-	AbsentIsZero() bool
-}
-
-var cardinalityEpochs atomic.Uint64
-
-// NewCardinalityStep returns a step with a fresh epoch.
-func NewCardinalityStep(start map[*CardinalityCounter]string) *CardinalityStep {
-	return &CardinalityStep{Epoch: cardinalityEpochs.Add(1), Start: start, Vanish: map[string]string{}}
-}
-
-// Lineage returns the start-state counter c was derived from in step and
-// the net change since, or ok=false when c has no known lineage in step: a
-// new counter, or one carried over from an earlier step.
-func (c *CardinalityCounter) Lineage(step *CardinalityStep) (base *CardinalityCounter, delta int, ok bool) {
-	if step == nil || c.epoch != step.Epoch || c.base == nil {
-		return nil, 0, false
-	}
-	return c.base, c.delta, true
-}
-
-// derive returns a counter with the given value that changed c by d.
-func (c *CardinalityCounter) derive(step *CardinalityStep, value uint8, d int) *CardinalityCounter {
-	out := &CardinalityCounter{value: value}
-	if step == nil {
-		return out
-	}
-	out.epoch = step.Epoch
-	if _, ok := step.Start[c]; ok {
-		out.base, out.delta = c, d
-	} else if c.epoch == step.Epoch && c.base != nil {
-		out.base, out.delta = c.base, c.delta+d
-	}
-	return out
-}
-
 // Inc returns the counter after adding one.
-func (c *CardinalityCounter) Inc(step *CardinalityStep) *CardinalityCounter {
+func (c *CardinalityCounter) Inc() *CardinalityCounter {
 	if c.value == cardZero {
-		return c.derive(step, cardOne, 1)
+		return &CardinalityCounter{value: cardOne}
 	}
-	return c.derive(step, cardMany, 1)
+	return &CardinalityCounter{value: cardMany}
 }
 
 // Dec returns every counter reachable by removing one.
-func (c *CardinalityCounter) Dec(step *CardinalityStep) ([]*CardinalityCounter, error) {
+func (c *CardinalityCounter) Dec() ([]*CardinalityCounter, error) {
 	switch c.value {
 	case cardOne:
-		return []*CardinalityCounter{c.derive(step, cardZero, -1)}, nil
+		return []*CardinalityCounter{{value: cardZero}}, nil
 	case cardMany:
-		return []*CardinalityCounter{c.derive(step, cardOne, -1), c.derive(step, cardMany, -1)}, nil
+		return []*CardinalityCounter{{value: cardOne}, {value: cardMany}}, nil
 	default:
 		return nil, fmt.Errorf("cardinality counter: dec() on 0")
 	}
@@ -179,7 +85,6 @@ func CardinalityCounterFromCode(code uint8) (*CardinalityCounter, error) {
 	if code > cardMany {
 		return nil, fmt.Errorf("bad cardinality counter code %d", code)
 	}
-	cardinalityUsed.Store(true)
 	return &CardinalityCounter{value: code}, nil
 }
 
@@ -217,18 +122,18 @@ func (c *CardinalityCounter) MarshalJSON() ([]byte, error) {
 func (c *CardinalityCounter) Attr(name string) (starlark.Value, error) {
 	switch name {
 	case "inc":
-		return starlark.NewBuiltin("inc", func(t *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		return starlark.NewBuiltin("inc", func(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 			if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
 				return nil, err
 			}
-			return c.Inc(threadCardinalityStep(t)), nil
+			return c.Inc(), nil
 		}), nil
 	case "dec":
-		return starlark.NewBuiltin("dec", func(t *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		return starlark.NewBuiltin("dec", func(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 			if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 0); err != nil {
 				return nil, err
 			}
-			out, err := c.Dec(threadCardinalityStep(t))
+			out, err := c.Dec()
 			if err != nil {
 				return nil, err
 			}
@@ -260,14 +165,6 @@ func (c *CardinalityCounter) AttrNames() []string {
 	return []string{"dec", "inc", "is_many", "is_one", "is_zero"}
 }
 
-func threadCardinalityStep(t *starlark.Thread) *CardinalityStep {
-	if t == nil {
-		return nil
-	}
-	step, _ := t.Local(CardinalityStepKey).(*CardinalityStep)
-	return step
-}
-
 var _ starlark.Value = (*CardinalityCounter)(nil)
 var _ starlark.Comparable = (*CardinalityCounter)(nil)
 var _ starlark.HasAttrs = (*CardinalityCounter)(nil)
@@ -291,10 +188,4 @@ func makeCardinalityCounter(_ *starlark.Thread, b *starlark.Builtin, args starla
 		return nil, fmt.Errorf("cardinality.counter: n must be non-negative, got %d", n)
 	}
 	return NewCardinalityCounter(n), nil
-}
-
-// CloneCardinalityCounter returns a new object with c's value and none of
-// its scratch, so two locations never share one counter object.
-func CloneCardinalityCounter(c *CardinalityCounter) *CardinalityCounter {
-	return &CardinalityCounter{value: c.value}
 }

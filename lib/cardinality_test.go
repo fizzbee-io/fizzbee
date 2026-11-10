@@ -28,13 +28,13 @@ func TestCardinalityCounterMatchesConcrete(t *testing.T) {
 		c := NewCardinalityCounter(int64(n))
 		require.Equal(t, abstractOf(n), c.String(), "counter(%d)", n)
 
-		assert.Equal(t, abstractOf(n+1), c.Inc(nil).String(), "inc of %d", n)
+		assert.Equal(t, abstractOf(n+1), c.Inc().String(), "inc of %d", n)
 		assert.Equal(t, n == 0, c.IsZero())
 		assert.Equal(t, n == 1, c.IsOne())
 		assert.Equal(t, n >= 2, c.IsMany())
 		assert.Equal(t, starlark.Bool(n != 0), c.Truth())
 
-		decs, err := c.Dec(nil)
+		decs, err := c.Dec()
 		if n == 0 {
 			assert.Error(t, err)
 			continue
@@ -89,53 +89,6 @@ func TestCardinalityCounterHashIsTypeTagged(t *testing.T) {
 	assert.NotEqual(t, encode(NewCardinalityCounter(1)), encode(starlark.MakeInt(1)))
 	assert.NotEqual(t, encode(NewCardinalityCounter(1)), encode(starlark.String("1")))
 	assert.NotEqual(t, encode(NewCardinalityCounter(5)), encode(starlark.String("MANY")))
-}
-
-// Scratch tracking fields never reach equality, hashing or serialization.
-func TestCardinalityCounterScratchIsInvisible(t *testing.T) {
-	plain := NewCardinalityCounter(5)
-	step := NewCardinalityStep(map[*CardinalityCounter]string{plain: "pending"})
-	decs, err := plain.Dec(step)
-	require.NoError(t, err)
-	stamped := decs[1] // MANY, derived from plain with delta -1
-	base, delta, ok := stamped.Lineage(step)
-	require.True(t, ok)
-	assert.Same(t, plain, base)
-	assert.Equal(t, -1, delta)
-
-	eq, err := starlark.Equal(plain, stamped)
-	require.NoError(t, err)
-	assert.True(t, eq)
-	assert.Equal(t, encode(plain), encode(stamped))
-	assert.Equal(t, mustJSON(t, plain), mustJSON(t, stamped))
-	ctx := NewCodecContext()
-	_, a := roundTripValues(t, ctx, plain)
-	_, b := roundTripValues(t, ctx, stamped)
-	assert.Equal(t, a, b)
-
-	// Lineage is per step.
-	other := NewCardinalityStep(nil)
-	_, _, ok = stamped.Lineage(other)
-	assert.False(t, ok)
-}
-
-func TestCardinalityCounterLineage(t *testing.T) {
-	start := NewCardinalityCounter(5)
-	step := NewCardinalityStep(map[*CardinalityCounter]string{start: "a"})
-	// dec, inc, dec: net -1 from start.
-	d1, _ := start.Dec(step)
-	c := d1[1].Inc(step)
-	d2, _ := c.Dec(step)
-	for _, v := range d2 {
-		base, delta, ok := v.Lineage(step)
-		require.True(t, ok)
-		assert.Same(t, start, base)
-		assert.Equal(t, -1, delta)
-	}
-	// A new counter has no lineage, nor do its derivatives.
-	fresh := NewCardinalityCounter(0).Inc(step)
-	_, _, ok := fresh.Lineage(step)
-	assert.False(t, ok)
 }
 
 func TestCardinalityCounterCodecRoundTrip(t *testing.T) {
