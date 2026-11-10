@@ -108,6 +108,22 @@ func (t *Thread) HashCode() string {
 	}
 	e := lib.NewStateEncoder()
 	t.Stack.writeFrames(e)
+	if t.Copies != nil {
+		// Only grouped threads carry this, so ordinary threads hash as
+		// before. The marker keeps a group of ONE apart from a plain thread.
+		e.WriteString("copies")
+		e.WriteUvarint(uint64(t.Copies.ValueCode()))
+	}
+	h := hashHex(e.Bytes())
+	e.Release()
+	return h
+}
+
+// framesHash is the hash of t's frames alone: identical threads of a
+// capped action share it, whatever their copy counts.
+func (t *Thread) framesHash() string {
+	e := lib.NewStateEncoder()
+	t.Stack.writeFrames(e)
 	h := hashHex(e.Bytes())
 	e.Release()
 	return h

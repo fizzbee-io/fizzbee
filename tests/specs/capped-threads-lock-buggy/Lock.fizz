@@ -1,0 +1,36 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+action_options:
+  Worker:
+    max_concurrent_actions: -1
+---
+# As capped-threads-lock, with the lock check skipped: two copies of the
+# Worker group enter the critical section together, and MutualExclusion
+# fails, as it does with an exact limit of 2 threads.
+
+BUGGY = True
+
+action Init:
+    locked = False
+    in_cs = False
+    violated = False
+
+fair action Worker:
+    atomic:
+        require BUGGY or not locked
+        locked = True
+    atomic:
+        if in_cs:
+            violated = True
+        in_cs = True
+    in_cs = False
+    locked = False
+
+always assertion MutualExclusion:
+    return not violated
+
+@assume(finite=["Worker"])
+eventually always assertion Unlocked:
+    return not locked

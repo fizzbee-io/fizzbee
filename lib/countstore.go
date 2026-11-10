@@ -112,6 +112,24 @@ func (s *CappedCountStore[T]) Add(key string, value T) {
 	s.entries[i] = CountEntry[T]{Key: key, Value: value, Count: zeroCount.Inc()}
 }
 
+// AddCount adds count copies of value under key, adding the counts as
+// CardinalityCounter.Plus does: adding ZERO changes nothing, and any other
+// sum with a present key is MANY. As with Add, a present key keeps its
+// stored value.
+func (s *CappedCountStore[T]) AddCount(key string, value T, count *CardinalityCounter) {
+	if count == nil || count.IsZero() {
+		return
+	}
+	i, ok := s.find(key)
+	if ok {
+		s.entries[i].Count = s.entries[i].Count.Plus(count)
+		return
+	}
+	s.entries = append(s.entries, CountEntry[T]{})
+	copy(s.entries[i+1:], s.entries[i:])
+	s.entries[i] = CountEntry[T]{Key: key, Value: value, Count: count}
+}
+
 // RemoveOutcomes returns the counts key can have after one copy is removed:
 // ZERO from ONE, and ONE or MANY from MANY. It is an error when key is
 // absent.

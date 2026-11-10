@@ -365,6 +365,16 @@ func (p *Process) IsYieldNode() bool {
 }
 
 func (p *Process) Fork() *Process {
+	p2, _ := p.forkWithRefs()
+	if stateCodecRoundTrip {
+		return roundTripProcess(p2)
+	}
+	return p2
+}
+
+// forkWithRefs is Fork, also returning the map from p's values to the
+// fork's, so that more of p can be cloned into the fork sharing them.
+func (p *Process) forkWithRefs() (*Process, map[starlark.Value]starlark.Value) {
 	refs := make(map[starlark.Value]starlark.Value)
 
 	p2 := &Process{
@@ -426,10 +436,7 @@ func (p *Process) Fork() *Process {
 		}
 	}
 
-	if stateCodecRoundTrip {
-		return roundTripProcess(p2)
-	}
-	return p2
+	return p2, refs
 }
 
 func (p *Process) CloneForAssert(permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) *Process {
@@ -2678,6 +2685,9 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		p.offerScratch(node.Process)
 		return false, false
 	}
+	if yield {
+		node.Process.mergeCopies()
+	}
 	if node.ThreadProgress {
 		node.Enable()
 	}
@@ -2984,9 +2994,26 @@ func (p *Processor) crashRole(node *Node, role *lib.Role) (*Node, *Node) {
 }
 
 func (p *Processor) crashThread(node *Node) {
+	if t := node.Process.currentThread(); t.Copies != nil && t.Copies.IsMany() {
+		// One copy of a MANY group crashes: the copies left are ONE or
+		// MANY, so the crash has two outcomes, as a split does.
+		for _, left := range []*lib.CardinalityCounter{lib.NewCardinalityCounter(1), lib.NewCardinalityCounter(2)} {
+			crashFork := node.Process.Fork()
+			crashFork.Threads[crashFork.Current].Copies = left
+			crashFork.CachedHashCode = ""
+			p.attachCrashFork(node, crashFork)
+		}
+		return
+	}
 	crashFork := node.Process.Fork()
-	crashFork.Name = "crash"
 	crashFork.removeCurrentThread()
+	p.attachCrashFork(node, crashFork)
+}
+
+// attachCrashFork adds crashFork, a copy of node's process with the
+// crashed thread gone, as node's crash successor.
+func (p *Processor) attachCrashFork(node *Node, crashFork *Process) {
+	crashFork.Name = "crash"
 	crashNode := node.ForkForAlternatePaths(crashFork, "crash")
 	if !p.ShouldScheduleNode(crashNode) {
 		return
@@ -3684,7 +3711,7 @@ func (p *Processor) YieldNode(node *Node) {
 	}
 	p.scheduleChannelMessages(node)
 	if node.actionDepth >= int(p.config.Options.MaxActions) ||
-		node.GetThreadsCount() >= int(p.config.Options.MaxConcurrentActions) {
+		(p.config.Options.MaxConcurrentActions > 0 && node.ordinaryThreadsCount() >= int(p.config.Options.MaxConcurrentActions)) {
 		return
 	}
 
@@ -3735,7 +3762,7 @@ func (p *Processor) YieldFork(node *Node, process *Process) {
 	}
 	p.scheduleChannelMessages(node)
 	if node.actionDepth >= int(p.config.Options.MaxActions) ||
-		process.GetThreadsCount() >= int(p.config.Options.MaxConcurrentActions) {
+		(p.config.Options.MaxConcurrentActions > 0 && process.ordinaryThreadsCount() >= int(p.config.Options.MaxConcurrentActions)) {
 
 		return
 	}
@@ -3836,6 +3863,9 @@ func (p *Processor) scheduleAction(node *Node, process *Process, role *lib.Role,
 		frame.Name = action.Name
 	}
 	newNode.Process.Action = frame.Name
+	if p.cappedCopies(action.Name, role) {
+		thread.Copies = lib.NewCardinalityCounter(1)
+	}
 
 	if p.ShouldScheduleNode(newNode) {
 		// In no_graph mode, extend the lightweight action-name chain before

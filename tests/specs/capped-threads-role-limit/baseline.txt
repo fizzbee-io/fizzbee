@@ -1,0 +1,18 @@
+Model checking tests/specs/capped-threads-role-limit/Roles.json
+configFileName: tests/specs/capped-threads-role-limit/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  crash_on_yield:false}  action_options:{key:"Node#.Admin"  value:{max_concurrent_actions:1}}  deadlock_detection:false
+Nodes: 33, queued: 0, elapsed: 5.410359ms
+Peak (new): queue=16 pendingActionStarts=6
+Time taken for model checking: 5.431452ms
+Writen graph dotfile: tests/specs/capped-threads-role-limit/out/run_2026-11-10_10-45-25/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/capped-threads-role-limit/out/run_2026-11-10_10-45-25/graph.dot -o graph.svg && open graph.svg
+Writen communication diagram dotfile: tests/specs/capped-threads-role-limit/out/run_2026-11-10_10-45-25/communication.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/capped-threads-role-limit/out/run_2026-11-10_10-45-25/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 33 Unique states: 33
+IsLive: true
+Time taken to check liveness: 2.108707ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/capped-threads-role-limit/out/run_2026-11-10_10-45-25

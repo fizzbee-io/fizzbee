@@ -1,0 +1,33 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+action_options:
+  "Node#.Admin":
+    max_concurrent_actions: 2
+---
+# As capped-threads-role-limit, with the per-role limit raised to 2: two
+# Admin threads can be in flight on one node, so OneAdminPerNode fails.
+# The fixed limit keeps Admin threads ordinary even though the global
+# limit is MANY.
+
+role Node:
+    action Init:
+        self.busy = False
+        self.admins = 0
+
+    action Work:
+        atomic:
+            require not self.busy
+            self.busy = True
+        self.busy = False
+
+    action Admin:
+        self.admins += 1
+        self.admins -= 1
+
+action Init:
+    nodes = [Node(), Node()]
+
+always assertion OneAdminPerNode:
+    return all([n.admins <= 1 for n in nodes])

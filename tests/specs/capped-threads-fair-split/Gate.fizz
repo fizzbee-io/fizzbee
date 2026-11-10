@@ -1,0 +1,33 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+action_options:
+  Worker:
+    max_concurrent_actions: -1
+---
+# Workers queue before a gate, any number of them (a MANY group). Once
+# the gate opens each one sets busy and then clears it. Running one copy
+# of a MANY group leaves ONE or MANY copies behind, a fair choice: were
+# MANY allowed forever, busy would recur forever and Quiet would fail.
+
+action Init:
+    gate = False
+    busy = False
+    started = False
+
+fair action Worker:
+    atomic:
+        require not gate
+        started = True
+    atomic:
+        require gate
+        busy = True
+    busy = False
+
+atomic fair action Open:
+    require not gate
+    gate = True
+
+eventually always assertion Quiet:
+    return not busy

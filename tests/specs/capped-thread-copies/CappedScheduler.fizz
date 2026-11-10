@@ -1,0 +1,50 @@
+---
+deadlock_detection: false
+---
+# The capped thread scheduler, as a spec. Identical threads of one action
+# are grouped by their program point, with a cardinality counter per group
+# (ONE or MANY copies). Starting the action adds a copy at "acquire". A step
+# takes one copy out of a group, forking on whether copies remain (ONE or
+# MANY, fair), runs it to its next yield, and adds it to the group it
+# reaches. Exact.fizz is the same workload with exact counts, bounded by N.
+#
+# Workload: a lock. acquire waits until the lock is free and takes it;
+# release frees it and the thread ends.
+
+BUGGY = False
+
+action Init:
+    groups = {}
+    locked = False
+
+def add(g, pc):
+    g[pc] = g.get(pc, cardinality.counter()).inc()
+
+atomic action Start:
+    add(groups, "acquire")
+
+atomic fair action Acquire:
+    require "acquire" in groups and (BUGGY or not locked)
+    left = fair oneof groups["acquire"].dec()
+    if left.is_zero():
+        groups.pop("acquire")
+    else:
+        groups["acquire"] = left
+    locked = True
+    add(groups, "release")
+
+atomic fair action Release:
+    require "release" in groups
+    left = fair oneof groups["release"].dec()
+    if left.is_zero():
+        groups.pop("release")
+    else:
+        groups["release"] = left
+    locked = False
+
+always assertion MutualExclusion:
+    return not ("release" in groups and groups["release"].is_many())
+
+@assume(finite=["Start"])
+eventually always assertion AllFinish:
+    return not groups
