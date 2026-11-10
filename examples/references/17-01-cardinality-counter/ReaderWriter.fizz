@@ -1,6 +1,6 @@
 # Example 17-01: Cardinality counter (0, 1, MANY)
 # A reader-writer lock with any number of readers.
-# Demonstrates: cardinality.counter, inc(), oneof c.dec(), is_zero()
+# Demonstrates: cardinality.counter, inc(), fair oneof c.dec(), is_zero(), liveness
 #
 # With a plain int, readers would need an artificial bound and the check
 # would only cover counts up to it. A cardinality counter keeps just 0, 1 or
@@ -18,7 +18,8 @@ atomic action StartRead:
 
 atomic action EndRead:
     require not readers.is_zero()
-    readers = oneof readers.dec()
+    # fair: from MANY, ONE is eventually chosen. See ReadersDrain.
+    readers = fair oneof readers.dec()
 
 atomic action StartWrite:
     require not writing and readers.is_zero()
@@ -30,3 +31,14 @@ atomic action EndWrite:
 
 always assertion NoReadDuringWrite:
     return not (writing and not readers.is_zero())
+
+# If readers eventually stop arriving and those reading keep finishing, the
+# lock is eventually free for good. Once StartRead stops, a real count only
+# goes down, so it reaches zero. In the abstraction EndRead can take MANY to
+# MANY forever; fair oneof rules that out. Fair oneof alone is not enough:
+# while StartRead keeps running, a real count can stay at two or more
+# forever, and fairness would hide that. So it relies on the finite
+# assumption on every action that increments the counter.
+@assume(finite=["StartRead"], weak_fair=["EndRead"])
+eventually always assertion ReadersDrain:
+    return readers.is_zero()

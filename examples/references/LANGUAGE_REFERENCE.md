@@ -2321,7 +2321,13 @@ atomic action Ack:
 - `+`, `-`, `<` and `int(c)` are errors. `c == 2` is always False, because Starlark compares values of different types as unequal; use the `is_*` methods.
 - Counters are values: they can sit in state variables, role fields, dicts, lists and records.
 
-**Liveness.** Because `dec()` on MANY can return MANY, the abstract graph has loops where a counter is decremented forever, which no real count can do. Liveness assertions over counters may report such loops as false failures, and fairness does not remove them: a fair run can take the MANY to MANY step forever. Use counters for safety properties; for a liveness property that depends on a count reaching zero, model the count with a bounded int.
+**Liveness.** Because `dec()` on MANY can return MANY, the abstract graph has loops where a counter is decremented forever, which no real count can do. Liveness assertions over counters may report such loops as false failures.
+
+For a property that holds once increments stop, combine two things (see `ReadersDrain` in [17-01-cardinality-counter](17-01-cardinality-counter/)):
+- `@assume(finite=[...])` on the assertion, naming **every** action that increments the counter, plus the fairness the property needs, and
+- `fair oneof c.dec()`, so a run can't take MANY to MANY forever.
+
+Once the increments stop, a real count only goes down, so it reaches zero; `fair oneof` removes exactly the runs that don't. Without the finite assumption, `fair oneof` is unsound: while increments continue, a real count can stay at two or more forever, and `fair oneof` would hide that failure. Because `fair` is on the statement, it applies to every liveness assertion in the spec, so each one that depends on that counter needs the same finite assumption.
 
 ---
 

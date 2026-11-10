@@ -1,15 +1,16 @@
 Model checking examples/references/17-01-cardinality-counter/ReaderWriter.json
 configFileName: examples/references/17-01-cardinality-counter/fizz.yaml
 fizz.yaml not found. Using default options
-StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
-Nodes: 6, queued: 0, elapsed: 963.684µs
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
+Nodes: 6, queued: 0, elapsed: 680.267µs
 Peak (new): queue=2 pendingActionStarts=4
-Time taken for model checking: 987.741µs
-Writen graph dotfile: examples/references/17-01-cardinality-counter/out/run_2026-11-09_21-46-32/graph.dot
+Time taken for model checking: 700.367µs
+Writen graph dotfile: examples/references/17-01-cardinality-counter/out/run_2026-11-10_00-41-38/graph.dot
 To generate svg, run: 
-dot -Tsvg examples/references/17-01-cardinality-counter/out/run_2026-11-09_21-46-32/graph.dot -o graph.svg && open graph.svg
+dot -Tsvg examples/references/17-01-cardinality-counter/out/run_2026-11-10_00-41-38/graph.dot -o graph.svg && open graph.svg
 Valid Nodes: 6 Unique states: 4
+Checking eventually always ReadersDrain
 IsLive: true
-Time taken to check liveness: 370.794µs
+Time taken to check liveness: 302.702µs
 PASSED: Model checker completed successfully
-Writen 1 node files and 1 link files to dir examples/references/17-01-cardinality-counter/out/run_2026-11-09_21-46-32
+Writen 1 node files and 1 link files to dir examples/references/17-01-cardinality-counter/out/run_2026-11-10_00-41-38
