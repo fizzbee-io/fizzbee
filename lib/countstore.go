@@ -6,11 +6,11 @@ package lib
 // checker can use it for its own state, such as identical threads of a
 // process, as well as any spec-visible type built on top of it.
 //
-// Elements are identified by a caller-supplied canonical key, which must be
-// the element's identity: equal keys mean equal values. The key is either
-// a complete canonical encoding of the value or a collision-resistant hash
-// of one, which is the same assumption the checker already makes for state
-// hashes. The store does not compare values: Add keeps the first value
+// Elements are identified by a caller-supplied canonical key, which defines
+// the element's identity: equal keys mean equal values. It should be a
+// complete canonical encoding of the value (an exact identity), or a
+// hash or fingerprint of one under the same collision-risk assumption as
+// the checker's own state hashes (a probabilistic identity). The store does not compare values: Add keeps the first value
 // stored under a key, and Equal compares keys and counts only.
 //
 // Entries are
@@ -187,8 +187,10 @@ func (s *CappedCountStore[T]) Clone(clone func(T) T) *CappedCountStore[T] {
 // Rekey recomputes every key with key and restores the order. Entries that
 // now share a key merge, keeping the first value, and their counts add
 // (CardinalityCounter.Plus). Use it after a change that can change keys,
-// such as a symmetry permutation of the values. The store is replaced only
-// once every key is computed, so a panicking key leaves it unchanged.
+// such as a symmetry permutation of the values. key must be pure: it must
+// not change the values, which the store shares and cannot roll back. The
+// store is replaced only once every key is computed, so a panicking key
+// leaves its entries unchanged.
 func (s *CappedCountStore[T]) Rekey(key func(T) string) {
 	out := &CappedCountStore[T]{entries: make([]CountEntry[T], 0, len(s.entries))}
 	for _, e := range s.entries {
