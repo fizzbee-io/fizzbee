@@ -1,0 +1,19 @@
+Model checking tests/specs/role-crash-other-instance/Servers.json
+configFileName: tests/specs/role-crash-other-instance/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}  action_options:{key:"Server.Pass"  value:{crash_on_yield:false}}  deadlock_detection:false
+Nodes: 20, queued: 0, elapsed: 1.698277ms
+Peak (new): queue=10 pendingActionStarts=3
+Time taken for model checking: 1.711519ms
+Writen graph dotfile: tests/specs/role-crash-other-instance/out/run_2026-11-13_20-41-38/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/role-crash-other-instance/out/run_2026-11-13_20-41-38/graph.dot -o graph.svg && open graph.svg
+Writen communication diagram dotfile: tests/specs/role-crash-other-instance/out/run_2026-11-13_20-41-38/communication.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/role-crash-other-instance/out/run_2026-11-13_20-41-38/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 20 Unique states: 19
+Checking always eventually NotStuck
+IsLive: true
+Time taken to check liveness: 834.128µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/role-crash-other-instance/out/run_2026-11-13_20-41-38

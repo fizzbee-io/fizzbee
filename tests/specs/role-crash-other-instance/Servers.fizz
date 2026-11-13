@@ -1,0 +1,33 @@
+---
+deadlock_detection: false
+action_options:
+  # Thread crashes are keyed by the frame name, Role.Action (unlike the
+  # Role#.Action key that concurrency limits use).
+  Server.Pass:
+    crash_on_yield: false
+---
+# Crashing one role instance must not end another instance's threads.
+# Thread crashes are off for Pass, so a Pass thread ends only by finishing
+# or by its own server crashing, which also resets the ephemeral busy flag.
+# When crashing Server#1 also ended Server#0's Pass, Server#0 stayed busy
+# for ever, with no thread left to clear it.
+
+@state(ephemeral=['busy'])
+role Server:
+    action Init:
+        self.busy = False
+        self.runs = 0
+
+    serial fair action Pass:
+        atomic:
+            require not self.busy and self.runs < 1
+            self.busy = True
+            self.runs += 1
+        atomic:
+            self.busy = False
+
+action Init:
+    servers = [Server() for i in range(2)]
+
+always eventually assertion NotStuck:
+    return all([not s.busy for s in servers])
