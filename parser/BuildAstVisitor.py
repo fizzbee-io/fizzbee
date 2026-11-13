@@ -60,6 +60,8 @@ class BuildAstVisitor(FizzParserVisitor):
                     file.invariants.append(childProto)
                 elif BuildAstVisitor.is_list_of_type(childProto, ast.Invariant):
                     file.invariants.extend(childProto)
+                elif BuildAstVisitor.is_list_of_type(childProto, ast.Import) and childProto:
+                    file.imports.extend(childProto)
                 elif isinstance(childProto, ast.Statement):
                     file.stmts.append(childProto)
                 elif isinstance(childProto, ast.Role):
@@ -787,6 +789,45 @@ class BuildAstVisitor(FizzParserVisitor):
     def visitDotted_name(self, ctx:FizzParser.Dotted_nameContext):
         return ".".join([child.getText() for child in ctx.getChildren()])
 
+    @staticmethod
+    def _check_top_level_import(ctx):
+        # An import is top level when its chain is
+        # file_input -> stmt -> simple_stmt -> import/from.
+        simple = ctx.parentCtx
+        stmt = simple.parentCtx if simple is not None else None
+        top = stmt.parentCtx if stmt is not None else None
+        if not isinstance(top, FizzParser.File_inputContext):
+            raise Exception(f"Error: Line: {ctx.start.line}: import statements are only allowed at the top level of a file")
+
+    # Visit a parse tree produced by FizzParser#import_stmt.
+    # `import a, b.c as d` gives one ast.Import per module.
+    def visitImport_stmt(self, ctx:FizzParser.Import_stmtContext):
+        BuildAstVisitor._check_top_level_import(ctx)
+        imports = []
+        for dotted_as_name in ctx.dotted_as_names().dotted_as_name():
+            path = dotted_as_name.dotted_name().getText()
+            alias = dotted_as_name.name().getText() if dotted_as_name.name() else ""
+            if "." in path and not alias:
+                raise Exception(f"Error: Line: {ctx.start.line}: import {path}: a dotted module needs an alias, as in 'import {path} as {path.split('.')[-1]}'")
+            imports.append(ast.Import(source_info=get_source_info(dotted_as_name), path=path, alias=alias))
+        return imports
+
+    # Visit a parse tree produced by FizzParser#from_stmt.
+    # `from a.b import x, y as z` gives one ast.Import with two names.
+    def visitFrom_stmt(self, ctx:FizzParser.From_stmtContext):
+        BuildAstVisitor._check_top_level_import(ctx)
+        if ctx.DOT() or ctx.ELLIPSIS() or ctx.dotted_name() is None:
+            raise Exception(f"Error: Line: {ctx.start.line}: relative imports are not supported")
+        if ctx.STAR() is not None:
+            raise Exception(f"Error: Line: {ctx.start.line}: 'from ... import *' is not supported, name the imported members")
+        path = ctx.dotted_name().getText()
+        imp = ast.Import(source_info=get_source_info(ctx), path=path)
+        for import_as_name in ctx.import_as_names().import_as_name():
+            names = import_as_name.name()
+            alias = names[1].getText() if len(names) > 1 else ""
+            imp.names.append(ast.ImportName(name=names[0].getText(), alias=alias))
+        return [imp]
+
     # Visit a parse tree produced by FizzParser#expr_stmt.
     def visitExpr_stmt(self, ctx:FizzParser.Expr_stmtContext):
         py_str = self.get_py_str(ctx)
@@ -938,6 +979,8 @@ class BuildAstVisitor(FizzParserVisitor):
         if childProto is None:
             print("childProto is None for visitStmt", childStmt)
             return None
+        if childProto and BuildAstVisitor.is_list_of_type(childProto, ast.Import):
+            return childProto
         if isinstance(childProto, ast.PyStmt):
             return ast.Statement(source_info=get_source_info(ctx), py_stmt=childProto)
         elif isinstance(childProto, ast.Block):
@@ -985,10 +1028,15 @@ class BuildAstVisitor(FizzParserVisitor):
     # Visit a parse tree produced by FizzParser#simple_stmt.
     # Handles inline suite bodies like `if cond: return` where suite = simple_stmt.
     def visitSimple_stmt(self, ctx:FizzParser.Simple_stmtContext):
+        small_stmts = ctx.small_stmt()
+        if len(small_stmts) > 1 and any(isinstance(s, (FizzParser.Import_stmtContext, FizzParser.From_stmtContext)) for s in small_stmts):
+            raise Exception(f"Error: Line: {ctx.start.line}: put an import statement on its own line")
         childProto = self.visitChildren(ctx)
         if childProto is None:
             return None
         if isinstance(childProto, ast.Statement):
+            return childProto
+        if childProto and BuildAstVisitor.is_list_of_type(childProto, ast.Import):
             return childProto
         if isinstance(childProto, ast.PyStmt):
             return ast.Statement(source_info=get_source_info(ctx), py_stmt=childProto)

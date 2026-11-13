@@ -49,3 +49,9 @@ py_test(
     srcs = ["oneof_target_test.py"],
     deps = [":fizz"],
 )
+
+py_test(
+    name = "import_test",
+    srcs = ["import_test.py"],
+    deps = [":fizz"],
+)
