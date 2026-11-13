@@ -1,0 +1,15 @@
+Model checking examples/references/18-01-imports/Imports.json
+configFileName: examples/references/18-01-imports/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2} deadlock_detection:false
+Nodes: 4, queued: 0, elapsed: 497.209µs
+Peak (new): queue=1 pendingActionStarts=1
+Time taken for model checking: 508.263µs
+Writen graph dotfile: examples/references/18-01-imports/out/run_2026-11-13_18-31-26/graph.dot
+To generate svg, run: 
+dot -Tsvg examples/references/18-01-imports/out/run_2026-11-13_18-31-26/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 4 Unique states: 4
+IsLive: true
+Time taken to check liveness: 132.009µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir examples/references/18-01-imports/out/run_2026-11-13_18-31-26

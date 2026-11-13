@@ -35,7 +35,13 @@ func NewComposedHeap(composed map[string]*Heap) *Heap {
 	for k, h := range composed {
 		// copy, heap's state and globals into heap.state[k]
 		d := make(starlark.StringDict)
-		maps.Copy(d, h.globals)
+		for name, v := range h.globals {
+			// Imported modules and functions are not part of the state.
+			if t := v.Type(); t == "module" || t == "builtin_function_or_method" {
+				continue
+			}
+			d[name] = v
+		}
 		maps.Copy(d, h.state)
 		s := starlarkstruct.FromStringDict(starlark.String(k), d)
 		// Freezing the struct to prevent further modifications, so we don't need to deep clone

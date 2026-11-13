@@ -885,7 +885,11 @@ func (p *Process) updateVariableInternal(key string, val starlark.Value, frame *
 		// variable, then update the state variable
 		return
 	}
-	if p.Heap.globals.Has(key) {
+	if p.Heap.globals.Has(key) && (!p.Evaluator.importNames[key] || sameValue(p.Heap.globals[key], val)) {
+		// Globals are constants. An imported name is the exception: a
+		// different value assigned to it makes a local that shadows it,
+		// as in Python. The statement environment writes every name back,
+		// so an unchanged import is not a new local.
 		return
 	}
 	if key == "self" {
@@ -901,6 +905,19 @@ func (p *Process) updateVariableInternal(key string, val starlark.Value, frame *
 	if p.Stats.TotalActions == 0 && frame.scope.parent == nil && p.currentThread().Stack.Len() == 1 {
 		p.topLevelVars = append(p.topLevelVars, key)
 	}
+}
+
+// sameValue reports whether a and b are the same value: equal when the
+// type is comparable, otherwise false.
+func sameValue(a, b starlark.Value) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	ta, tb := reflect.TypeOf(a), reflect.TypeOf(b)
+	if ta != tb || !ta.Comparable() {
+		return false
+	}
+	return a == b
 }
 
 func (p *Process) updateScopedVariable(scope *Scope, key string, val starlark.Value) bool {
@@ -1751,8 +1768,21 @@ func (p *Processor) InitializeNode() (*Node, *Node, error) {
 		process.guidedTrace = *p.guidedTrace
 	}
 
+	imports, err := ResolveImports(p.Files[0], p.dirPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	process.Evaluator.importNames = make(map[string]bool, len(imports))
+	for name := range imports {
+		process.Evaluator.importNames[name] = true
+	}
+	imports.Freeze()
+	process.Heap.globals = imports
+
+	// A spec with import statements names its modules explicitly, so the
+	// directory's .star files are no longer loaded as modules.
 	modules := make(map[string]starlark.Value)
-	if p.dirPath != "" {
+	if p.dirPath != "" && len(p.Files[0].GetImports()) == 0 {
 		modules = HandleModules(p.dirPath)
 	}
 	process.Modules = modules
@@ -2626,9 +2656,13 @@ func processPreInit(init *Node, stmts []*ast.Statement, preinitHookContent strin
 		}
 	}
 	vars := thread.currentFrame().scope.GetAllVisibleVariables(make(map[starlark.Value]starlark.Value))
-	globals := starlark.StringDict{}
+	// The imported names come first; a top-level variable may not reuse one.
+	globals := maps.Clone(init.Process.Heap.globals)
 	for name, _ := range vars {
 		if slices.Contains(init.Process.topLevelVars, name) {
+			if init.Process.Evaluator.importNames[name] {
+				return fmt.Errorf("top-level variable %q has the same name as an import", name)
+			}
 			globals[name] = vars[name]
 		}
 	}
