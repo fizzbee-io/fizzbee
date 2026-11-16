@@ -594,9 +594,10 @@ if [ "$simulation" = true ] && [ "$parallel" -gt 1 ] && [ "$seed" -eq 0 ]; then
   # Ctrl-C: kill all live workers, exit 130 (SIGINT convention). Set before
   # spawning, so a signal arriving mid-spawn doesn't orphan started workers.
   trap '
+    # Kill before any echo (SIGPIPE); jobs -p also lists unrecorded workers.
+    kill $(jobs -p) 2>/dev/null
     echo
     echo "Interrupted. Killing workers..."
-    kill_running_workers
     exit 130
   ' INT TERM HUP
 
