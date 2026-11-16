@@ -579,20 +579,8 @@ if [ "$simulation" = true ] && [ "$parallel" -gt 1 ] && [ "$seed" -eq 0 ]; then
   done
 
   pids=()
-  reaped=()
 
-  kill_running_workers() {
-    local j=0
-    while [ "$j" -lt "${#pids[@]}" ]; do
-      if [ "${reaped[$j]:-0}" -eq 0 ]; then
-        kill "${pids[$j]}" 2>/dev/null
-      fi
-      j=$(( j + 1 ))
-    done
-  }
-
-  # Ctrl-C: kill all live workers, exit 130 (SIGINT convention). Set before
-  # spawning, so a signal arriving mid-spawn doesn't orphan started workers.
+  # Ctrl-C: kill all live workers, exit 130 (SIGINT convention).
   trap '
     # Kill before any echo (SIGPIPE); jobs -p also lists unrecorded workers.
     kill $(jobs -p) 2>/dev/null
@@ -602,8 +590,8 @@ if [ "$simulation" = true ] && [ "$parallel" -gt 1 ] && [ "$seed" -eq 0 ]; then
   ' INT TERM HUP
 
   # Spawn N workers. Each runs the fizzbee binary on the (already-parsed)
-  # json file, with per-worker --max_runs and --output-dir. Workers are
-  # direct children, not subshells, so killing a pid reaches fizzbee.
+  # json file, with per-worker --max_runs and --output-dir. They are direct
+  # children, not subshells, so killing a pid reaches fizzbee.
   i=0
   while [ "$i" -lt "$parallel" ]; do
     worker_out="$parallel_base_dir/worker_$i"
@@ -611,44 +599,37 @@ if [ "$simulation" = true ] && [ "$parallel" -gt 1 ] && [ "$seed" -eq 0 ]; then
     "$FIZZBEE_BIN" "${worker_flags[@]}" \
       --max_runs "$worker_max_runs" --output-dir "$worker_out" \
       "$json_filename" \
-      > "$parallel_base_dir/worker_$i.log" 2>&1 &
+      > "$worker_out.log" 2>&1 &
     pids+=("$!")
-    reaped+=(0)
     i=$(( i + 1 ))
   done
 
-  # Record the exit status of each worker that has finished: a worker that
-  # errors out (bad flags, crash, model error) must not be counted as a pass.
-  # The binary does not exit non-zero on FAILED, so check its output too.
-  reap_finished() {
-    local j=0 code worker_log
-    while [ "$j" -lt "$parallel" ]; do
-      if [ "${reaped[$j]}" -eq 0 ] && ! kill -0 "${pids[$j]}" 2>/dev/null; then
-        wait "${pids[$j]}"
-        code=$?
-        reaped[$j]=1
-        worker_log="$parallel_base_dir/worker_$j.log"
-        echo "$code" > "$worker_log.exit"
-        if [ "$code" -ne 0 ] || grep -qE "^FAILED|^DEADLOCK" "$worker_log" 2>/dev/null; then
-          touch "$failure_sentinel"
-        fi
-      fi
-      j=$(( j + 1 ))
-    done
-  }
-
   # Polling loop: wait for failure sentinel OR all workers to finish.
   while true; do
-    reap_finished
     if [ -f "$failure_sentinel" ]; then
       # Someone failed — kill survivors.
-      kill_running_workers
+      for p in "${pids[@]}"; do
+        kill "$p" 2>/dev/null
+      done
       break
     fi
     alive=0
-    for r in "${reaped[@]}"; do
-      if [ "$r" -eq 0 ]; then
+    i=0
+    for p in "${pids[@]}"; do
+      worker_log="$parallel_base_dir/worker_$i.log"
+      i=$(( i + 1 ))
+      if kill -0 "$p" 2>/dev/null; then
         alive=$(( alive + 1 ))
+      elif [ ! -f "$worker_log.exit" ]; then
+        # Record the exit status: a worker that errors out (bad flags, crash,
+        # model error) must not be counted as a pass.
+        wait "$p"
+        worker_status=$?
+        echo "$worker_status" > "$worker_log.exit"
+        # Binary doesn't exit non-zero on FAILED -- detect from output.
+        if [ "$worker_status" -ne 0 ] || grep -qE "^FAILED|^DEADLOCK" "$worker_log"; then
+          touch "$failure_sentinel"
+        fi
       fi
     done
     if [ "$alive" -eq 0 ]; then
@@ -657,7 +638,7 @@ if [ "$simulation" = true ] && [ "$parallel" -gt 1 ] && [ "$seed" -eq 0 ]; then
     sleep 0.5
   done
 
-  # Reap the survivors killed above.
+  # Reap all workers (including any killed by the survivors loop).
   for p in "${pids[@]}"; do
     wait "$p" 2>/dev/null
   done
