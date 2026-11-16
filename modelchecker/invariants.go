@@ -76,18 +76,12 @@ func CheckRefinement(process *Process, refinement *ast.Refinement, joinHashes Jo
 	return true
 }
 
-// actionStart returns the state the current step started from: the nearest
-// ancestor at a yield point, skipping the forks inside the step.
-func actionStart(process *Process) *Process {
+func CheckTransitionInvariants(process *Process) map[int][]int {
+	// before is where the step started: the nearest yield ancestor.
 	before := process.Parent
 	for before != nil && !before.IsYieldNode() && before.Parent != nil {
 		before = before.Parent
 	}
-	return before
-}
-
-func CheckTransitionInvariants(process *Process) map[int][]int {
-	before := actionStart(process)
 	if before == nil {
 		return nil
 	}
