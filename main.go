@@ -779,7 +779,6 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		p1.SetDisableSymmetryReduction(noSymmetryReduction)
 		p1.SetIncrementalLiveness(experimentalIncrementalLiveness && guidedTrace == nil && isStrictLiveness(stateConfig))
 		holder.Store(p1)
-		// A signal that landed before the Store found no processor to stop.
 		if stopped {
 			p1.Stop()
 		}
@@ -929,8 +928,7 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 
 		//fmt.Println("root", root)
 		if failedNode == nil {
-			// A partial graph can't refute an exists or liveness assertion,
-			// and walking it can take longer than the exploration did.
+			// A partial graph can't refute exists or liveness, so don't walk it.
 			if p1.Stopped() && !simulation {
 				fmt.Println("Model checker stopped")
 				return nil
@@ -1149,8 +1147,6 @@ func writeDotFileIfNeeded(p1 *modelchecker.Processor, rootNode *modelchecker.Nod
 }
 
 func setupSignalHandler(holder *atomic.Pointer[modelchecker.Processor], stopped *bool) {
-	// Room for two, so a quick second signal isn't dropped while the
-	// goroutine is still handling the first.
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
