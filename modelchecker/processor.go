@@ -2737,16 +2737,18 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	// determined by the statement, and we include program counter in the hash code,
 	// this may not be an issue.
 	if node.actionDepth > 0 {
-		failedInvariants := CheckTransitionInvariants(node.Process)
-		if len(failedInvariants[0]) > 0 {
-			node.Inbound[0].FailedInvariants = failedInvariants
-			if !p.config.ContinuePathOnInvariantFailures {
-				if yield {
+		// Intermediate states inside an atomic step, such as the fork a
+		// oneof makes, are not transitions of their own.
+		if yield {
+			failedInvariants := CheckTransitionInvariants(node.Process)
+			if len(failedInvariants[0]) > 0 {
+				node.Inbound[0].FailedInvariants = failedInvariants
+				if !p.config.ContinuePathOnInvariantFailures {
 					node.Name = "yield"
+					node.Attach()
+					p.intermediateStates.ClearAll()
+					return true, false
 				}
-				node.Attach()
-				p.intermediateStates.ClearAll()
-				return true, false
 			}
 		}
 		if len(node.Process.Files[0].Refinements) > 0 {
@@ -2759,7 +2761,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 	if collapsedParent {
 		// Process.Parent was needed up to here: Execute read Parent.Enabled
 		// and propagated Enabled up the chain, and the transition
-		// invariants compared against the parent's heap. Re-point it past
+		// invariants walked it to the step's start. Re-point it past
 		// the collapsed steps so they can be freed once this expansion
 		// ends. propagateEnabled behaves the same: a step is only Enabled
 		// after its ancestors were, so the walk stops at the same place.
