@@ -1,0 +1,19 @@
+---
+deadlock_detection: false
+---
+
+action Init:
+    x = 0
+    n = 0
+
+# One step changes both n and x, with two forks in between. The assertion
+# must compare the end of the step with its start, not with the last fork.
+atomic action Step:
+    require n < 1
+    n += 1
+    a = oneof [1, 2]
+    b = oneof [10, 20]
+    x = a + b
+
+transition assertion NotBothInOneStep(before, after):
+    return after.x == before.x or after.n == before.n
