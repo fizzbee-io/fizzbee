@@ -943,8 +943,6 @@ func (p *Process) NewModelError(sourceInfo *ast.SourceInfo, msg string, nestedEr
 func (p *Process) PanicOnError(sourceInfo *ast.SourceInfo, msg string, nestedError error) {
 	if nestedError != nil {
 		msg += p.Evaluator.unimportedModuleHint(nestedError)
-	}
-	if nestedError != nil {
 		panic(p.NewModelError(sourceInfo, msg, nestedError))
 	}
 }
@@ -2709,6 +2707,10 @@ func processPreInit(init *Node, stmts []*ast.Statement, preinitHookContent strin
 		maps.Copy(hookGlobals, globals)
 		maps.Copy(hookGlobals, lib.Builtins)
 		maps.Copy(hookGlobals, init.Process.Modules)
+		// Imports shadow builtins, as everywhere else.
+		for name := range init.Process.Evaluator.importNames {
+			hookGlobals[name] = globals[name]
+		}
 
 		_, err := init.Process.Evaluator.ExecPyStmt("<preinit-hook>", pyStmt, hookGlobals)
 		if err != nil {

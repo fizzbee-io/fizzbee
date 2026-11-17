@@ -7,7 +7,8 @@ import (
 
 // ImportableModules are the builtin modules a spec can name in an import
 // statement, as in `import threads` or `from symmetry import nominal`.
-// A builtin module wins over a user module file of the same name.
+// A .star file next to the spec with the same name wins over a builtin
+// module, so adding a builtin never changes what an existing import means.
 //
 // The first four are also predeclared in Builtins, so older specs that use
 // them without importing keep working. New modules are import-only and

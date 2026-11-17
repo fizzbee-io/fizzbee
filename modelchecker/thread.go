@@ -37,7 +37,7 @@ func NewComposedHeap(composed map[string]*Heap) *Heap {
 		d := make(starlark.StringDict)
 		for name, v := range h.globals {
 			// Imported modules and functions are not part of the state.
-			if t := v.Type(); t == "module" || t == "builtin_function_or_method" {
+			if t := v.Type(); t == "module" || t == "function" || t == "builtin_function_or_method" {
 				continue
 			}
 			d[name] = v
