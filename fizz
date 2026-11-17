@@ -578,45 +578,31 @@ if [ "$simulation" = true ] && [ "$parallel" -gt 1 ] && [ "$seed" -eq 0 ]; then
     esac
   done
 
-  # Spawn N workers. Each runs the fizzbee binary on the (already-parsed)
-  # json file, with per-worker --max_runs and --output-dir.
   pids=()
-  i=0
-  while [ "$i" -lt "$parallel" ]; do
-    worker_out="$parallel_base_dir/worker_$i"
-    worker_log="$parallel_base_dir/worker_$i.log"
-    mkdir -p "$worker_out"
-    (
-      "$FIZZBEE_BIN" "${worker_flags[@]}" \
-        --max_runs "$worker_max_runs" --output-dir "$worker_out" \
-        "$json_filename" \
-        > "$worker_log" 2>&1
-      worker_status=$?
-      # Record the exit status: a worker that errors out (bad flags, crash,
-      # model error) must not be counted as a pass.
-      echo "$worker_status" > "$worker_log.exit"
-      if [ "$worker_status" -ne 0 ]; then
-        touch "$failure_sentinel"
-      fi
-      # Binary doesn't exit non-zero on FAILED — detect from output.
-      if grep -qE "^FAILED|^DEADLOCK" "$worker_log" 2>/dev/null; then
-        # First-writer-wins is fine; sentinel just signals "someone failed".
-        touch "$failure_sentinel"
-      fi
-    ) &
-    pids+=("$!")
-    i=$(( i + 1 ))
-  done
 
   # Ctrl-C: kill all live workers, exit 130 (SIGINT convention).
   trap '
+    # Kill before any echo (SIGPIPE); jobs -p also lists unrecorded workers.
+    kill $(jobs -p) 2>/dev/null
     echo
     echo "Interrupted. Killing workers..."
-    for p in "${pids[@]}"; do
-      kill "$p" 2>/dev/null
-    done
     exit 130
-  ' INT TERM
+  ' INT TERM HUP
+
+  # Spawn N workers. Each runs the fizzbee binary on the (already-parsed)
+  # json file, with per-worker --max_runs and --output-dir. They are direct
+  # children, not subshells, so killing a pid reaches fizzbee.
+  i=0
+  while [ "$i" -lt "$parallel" ]; do
+    worker_out="$parallel_base_dir/worker_$i"
+    mkdir -p "$worker_out"
+    "$FIZZBEE_BIN" "${worker_flags[@]}" \
+      --max_runs "$worker_max_runs" --output-dir "$worker_out" \
+      "$json_filename" \
+      > "$worker_out.log" 2>&1 &
+    pids+=("$!")
+    i=$(( i + 1 ))
+  done
 
   # Polling loop: wait for failure sentinel OR all workers to finish.
   while true; do
@@ -628,9 +614,22 @@ if [ "$simulation" = true ] && [ "$parallel" -gt 1 ] && [ "$seed" -eq 0 ]; then
       break
     fi
     alive=0
+    i=0
     for p in "${pids[@]}"; do
+      worker_log="$parallel_base_dir/worker_$i.log"
+      i=$(( i + 1 ))
       if kill -0 "$p" 2>/dev/null; then
         alive=$(( alive + 1 ))
+      elif [ ! -f "$worker_log.exit" ]; then
+        # Record the exit status: a worker that errors out (bad flags, crash,
+        # model error) must not be counted as a pass.
+        wait "$p"
+        worker_status=$?
+        echo "$worker_status" > "$worker_log.exit"
+        # Binary doesn't exit non-zero on FAILED -- detect from output.
+        if [ "$worker_status" -ne 0 ] || grep -qE "^FAILED|^DEADLOCK" "$worker_log"; then
+          touch "$failure_sentinel"
+        fi
       fi
     done
     if [ "$alive" -eq 0 ]; then
@@ -704,9 +703,8 @@ fi
 # --- END PARALLEL SIMULATION HANDLER ---------------------------------------
 
 
-# Run the second command with the JSON filename
-"$FIZZBEE_BIN" "${args[@]}"
-
-# Clean up the temporary file
 rm "$temp_output"
+
+# exec so a signal sent to the wrapper's pid reaches fizzbee.
+exec "$FIZZBEE_BIN" "${args[@]}"
 
