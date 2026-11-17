@@ -179,9 +179,9 @@ func TestImportClashesWithDeclarations(t *testing.T) {
 		file *ast.File
 		want string
 	}{
-		{"function", &ast.File{Functions: []*ast.Function{{Name: "math"}}}, "also the name of a function"},
-		{"role", &ast.File{Roles: []*ast.Role{{Name: "math"}}}, "also the name of a role"},
-		{"action", &ast.File{Actions: []*ast.Action{{Name: "math"}}}, "also the name of an action"},
+		{"function", &ast.File{Functions: []*ast.Function{{Name: "math"}}}, "already the name of a function in this file"},
+		{"role", &ast.File{Roles: []*ast.Role{{Name: "math"}}}, "already the name of a role in this file"},
+		{"action", &ast.File{Actions: []*ast.Action{{Name: "math"}}}, "already the name of an action in this file"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -233,5 +233,102 @@ func TestNoBaseDirAllowsOnlyBuiltins(t *testing.T) {
 	}
 	if _, _, err := resolveQuiet(t, "", imp(1, "math", "")); err != nil {
 		t.Errorf("builtin import without a base directory: %v", err)
+	}
+}
+
+func TestReservedNamesCannotBeImported(t *testing.T) {
+	for _, name := range []string{"Channel", "deepcopy", "resolve_role", "self"} {
+		_, _, err := resolveQuiet(t, t.TempDir(), imp(1, "math", name))
+		if err == nil || !strings.Contains(err.Error(), "reserved FizzBee name") {
+			t.Errorf("import math as %s: err = %v, want a reserved-name error", name, err)
+		}
+		_, _, err = resolveQuiet(t, t.TempDir(), imp(1, "math", "", "floor as "+name))
+		if err == nil || !strings.Contains(err.Error(), "reserved FizzBee name") {
+			t.Errorf("from math import floor as %s: err = %v, want a reserved-name error", name, err)
+		}
+	}
+	// Ordinary builtins may be shadowed.
+	if _, _, err := resolveQuiet(t, t.TempDir(), imp(1, "math", "len")); err != nil {
+		t.Errorf("import math as len: %v", err)
+	}
+}
+
+func TestModuleStateCannotChange(t *testing.T) {
+	dir := t.TempDir()
+	writeTestFile(t, dir, "config.star", `
+CONFIG = {"workers": [1, 2, 3], "settings": {"enabled": True}}
+ALIAS = CONFIG["workers"]
+values = []
+
+def add(v):
+    values.append(v)
+
+def set_enabled():
+    CONFIG["settings"]["enabled"] = False
+`)
+	bound, _, err := resolveQuiet(t, dir, imp(1, "config", ""), imp(2, "config", "", "CONFIG", "ALIAS", "add", "set_enabled"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	thread := &starlark.Thread{Name: "test"}
+	env := starlark.StringDict{}
+	for k, v := range bound {
+		env[k] = v
+	}
+	attempts := map[string]string{
+		"nested list append":                  `CONFIG["workers"].append(4)`,
+		"nested dict set":                     `CONFIG["settings"]["enabled"] = False`,
+		"top dict set":                        `CONFIG["workers"] = []`,
+		"alias to the same list":              `ALIAS.append(4)`,
+		"module attribute assign":             `config.CONFIG = {}`,
+		"function closing over a module list": `add(1)`,
+		"function mutating module data":       `set_enabled()`,
+	}
+	for name, code := range attempts {
+		t.Run(name, func(t *testing.T) {
+			_, err := starlark.ExecFile(thread, "attempt.star", code, env)
+			if err == nil {
+				t.Errorf("%s succeeded; module state must be immutable", code)
+			}
+		})
+	}
+	if v, _, _ := bound["CONFIG"].(*starlark.Dict).Get(starlark.String("workers")); v.(*starlark.List).Len() != 3 {
+		t.Errorf("workers changed: %v", v)
+	}
+}
+
+func TestModuleInitHasNoHostAccess(t *testing.T) {
+	// Module code runs with Starlark's universe only: no load(), no
+	// time, random, file or environment access, and no model state.
+	dir := t.TempDir()
+	for name, code := range map[string]string{
+		"loads":  "load(\"other.star\", \"x\")\n",
+		"random": "x = random()\n",
+		"time":   "x = time.now()\n",
+		"state":  "x = deepcopy([])\n",
+	} {
+		writeTestFile(t, dir, name+".star", code)
+		if _, _, err := resolveQuiet(t, dir, imp(1, name, "")); err == nil {
+			t.Errorf("module %s loaded; module code must not reach the host or the model", name)
+		}
+	}
+}
+
+func TestCacheIsPerLoad(t *testing.T) {
+	// Each ResolveImports call (one per spec run) gets a fresh loader, so
+	// a module edited between two specs is loaded again.
+	dir := t.TempDir()
+	writeTestFile(t, dir, "util.star", "X = 1\n")
+	first, err := ResolveImports(&ast.File{Imports: []*ast.Import{imp(1, "util", "", "X")}}, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, dir, "util.star", "X = 2\n")
+	second, err := ResolveImports(&ast.File{Imports: []*ast.Import{imp(1, "util", "", "X")}}, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first["X"] == second["X"] {
+		t.Errorf("a second spec run reused the first run's module")
 	}
 }

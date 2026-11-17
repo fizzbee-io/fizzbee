@@ -216,18 +216,31 @@ func ResolveImports(file *ast.File, baseDir string) (starlark.StringDict, error)
 	return resolveImports(file, newModuleLoader(baseDir))
 }
 
+// reservedNames are language-level names an import may not bind. Role
+// constructors are covered by the role check in declaredNames. Ordinary
+// builtins such as len or math may be shadowed by an import.
+var reservedNames = map[string]bool{
+	"Channel":      true,
+	"deepcopy":     true,
+	"resolve_role": true,
+	"self":         true,
+}
+
 // declaredNames maps each name the file declares at the top level, other
 // than variables, to what declares it.
 func declaredNames(file *ast.File) map[string]string {
 	names := map[string]string{}
+	for name := range reservedNames {
+		names[name] = "a reserved FizzBee name"
+	}
 	for _, f := range file.GetFunctions() {
-		names[f.GetName()] = "a function"
+		names[f.GetName()] = "the name of a function in this file"
 	}
 	for _, r := range file.GetRoles() {
-		names[r.GetName()] = "a role"
+		names[r.GetName()] = "the name of a role in this file"
 	}
 	for _, a := range file.GetActions() {
-		names[a.GetName()] = "an action"
+		names[a.GetName()] = "the name of an action in this file"
 	}
 	return names
 }
@@ -243,7 +256,7 @@ func resolveImports(file *ast.File, loader *moduleLoader) (starlark.StringDict, 
 			return &ImportError{fileName, line, fmt.Sprintf("%q is already imported on line %d", name, prev)}
 		}
 		if kind, ok := declared[name]; ok {
-			return &ImportError{fileName, line, fmt.Sprintf("import binds %q, which is also the name of %s in this file; use 'as' to rename the import", name, kind)}
+			return &ImportError{fileName, line, fmt.Sprintf("import binds %q, which is already %s; use 'as' to rename the import", name, kind)}
 		}
 		bound[name] = v
 		boundAt[name] = line
