@@ -42,11 +42,29 @@ liveness: strict
 ```
 
 Then the Fizz spec:
+0. Import statements, if any (they must come first)
 1. Top-level constants
 2. Functions (pure helpers)
 3. Roles (actors/processes)
 4. Top-level actions (Init + others)
 5. Assertions
+
+### Imports
+
+```python
+import threads                       # a builtin module
+import math as m                     # with an alias
+from symmetry import nominal         # members of a module
+import helpers.ring as ring          # helpers/ring.star next to the spec; dotted paths need `as`
+from helpers.ring import SIZE, next_slot
+```
+
+- Imports go before every other top-level statement, only at the top level.
+- `import a.b` looks for `<spec dir>/a/b.star` first, then a builtin module. A local file hides a builtin (with a warning).
+- An import may not reuse the name of a function, role, action, top-level or state variable, or `Channel`/`deepcopy`/`resolve_role`/`self`. Locals and parameters may shadow an import inside their scope.
+- `.star` modules are frozen: their lists and dicts cannot be changed. `from m import _x` is rejected.
+- `math`, `itertools`, `symmetry` and `cardinality` are still available without importing. New builtin modules (such as `threads`) need an import.
+- A spec with no imports still auto-loads every `.star` file next to it as a module; a spec with any import loads only what it imports.
 
 ---
 
