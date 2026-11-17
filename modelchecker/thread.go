@@ -1260,6 +1260,9 @@ func (t *Thread) executeEndOfBlock() ([]*Process, bool) {
 					}
 					variables := oldScope.GetAllVisibleVariables(roleRefs)
 					for s, value := range variables {
+						if t.Process.Evaluator.importNames[s] && slices.Contains(t.Process.topLevelVars, s) {
+							panic(t.Process.NewModelError(action.GetSourceInfo(), fmt.Sprintf("state variable %q has the same name as an import; rename one of them", s), nil))
+						}
 						if !t.Process.Heap.globals.Has(s) && slices.Contains(t.Process.topLevelVars, s) {
 							t.Process.Heap.insert(s, value)
 						}

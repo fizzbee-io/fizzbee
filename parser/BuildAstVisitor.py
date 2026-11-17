@@ -42,11 +42,14 @@ class BuildAstVisitor(FizzParserVisitor):
 
         file = ast.File(source_info=get_source_info(ctx))
         file.source_info.file_name = self.file_name
+        seen_non_import = False
         for i, child in enumerate(ctx.getChildren()):
             print()
             print("visitFile_input child index",i,child.getText(), child.__class__.__name__)
             if hasattr(child, 'toStringTree'):
                 childProto = self.visit(child)
+                if childProto is not None and not BuildAstVisitor.is_list_of_type(childProto, ast.Import):
+                    seen_non_import = True
                 if isinstance(childProto, ast.StateVars):
                     file.states.CopyFrom(childProto)
                 elif isinstance(childProto, ast.Action):
@@ -61,6 +64,8 @@ class BuildAstVisitor(FizzParserVisitor):
                 elif BuildAstVisitor.is_list_of_type(childProto, ast.Invariant):
                     file.invariants.extend(childProto)
                 elif BuildAstVisitor.is_list_of_type(childProto, ast.Import) and childProto:
+                    if seen_non_import:
+                        raise Exception(f"Error: Line: {child.start.line}: import statements must come before every other top-level statement and declaration")
                     file.imports.extend(childProto)
                 elif isinstance(childProto, ast.Statement):
                     file.stmts.append(childProto)

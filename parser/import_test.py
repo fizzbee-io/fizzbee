@@ -3,7 +3,9 @@
 The random test is differential: it generates import statements, parses them
 with the fizz parser and with Python's own `ast` module, and checks that both
 agree on which modules, members and aliases are imported. The fizz grammar
-took its import rules from Python's, so Python is the reference.
+took its import rules from Python's, so Python is the syntax oracle. It is
+not the semantic one: FizzBee's import rules are stricter (imports come
+first in the file, are resolved eagerly, and only at the top level).
 """
 import ast as pyast
 import contextlib
@@ -84,8 +86,8 @@ class ImportTest(unittest.TestCase):
         self.assertEqual(len(file.stmts), 0)
         self.assertEqual(fizz_imports(file), [("math", "", ()), ("threads", "", (("inside", "at"),))])
 
-    def test_imports_after_other_statements(self):
-        file = parse("N = 3\nimport math\n" + BODY)
+    def test_imports_before_other_statements(self):
+        file = parse("# header\nimport math\n\nN = 3\n" + BODY)
         self.assertEqual(fizz_imports(file), [("math", "", ())])
         self.assertEqual(len(file.stmts), 1)
 
@@ -104,6 +106,9 @@ class ImportTest(unittest.TestCase):
         self.assertRejected("from .lib import util\n" + BODY, "relative imports")
         self.assertRejected("import lib.queue\n" + BODY, "needs an alias")
         self.assertRejected("import math; y = 1\n" + BODY, "its own line")
+        self.assertRejected("N = 3\nimport math\n" + BODY, "must come before")
+        self.assertRejected(BODY + "import math\n", "must come before")
+        self.assertRejected("func f():\n    return 1\nimport math\n" + BODY, "must come before")
 
     def test_rejected_inside_blocks(self):
         self.assertRejected("action Init:\n    import math\n    x = 0\n", "top level")

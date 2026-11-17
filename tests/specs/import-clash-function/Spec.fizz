@@ -1,0 +1,7 @@
+import math
+
+func math():
+    return 1
+
+action Init:
+    x = 0

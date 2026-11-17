@@ -1,0 +1,16 @@
+Model checking tests/specs/import-local-hides-builtin/Spec.json
+configFileName: tests/specs/import-local-hides-builtin/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}  deadlock_detection:false
+WARNING: import math uses tests/specs/import-local-hides-builtin/math.star, which hides the builtin module math
+Nodes: 1, queued: 0, elapsed: 285.106µs
+Peak (new): queue=1 pendingActionStarts=0
+Time taken for model checking: 291.696µs
+Writen graph dotfile: tests/specs/import-local-hides-builtin/out/run_2026-11-17_08-42-17/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/import-local-hides-builtin/out/run_2026-11-17_08-42-17/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 1 Unique states: 1
+IsLive: true
+Time taken to check liveness: 85.95µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/import-local-hides-builtin/out/run_2026-11-17_08-42-17

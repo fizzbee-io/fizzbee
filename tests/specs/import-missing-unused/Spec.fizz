@@ -1,0 +1,4 @@
+import nosuch_module
+
+action Init:
+    x = 0

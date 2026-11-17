@@ -1102,11 +1102,14 @@ func writeCommunicationFileIfNeeded(messages []string, outDir string) bool {
 
 func printTraceAndExit(err error) {
 	var modelErr *modelchecker.ModelError
+	var importErr *modelchecker.ImportError
 	if errors.As(err, &modelErr) {
 		fmt.Println("FAILED:", modelErr.Error())
 		if modelErr.NestedError != nil {
 			fmt.Println("Caused by:", modelErr.NestedError)
 		}
+	} else if errors.As(err, &importErr) {
+		fmt.Println("FAILED:", importErr.Error())
 	} else {
 		fmt.Println("Error:", err)
 	}

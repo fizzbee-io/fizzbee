@@ -1,0 +1,40 @@
+---
+deadlock_detection: false
+---
+# Imported names are visible in every context, and a local, parameter or
+# comprehension variable may shadow one inside its own scope only.
+import math
+import lib.consts as consts
+from lib.consts import PAIR, LIMIT, inc
+
+BASE = consts.inc(0) + PAIR[0]       # top-level statement: 2
+
+func bump(math):                     # parameter shadows the import
+    return math + 1
+
+role Counter:
+    action Init:
+        self.n = inc(0) - 1          # role code sees from-imports: 0
+
+    atomic action Step:
+        require self.n < LIMIT
+        nxt = bump(self.n)
+        self.n = nxt
+
+always assertion Bounded:
+    # A comprehension variable shadows the import inside the comprehension.
+    return all([c.n <= LIMIT for c in counters]) and [math for math in [7]] == [7] and math.floor(1.5) == 1
+
+action Init:
+    first = PAIR[0]                  # a tuple import used in Init is not new state
+    counters = [Counter()]
+    total = BASE + first - 3
+
+atomic action Shadow:
+    require total < 2
+    math = 10                        # a local shadows the module in this action only
+    total = total + math - 9
+
+atomic action AfterShadow:
+    require total == 2
+    total = total + int(math.floor(0.5))   # the module is visible again
