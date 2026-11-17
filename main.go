@@ -779,6 +779,9 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 		p1.SetDisableSymmetryReduction(noSymmetryReduction)
 		p1.SetIncrementalLiveness(experimentalIncrementalLiveness && guidedTrace == nil && isStrictLiveness(stateConfig))
 		holder.Store(p1)
+		if stopped {
+			p1.Stop()
+		}
 
 		rootNode, failedNode, endTime, err := startModelChecker(p1)
 		if err != nil {
@@ -925,6 +928,11 @@ func modelCheckSingleSpec(f *ast.File, stateConfig *ast.StateSpaceOptions, dirPa
 
 		//fmt.Println("root", root)
 		if failedNode == nil {
+			// A partial graph can't refute exists or liveness, so don't walk it.
+			if p1.Stopped() && !simulation {
+				fmt.Println("Model checker stopped")
+				return nil
+			}
 			var failurePath []*modelchecker.Link
 			var failedInvariant *modelchecker.InvariantPosition
 			nodes, messages, deadlock, yieldsCount := modelchecker.GetAllNodes(rootNode, stateConfig.GetOptions().GetMaxActions())
@@ -1139,16 +1147,18 @@ func writeDotFileIfNeeded(p1 *modelchecker.Processor, rootNode *modelchecker.Nod
 }
 
 func setupSignalHandler(holder *atomic.Pointer[modelchecker.Processor], stopped *bool) {
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		fmt.Println("\nInterrupted. Stopping state exploration")
+		fmt.Println("\nInterrupted. Stopping state exploration (again to quit)")
 		*stopped = true
 		p1 := holder.Load()
 		if p1 != nil {
 			p1.Stop()
 		}
+		<-c
+		os.Exit(130)
 	}()
 }
 
