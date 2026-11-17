@@ -1400,7 +1400,16 @@ type Processor struct {
 	// (Start) honours it; see collapseActive.
 	experimentalCollapseSteps bool
 	collapseActive            bool
-	stepVisited               map[string]*Node
+	// stepVisited dedups mid-action steps (neither yield points nor
+	// init/crash) within one expansion only; expandToYield clears it.
+	// Sharing a step across expansions would hand it a single parent
+	// chain, so transition assertions would compare the yield points
+	// after it only against the yield point that reached it first.
+	// Collapsed (transient) steps are kept here too.
+	stepVisited map[string]*Node
+	// stepNodes counts the mid-action steps stored in the graph, which
+	// live in stepVisited and not in visited; see GetVisitedNodesCount.
+	stepNodes int
 
 	// disableSymmetryReduction: when true, visited-set dedup uses only the
 	// plain state hash — no symmetry permutations, so no canonical renaming
@@ -1715,11 +1724,12 @@ func NewProcessorWithVisitedTracking(files []*ast.File, options *ast.StateSpaceO
 	}
 
 	return &Processor{
-		Files:   files,
-		queue:   collection,
-		visited: make(map[string]*Node),
-		config:  proto.Clone(options).(*ast.StateSpaceOptions),
-		dirPath: dirPath,
+		Files:       files,
+		queue:       collection,
+		visited:     make(map[string]*Node),
+		stepVisited: make(map[string]*Node),
+		config:      proto.Clone(options).(*ast.StateSpaceOptions),
+		dirPath:     dirPath,
 
 		durabilitySpec: durabilitySpec,
 
@@ -1738,8 +1748,10 @@ func NewProcessorWithVisitedTracking(files []*ast.File, options *ast.StateSpaceO
 	}
 }
 
+// GetVisitedNodesCount returns the number of stored nodes: the states in
+// the visited set plus the mid-action steps kept per expansion.
 func (p *Processor) GetVisitedNodesCount() int {
-	return len(p.visited)
+	return len(p.visited) + p.stepNodes
 }
 
 func (p *Processor) InitializeNode() (*Node, *Node, error) {
@@ -1815,9 +1827,6 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 	// Guided traces match link names step by step, and refinement checks
 	// read every stored node, so collapsing is limited to plain BFS runs.
 	p.collapseActive = p.experimentalCollapseSteps && p.guidedTrace == nil && len(p.Files[0].Refinements) == 0
-	if p.collapseActive {
-		p.stepVisited = make(map[string]*Node)
-	}
 	startTime := time.Now()
 	init, failedNode, err = p.InitializeNode()
 	if err != nil {
@@ -1870,9 +1879,9 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 		//}
 	}
 	if p.isTest {
-		fmt.Printf("Nodes: %d, queued: %d\n", len(p.visited), p.queue.Len())
+		fmt.Printf("Nodes: %d, queued: %d\n", p.GetVisitedNodesCount(), p.queue.Len())
 	} else {
-		fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
+		fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", p.GetVisitedNodesCount(), p.queue.Len(), time.Since(startTime))
 	}
 	p.printPeakSummary()
 	p.printLazySummary()
@@ -1902,20 +1911,18 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 func (p *Processor) expandToYield(node *Node, startTime time.Time, prevCount *int) (
 	invariantFailure bool, symmetryFound bool, crashFailedNode *Node, finalNode *Node) {
 	finalNode = node
-	if p.collapseActive {
-		// Internal steps are shared only within one expansion: the same
-		// mid-action state reached from another yield point is explored
-		// again, which costs time but keeps no step alive across yields.
-		clear(p.stepVisited)
-	}
+	// Mid-action steps are shared only within one expansion: the same
+	// mid-action state reached from another yield point is explored again,
+	// so every step has a single starting yield point (see stepVisited).
+	clear(p.stepVisited)
 	for {
-		if len(p.visited)%20000 == 0 && len(p.visited) != *prevCount {
+		if n := p.GetVisitedNodesCount(); n%20000 == 0 && n != *prevCount {
 			if p.isTest {
-				fmt.Printf("Nodes: %d, queued: %d\n", len(p.visited), p.queue.Len())
+				fmt.Printf("Nodes: %d, queued: %d\n", n, p.queue.Len())
 			} else {
-				fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
+				fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", n, p.queue.Len(), time.Since(startTime))
 			}
-			*prevCount = len(p.visited)
+			*prevCount = n
 		}
 		invariantFailure, symmetryFound = p.processNode(finalNode)
 
@@ -1972,9 +1979,6 @@ func (p *Processor) startProcessedQueue() (init *Node, failedNode *Node, err err
 	// No-graph mode stores no links, so collapsing only keeps mid-action
 	// steps out of the permanent visited set (see processNode).
 	p.collapseActive = p.experimentalCollapseSteps && p.experimentalNoGraph && p.guidedTrace == nil && len(p.Files[0].Refinements) == 0
-	if p.collapseActive {
-		p.stepVisited = make(map[string]*Node)
-	}
 	startTime := time.Now()
 	init, failedNode, err = p.InitializeNode()
 	if err != nil {
@@ -2154,9 +2158,9 @@ func (p *Processor) flushExpandedYieldPoints() {
 // completion. Extracted so startProcessedQueue can share it.
 func (p *Processor) printRunSummary(startTime time.Time) {
 	if p.isTest {
-		fmt.Printf("Nodes: %d, queued: %d\n", len(p.visited), p.queue.Len())
+		fmt.Printf("Nodes: %d, queued: %d\n", p.GetVisitedNodesCount(), p.queue.Len())
 	} else {
-		fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", len(p.visited), p.queue.Len(), time.Since(startTime))
+		fmt.Printf("Nodes: %d, queued: %d, elapsed: %s\n", p.GetVisitedNodesCount(), p.queue.Len(), time.Since(startTime))
 	}
 	p.printPeakSummary()
 	p.printLazySummary()
@@ -2479,6 +2483,7 @@ func (p *Processor) StartSimulation() (init *Node, failedNode *Node, err error) 
 		if shouldClearVisited {
 			p.visited = make(map[string]*Node)
 		}
+		clear(p.stepVisited)
 		for {
 			inCrashPath := false
 			if len(node.Inbound) > 0 {
@@ -2779,29 +2784,42 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		}
 	}
 
-	other, found, canonicalHash := p.findVisitedSymmetric(node)
+	// Mid-action steps are deduplicated only within this expansion (see
+	// stepVisited); yield points, init and crash nodes across the run.
+	step := !yield && !isKeptNodeName(node.Name)
+	other, found, canonicalHash := p.findVisitedSymmetric(node, step)
 	if p.experimentalNoGraph {
 		// No-graph mode: visited stores hashes only (values are nil). Skip
 		// Attach (no graph edges) and skip the Enabled-vs-existing logic
 		// that would otherwise re-promote a not-yet-enabled visited entry —
 		// in no_graph mode we don't keep the existing Node to compare.
-		if found {
+		// stepVisited keeps the nodes, so steps compare Enabled as in
+		// graph mode below.
+		if found && (!step || other.Enabled || !node.Enabled) {
 			// Pure dedup hit; the current node won't be retained either.
 			// Still a live successor for early deadlock detection.
-			p.dedupHitsInExpansion++
+			if !transient {
+				p.dedupHitsInExpansion++
+			}
 			return false, false
 		}
-		if transient {
-			// Collapsed step: dedup only against this expansion's steps,
-			// as in graph mode below.
-			if prev, ok := p.stepVisited[canonicalHash]; ok && (prev.Enabled || !node.Enabled) {
-				return false, false
+		if step {
+			if !found && !transient {
+				p.stepNodes++
 			}
 			p.stepVisited[canonicalHash] = node
-			node.transient = true
+			node.transient = transient
 		} else {
 			p.visited[canonicalHash] = nil
 		}
+	} else if transient {
+		// Collapsed step: not attached to the graph. Dedup only against
+		// the steps of this expansion.
+		if found && (other.Enabled || !node.Enabled) {
+			return false, false
+		}
+		p.stepVisited[canonicalHash] = node
+		node.transient = true
 	} else if found && (other.Enabled || !node.Enabled) {
 		// TODO: Enabled should be a property of the link/transition, not the node.
 		// We will keep the enabled state in the node, during execution but have to be
@@ -2819,17 +2837,16 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		// even though no new entry is added to p.queue.
 		p.dedupHitsInExpansion++
 		return false, false
-	} else if transient {
-		// Collapsed step: not attached to the graph and not in the global
-		// visited set. Dedup only against the steps of this expansion.
-		if prev, ok := p.stepVisited[canonicalHash]; ok && (prev.Enabled || !node.Enabled) {
-			return false, false
-		}
-		p.stepVisited[canonicalHash] = node
-		node.transient = true
 	} else {
 		node.Attach()
-		p.visited[canonicalHash] = node
+		if step {
+			if !found {
+				p.stepNodes++
+			}
+			p.stepVisited[canonicalHash] = node
+		} else {
+			p.visited[canonicalHash] = node
+		}
 	}
 	var failedInvariants map[int][]int
 	if yield {
@@ -2982,7 +2999,7 @@ func (p *Processor) crashRole(node *Node, role *lib.Role) (*Node, *Node) {
 	if node.Process.Enabled {
 		crashNode.Enable()
 	}
-	other, ok, canonicalHash := p.findVisitedSymmetric(crashNode)
+	other, ok, canonicalHash := p.findVisitedSymmetric(crashNode, false)
 	if ok {
 		crashNode.Duplicate(other, true)
 		return nil, nil
@@ -3029,7 +3046,7 @@ func (p *Processor) attachCrashFork(node *Node, crashFork *Process) {
 	if node.Process.Enabled {
 		crashNode.Enable()
 	}
-	other, ok, canonicalHash := p.findVisitedSymmetric(crashNode)
+	other, ok, canonicalHash := p.findVisitedSymmetric(crashNode, false)
 	if ok {
 		crashNode.Duplicate(other, true)
 		return
@@ -3073,8 +3090,15 @@ func (p *Process) minHashCode(hashes []string) string {
 
 // findVisitedSymmetric looks up a node in the visited map by trying all symmetry
 // permutation hashes. Returns the matching node and true if found, nil and false otherwise.
-func (p *Processor) findVisitedSymmetric(node *Node) (*Node, bool, string) {
-	other, ok, hash := p.findVisitedSymmetricState(node)
+//
+// Mid-action steps (step true) are looked up in stepVisited, everything else
+// in visited.
+func (p *Processor) findVisitedSymmetric(node *Node, step bool) (*Node, bool, string) {
+	visited := p.visited
+	if step {
+		visited = p.stepVisited
+	}
+	other, ok, hash := p.findVisitedSymmetricState(node, visited)
 	if p.guidedTrace == nil {
 		return other, ok, hash
 	}
@@ -3083,11 +3107,11 @@ func (p *Processor) findVisitedSymmetric(node *Node) (*Node, bool, string) {
 	// interleavings of non-atomic actions can reach one state at different
 	// trace positions. Key visited by state and trace position.
 	hash = fmt.Sprintf("%s#trace%d", hash, node.guidedTrace.GetCurrentIndex())
-	other, ok = p.visited[hash]
+	other, ok = visited[hash]
 	return other, ok, hash
 }
 
-func (p *Processor) findVisitedSymmetricState(node *Node) (*Node, bool, string) {
+func (p *Processor) findVisitedSymmetricState(node *Node, visited map[string]*Node) (*Node, bool, string) {
 	// Skip symmetry reduction in simulation mode (we only check one path
 	// anyway) or when explicitly disabled. Disabling keeps every persisted
 	// state concrete — no canonical renaming of symmetric values/roles —
@@ -3097,7 +3121,7 @@ func (p *Processor) findVisitedSymmetricState(node *Node) (*Node, bool, string) 
 	// states still dedup via the plain hash.
 	if p.simulation || p.disableSymmetryReduction {
 		hash := node.HashCode()
-		other, ok := p.visited[hash]
+		other, ok := visited[hash]
 		return other, ok, hash
 	}
 	if !p.specUsesSymmetry(node.Process) {
@@ -3105,12 +3129,12 @@ func (p *Processor) findVisitedSymmetricState(node *Node) (*Node, bool, string) 
 		// would produce is the state's own hash with roles in canonical
 		// order. Compute that directly instead of cloning the state.
 		hash := node.canonicalHashWithoutSymmetry()
-		other, ok := p.visited[hash]
+		other, ok := visited[hash]
 		return other, ok, hash
 	}
 	hashes := node.getSymmetryTranslations()
 	minHash := node.minHashCode(hashes)
-	other, ok := p.visited[minHash]
+	other, ok := visited[minHash]
 	return other, ok, minHash
 }
 
