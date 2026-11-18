@@ -1,0 +1,26 @@
+---
+options:
+  crash_on_yield: false
+deadlock_detection: false
+---
+
+action Init:
+    x = 0
+    ok = True
+    n = 0
+
+atomic action Step:
+    require n < 1
+    n += 1
+    ok = True
+    x = 1
+    ok = oneof [False, True]
+    if ok:
+        x = 2
+
+transition assertion AfterOkMeansTwo(before, after):
+    if after.n == before.n:
+        return True
+    if not after.ok:
+        return True
+    return after.x == 2

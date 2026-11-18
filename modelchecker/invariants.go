@@ -77,10 +77,15 @@ func CheckRefinement(process *Process, refinement *ast.Refinement, joinHashes Jo
 }
 
 func CheckTransitionInvariants(process *Process) map[int][]int {
-	if process.Parent == nil {
+	// before is where the step started: the nearest yield ancestor.
+	before := process.Parent
+	for before != nil && !before.IsYieldNode() && before.Parent != nil {
+		before = before.Parent
+	}
+	if before == nil {
 		return nil
 	}
-	if process.Heap.CachedHashCode == process.Parent.Heap.CachedHashCode && process.Parent.Heap.CachedHashCode != "" {
+	if process.Heap.CachedHashCode == before.Heap.CachedHashCode && before.Heap.CachedHashCode != "" {
 		return nil
 	}
 	defer lib.RestoreGlobalRefs(lib.SnapshotGlobalRefs())
@@ -89,7 +94,7 @@ func CheckTransitionInvariants(process *Process) map[int][]int {
 		results[i] = make([]int, 0)
 		for j, invariant := range file.Invariants {
 			if invariant.Block != nil && slices.Contains(invariant.TemporalOperators, "transition") {
-				passed := CheckTransitionAssertion(process, invariant, j)
+				passed := CheckTransitionAssertion(process, before, invariant, j)
 				if !passed {
 					results[i] = append(results[i], j)
 				}
@@ -273,10 +278,7 @@ func execFunctionBlock(cloned *Process, name string, pc string, vars starlark.St
 	}
 }
 
-func CheckTransitionAssertion(process *Process, invariant *ast.Invariant, index int) bool {
-	if process.Parent == nil {
-		return true
-	}
+func CheckTransitionAssertion(process, before *Process, invariant *ast.Invariant, index int) bool {
 	beforeParam, afterParam := "before", "after"
 	if len(invariant.Params) == 2 {
 		beforeParam, afterParam = invariant.Params[0].GetName(), invariant.Params[1].GetName()
@@ -286,7 +288,7 @@ func CheckTransitionAssertion(process *Process, invariant *ast.Invariant, index 
 	cloned := process.CloneForAssert(nil, 0)
 	cloned.enablePredicateCalls()
 	cloned.Heap.state[afterParam] = starlarkstruct.FromStringDict(starlark.String(afterParam), cloned.Heap.state)
-	cloned.Heap.state[beforeParam] = starlarkstruct.FromStringDict(starlark.String(beforeParam), process.Parent.Heap.state)
+	cloned.Heap.state[beforeParam] = starlarkstruct.FromStringDict(starlark.String(beforeParam), before.Heap.state)
 
 	return execAssertionFunction(cloned, index, invariant)
 }
