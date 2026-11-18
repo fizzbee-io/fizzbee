@@ -1,5 +1,0 @@
-Model checking tests/specs/import-clash-nested-init/Spec.json
-configFileName: tests/specs/import-clash-nested-init/fizz.yaml
-fizz.yaml not found. Using default options
-StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
-FAILED: Spec.fizz:1: import binds "math", which is already a state variable (line 6); use 'as' to rename the import

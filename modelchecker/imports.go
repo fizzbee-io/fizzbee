@@ -244,11 +244,12 @@ var reservedNames = map[string]bool{
 
 // declaredNames maps each name the file declares at the top level to what
 // declares it, so an import with the same name is a load-time error.
-// Variables are found statically, before anything runs: every name assigned
-// in top-level statements, in the Init action, or in a legacy state block,
-// at any nesting depth. Assignments inside nested blocks of Init can still
-// become state variables (blocks are not scopes), so the scan is
-// deliberately broad: a name assigned anywhere there counts.
+// Variables are found statically, before anything runs, matching what the
+// runtime turns into variables: names assigned by top-level statements, by
+// the direct statements of the Init action, and anywhere in a legacy init
+// block (one Starlark chunk run at module scope). A name assigned in a
+// nested block of Init is local to Init and shadows the import there, as
+// in a Python function, so it is not a clash.
 func declaredNames(file *ast.File) map[string]string {
 	names := map[string]string{}
 	for name := range reservedNames {
@@ -287,11 +288,21 @@ func declaredNames(file *ast.File) map[string]string {
 
 var assignParseOptions = &syntax.FileOptions{Set: true, GlobalReassign: true, TopLevelControl: true, While: true, Recursion: true}
 
-// assignedNames returns the plain names these statements assign, including
-// in nested blocks, with the line of the first assignment.
+// assignedNames returns the plain names these statements assign directly,
+// with the line of the first assignment. Only direct statements count:
+// names assigned in nested blocks (if, for, any, while, atomic:) or as loop
+// variables stay local and never become top-level or state variables.
 func assignedNames(stmts []*ast.Statement) map[string]int32 {
 	names := map[string]int32{}
-	collectAssigned(stmts, names)
+	for _, stmt := range stmts {
+		line := stmt.GetSourceInfo().GetStart().GetLine()
+		if py := stmt.GetPyStmt(); py != nil {
+			pyAssignedNames(py.GetCode(), line-1, names)
+		}
+		for _, v := range stmt.GetCallStmt().GetVars() {
+			addAssigned(names, v, line)
+		}
+	}
 	return names
 }
 
@@ -301,45 +312,14 @@ func addAssigned(names map[string]int32, name string, line int32) {
 	}
 }
 
-func collectAssigned(stmts []*ast.Statement, names map[string]int32) {
-	for _, stmt := range stmts {
-		line := stmt.GetSourceInfo().GetStart().GetLine()
-		if py := stmt.GetPyStmt(); py != nil {
-			pyAssignedNames(py.GetCode(), line-1, names)
-		}
-		if b := stmt.GetBlock(); b != nil {
-			collectAssigned(b.GetStmts(), names)
-		}
-		for _, br := range stmt.GetIfStmt().GetBranches() {
-			collectAssigned(br.GetBlock().GetStmts(), names)
-		}
-		if f := stmt.GetForStmt(); f != nil {
-			for _, v := range f.GetLoopVars() {
-				addAssigned(names, v, line)
-			}
-			collectAssigned(f.GetBlock().GetStmts(), names)
-		}
-		if a := stmt.GetAnyStmt(); a != nil {
-			for _, v := range a.GetLoopVars() {
-				addAssigned(names, v, line)
-			}
-			collectAssigned(a.GetBlock().GetStmts(), names)
-		}
-		if w := stmt.GetWhileStmt(); w != nil {
-			collectAssigned(w.GetBlock().GetStmts(), names)
-		}
-		for _, v := range stmt.GetCallStmt().GetVars() {
-			addAssigned(names, v, line)
-		}
-	}
-}
-
 // pyAssignedNames adds the names that Starlark code assigns, at any depth
 // except inside def bodies (their own scope). Lines are offset so they
 // point into the spec file.
 func pyAssignedNames(code string, lineOffset int32, names map[string]int32) {
 	f, err := assignParseOptions.Parse("stmt", code, 0)
 	if err != nil {
+		// Code that does not parse fails when it runs, with the real
+		// error; this scan only adds clash errors on top of that.
 		return
 	}
 	syntax.Walk(f, func(n syntax.Node) bool {

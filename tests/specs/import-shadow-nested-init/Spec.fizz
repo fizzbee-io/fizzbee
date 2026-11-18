@@ -1,0 +1,17 @@
+# An assignment in a nested block of Init is local to Init, like a local in
+# a Python function: it shadows the import there and does not become state.
+# Only direct statements of Init become state variables.
+import math
+
+always assertion ImportStillWorks:
+    return floored == 2
+
+action Init:
+    floored = 2
+    if True:
+        math = 3
+    inside = math         # 3: the local, as in Python
+
+atomic action Step:
+    require floored == 2
+    floored = math.floor(2.5)   # the import again
