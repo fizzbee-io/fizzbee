@@ -1,8 +1,10 @@
 package modelchecker
 
 import (
+	"maps"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -330,5 +332,39 @@ func TestCacheIsPerLoad(t *testing.T) {
 	}
 	if first["X"] == second["X"] {
 		t.Errorf("a second spec run reused the first run's module")
+	}
+}
+
+func TestImportsAreStaticEnvironmentInTheHeap(t *testing.T) {
+	dir := t.TempDir()
+	writeTestFile(t, dir, "util.star", "ITEMS = [1, 2]\ndef f():\n    return 1\n")
+	imports, err := ResolveImports(&ast.File{Imports: []*ast.Import{
+		imp(1, "util", ""), imp(2, "util", "", "ITEMS", "f"), imp(3, "math", "", "floor"),
+	}}, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	imports.Freeze()
+	state := starlark.StringDict{"x": starlark.MakeInt(1)}
+	with := &Heap{state: state, globals: imports}
+	without := &Heap{state: maps.Clone(state), globals: starlark.StringDict{}}
+
+	if with.HashCode() != without.HashCode() {
+		t.Errorf("imports change the state hash")
+	}
+	if with.ToJson() != without.ToJson() {
+		t.Errorf("imports appear in the state JSON: %s", with.ToJson())
+	}
+	clone := with.Clone(map[starlark.Value]starlark.Value{}, nil, 0)
+	if reflect.ValueOf(clone.globals).Pointer() != reflect.ValueOf(with.globals).Pointer() {
+		t.Errorf("a fork copied the imports instead of sharing them")
+	}
+	for name, v := range imports {
+		if clone.globals[name] != v {
+			t.Errorf("%s is a different value after a fork", name)
+		}
+	}
+	if clone.HashCode() != with.HashCode() {
+		t.Errorf("the hash changed across a fork")
 	}
 }

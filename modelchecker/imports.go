@@ -11,6 +11,7 @@ import (
 	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
+	"go.starlark.net/syntax"
 )
 
 // Import contract (see the design doc):
@@ -162,17 +163,20 @@ func (l *moduleLoader) load(path string) (starlark.Value, error) {
 		l.cache[src.key] = src.builtin
 		return src.builtin, nil
 	}
-	members, err := LoadModule(displayPath(src.file))
+	members, err := LoadModule(src.file)
 	if err != nil {
-		err = fmt.Errorf("module %q (%s) failed to load: %v", path, displayPath(src.file), err)
+		// Load by canonical path; show the short path in the message.
+		msg := strings.ReplaceAll(err.Error(), src.file, displayPath(src.file))
+		err = fmt.Errorf("module %q (%s) failed to load: %s", path, displayPath(src.file), msg)
 		l.errs[src.key] = err
 		return nil, err
 	}
 	// Freeze is deep: lists and dicts nested in module values are frozen
 	// too, so a module cannot become hidden mutable state.
 	members.Freeze()
-	name := strings.TrimSuffix(filepath.Base(src.file), ".star")
-	m := &starlarkstruct.Module{Name: name, Members: members}
+	// The module's name is its import path, as in Python; an alias only
+	// names the binding.
+	m := &starlarkstruct.Module{Name: path, Members: members}
 	l.cache[src.key] = m
 	return m, nil
 }
@@ -216,9 +220,14 @@ func ResolveImports(file *ast.File, baseDir string) (starlark.StringDict, error)
 	return resolveImports(file, newModuleLoader(baseDir))
 }
 
-// reservedNames are language-level names an import may not bind. Role
-// constructors are covered by the role check in declaredNames. Ordinary
-// builtins such as len or math may be shadowed by an import.
+// Name policy for imports:
+//   - Language names (self) and names the runtime injects into every
+//     environment (Channel, deepcopy, resolve_role, and each role's
+//     constructor) cannot be bound by an import. They sit above user names
+//     in lookup, so an import there would be silently ignored.
+//   - Ordinary builtins (len, sum, math, symmetry, ...) may be shadowed.
+//   - User declarations (functions, roles, actions, top-level variables,
+//     state variables) and other imports may not reuse an imported name.
 var reservedNames = map[string]bool{
 	"Channel":      true,
 	"deepcopy":     true,
@@ -226,12 +235,25 @@ var reservedNames = map[string]bool{
 	"self":         true,
 }
 
-// declaredNames maps each name the file declares at the top level, other
-// than variables, to what declares it.
+// declaredNames maps each name the file declares at the top level to what
+// declares it, so an import with the same name is a load-time error.
+// Variables are found statically: top-level assignments, and the
+// assignments at the top of the Init action, which become state variables.
 func declaredNames(file *ast.File) map[string]string {
 	names := map[string]string{}
 	for name := range reservedNames {
 		names[name] = "a reserved FizzBee name"
+	}
+	for name, line := range assignedNames(file.GetStmts()) {
+		names[name] = fmt.Sprintf("a top-level variable (line %d)", line)
+	}
+	for _, a := range file.GetActions() {
+		if a.GetName() != "Init" {
+			continue
+		}
+		for name, line := range assignedNames(a.GetBlock().GetStmts()) {
+			names[name] = fmt.Sprintf("a state variable (line %d)", line)
+		}
 	}
 	for _, f := range file.GetFunctions() {
 		names[f.GetName()] = "the name of a function in this file"
@@ -243,6 +265,67 @@ func declaredNames(file *ast.File) map[string]string {
 		names[a.GetName()] = "the name of an action in this file"
 	}
 	return names
+}
+
+var assignParseOptions = &syntax.FileOptions{Set: true, GlobalReassign: true, TopLevelControl: true, While: true, Recursion: true}
+
+// assignedNames returns the plain names these statements assign at their
+// own level (not in nested blocks), with the line of the first assignment.
+func assignedNames(stmts []*ast.Statement) map[string]int32 {
+	names := map[string]int32{}
+	add := func(name string, line int32) {
+		if _, ok := names[name]; !ok && name != "" && !strings.ContainsAny(name, ".[") {
+			names[name] = line
+		}
+	}
+	for _, stmt := range stmts {
+		line := stmt.GetSourceInfo().GetStart().GetLine()
+		switch {
+		case stmt.GetPyStmt() != nil:
+			f, err := assignParseOptions.Parse("stmt", stmt.GetPyStmt().GetCode(), 0)
+			if err != nil {
+				continue
+			}
+			for _, st := range f.Stmts {
+				if as, ok := st.(*syntax.AssignStmt); ok {
+					for _, id := range assignTargets(as.LHS) {
+						add(id, line)
+					}
+				}
+			}
+		case stmt.GetAnyStmt() != nil:
+			for _, v := range stmt.GetAnyStmt().GetLoopVars() {
+				add(v, line)
+			}
+		case stmt.GetCallStmt() != nil:
+			for _, v := range stmt.GetCallStmt().GetVars() {
+				add(v, line)
+			}
+		}
+	}
+	return names
+}
+
+func assignTargets(e syntax.Expr) []string {
+	switch e := e.(type) {
+	case *syntax.Ident:
+		return []string{e.Name}
+	case *syntax.ParenExpr:
+		return assignTargets(e.X)
+	case *syntax.TupleExpr:
+		var out []string
+		for _, x := range e.List {
+			out = append(out, assignTargets(x)...)
+		}
+		return out
+	case *syntax.ListExpr:
+		var out []string
+		for _, x := range e.List {
+			out = append(out, assignTargets(x)...)
+		}
+		return out
+	}
+	return nil
 }
 
 func resolveImports(file *ast.File, loader *moduleLoader) (starlark.StringDict, error) {

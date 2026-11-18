@@ -91,6 +91,14 @@ class ImportTest(unittest.TestCase):
         self.assertEqual(fizz_imports(file), [("math", "", ())])
         self.assertEqual(len(file.stmts), 1)
 
+    def test_comments_and_blank_lines_between_imports(self):
+        file = parse("# header\n\nimport math  # trailing\n\n# between\nfrom lib.q import (\n    a,\n    b as c,\n)\n" + BODY)
+        self.assertEqual(fizz_imports(file), [("math", "", ()), ("lib.q", "", (("a", ""), ("b", "c")))])
+
+    def test_each_module_of_a_multi_import_has_its_own_position(self):
+        file = parse("import math, symmetry as s\n" + BODY)
+        self.assertEqual([i.source_info.start.column for i in file.imports], [8, 14])
+
     def test_line_numbers(self):
         file = parse("\n\nimport math\n" + BODY)
         self.assertEqual(file.imports[0].source_info.start.line, 3)

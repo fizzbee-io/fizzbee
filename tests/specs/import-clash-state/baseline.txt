@@ -2,24 +2,4 @@ Model checking tests/specs/import-clash-state/Spec.json
 configFileName: tests/specs/import-clash-state/fizz.yaml
 fizz.yaml not found. Using default options
 StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
-panic: Between lines 3 and 5: state variable "math" has the same name as an import; rename one of them
-
-goroutine 1 [running]:
-github.com/fizzbee-io/fizzbee/modelchecker.(*Thread).executeEndOfBlock(0x37cedb02c080)
-	/home/user/fizzbee/modelchecker/thread.go:1264 +0xba5
-github.com/fizzbee-io/fizzbee/modelchecker.(*Thread).Execute(0x37cedb02c080)
-	/home/user/fizzbee/modelchecker/thread.go:430 +0x1e9
-github.com/fizzbee-io/fizzbee/modelchecker.(*Processor).processNode(0x37cedb02e008, 0x37cedb03e000)
-	/home/user/fizzbee/modelchecker/processor.go:2743 +0x14b
-github.com/fizzbee-io/fizzbee/modelchecker.(*Processor).expandToYield(0x37cedb02e008, 0xd6e140?, {0x800000?, 0x37cedb0b50c8?, 0xd4b7c0?}, 0x37cedb0b50b0)
-	/home/user/fizzbee/modelchecker/processor.go:1976 +0x306
-github.com/fizzbee-io/fizzbee/modelchecker.(*Processor).startProcessedQueue(0x37cedb02e008)
-	/home/user/fizzbee/modelchecker/processor.go:2051 +0x12e
-github.com/fizzbee-io/fizzbee/modelchecker.(*Processor).Start(0x7f79a5c55bf0?)
-	/home/user/fizzbee/modelchecker/processor.go:1866 +0x130
-main.startModelChecker(0x37cedb02e008)
-	/home/user/fizzbee/main.go:1338 +0xc5
-main.modelCheckSingleSpec(0x37cedb082c60, 0x37cedb0f2120, {0x7ffedd94bd5e, 0x1e}, {0x37cedaf3a5c0, 0x3a}, {0x37cedaf38ff0, 0x28}, {0x7ffedd94bd5e, 0x28}, ...)
-	/home/user/fizzbee/main.go:783 +0xb12
-main.main()
-	/home/user/fizzbee/main.go:201 +0xc37
+FAILED: Spec.fizz:1: import binds "math", which is already a state variable (line 4); use 'as' to rename the import

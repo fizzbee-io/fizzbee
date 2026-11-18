@@ -2,4 +2,4 @@ Model checking tests/specs/import-clash-global/Spec.json
 configFileName: tests/specs/import-clash-global/fizz.yaml
 fizz.yaml not found. Using default options
 StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
-FAILED: Spec.fizz: top-level variable "math" has the same name as an import; rename one of them
+FAILED: Spec.fizz:1: import binds "math", which is already a top-level variable (line 2); use 'as' to rename the import
