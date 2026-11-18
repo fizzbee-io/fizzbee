@@ -81,6 +81,9 @@ type moduleResolver struct {
 	// modules can be imported.
 	baseDir string
 	warn    func(string)
+	// warned holds the modules already warned about, so a module that is
+	// imported several times warns once.
+	warned map[string]bool
 }
 
 func moduleFile(baseDir, path string) string {
@@ -110,7 +113,11 @@ func (r *moduleResolver) resolve(path string) (moduleSource, error) {
 			if err != nil {
 				return moduleSource{}, fmt.Errorf("module %q: %v", path, err)
 			}
-			if isBuiltin {
+			if isBuiltin && !r.warned[canonical] {
+				if r.warned == nil {
+					r.warned = map[string]bool{}
+				}
+				r.warned[canonical] = true
 				r.warn(fmt.Sprintf("import %s uses %s, which hides the builtin module %s", path, displayPath(canonical), path))
 			}
 			return moduleSource{key: canonical, file: canonical}, nil
@@ -237,22 +244,33 @@ var reservedNames = map[string]bool{
 
 // declaredNames maps each name the file declares at the top level to what
 // declares it, so an import with the same name is a load-time error.
-// Variables are found statically: top-level assignments, and the
-// assignments at the top of the Init action, which become state variables.
+// Variables are found statically, before anything runs: every name assigned
+// in top-level statements, in the Init action, or in a legacy state block,
+// at any nesting depth. Assignments inside nested blocks of Init can still
+// become state variables (blocks are not scopes), so the scan is
+// deliberately broad: a name assigned anywhere there counts.
 func declaredNames(file *ast.File) map[string]string {
 	names := map[string]string{}
 	for name := range reservedNames {
 		names[name] = "a reserved FizzBee name"
 	}
-	for name, line := range assignedNames(file.GetStmts()) {
-		names[name] = fmt.Sprintf("a top-level variable (line %d)", line)
+	addVars := func(found map[string]int32, what string) {
+		for name, line := range found {
+			if _, ok := names[name]; !ok {
+				names[name] = fmt.Sprintf("%s (line %d)", what, line)
+			}
+		}
+	}
+	addVars(assignedNames(file.GetStmts()), "a top-level variable")
+	if states := file.GetStates(); states.GetCode() != "" {
+		found := map[string]int32{}
+		// The code starts on the line after the "init:" header.
+		pyAssignedNames(states.GetCode(), states.GetSourceInfo().GetStart().GetLine(), found)
+		addVars(found, "a state variable")
 	}
 	for _, a := range file.GetActions() {
-		if a.GetName() != "Init" {
-			continue
-		}
-		for name, line := range assignedNames(a.GetBlock().GetStmts()) {
-			names[name] = fmt.Sprintf("a state variable (line %d)", line)
+		if a.GetName() == "Init" {
+			addVars(assignedNames(a.GetBlock().GetStmts()), "a state variable")
 		}
 	}
 	for _, f := range file.GetFunctions() {
@@ -269,41 +287,80 @@ func declaredNames(file *ast.File) map[string]string {
 
 var assignParseOptions = &syntax.FileOptions{Set: true, GlobalReassign: true, TopLevelControl: true, While: true, Recursion: true}
 
-// assignedNames returns the plain names these statements assign at their
-// own level (not in nested blocks), with the line of the first assignment.
+// assignedNames returns the plain names these statements assign, including
+// in nested blocks, with the line of the first assignment.
 func assignedNames(stmts []*ast.Statement) map[string]int32 {
 	names := map[string]int32{}
-	add := func(name string, line int32) {
-		if _, ok := names[name]; !ok && name != "" && !strings.ContainsAny(name, ".[") {
-			names[name] = line
-		}
+	collectAssigned(stmts, names)
+	return names
+}
+
+func addAssigned(names map[string]int32, name string, line int32) {
+	if _, ok := names[name]; !ok && name != "" && !strings.ContainsAny(name, ".[") {
+		names[name] = line
 	}
+}
+
+func collectAssigned(stmts []*ast.Statement, names map[string]int32) {
 	for _, stmt := range stmts {
 		line := stmt.GetSourceInfo().GetStart().GetLine()
-		switch {
-		case stmt.GetPyStmt() != nil:
-			f, err := assignParseOptions.Parse("stmt", stmt.GetPyStmt().GetCode(), 0)
-			if err != nil {
-				continue
+		if py := stmt.GetPyStmt(); py != nil {
+			pyAssignedNames(py.GetCode(), line-1, names)
+		}
+		if b := stmt.GetBlock(); b != nil {
+			collectAssigned(b.GetStmts(), names)
+		}
+		for _, br := range stmt.GetIfStmt().GetBranches() {
+			collectAssigned(br.GetBlock().GetStmts(), names)
+		}
+		if f := stmt.GetForStmt(); f != nil {
+			for _, v := range f.GetLoopVars() {
+				addAssigned(names, v, line)
 			}
-			for _, st := range f.Stmts {
-				if as, ok := st.(*syntax.AssignStmt); ok {
-					for _, id := range assignTargets(as.LHS) {
-						add(id, line)
-					}
-				}
+			collectAssigned(f.GetBlock().GetStmts(), names)
+		}
+		if a := stmt.GetAnyStmt(); a != nil {
+			for _, v := range a.GetLoopVars() {
+				addAssigned(names, v, line)
 			}
-		case stmt.GetAnyStmt() != nil:
-			for _, v := range stmt.GetAnyStmt().GetLoopVars() {
-				add(v, line)
-			}
-		case stmt.GetCallStmt() != nil:
-			for _, v := range stmt.GetCallStmt().GetVars() {
-				add(v, line)
-			}
+			collectAssigned(a.GetBlock().GetStmts(), names)
+		}
+		if w := stmt.GetWhileStmt(); w != nil {
+			collectAssigned(w.GetBlock().GetStmts(), names)
+		}
+		for _, v := range stmt.GetCallStmt().GetVars() {
+			addAssigned(names, v, line)
 		}
 	}
-	return names
+}
+
+// pyAssignedNames adds the names that Starlark code assigns, at any depth
+// except inside def bodies (their own scope). Lines are offset so they
+// point into the spec file.
+func pyAssignedNames(code string, lineOffset int32, names map[string]int32) {
+	f, err := assignParseOptions.Parse("stmt", code, 0)
+	if err != nil {
+		return
+	}
+	syntax.Walk(f, func(n syntax.Node) bool {
+		switch n := n.(type) {
+		case *syntax.DefStmt:
+			start, _ := n.Span()
+			addAssigned(names, n.Name.Name, start.Line+lineOffset)
+			return false
+		case *syntax.AssignStmt:
+			start, _ := n.Span()
+			for _, id := range assignTargets(n.LHS) {
+				addAssigned(names, id, start.Line+lineOffset)
+			}
+		case *syntax.ForStmt:
+			start, _ := n.Span()
+			for _, id := range assignTargets(n.Vars) {
+				addAssigned(names, id, start.Line+lineOffset)
+			}
+		}
+		return true
+	})
 }
 
 func assignTargets(e syntax.Expr) []string {

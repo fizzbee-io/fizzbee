@@ -54,7 +54,8 @@ func runSpecForCodec(t testing.TB, spec string, cfg *ast.StateSpaceOptions) *Pro
 		require.NoError(t, err)
 		proto.Merge(cfg, fm)
 	}
-	p := NewProcessor([]*ast.File{f}, cfg, false, 0, "", "", false, nil, nil, "")
+	// The spec directory is where its imports resolve from.
+	p := NewProcessor([]*ast.File{f}, cfg, false, 0, filepath.Dir(spec), "", false, nil, nil, "")
 	defer func() {
 		// Some testdata specs exist to check that a model error is
 		// reported; there is nothing to round trip in those.

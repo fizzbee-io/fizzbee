@@ -910,6 +910,9 @@ func (p *Process) updateVariableInternal(key string, val starlark.Value, frame *
 
 // sameValue reports whether b is a's value written back unchanged:
 // identical for comparable Go types, otherwise (tuples) equal.
+// Imported values are frozen and FizzBee has no binding identity or
+// local-variable introspection, so an equal value cannot be told apart from
+// the import. Revisit this if such introspection is ever added.
 func sameValue(a, b starlark.Value) bool {
 	if a == nil || b == nil {
 		return a == b

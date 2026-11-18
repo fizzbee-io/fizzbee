@@ -1,0 +1,487 @@
+{
+  "sourceInfo": {
+    "fileName": "Imports.fizz",
+    "start": {
+      "line": 9,
+      "column": 1
+    },
+    "end": {
+      "line": 31
+    }
+  },
+  "imports": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 9,
+          "column": 8
+        },
+        "end": {
+          "line": 9,
+          "column": 16
+        }
+      },
+      "path": "math",
+      "alias": "m"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 10,
+          "column": 1
+        },
+        "end": {
+          "line": 10,
+          "column": 22
+        }
+      },
+      "path": "math",
+      "names": [
+        {
+          "name": "floor"
+        }
+      ]
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 11,
+          "column": 8
+        },
+        "end": {
+          "line": 11,
+          "column": 27
+        }
+      },
+      "path": "helpers.ring",
+      "alias": "ring"
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 12,
+          "column": 1
+        },
+        "end": {
+          "line": 12,
+          "column": 29
+        }
+      },
+      "path": "helpers.ring",
+      "names": [
+        {
+          "name": "SIZE"
+        }
+      ]
+    }
+  ],
+  "invariants": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 16,
+          "column": 1
+        },
+        "end": {
+          "line": 19
+        }
+      },
+      "name": "InRange",
+      "temporalOperators": [
+        "always"
+      ],
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 17,
+            "column": 5
+          },
+          "end": {
+            "line": 19
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 17,
+                "column": 5
+              },
+              "end": {
+                "line": 19
+              }
+            },
+            "returnStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 17,
+                  "column": 5
+                },
+                "end": {
+                  "line": 17,
+                  "column": 36
+                }
+              },
+              "pyExpr": "0 <= slot and slot < SIZE",
+              "expr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 17,
+                    "column": 12
+                  },
+                  "end": {
+                    "line": 17,
+                    "column": 36
+                  }
+                },
+                "pyExpr": "0 <= slot and slot < SIZE"
+              }
+            }
+          }
+        ]
+      },
+      "pyCode": "def InRange():\n    return 0 <= slot and slot < SIZE\n\n"
+    }
+  ],
+  "actions": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 19,
+          "column": 1
+        },
+        "end": {
+          "line": 23
+        }
+      },
+      "name": "Init",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_STRONG"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 20,
+            "column": 5
+          },
+          "end": {
+            "line": 23
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 20,
+                "column": 5
+              },
+              "end": {
+                "line": 21,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 20,
+                  "column": 5
+                },
+                "end": {
+                  "line": 20,
+                  "column": 16
+                }
+              },
+              "code": "slot = START"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 21,
+                "column": 5
+              },
+              "end": {
+                "line": 23
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 21,
+                  "column": 5
+                },
+                "end": {
+                  "line": 21,
+                  "column": 13
+                }
+              },
+              "code": "turns = 0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 23,
+          "column": 1
+        },
+        "end": {
+          "line": 31
+        }
+      },
+      "name": "Advance",
+      "flow": "FLOW_ATOMIC",
+      "fairness": {
+        "level": "FAIRNESS_LEVEL_UNFAIR"
+      },
+      "block": {
+        "sourceInfo": {
+          "start": {
+            "line": 24,
+            "column": 5
+          },
+          "end": {
+            "line": 31
+          }
+        },
+        "flow": "FLOW_ATOMIC",
+        "stmts": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 24,
+                "column": 5
+              },
+              "end": {
+                "line": 27,
+                "column": 4
+              }
+            },
+            "requireStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 24,
+                  "column": 5
+                },
+                "end": {
+                  "line": 24,
+                  "column": 24
+                }
+              },
+              "condition": "turns < SIZE",
+              "conditionExpr": {
+                "sourceInfo": {
+                  "start": {
+                    "line": 24,
+                    "column": 13
+                  },
+                  "end": {
+                    "line": 24,
+                    "column": 24
+                  }
+                },
+                "pyExpr": "turns < SIZE"
+              }
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 27,
+                "column": 5
+              },
+              "end": {
+                "line": 28,
+                "column": 4
+              }
+            },
+            "callStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 27,
+                  "column": 5
+                },
+                "end": {
+                  "line": 27,
+                  "column": 31
+                }
+              },
+              "vars": [
+                "next"
+              ],
+              "name": "next_slot",
+              "args": [
+                {
+                  "sourceInfo": {
+                    "start": {
+                      "line": 27,
+                      "column": 27
+                    },
+                    "end": {
+                      "line": 27,
+                      "column": 30
+                    }
+                  },
+                  "pyExpr": "slot",
+                  "expr": {
+                    "sourceInfo": {
+                      "start": {
+                        "line": 27,
+                        "column": 27
+                      },
+                      "end": {
+                        "line": 27,
+                        "column": 30
+                      }
+                    },
+                    "pyExpr": "slot"
+                  }
+                }
+              ],
+              "receiver": "ring"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 28,
+                "column": 5
+              },
+              "end": {
+                "line": 29,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 28,
+                  "column": 5
+                },
+                "end": {
+                  "line": 28,
+                  "column": 27
+                }
+              },
+              "code": "ring = \"not the module\""
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 29,
+                "column": 5
+              },
+              "end": {
+                "line": 30,
+                "column": 4
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 29,
+                  "column": 5
+                },
+                "end": {
+                  "line": 29,
+                  "column": 15
+                }
+              },
+              "code": "slot = next"
+            }
+          },
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 30,
+                "column": 5
+              },
+              "end": {
+                "line": 31
+              }
+            },
+            "pyStmt": {
+              "sourceInfo": {
+                "start": {
+                  "line": 30,
+                  "column": 5
+                },
+                "end": {
+                  "line": 30,
+                  "column": 21
+                }
+              },
+              "code": "turns = turns + 1"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "stmts": [
+    {
+      "sourceInfo": {
+        "start": {
+          "line": 14,
+          "column": 1
+        },
+        "end": {
+          "line": 16
+        }
+      },
+      "callStmt": {
+        "sourceInfo": {
+          "start": {
+            "line": 14,
+            "column": 1
+          },
+          "end": {
+            "line": 14,
+            "column": 27
+          }
+        },
+        "vars": [
+          "START"
+        ],
+        "name": "floor",
+        "args": [
+          {
+            "sourceInfo": {
+              "start": {
+                "line": 14,
+                "column": 15
+              },
+              "end": {
+                "line": 14,
+                "column": 26
+              }
+            },
+            "pyExpr": "m.sqrt(SIZE)",
+            "expr": {
+              "sourceInfo": {
+                "start": {
+                  "line": 14,
+                  "column": 15
+                },
+                "end": {
+                  "line": 14,
+                  "column": 26
+                }
+              },
+              "pyExpr": "m.sqrt(SIZE)"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "frontMatter": {
+    "yaml": "\ndeadlock_detection: false\n"
+  }
+}

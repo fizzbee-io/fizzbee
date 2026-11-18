@@ -1,0 +1,8 @@
+import math
+
+init:
+    x = 0
+    math = 3
+
+atomic action Step:
+    x = 1

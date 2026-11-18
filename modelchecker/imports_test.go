@@ -118,7 +118,8 @@ func TestModuleLoadedOnce(t *testing.T) {
 func TestLocalFileHidesBuiltin(t *testing.T) {
 	dir := t.TempDir()
 	writeTestFile(t, dir, "math.star", "X = 1\n")
-	bound, warnings, err := resolveQuiet(t, dir, imp(1, "math", ""))
+	// Imported twice: the warning is given once.
+	bound, warnings, err := resolveQuiet(t, dir, imp(1, "math", ""), imp(2, "math", "m2"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -366,5 +367,50 @@ func TestImportsAreStaticEnvironmentInTheHeap(t *testing.T) {
 	}
 	if clone.HashCode() != with.HashCode() {
 		t.Errorf("the hash changed across a fork")
+	}
+}
+
+// Every form that can introduce a top-level or state variable is found
+// before anything runs, at any nesting depth.
+func TestDeclaredNamesFindsNestedAndLegacyVariables(t *testing.T) {
+	py := func(line int32, code string) *ast.Statement {
+		return &ast.Statement{SourceInfo: &ast.SourceInfo{Start: &ast.Position{Line: line}}, PyStmt: &ast.PyStmt{Code: code}}
+	}
+	block := func(stmts ...*ast.Statement) *ast.Block { return &ast.Block{Stmts: stmts} }
+	at := func(line int32) *ast.SourceInfo { return &ast.SourceInfo{Start: &ast.Position{Line: line}} }
+	init := func(stmts ...*ast.Statement) *ast.File {
+		return &ast.File{Actions: []*ast.Action{{Name: "Init", Block: block(stmts...)}}}
+	}
+	tests := []struct {
+		name string
+		file *ast.File
+		want string
+	}{
+		{"init top", init(py(4, "math = 1")), "a state variable (line 4)"},
+		{"init if", init(&ast.Statement{SourceInfo: at(4), IfStmt: &ast.IfStmt{Branches: []*ast.Branch{
+			{Condition: "True", Block: block(py(5, "x = 0")), SourceInfo: at(4)},
+			{Condition: "", Block: block(py(7, "math = 1")), SourceInfo: at(6)}}}}), "a state variable (line 7)"},
+		{"init nested block", init(&ast.Statement{SourceInfo: at(4), Block: block(&ast.Statement{SourceInfo: at(5), Block: block(py(6, "(a, math) = (1, 2)"))})}), "a state variable (line 6)"},
+		{"init for var", init(&ast.Statement{SourceInfo: at(4), ForStmt: &ast.ForStmt{LoopVars: []string{"math"}, Block: block()}}), "a state variable (line 4)"},
+		{"init for body", init(&ast.Statement{SourceInfo: at(4), ForStmt: &ast.ForStmt{LoopVars: []string{"i"}, Block: block(py(5, "math = i"))}}), "a state variable (line 5)"},
+		{"init any", init(&ast.Statement{SourceInfo: at(4), AnyStmt: &ast.AnyStmt{LoopVars: []string{"math"}, Block: block()}}), "a state variable (line 4)"},
+		{"init while", init(&ast.Statement{SourceInfo: at(4), WhileStmt: &ast.WhileStmt{Block: block(py(5, "math += 1"))}}), "a state variable (line 5)"},
+		{"init call", init(&ast.Statement{SourceInfo: at(4), CallStmt: &ast.CallStmt{Vars: []string{"math"}, Name: "f"}}), "a state variable (line 4)"},
+		{"top-level multi-line py", &ast.File{Stmts: []*ast.Statement{py(2, "if True:\n    x = 0\nelse:\n    math = 1")}}, "a top-level variable (line 5)"},
+		{"top-level py for", &ast.File{Stmts: []*ast.Statement{py(2, "for math in range(2):\n    pass")}}, "a top-level variable (line 2)"},
+		{"legacy init block", &ast.File{States: &ast.StateVars{SourceInfo: at(3), Code: "x = 0\nmath = 1\n"}}, "a state variable (line 5)"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := declaredNames(tt.file)["math"]
+			if got != tt.want {
+				t.Errorf("declaredNames[math] = %q, want %q", got, tt.want)
+			}
+		})
+	}
+	// Names assigned inside a def body or a comprehension are local to it.
+	file := &ast.File{Stmts: []*ast.Statement{py(2, "def f():\n    math = 1\n    return math"), py(5, "y = [math for math in range(3)]")}}
+	if got, ok := declaredNames(file)["math"]; ok {
+		t.Errorf("declaredNames[math] = %q, want no entry", got)
 	}
 }

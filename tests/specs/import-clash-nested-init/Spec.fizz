@@ -1,0 +1,9 @@
+import math
+
+action Init:
+    x = 0
+    if x == 0:
+        math = 3
+
+atomic action Step:
+    x = math.floor(1.5)
