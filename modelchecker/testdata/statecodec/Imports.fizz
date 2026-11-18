@@ -1,0 +1,30 @@
+---
+deadlock_detection: false
+---
+# Import statements bind builtin modules and .star files explicitly.
+#   import m              binds m
+#   import m as x         binds x
+#   from m import a as b  binds b to m.a
+# Dotted paths are directories under this spec's directory and need an alias.
+import math as m
+from math import floor
+import helpers.ring as ring
+from helpers.ring import SIZE
+
+START = floor(m.sqrt(SIZE))   # 1
+
+always assertion InRange:
+    return 0 <= slot and slot < SIZE
+
+action Init:
+    slot = START
+    turns = 0
+
+atomic action Advance:
+    require turns < SIZE
+    # A local may reuse an imported name, as in Python: here `ring` is
+    # shadowed only inside this action.
+    next = ring.next_slot(slot)
+    ring = "not the module"
+    slot = next
+    turns = turns + 1

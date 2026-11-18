@@ -324,10 +324,19 @@ message Constant {
   string name = 2;
 }
 
+// One import statement form. `import a.b as c` has path "a.b" and
+// alias "c". `from a.b import x, y as z` has path "a.b" and one name per
+// imported member; alias is unused then.
 message Import {
   SourceInfo source_info = 1;
   string path = 2;
   string alias = 3;
+  repeated ImportName names = 4;
+}
+
+message ImportName {
+  string name = 1;
+  string alias = 2;
 }
 
 message SourceInfo {

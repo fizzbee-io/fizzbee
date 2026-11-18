@@ -1,0 +1,18 @@
+Model checking tests/specs/legacy-autoimport/Legacy.json
+configFileName: tests/specs/legacy-autoimport/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2} deadlock_detection:false
+tests/specs/legacy-autoimport/broken.star
+2026/11/17 09:08:34 WARNING: failed to load module "tests/specs/legacy-autoimport/broken.star": tests/specs/legacy-autoimport/broken.star:1:8: got is, want newline
+tests/specs/legacy-autoimport/utils.star
+Nodes: 2, queued: 0, elapsed: 420.386µs
+Peak (new): queue=1 pendingActionStarts=1
+Time taken for model checking: 429.105µs
+Writen graph dotfile: tests/specs/legacy-autoimport/out/run_2026-11-17_09-08-34/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/legacy-autoimport/out/run_2026-11-17_09-08-34/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 2 Unique states: 2
+IsLive: true
+Time taken to check liveness: 89.756µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/legacy-autoimport/out/run_2026-11-17_09-08-34

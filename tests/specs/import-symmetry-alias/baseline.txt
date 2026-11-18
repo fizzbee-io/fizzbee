@@ -1,0 +1,15 @@
+Model checking tests/specs/import-symmetry-alias/NominalSymmetry.json
+configFileName: tests/specs/import-symmetry-alias/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
+Nodes: 11, queued: 0, elapsed: 1.405152ms
+Peak (new): queue=1 pendingActionStarts=2
+Time taken for model checking: 1.417883ms
+Writen graph dotfile: tests/specs/import-symmetry-alias/out/run_2026-11-18_22-56-52/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/import-symmetry-alias/out/run_2026-11-18_22-56-52/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 11 Unique states: 4
+IsLive: true
+Time taken to check liveness: 390.858µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/import-symmetry-alias/out/run_2026-11-18_22-56-52

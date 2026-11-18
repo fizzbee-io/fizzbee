@@ -1,0 +1,7 @@
+---
+deadlock_detection: false
+---
+import math
+
+action Init:
+    x = math.ANSWER

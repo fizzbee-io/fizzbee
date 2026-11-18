@@ -1,0 +1,5 @@
+Model checking tests/specs/import-private-name/Spec.json
+configFileName: tests/specs/import-private-name/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
+FAILED: Spec.fizz:1: cannot import "_secret" from "lib": names starting with _ are private to their module

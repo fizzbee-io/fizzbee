@@ -1,0 +1,4 @@
+from lib import _secret
+
+action Init:
+    x = 0

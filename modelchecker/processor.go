@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"runtime"
 	"slices"
 	"sort"
@@ -885,7 +886,11 @@ func (p *Process) updateVariableInternal(key string, val starlark.Value, frame *
 		// variable, then update the state variable
 		return
 	}
-	if p.Heap.globals.Has(key) {
+	if p.Heap.globals.Has(key) && (!p.Evaluator.importNames[key] || sameValue(p.Heap.globals[key], val)) {
+		// Globals are constants. An imported name is the exception: a
+		// different value assigned to it makes a local that shadows it,
+		// as in Python. The statement environment writes every name back,
+		// so an unchanged import is not a new local.
 		return
 	}
 	if key == "self" {
@@ -901,6 +906,26 @@ func (p *Process) updateVariableInternal(key string, val starlark.Value, frame *
 	if p.Stats.TotalActions == 0 && frame.scope.parent == nil && p.currentThread().Stack.Len() == 1 {
 		p.topLevelVars = append(p.topLevelVars, key)
 	}
+}
+
+// sameValue reports whether b is a's value written back unchanged:
+// identical for comparable Go types, otherwise (tuples) equal.
+// Imported values are frozen and FizzBee has no binding identity or
+// local-variable introspection, so an equal value cannot be told apart from
+// the import. Revisit this if such introspection is ever added.
+func sameValue(a, b starlark.Value) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	ta, tb := reflect.TypeOf(a), reflect.TypeOf(b)
+	if ta != tb {
+		return false
+	}
+	if ta.Comparable() {
+		return a == b
+	}
+	eq, err := starlark.Equal(a, b)
+	return err == nil && eq
 }
 
 func (p *Process) updateScopedVariable(scope *Scope, key string, val starlark.Value) bool {
@@ -920,8 +945,25 @@ func (p *Process) NewModelError(sourceInfo *ast.SourceInfo, msg string, nestedEr
 
 func (p *Process) PanicOnError(sourceInfo *ast.SourceInfo, msg string, nestedError error) {
 	if nestedError != nil {
+		msg += p.Evaluator.unimportedModuleHint(nestedError)
 		panic(p.NewModelError(sourceInfo, msg, nestedError))
 	}
+}
+
+var undefinedNameRe = regexp.MustCompile(`undefined: ([A-Za-z_][A-Za-z0-9_]*)`)
+
+// unimportedModuleHint explains an undefined name that is a .star file
+// next to the spec: a spec with import statements no longer loads those
+// automatically.
+func (e *Evaluator) unimportedModuleHint(err error) string {
+	if e == nil || len(e.unimportedModules) == 0 {
+		return ""
+	}
+	m := undefinedNameRe.FindStringSubmatch(err.Error())
+	if m == nil || !e.unimportedModules[m[1]] {
+		return ""
+	}
+	return fmt.Sprintf(" (%s.star is no longer loaded automatically because this spec uses import statements; add 'import %s')", m[1], m[1])
 }
 
 func (p *Process) PanicIfFalse(ok bool, sourceInfo *ast.SourceInfo, msg string) {
@@ -1751,9 +1793,24 @@ func (p *Processor) InitializeNode() (*Node, *Node, error) {
 		process.guidedTrace = *p.guidedTrace
 	}
 
+	imports, err := ResolveImports(p.Files[0], p.dirPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	process.Evaluator.importNames = make(map[string]bool, len(imports))
+	for name := range imports {
+		process.Evaluator.importNames[name] = true
+	}
+	imports.Freeze()
+	process.Heap.globals = imports
+
+	// A spec with import statements names its modules explicitly, so the
+	// directory's .star files are no longer loaded as modules.
 	modules := make(map[string]starlark.Value)
-	if p.dirPath != "" {
+	if p.dirPath != "" && len(p.Files[0].GetImports()) == 0 {
 		modules = HandleModules(p.dirPath)
+	} else if p.dirPath != "" {
+		process.Evaluator.unimportedModules = unimportedModules(p.dirPath, imports)
 	}
 	process.Modules = modules
 	p.Init = NewNode(process)
@@ -2626,9 +2683,13 @@ func processPreInit(init *Node, stmts []*ast.Statement, preinitHookContent strin
 		}
 	}
 	vars := thread.currentFrame().scope.GetAllVisibleVariables(make(map[starlark.Value]starlark.Value))
-	globals := starlark.StringDict{}
+	// The imported names come first; a top-level variable may not reuse one.
+	globals := maps.Clone(init.Process.Heap.globals)
 	for name, _ := range vars {
 		if slices.Contains(init.Process.topLevelVars, name) {
+			if init.Process.Evaluator.importNames[name] {
+				return &ImportError{File: init.Process.Files[0].GetSourceInfo().GetFileName(), Msg: fmt.Sprintf("top-level variable %q has the same name as an import; rename one of them", name)}
+			}
 			globals[name] = vars[name]
 		}
 	}
@@ -2649,6 +2710,10 @@ func processPreInit(init *Node, stmts []*ast.Statement, preinitHookContent strin
 		maps.Copy(hookGlobals, globals)
 		maps.Copy(hookGlobals, lib.Builtins)
 		maps.Copy(hookGlobals, init.Process.Modules)
+		// Imports shadow builtins, as everywhere else.
+		for name := range init.Process.Evaluator.importNames {
+			hookGlobals[name] = globals[name]
+		}
 
 		_, err := init.Process.Evaluator.ExecPyStmt("<preinit-hook>", pyStmt, hookGlobals)
 		if err != nil {

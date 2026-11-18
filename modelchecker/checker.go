@@ -26,6 +26,14 @@ type Evaluator struct {
 	fixedEnvModules uintptr
 	fizzFuncs       map[string]*starlark.Builtin
 
+	// importNames are the names the spec's import statements bound. They
+	// live in Heap.globals, but unlike other globals a local may shadow
+	// them, as in Python.
+	importNames map[string]bool
+	// unimportedModules are the .star files next to a spec that has import
+	// statements and does not import them, for a migration hint.
+	unimportedModules map[string]bool
+
 	// codecCtx is the state codec's context for this run, made on first
 	// use by CodecContext.
 	codecOnce sync.Once

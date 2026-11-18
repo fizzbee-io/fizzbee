@@ -1,0 +1,15 @@
+---
+deadlock_detection: false
+---
+# No import statements: every .star file here is still auto-imported, and
+# broken.star fails only if it is used.
+
+action Init:
+    x = utils.double(1)
+
+atomic action Step:
+    require x == 2
+    # Legacy precedence (#438): the auto-imported module still wins over a
+    # local of the same name, so utils.double works after the assignment.
+    utils = 3
+    x = utils.double(x)

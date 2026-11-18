@@ -1,0 +1,5 @@
+Model checking tests/specs/import-clash-function/Spec.json
+configFileName: tests/specs/import-clash-function/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
+FAILED: Spec.fizz:1: import binds "math", which is already the name of a function in this file; use 'as' to rename the import

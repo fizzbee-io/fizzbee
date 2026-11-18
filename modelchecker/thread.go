@@ -35,7 +35,13 @@ func NewComposedHeap(composed map[string]*Heap) *Heap {
 	for k, h := range composed {
 		// copy, heap's state and globals into heap.state[k]
 		d := make(starlark.StringDict)
-		maps.Copy(d, h.globals)
+		for name, v := range h.globals {
+			// Imported modules and functions are not part of the state.
+			if t := v.Type(); t == "module" || t == "function" || t == "builtin_function_or_method" {
+				continue
+			}
+			d[name] = v
+		}
 		maps.Copy(d, h.state)
 		s := starlarkstruct.FromStringDict(starlark.String(k), d)
 		// Freezing the struct to prevent further modifications, so we don't need to deep clone
@@ -1254,6 +1260,9 @@ func (t *Thread) executeEndOfBlock() ([]*Process, bool) {
 					}
 					variables := oldScope.GetAllVisibleVariables(roleRefs)
 					for s, value := range variables {
+						if t.Process.Evaluator.importNames[s] && slices.Contains(t.Process.topLevelVars, s) {
+							panic(t.Process.NewModelError(action.GetSourceInfo(), fmt.Sprintf("state variable %q has the same name as an import; rename one of them", s), nil))
+						}
 						if !t.Process.Heap.globals.Has(s) && slices.Contains(t.Process.topLevelVars, s) {
 							t.Process.Heap.insert(s, value)
 						}

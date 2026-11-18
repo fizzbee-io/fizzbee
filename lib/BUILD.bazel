@@ -10,6 +10,7 @@ go_library(
         "jsonmarshaller.go",
         "jsonstring.go",
         "linear_collection.go",
+        "modules.go",
         "pair.go",
         "permutations.go",
         "queue.go",

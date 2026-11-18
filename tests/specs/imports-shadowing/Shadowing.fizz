@@ -1,0 +1,60 @@
+---
+deadlock_detection: false
+---
+# Every way to bind a name shadows an import only in its own scope (an if
+# block is not a scope, as in Python), and the
+# import is visible again in the next action. `seen` records what each
+# action observed; Check fails if any shadow leaked.
+import math
+from consts import LIMIT, PAIR
+
+atomic func param_shadow(math):
+    return math * 2
+
+atomic func local_shadow():
+    math = 7
+    return math
+
+atomic func uses_module():
+    return math.floor(2.5)
+
+action Init:
+    seen = []
+
+atomic action Augmented:
+    require len(seen) == 0
+    LIMIT += 10                          # augmented assignment makes a local
+    seen = seen + [LIMIT, math.floor(1.5)]
+
+atomic action Tuple:
+    require len(seen) == 2
+    (math, other) = (100, 0)             # tuple assignment
+    seen = seen + [math + other, LIMIT]  # LIMIT is the import again: 3
+
+atomic action Nested:
+    require len(seen) == 4
+    if True:
+        PAIR = (9, 9)                    # local in a nested block
+        seen = seen + [PAIR[0]]
+    seen = seen + [PAIR[0]]              # still the local, as in Python (if makes no scope)
+
+atomic action Functions:
+    require len(seen) == 6
+    a = param_shadow(5)
+    b = local_shadow()
+    c = uses_module()
+    seen = seen + [a, b, c]
+
+atomic action SameValue:
+    require len(seen) == 9
+    LIMIT = 3                            # equal to the import: indistinguishable
+    LIMIT = LIMIT + 1
+    seen = seen + [LIMIT, math.floor(0.5)]
+
+always assertion Check:
+    expected = [13, 1, 100, 3, 9, 9, 10, 7, 2, 4, 0, 1]
+    return seen == expected[:len(seen)]
+
+atomic action NextAction:
+    require len(seen) == 11
+    seen = seen + [PAIR[0]]              # a new action: the import again, 1
