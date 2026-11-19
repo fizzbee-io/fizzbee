@@ -1,0 +1,34 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+action_options:
+  Worker:
+    max_concurrent_actions: -1
+---
+# The capped-threads lock with the critical section as a label, and no
+# in_cs variable. Any number of Worker threads run, grouped as ONE or MANY
+# copies, so the exact count is unknown: the invariant uses
+# threads.cardinality, which returns the 0/1/MANY counter. (threads.count
+# raises an error when a MANY group matches.) BUGGY drops the lock check,
+# and MutualExclusion must then fail.
+
+import threads
+
+BUGGY = True
+
+action Init:
+    locked = False
+
+fair action Worker:
+    atomic:
+        require BUGGY or not locked
+        locked = True
+    cs:
+        atomic:
+            pass
+        atomic:
+            locked = False
+
+always assertion MutualExclusion:
+    return not threads.cardinality("Worker.cs").is_many()

@@ -130,6 +130,10 @@ type SymmetryContext struct {
 	// initialized tracks if we have loaded the state from Scanner yet.
 	initialized bool
 
+	// Process is the running *modelchecker.Process, published to the thread
+	// as ProcessKey for importable modules (such as threads) that read it.
+	Process any
+
 	// FizzCall, when set, lets fizz funcs be called inside expressions.
 	// Only predicate contexts (assertions) set it; see FizzCallKey.
 	FizzCall FizzCallFunc
@@ -145,6 +149,7 @@ type SymmetryContext struct {
 // *[]*Role; ChannelsKey holds its map[int]*Channel.
 const RolesKey = "fizz_roles"
 const ChannelsKey = "fizz_channels"
+const ProcessKey = "fizz_process"
 
 // FizzCallFunc runs fizz func name synchronously. recv is the role for a role
 // method, nil for a top-level func.

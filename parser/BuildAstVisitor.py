@@ -10,6 +10,30 @@ import proto.fizz_ast_pb2 as ast
 from parser import oneof_target
 
 
+FLOW_WORDS = ("atomic", "serial", "parallel", "oneof")
+
+
+def _edit_distance(a, b):
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+def warn_if_label_looks_like_flow(name, line):
+    """A misspelled flow word (`atomc:`) parses as a block label and the block
+    silently inherits the enclosing flow. Warn when a label is close to one."""
+    for word in FLOW_WORDS:
+        if _edit_distance(name.lower(), word) == 1:
+            print(f"WARNING: line {line}: block label {name!r} looks like the flow word {word!r}. "
+                  f"A label does not change the flow; did you mean {word}:?", file=sys.stderr)
+            return
+
+
+
 class BuildAstVisitor(FizzParserVisitor):
     def __init__(self, input_stream, file_path=""):
         super().__init__()
@@ -886,6 +910,40 @@ class BuildAstVisitor(FizzParserVisitor):
         print("visitFlow_stmt block", block)
         return block
 
+    # Visit a parse tree produced by FizzParser#labeled_block_stmt.
+    # `txn:`, `serial txn:`, `cs, txn:`. The flow is left unknown when no flow
+    # word is given, so the block inherits the flow of its enclosing scope.
+    def visitLabeled_block_stmt(self, ctx:FizzParser.Labeled_block_stmtContext):
+        flow = ast.Flow.FLOW_UNKNOWN
+        labels = []
+        block = None
+        for child in ctx.getChildren():
+            if isinstance(child, FizzParser.Labeled_suiteContext):
+                # Keep a lone nested block nested: its own flow (say atomic)
+                # must not be replaced by the label's inherited flow.
+                block = self.visitSuite(child, unwrap=False)
+            elif hasattr(child, 'getSymbol'):
+                t = child.getSymbol().type
+                if t == FizzParser.ATOMIC:
+                    flow = ast.Flow.FLOW_ATOMIC
+                elif t == FizzParser.SERIAL:
+                    flow = ast.Flow.FLOW_SERIAL
+                elif t == FizzParser.ONEOF:
+                    flow = ast.Flow.FLOW_ONEOF
+                elif t == FizzParser.PARALLEL:
+                    flow = ast.Flow.FLOW_PARALLEL
+                elif t == FizzParser.NAME:
+                    name = child.getText()
+                    if name in labels:
+                        raise Exception(f"duplicate block label {name!r} at line {child.getSymbol().line}")
+                    warn_if_label_looks_like_flow(name, child.getSymbol().line)
+                    labels.append(name)
+        if block is None:
+            block = ast.Block(source_info=get_source_info(ctx))
+        block.flow = flow
+        block.labels.extend(labels)
+        return block
+
     # Visit a parse tree produced by FizzParser#labeled_stmt.
     def visitLabeled_stmt(self, ctx:FizzParser.Labeled_stmtContext):
         print("\n\nvisitLabeled_stmt",ctx.__class__.__name__)
@@ -917,7 +975,7 @@ class BuildAstVisitor(FizzParserVisitor):
         raise Exception("visitLabeled_stmt childProto (unknown) type", childProto.__class__.__name__, dir(childProto), childProto)
 
     # Visit a parse tree produced by FizzParser#suite.
-    def visitSuite(self, ctx:FizzParser.SuiteContext):
+    def visitSuite(self, ctx:FizzParser.SuiteContext, unwrap=True):
         print("\n\nvisitSuite",ctx.__class__.__name__)
         print("visitSuite\n",ctx.getText())
         block = ast.Block(source_info=get_source_info(ctx))
@@ -952,7 +1010,7 @@ class BuildAstVisitor(FizzParserVisitor):
                 print("visitSuite child (unknown) type",child.__class__.__name__, dir(child))
                 raise Exception("visitSuite child (unknown) type")
         print("visitSuite block", block)
-        if len(block.stmts) == 1 and block.stmts[0].block is not None and block.stmts[0].block.ByteSize() > 0:
+        if unwrap and len(block.stmts) == 1 and block.stmts[0].block is not None and block.stmts[0].block.ByteSize() > 0:
             print("visitSuite block.stmts[0].block", block.stmts[0].block, block.stmts[0].block.__class__.__name__)
             return block.stmts[0].block
         return block
