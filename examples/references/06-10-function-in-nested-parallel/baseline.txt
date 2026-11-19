@@ -2,10 +2,10 @@ Model checking examples/references/06-10-function-in-nested-parallel/Counter.jso
 configFileName: examples/references/06-10-function-in-nested-parallel/fizz.yaml
 fizz.yaml not found. Using default options
 StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2}
-Nodes: 712, queued: 0, elapsed: 22.418667ms
+Nodes: 704, queued: 0, elapsed: 22.418667ms
 Time taken for model checking: 22.44625ms
-Skipping dotfile generation. Too many Nodes: 712
-Valid Nodes: 712 Unique states: 392
+Skipping dotfile generation. Too many Nodes: 704
+Valid Nodes: 704 Unique states: 392
 IsLive: true
 Time taken to check liveness: 458.708µs
 PASSED: Model checker completed successfully

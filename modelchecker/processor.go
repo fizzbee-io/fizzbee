@@ -1401,7 +1401,9 @@ type Processor struct {
 	experimentalCollapseSteps bool
 	collapseActive            bool
 	// stepVisited dedups mid-action steps (neither yield points nor
-	// init/crash) within one expansion only; expandToYield clears it.
+	// init/crash) reached from one yield point only. It is cleared for
+	// each yield point popped from the processed queue (drainAndFlush),
+	// or each action-start popped from the default queue (Start).
 	// Sharing a step across expansions would hand it a single parent
 	// chain, so transition assertions would compare the yield points
 	// after it only against the yield point that reached it first.
@@ -1848,6 +1850,9 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 			continue
 		}
 
+		// The queue holds action-starts here, not yield points, so each
+		// popped entry gets its own set of mid-action steps.
+		clear(p.stepVisited)
 		invariantFailure, symmetryFound, crashFailedNode, finalNode := p.expandToYield(node, startTime, &prevCount)
 		p.trackDone(scheduledBy)
 
@@ -1911,10 +1916,6 @@ func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
 func (p *Processor) expandToYield(node *Node, startTime time.Time, prevCount *int) (
 	invariantFailure bool, symmetryFound bool, crashFailedNode *Node, finalNode *Node) {
 	finalNode = node
-	// Mid-action steps are shared only within one expansion: the same
-	// mid-action state reached from another yield point is explored again,
-	// so every step has a single starting yield point (see stepVisited).
-	clear(p.stepVisited)
 	for {
 		if n := p.GetVisitedNodesCount(); n%20000 == 0 && n != *prevCount {
 			if p.isTest {
@@ -2110,6 +2111,9 @@ func (p *Processor) startProcessedQueue() (init *Node, failedNode *Node, err err
 // propagate.
 func (p *Processor) drainAndFlush(startTime time.Time, prevCount *int, failedNode *Node) (earlyReturn bool, newFailedNode *Node) {
 	newFailedNode = failedNode
+	// All pending action-starts come from one yield point, so its
+	// action-starts share one set of mid-action steps (see stepVisited).
+	clear(p.stepVisited)
 	for len(p.pendingActionStarts) > 0 {
 		as := p.pendingActionStarts[0]
 		// Nil out so the backing array doesn't keep the popped *Node

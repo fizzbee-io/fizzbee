@@ -3,14 +3,14 @@ Model checking examples/references/10-19-assume-nested-steps/NestedSteps.json
 configFileName: examples/references/10-19-assume-nested-steps/fizz.yaml
 fizz.yaml not found. Using default options
 StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2  crash_on_yield:false}
-Nodes: 367, queued: 0, elapsed: 13.397772ms
+Nodes: 363, queued: 0, elapsed: 13.397772ms
 Peak (new): queue=99 pendingActionStarts=6
 Time taken for model checking: 13.419027ms
-Skipping dotfile generation. Too many Nodes: 367
+Skipping dotfile generation. Too many Nodes: 363
 Writen communication diagram dotfile: examples/references/10-19-assume-nested-steps/out/run_2026-11-05_22-22-40/communication.dot
 To generate svg, run: 
 dot -Tsvg examples/references/10-19-assume-nested-steps/out/run_2026-11-05_22-22-40/communication.dot -o communication.svg && open communication.svg
-Valid Nodes: 367 Unique states: 228
+Valid Nodes: 363 Unique states: 228
 Liveness shadow agree HealthyIfTheyStop: cycle finder PASS, scc PASS
 Liveness shadow agree HealthyWithoutAssumptions: cycle finder FAIL (counterexample valid), scc FAIL (counterexample valid)
 IsLive: false
