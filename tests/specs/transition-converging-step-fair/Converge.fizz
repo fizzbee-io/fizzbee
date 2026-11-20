@@ -1,0 +1,23 @@
+---
+deadlock_detection: false
+---
+
+action Init:
+    x = 0
+    y = 0
+    done = False
+
+atomic action Bump:
+    require x == 0 and not done
+    x = 1
+
+# As transition-converging-step, but the shared mid-action state is a fair
+# choice, which is kept in the graph even with --experimental_collapse_steps.
+atomic action Reset:
+    require not done
+    done = True
+    x = 0
+    y = fair oneof [1, 2]
+
+transition assertion NoDrop(before, after):
+    return not (before.x == 1 and after.x == 0)

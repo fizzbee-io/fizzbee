@@ -1,0 +1,29 @@
+---
+deadlock_detection: false
+---
+
+# From the state where both workers are idle, Worker#0.Work and Worker#1.Work
+# are two action starts of one yield point. Under symmetry they reach the same
+# mid-action state at the oneof, so they share that step. Both have the same
+# starting yield point, so the transition assertion still sees every step.
+
+symmetric role Worker:
+    action Init:
+        self.done = False
+        self.v = 0
+
+    atomic action Work:
+        require not self.done
+        self.done = True
+        self.v = oneof [1, 2]
+
+action Init:
+    workers = bag()
+    for i in range(2):
+        workers.add(Worker())
+
+# Each step starts at most one worker, and only a started worker has a value.
+transition assertion OneWorkerPerStep(before, after):
+    started = len([w for w in after.workers if w.done]) - len([w for w in before.workers if w.done])
+    valued = len([w for w in after.workers if w.v != 0]) - len([w for w in before.workers if w.v != 0])
+    return started == valued and (started == 0 or started == 1)
