@@ -14,19 +14,19 @@ action ProcessRequest:
 
     state = "processing"
 
-    # Nondeterministically succeed or fail
+    # Nondeterministically succeed or fail. Each outcome is its own block:
+    # oneof picks one child statement, and blank lines or comments do not
+    # group statements, so without the blocks this would be a 6-way choice.
     oneof:
-        # Success path
-        state = "completed"
-        error = ErrorCode.OK
-
-        # Timeout path
-        state = "error"
-        error = ErrorCode.TIMEOUT
-
-        # Invalid input path
-        state = "error"
-        error = ErrorCode.INVALID
+        atomic:  # Success path
+            state = "completed"
+            error = ErrorCode.OK
+        atomic:  # Timeout path
+            state = "error"
+            error = ErrorCode.TIMEOUT
+        atomic:  # Invalid input path
+            state = "error"
+            error = ErrorCode.INVALID
 
 action Retry:
     require state == "error"
