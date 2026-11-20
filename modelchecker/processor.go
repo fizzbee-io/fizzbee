@@ -1409,8 +1409,12 @@ type Processor struct {
 	// after it only against the yield point that reached it first.
 	// Collapsed (transient) steps are kept here too.
 	stepVisited map[string]*Node
-	// stepNodes counts the mid-action steps stored in the graph, which
-	// live in stepVisited and not in visited; see GetVisitedNodesCount.
+	// stepNodes counts every mid-action step ever stored, across all
+	// expansions. It is cumulative: clearing stepVisited does not lower it,
+	// since the steps stay in the graph (in no-graph mode it counts the
+	// entries that visited held before steps moved to stepVisited). A state
+	// stored again for another yield point counts again. Collapsed
+	// (transient) steps are not stored, so they are not counted.
 	stepNodes int
 
 	// disableSymmetryReduction: when true, visited-set dedup uses only the
@@ -1750,8 +1754,8 @@ func NewProcessorWithVisitedTracking(files []*ast.File, options *ast.StateSpaceO
 	}
 }
 
-// GetVisitedNodesCount returns the number of stored nodes: the states in
-// the visited set plus the mid-action steps kept per expansion.
+// GetVisitedNodesCount returns the number of nodes stored so far: the states
+// in the visited set plus every mid-action step ever stored (stepNodes).
 func (p *Processor) GetVisitedNodesCount() int {
 	return len(p.visited) + p.stepNodes
 }
