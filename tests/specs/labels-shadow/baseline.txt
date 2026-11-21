@@ -1,0 +1,16 @@
+Model checking tests/specs/labels-shadow/Labels.json
+configFileName: tests/specs/labels-shadow/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2 crash_on_yield:false} action_options:{key:"Server#.Pass" value:{max_concurrent_actions:2}} deadlock_detection:false
+Nodes: 1171, queued: 0, elapsed: 78.23084ms
+Peak (new): queue=150 pendingActionStarts=8
+Time taken for model checking: 78.408148ms
+Skipping dotfile generation. Too many Nodes: 1171
+Writen communication diagram dotfile: tests/specs/labels-shadow/out/run_2026-11-13_18-57-05/communication.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/labels-shadow/out/run_2026-11-13_18-57-05/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 1171 Unique states: 923
+IsLive: true
+Time taken to check liveness: 2.775629ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/labels-shadow/out/run_2026-11-13_18-57-05

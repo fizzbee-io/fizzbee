@@ -1,0 +1,96 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+  max_concurrent_actions: 1
+---
+# Labels whose last statement is a nested block, so a thread can pause on an
+# end-of-block marker inside the label. Each label has a shadow counter, set
+# by its first step and cleared by its last. Agrees checks them against
+# threads.count in every reachable state.
+
+import threads
+
+action Init:
+    l1 = 0
+    l2 = 0
+    l3 = 0
+    l4 = 0
+    l5 = 0
+    l6 = 0
+
+serial action IfLast:
+    # The label ends with an if whose branch is an atomic block.
+    l1lbl:
+        atomic:
+            l1 += 1
+        if l1 > 0:
+            atomic:
+                l1 -= 1
+        else:
+            atomic:
+                l1 -= 1
+    pass
+
+serial action LoopLast:
+    # The label ends with a loop. Each iteration ends on the loop body's end.
+    l2lbl:
+        atomic:
+            l2 += 1
+        for i in range(2):
+            atomic:
+                l2 += 0
+        atomic:
+            l2 -= 1
+
+serial action LabelInLoop:
+    # The label is the loop body; it is outside between iterations.
+    for i in range(2):
+        l3lbl:
+            atomic:
+                l3 += 1
+            atomic:
+                l3 -= 1
+
+serial action OneofInside:
+    l4lbl:
+        atomic:
+            l4 += 1
+        oneof:
+            atomic:
+                l4 -= 1
+            serial:
+                atomic:
+                    l4 += 0
+                atomic:
+                    l4 -= 1
+
+serial action LabelInOneof:
+    # The label inherits oneof from the enclosing block, so it runs exactly
+    # one of its two statements.
+    oneof:
+        l5lbl:
+            atomic:
+                l5 += 1
+                l5 -= 1
+            atomic:
+                l5 += 1
+                l5 -= 1
+        atomic:
+            l5 += 0
+
+serial action OneofInLast:
+    l6lbl:
+        atomic:
+            l6 += 1
+        oneof x in [1, 2]:
+            atomic:
+                l6 -= 1
+
+always assertion Agrees:
+    return (threads.count("IfLast.l1lbl") == l1
+        and threads.count("LoopLast.l2lbl") == l2
+        and threads.count("LabelInLoop.l3lbl") == l3
+        and threads.count("OneofInside.l4lbl") == l4
+        and threads.count("LabelInOneof.l5lbl") == l5
+        and threads.count("OneofInLast.l6lbl") == l6)

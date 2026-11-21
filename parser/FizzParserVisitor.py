@@ -119,6 +119,16 @@ class FizzParserVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by FizzParser#labeled_block_stmt.
+    def visitLabeled_block_stmt(self, ctx:FizzParser.Labeled_block_stmtContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by FizzParser#labeled_suite.
+    def visitLabeled_suite(self, ctx:FizzParser.Labeled_suiteContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by FizzParser#suite.
     def visitSuite(self, ctx:FizzParser.SuiteContext):
         return self.visitChildren(ctx)

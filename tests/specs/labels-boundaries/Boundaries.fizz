@@ -1,0 +1,153 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+  max_concurrent_actions: 1
+---
+# The boundary table for threads.inside, written out by hand. Each action
+# records the last step it ran in a marker variable, and the Expected
+# assertion states, for every marker, which regions a thread must be in.
+# Unlike the shadow-counter specs, nothing here is computed: each row is the
+# intended answer at that boundary.
+
+import threads
+
+action Init:
+    w = "idle"     # Walk
+    c = "idle"     # Call and its callee Callee
+    r = "idle"     # Ret
+    b = "idle"     # Brk
+    n = "idle"     # Nest
+    cur = "unset"  # threads.current() seen from inside Walk.txn
+
+serial action Walk:
+    atomic:
+        w = "A"
+    txn:
+        atomic:
+            w = "B"
+            cur = threads.current().inside("Walk.txn")
+        atomic:
+            w = "C"
+    atomic:
+        w = "D"
+        cur = threads.current().inside("Walk.txn")
+
+serial func Callee():
+    fl:
+        atomic:
+            c = "callee1"
+        atomic:
+            c = "callee2"
+
+serial action Call:
+    cl:
+        atomic:
+            c = "caller1"
+        Callee()
+    atomic:
+        c = "after"
+
+serial func RetF():
+    rl:
+        atomic:
+            r = "r1"
+            return 1
+        atomic:
+            r = "unreachable"
+
+serial action Ret:
+    x = RetF()
+    atomic:
+        r = "after"
+
+serial action Brk:
+    for i in range(2):
+        bl:
+            atomic:
+                b = "b1"
+                break
+    atomic:
+        b = "after"
+
+serial action Nest:
+    outer:
+        atomic:
+            n = "o1"
+        inner:
+            atomic:
+                n = "i1"
+            atomic:
+                n = "i2"
+        atomic:
+            n = "o2"
+    atomic:
+        n = "after"
+
+always assertion Expected:
+    # marker: (inside the label, inside the action)
+    walk = {"idle": (False, False), "A": (False, True), "B": (True, True),
+            "C": (False, True), "D": (False, False)}
+    if (threads.inside("Walk.txn"), threads.inside("Walk")) != walk[w]:
+        return False
+    # current() sees its own thread: inside txn at B, out of it at D
+    if w == "B" and cur != True:
+        return False
+    if w == "D" and cur != False:
+        return False
+
+    # (caller label, callee label, callee func, caller action). At callee2
+    # the callee has run its last step but has not returned yet, so the
+    # caller is still inside cl, at the call.
+    call = {"idle": (False, False, False, False),
+            "caller1": (True, False, False, True),
+            "callee1": (True, True, True, True),
+            "callee2": (True, False, False, True),
+            "after": (False, False, False, False)}
+    got = (threads.inside("Call.cl"), threads.inside("Callee.fl"),
+           threads.inside("Callee"), threads.inside("Call"))
+    if got != call[c]:
+        return False
+
+    # return from inside the label leaves it and the func
+    ret = {"idle": (False, False, False), "r1": (False, False, True),
+           "after": (False, False, False)}
+    if (threads.inside("RetF.rl"), threads.inside("RetF"), threads.inside("Ret")) != ret[r]:
+        return False
+
+    # break from inside the label leaves it, and the loop
+    brk = {"idle": (False, False), "b1": (False, True), "after": (False, False)}
+    if (threads.inside("Brk.bl"), threads.inside("Brk")) != brk[b]:
+        return False
+
+    # nested labels; both at once, through one thread handle
+    nest = {"idle": (False, False), "o1": (True, False), "i1": (True, True),
+            "i2": (True, False), "o2": (False, False), "after": (False, False)}
+    if (threads.inside("Nest.outer"), threads.inside("Nest.inner")) != nest[n]:
+        return False
+    both = len([t for t in threads.all() if t.inside("Nest.outer") and t.inside("Nest.inner")])
+    if both != (1 if nest[n] == (True, True) else 0):
+        return False
+    return True
+
+# Every interesting row above is reached.
+exists assertion ReachMiddle:
+    return w == "C"
+
+exists assertion ReachCallee:
+    return c == "callee1"
+
+exists assertion ReachCalleeEnd:
+    return c == "callee2"
+
+exists assertion ReachReturn:
+    return r == "r1"
+
+exists assertion ReachBreak:
+    return b == "b1"
+
+exists assertion ReachInner:
+    return n == "i1"
+
+exists assertion ReachInnerEnd:
+    return n == "i2"

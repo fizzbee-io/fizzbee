@@ -88,6 +88,13 @@ compound_stmt
     | composedef                                                                     # compose_stmt
     | refinedef                                                                      # refine_stmt
     | (ATOMIC | SERIAL | PARALLEL | ONEOF) COLON suite                               # flow_stmt
+    // A labeled block: `txn:`, `serial txn:`, `cs, txn:`. The body must start on
+    // its own line, since `txn: x = 1` is a Python annotated assignment.
+    | (ATOMIC | SERIAL | PARALLEL | ONEOF)? NAME (COMMA NAME)* COLON labeled_suite     # labeled_block_stmt
+    ;
+
+labeled_suite
+    : LINE_BREAK INDENT stmt+ DEDENT
     ;
 
 suite

@@ -121,6 +121,9 @@ func (t *Thread) splitCopies() []*Process {
 // there. The lowest slot of each group survives, and Current moves to it.
 //
 // The key is the frames: scopes, locals, pc and receiver of every frame.
+// threads.inside depends on this: a MANY group is exact for control
+// location only because every copy in it has the same stack
+// (TestMergeCopiesGroupsOnlyIdenticalStacks).
 // The other thread fields need not match. Fairness is set only from the
 // action at the root frame, so identical frames already imply it, and the
 // liveness checker treats every thread continuation as strongly fair

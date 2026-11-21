@@ -206,6 +206,24 @@ class FizzParserListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by FizzParser#labeled_block_stmt.
+    def enterLabeled_block_stmt(self, ctx:FizzParser.Labeled_block_stmtContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#labeled_block_stmt.
+    def exitLabeled_block_stmt(self, ctx:FizzParser.Labeled_block_stmtContext):
+        pass
+
+
+    # Enter a parse tree produced by FizzParser#labeled_suite.
+    def enterLabeled_suite(self, ctx:FizzParser.Labeled_suiteContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#labeled_suite.
+    def exitLabeled_suite(self, ctx:FizzParser.Labeled_suiteContext):
+        pass
+
+
     # Enter a parse tree produced by FizzParser#suite.
     def enterSuite(self, ctx:FizzParser.SuiteContext):
         pass

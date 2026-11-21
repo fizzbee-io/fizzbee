@@ -1,0 +1,16 @@
+Model checking tests/specs/labels-crash/Crash.json
+configFileName: tests/specs/labels-crash/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2} deadlock_detection:false
+Nodes: 9540, queued: 0, elapsed: 1.222456602s
+Peak (new): queue=909 pendingActionStarts=3
+Time taken for model checking: 1.222572602s
+Skipping dotfile generation. Too many Nodes: 9540
+Writen communication diagram dotfile: tests/specs/labels-crash/out/run_2026-11-13_18-57-06/communication.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/labels-crash/out/run_2026-11-13_18-57-06/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 9540 Unique states: 8525
+IsLive: true
+Time taken to check liveness: 81.077153ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/labels-crash/out/run_2026-11-13_18-57-06
