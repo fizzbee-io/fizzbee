@@ -124,13 +124,13 @@ class FizzParserVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by FizzParser#labeled_suite.
-    def visitLabeled_suite(self, ctx:FizzParser.Labeled_suiteContext):
+    # Visit a parse tree produced by FizzParser#suite.
+    def visitSuite(self, ctx:FizzParser.SuiteContext):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by FizzParser#suite.
-    def visitSuite(self, ctx:FizzParser.SuiteContext):
+    # Visit a parse tree produced by FizzParser#indented_block.
+    def visitIndented_block(self, ctx:FizzParser.Indented_blockContext):
         return self.visitChildren(ctx)
 
 

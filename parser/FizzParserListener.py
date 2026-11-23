@@ -215,21 +215,21 @@ class FizzParserListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by FizzParser#labeled_suite.
-    def enterLabeled_suite(self, ctx:FizzParser.Labeled_suiteContext):
-        pass
-
-    # Exit a parse tree produced by FizzParser#labeled_suite.
-    def exitLabeled_suite(self, ctx:FizzParser.Labeled_suiteContext):
-        pass
-
-
     # Enter a parse tree produced by FizzParser#suite.
     def enterSuite(self, ctx:FizzParser.SuiteContext):
         pass
 
     # Exit a parse tree produced by FizzParser#suite.
     def exitSuite(self, ctx:FizzParser.SuiteContext):
+        pass
+
+
+    # Enter a parse tree produced by FizzParser#indented_block.
+    def enterIndented_block(self, ctx:FizzParser.Indented_blockContext):
+        pass
+
+    # Exit a parse tree produced by FizzParser#indented_block.
+    def exitIndented_block(self, ctx:FizzParser.Indented_blockContext):
         pass
 
 

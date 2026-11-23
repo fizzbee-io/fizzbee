@@ -893,7 +893,7 @@ class BuildAstVisitor(FizzParserVisitor):
         labels = []
         block = None
         for child in ctx.getChildren():
-            if isinstance(child, FizzParser.Labeled_suiteContext):
+            if isinstance(child, FizzParser.Indented_blockContext):
                 # Keep a lone nested block nested: its own flow (say atomic)
                 # must not be replaced by the label's inherited flow.
                 block = self.visitSuite(child, unwrap=False)
@@ -941,7 +941,14 @@ class BuildAstVisitor(FizzParserVisitor):
         raise Exception("visitLabeled_stmt childProto (unknown) type", childProto.__class__.__name__, dir(childProto), childProto)
 
     # Visit a parse tree produced by FizzParser#suite.
-    def visitSuite(self, ctx:FizzParser.SuiteContext, unwrap=True):
+    def visitIndented_block(self, ctx:FizzParser.Indented_blockContext):
+        return self.visitSuite(ctx)
+
+    def visitSuite(self, ctx, unwrap=True):
+        # A suite is a simple_stmt or an indented_block; read the block's
+        # statements directly. ctx may also be an indented_block itself.
+        if isinstance(ctx, FizzParser.SuiteContext) and ctx.indented_block() is not None:
+            ctx = ctx.indented_block()
         print("\n\nvisitSuite",ctx.__class__.__name__)
         print("visitSuite\n",ctx.getText())
         block = ast.Block(source_info=get_source_info(ctx))

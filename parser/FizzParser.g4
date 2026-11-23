@@ -91,16 +91,16 @@ compound_stmt
     // A labeled block: `txn:` or `cs, txn:`. It always inherits the enclosing
     // flow; nest a flow block inside it for another flow. The body must start on
     // its own line, since `txn: x = 1` is a Python annotated assignment.
-    | NAME (COMMA NAME)* COLON labeled_suite                                         # labeled_block_stmt
-    ;
-
-labeled_suite
-    : LINE_BREAK INDENT stmt+ DEDENT
+    | NAME (COMMA NAME)* COLON indented_block                                        # labeled_block_stmt
     ;
 
 suite
     : simple_stmt
-    | LINE_BREAK INDENT stmt+ DEDENT
+    | indented_block
+    ;
+
+indented_block
+    : LINE_BREAK INDENT stmt+ DEDENT
     ;
 
 invariants_suite
