@@ -27,14 +27,16 @@ import (
 //   - a RoleStub no longer shares an encoding with anything else.
 //   - a non-string dict key no longer shares an encoding with the string of
 //     its text (JSON spelled an int key 1 and a string key "1" alike).
+//   - a model/symmetric value no longer shares an encoding with the string
+//     of its text, nor with another value whose name and number spell the
+//     same text (N1 number 0 and N number 10 are both "N10").
 //
 // Deliberately kept identical to the JSON partition:
 //   - list, tuple and range encode alike; set, genericset and bag encode
 //     alike; dict, genericmap, struct and record encode alike (string-keyed
 //     maps); string and bytes encode alike.
-//   - a role in value position encodes as its reference string, a
-//     model/symmetric value as its full string, so each still collides with
-//     the string of the same text.
+//   - a role in value position encodes as its reference string, so it
+//     still collides with the string of the same text.
 type StateEncoder struct {
 	buf     []byte
 	scratch []byte
@@ -60,6 +62,7 @@ const (
 	tagSegment byte = 'G'
 	tagOther   byte = 'X'
 	tagCard    byte = 'K'
+	tagModel   byte = 'V'
 )
 
 var encoderPool = sync.Pool{New: func() any { return &StateEncoder{buf: make([]byte, 0, 4096)} }}
@@ -223,9 +226,9 @@ func (e *StateEncoder) WriteValue(v starlark.Value, depth int) {
 		// reference; the role's own state is hashed with the process roles.
 		e.WriteTaggedString(x.RefString())
 	case *SymmetricValue:
-		e.WriteTaggedString(x.FullString())
+		e.writeModelValue(&x.ModelValue)
 	case *ModelValue:
-		e.WriteTaggedString(x.FullString())
+		e.writeModelValue(x)
 	case *CardinalityCounter:
 		e.buf = append(e.buf, tagCard, x.ValueCode())
 	case *Struct:
@@ -279,6 +282,12 @@ func (e *StateEncoder) WriteValue(v starlark.Value, depth int) {
 	default:
 		e.writeByType(v, depth)
 	}
+}
+
+func (e *StateEncoder) writeModelValue(m *ModelValue) {
+	e.buf = append(e.buf, tagModel)
+	e.WriteString(m.prefix)
+	e.WriteInt64(m.id)
 }
 
 func boolByte(b bool) byte {

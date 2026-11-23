@@ -1,0 +1,29 @@
+---
+deadlock_detection: false
+---
+
+# Regression: a role id must hash by name and number, not by their text.
+# The eleventh N (N#10) and the first N1 (N1#0) both print as "N10", so
+# the states target == N#10 and target == N1#0 were merged and the second
+# one was never checked.
+
+role N:
+    action Init:
+        pass
+
+role N1:
+    action Init:
+        pass
+
+action Init:
+    ns = [N() for i in range(11)]
+    n1 = N1()
+    target = None
+
+atomic action Pick:
+    oneof:
+        target = ns[10].__id__
+        target = n1.__id__
+
+always assertion TargetIsAnN:
+    return target == None or target.name == "N"

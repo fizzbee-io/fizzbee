@@ -62,9 +62,12 @@ func i(n int64) starlark.Int       { return starlark.MakeInt64(n) }
 func str(s string) starlark.String { return starlark.String(s) }
 
 // family tells apart the places the binary encoding is finer than the JSON
-// text: ordered sequences vs sets, and dicts with non-string keys.
+// text: ordered sequences vs sets, dicts with non-string keys, and model
+// values vs strings.
 func family(v starlark.Value) string {
 	switch v.Type() {
+	case ModelValueType, SymmetricValueType:
+		return "model value"
 	case "set", "genericset", "bag":
 		return "set"
 	case "dict":
@@ -122,6 +125,22 @@ func TestStateEncoderDictKeyType(t *testing.T) {
 		if bytes.Equal(encode(p[0]), encode(p[1])) {
 			t.Errorf("%s and %s encode alike", p[0], p[1])
 		}
+	}
+}
+
+func TestStateEncoderModelValue(t *testing.T) {
+	pairs := [][2]starlark.Value{
+		{NewModelValue("N", 10), NewModelValue("N1", 0)},
+		{NewSymmetricValue("k", 10), NewSymmetricValue("k1", 0)},
+		{NewModelValue("N", 10), str("N10")},
+	}
+	for _, p := range pairs {
+		if bytes.Equal(encode(p[0]), encode(p[1])) {
+			t.Errorf("%s and %s encode alike", p[0].Type(), p[1].Type())
+		}
+	}
+	if !bytes.Equal(encode(NewModelValue("N", 10)), encode(NewModelValue("N", 10))) {
+		t.Errorf("equal model values encode differently")
 	}
 }
 
