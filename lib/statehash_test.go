@@ -125,6 +125,33 @@ func TestStateEncoderDictKeyType(t *testing.T) {
 	}
 }
 
+func TestStateEncoderDeepAndCyclic(t *testing.T) {
+	nest := func(v starlark.Value, depth int) starlark.Value {
+		for n := 0; n < depth; n++ {
+			v = mklist(v)
+		}
+		return v
+	}
+	if bytes.Equal(encode(nest(i(0), 25)), encode(nest(i(1), 25))) {
+		t.Errorf("lists that differ 25 levels deep encode alike")
+	}
+	selfList := func(first starlark.Value) *starlark.List {
+		l := mklist(first)
+		if err := l.Append(l); err != nil {
+			t.Fatal(err)
+		}
+		return l
+	}
+	if bytes.Equal(encode(selfList(i(0))), encode(selfList(i(1)))) {
+		t.Errorf("lists that contain themselves and differ in an element encode alike")
+	}
+	// A value referenced twice is not a cycle: it encodes like two copies.
+	shared := mklist(i(0))
+	if !bytes.Equal(encode(mklist(shared, shared)), encode(mklist(mklist(i(0)), mklist(i(0))))) {
+		t.Errorf("a list referenced twice encodes differently from two equal lists")
+	}
+}
+
 func TestStateEncoderOrderIndependent(t *testing.T) {
 	a := mkset(i(1), str("x"), i(300), starlark.Tuple{i(1)})
 	b := mkset(starlark.Tuple{i(1)}, i(300), str("x"), i(1))

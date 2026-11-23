@@ -41,6 +41,9 @@ type StateEncoder struct {
 	// segs collects (start,end) offsets of sibling encodings that must be
 	// sorted (set elements, map entries).
 	segs []segment
+	// path holds the containers being written, outermost first, so that a
+	// value that contains itself is written as a reference back up the path.
+	path []starlark.Value
 }
 
 type segment struct{ start, end int }
@@ -60,6 +63,7 @@ const (
 	tagSegment byte = 'G'
 	tagOther   byte = 'X'
 	tagCard    byte = 'K'
+	tagCycle   byte = 'R'
 )
 
 var encoderPool = sync.Pool{New: func() any { return &StateEncoder{buf: make([]byte, 0, 4096)} }}
@@ -70,6 +74,7 @@ func NewStateEncoder() *StateEncoder {
 	e := encoderPool.Get().(*StateEncoder)
 	e.buf = e.buf[:0]
 	e.segs = e.segs[:0]
+	e.path = e.path[:0]
 	return e
 }
 
@@ -174,13 +179,29 @@ func (e *StateEncoder) sortedEntries(n int, fill func(emit func())) {
 // of the same map, memoized by the caller).
 func (e *StateEncoder) AppendRaw(b []byte) { e.buf = append(e.buf, b...) }
 
-// WriteValue writes one starlark value. depth guards against cycles the same
-// way MarshalJSONStarlarkValue does.
-func (e *StateEncoder) WriteValue(v starlark.Value, depth int) {
-	if depth > 20 {
-		e.WriteTaggedString("TOO_DEEP")
-		return
+// enter puts the container c, which must be a pointer, on the path. If c is
+// already there, it writes a reference to it instead and returns false.
+func (e *StateEncoder) enter(c starlark.Value) bool {
+	for i := len(e.path) - 1; i >= 0; i-- {
+		if e.path[i] == c {
+			e.buf = append(e.buf, tagCycle)
+			e.buf = binary.AppendUvarint(e.buf, uint64(len(e.path)-i))
+			return false
+		}
 	}
+	e.path = append(e.path, c)
+	return true
+}
+
+func (e *StateEncoder) leave() {
+	// Cleared so that a pooled encoder does not keep the value alive.
+	e.path[len(e.path)-1] = nil
+	e.path = e.path[:len(e.path)-1]
+}
+
+// WriteValue writes one starlark value. depth is only passed on to the JSON
+// encoding of the few kinds that still use it.
+func (e *StateEncoder) WriteValue(v starlark.Value, depth int) {
 	switch x := v.(type) {
 	case starlark.NoneType:
 		e.buf = append(e.buf, tagNone)
@@ -207,11 +228,15 @@ func (e *StateEncoder) WriteValue(v starlark.Value, depth int) {
 		e.buf = append(e.buf, tagFloat)
 		e.WriteString(x.String())
 	case *starlark.List:
+		if !e.enter(x) {
+			return
+		}
 		e.buf = append(e.buf, tagList)
 		e.buf = binary.AppendUvarint(e.buf, uint64(x.Len()))
 		for i := 0; i < x.Len(); i++ {
 			e.WriteValue(x.Index(i), depth+1)
 		}
+		e.leave()
 	case starlark.Tuple:
 		e.buf = append(e.buf, tagList)
 		e.buf = binary.AppendUvarint(e.buf, uint64(len(x)))
@@ -229,6 +254,9 @@ func (e *StateEncoder) WriteValue(v starlark.Value, depth int) {
 	case *CardinalityCounter:
 		e.buf = append(e.buf, tagCard, x.ValueCode())
 	case *Struct:
+		if !e.enter(x) {
+			return
+		}
 		e.buf = append(e.buf, tagMap)
 		e.buf = binary.AppendUvarint(e.buf, uint64(len(x.entries)))
 		e.sortedEntries(len(x.entries), func(emit func()) {
@@ -238,6 +266,7 @@ func (e *StateEncoder) WriteValue(v starlark.Value, depth int) {
 				emit()
 			}
 		})
+		e.leave()
 	case *RoleStub:
 		e.buf = append(e.buf, tagStub)
 		e.WriteString(x.Role.RefStringShort())
@@ -300,6 +329,9 @@ func (e *StateEncoder) writeByType(v starlark.Value, depth int) {
 			e.WriteValue(el, depth+1)
 		}
 	case "set", "genericset", "bag":
+		if !e.enter(v) {
+			return
+		}
 		elems := collect(v)
 		e.buf = append(e.buf, tagSet)
 		e.buf = binary.AppendUvarint(e.buf, uint64(len(elems)))
@@ -309,7 +341,11 @@ func (e *StateEncoder) writeByType(v starlark.Value, depth int) {
 				emit()
 			}
 		})
+		e.leave()
 	case "dict", "genericmap":
+		if !e.enter(v) {
+			return
+		}
 		items := v.(starlark.IterableMapping).Items()
 		e.buf = append(e.buf, tagMap)
 		e.buf = binary.AppendUvarint(e.buf, uint64(len(items)))
@@ -320,6 +356,7 @@ func (e *StateEncoder) writeByType(v starlark.Value, depth int) {
 				emit()
 			}
 		})
+		e.leave()
 	case "struct", "record", "role", "RoleStub", "model_value", "symmetric_value", "Channel", "symmetry_segment",
 		"NoneType", "bool", "string", "bytes", "int", "float":
 		// Concrete-type cases above cover these; reaching here means a

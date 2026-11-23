@@ -1,0 +1,26 @@
+---
+deadlock_detection: false
+---
+
+# Regression: a value nested more than 20 containers deep must still count
+# towards the state hash. It was cut off at that depth, so the state after
+# Bump hashed like the initial one and was dropped without being checked.
+
+DEPTH = 22
+
+action Init:
+    x = 0
+    for i in range(DEPTH):
+        x = [x]
+
+atomic action Bump:
+    cur = x
+    for i in range(DEPTH - 1):
+        cur = cur[0]
+    cur[0] = 1
+
+always assertion InnermostIsZero:
+    cur = x
+    for i in range(DEPTH):
+        cur = cur[0]
+    return cur == 0
