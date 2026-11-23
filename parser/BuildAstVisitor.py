@@ -941,12 +941,12 @@ class BuildAstVisitor(FizzParserVisitor):
         raise Exception("visitLabeled_stmt childProto (unknown) type", childProto.__class__.__name__, dir(childProto), childProto)
 
     # Visit a parse tree produced by FizzParser#suite.
-    def visitIndented_block(self, ctx:FizzParser.Indented_blockContext):
-        return self.visitSuite(ctx)
-
     def visitSuite(self, ctx, unwrap=True):
         # A suite is a simple_stmt or an indented_block; read the block's
-        # statements directly. ctx may also be an indented_block itself.
+        # statements directly. A labeled block passes its indented_block here.
+        # unwrap: a suite whose only statement is a block (say `atomic:`)
+        # returns that block itself, so `action A:` + `atomic:` is one block.
+        # A labeled block passes unwrap=False so its inner block stays nested.
         if isinstance(ctx, FizzParser.SuiteContext) and ctx.indented_block() is not None:
             ctx = ctx.indented_block()
         print("\n\nvisitSuite",ctx.__class__.__name__)
