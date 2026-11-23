@@ -2,7 +2,8 @@ package modelchecker
 
 // Block labels and the `threads` builtin module.
 //
-// A block can be named with `txn:` (or `serial txn:`, `cs, txn:`). The
+// A block can be named with `txn:` (or `cs, txn:`); it inherits the
+// enclosing flow. The
 // threads module answers questions about where threads are paused:
 //
 //	threads.inside("Server.Pass.txn", role=None)  some thread is inside the block

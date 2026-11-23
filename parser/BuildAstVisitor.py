@@ -10,30 +10,6 @@ import proto.fizz_ast_pb2 as ast
 from parser import oneof_target
 
 
-FLOW_WORDS = ("atomic", "serial", "parallel", "oneof")
-
-
-def _edit_distance(a, b):
-    prev = list(range(len(b) + 1))
-    for i, ca in enumerate(a, 1):
-        cur = [i]
-        for j, cb in enumerate(b, 1):
-            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
-        prev = cur
-    return prev[-1]
-
-
-def warn_if_label_looks_like_flow(name, line):
-    """A misspelled flow word (`atomc:`) parses as a block label and the block
-    silently inherits the enclosing flow. Warn when a label is close to one."""
-    for word in FLOW_WORDS:
-        if _edit_distance(name.lower(), word) == 1:
-            print(f"WARNING: line {line}: block label {name!r} looks like the flow word {word!r}. "
-                  f"A label does not change the flow; did you mean {word}:?", file=sys.stderr)
-            return
-
-
-
 class BuildAstVisitor(FizzParserVisitor):
     def __init__(self, input_stream, file_path=""):
         super().__init__()
@@ -911,10 +887,9 @@ class BuildAstVisitor(FizzParserVisitor):
         return block
 
     # Visit a parse tree produced by FizzParser#labeled_block_stmt.
-    # `txn:`, `serial txn:`, `cs, txn:`. The flow is left unknown when no flow
-    # word is given, so the block inherits the flow of its enclosing scope.
+    # `txn:` or `cs, txn:`. The flow is left unknown, so the block inherits
+    # the flow of its enclosing scope.
     def visitLabeled_block_stmt(self, ctx:FizzParser.Labeled_block_stmtContext):
-        flow = ast.Flow.FLOW_UNKNOWN
         labels = []
         block = None
         for child in ctx.getChildren():
@@ -924,23 +899,14 @@ class BuildAstVisitor(FizzParserVisitor):
                 block = self.visitSuite(child, unwrap=False)
             elif hasattr(child, 'getSymbol'):
                 t = child.getSymbol().type
-                if t == FizzParser.ATOMIC:
-                    flow = ast.Flow.FLOW_ATOMIC
-                elif t == FizzParser.SERIAL:
-                    flow = ast.Flow.FLOW_SERIAL
-                elif t == FizzParser.ONEOF:
-                    flow = ast.Flow.FLOW_ONEOF
-                elif t == FizzParser.PARALLEL:
-                    flow = ast.Flow.FLOW_PARALLEL
-                elif t == FizzParser.NAME:
+                if t == FizzParser.NAME:
                     name = child.getText()
                     if name in labels:
                         raise Exception(f"duplicate block label {name!r} at line {child.getSymbol().line}")
-                    warn_if_label_looks_like_flow(name, child.getSymbol().line)
                     labels.append(name)
         if block is None:
             block = ast.Block(source_info=get_source_info(ctx))
-        block.flow = flow
+        block.flow = ast.Flow.FLOW_UNKNOWN  # a label always inherits the flow
         block.labels.extend(labels)
         return block
 
