@@ -309,11 +309,12 @@ func (g *GenericMap) Get(key starlark.Value) (v starlark.Value, found bool, err 
 }
 
 func (g *GenericMap) SetKey(key, value starlark.Value) error {
-	for _, entry := range g.entries {
+	for i, entry := range g.entries {
 		if eq, err := starlark.Equal(entry[0], key); err != nil {
 			return fmt.Errorf("%s: %v", "genericmap", err)
 		} else if eq {
-			entry[1] = value
+			// A new tuple: items() has handed out the old one.
+			g.entries[i] = starlark.Tuple{entry[0], value}
 			return nil
 		}
 	}
