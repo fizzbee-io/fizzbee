@@ -1,0 +1,23 @@
+---
+deadlock_detection: false
+---
+
+# Regression: a step that breaks the refinement must fail the run even when
+# another branch of the same action is fine. Simple only ever adds 1, so the
+# branch that adds 2 is not a step of it. The failure was forgotten once the
+# branch that adds 1 had been checked.
+
+refine:
+    Simple: Simple.value
+    _: value
+
+action Init:
+    x = 0
+
+atomic action Inc:
+    require x < 2
+    step = oneof [2, 1]
+    x = x + step
+
+func value():
+    return x

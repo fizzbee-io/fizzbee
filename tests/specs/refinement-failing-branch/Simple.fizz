@@ -1,0 +1,17 @@
+---
+deadlock_detection: false
+---
+
+# The spec Counter.fizz claims to refine. Simple.json is its parsed form,
+# which the model checker reads; regenerate it with
+# bazel-bin/parser/parser_bin Simple.fizz after editing this file.
+
+action Init:
+    x = 0
+
+atomic action Inc:
+    require x < 2
+    x = x + 1
+
+func value():
+    return x

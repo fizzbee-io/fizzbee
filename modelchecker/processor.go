@@ -2834,6 +2834,7 @@ func (p *Processor) processNode(node *Node) (bool, bool) {
 		if len(node.Process.Files[0].Refinements) > 0 {
 			result := CheckRefinement(node.Process, p.Files[0].Refinements[0], p.hashes)
 			if !result {
+				p.intermediateStates.ClearAll()
 				return true, false
 			}
 		}
