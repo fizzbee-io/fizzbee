@@ -214,16 +214,19 @@ func updateDict(dict *GenericMap, args starlark.Tuple, kwargs []starlark.Tuple) 
 	if len(args) == 1 {
 		arg := args[0]
 		if mapping, ok := arg.(starlark.IterableMapping); ok {
-			items := mapping.Items()
-			for _, item := range items {
-				dict.entries = append(dict.entries, item)
+			for _, item := range mapping.Items() {
+				if err := dict.SetKey(item[0], item[1]); err != nil {
+					return err
+				}
 			}
 		} else {
 			return fmt.Errorf("genericmap: got %s, want mapping", arg.Type())
 		}
 	}
 	for _, kwarg := range kwargs {
-		dict.entries = append(dict.entries, kwarg)
+		if err := dict.SetKey(kwarg[0], kwarg[1]); err != nil {
+			return err
+		}
 	}
 	return nil
 }
