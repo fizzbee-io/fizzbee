@@ -1,0 +1,18 @@
+Model checking tests/specs/eventual-liveness-terminal-state/TerminalState.json
+configFileName: tests/specs/eventual-liveness-terminal-state/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2} liveness:"eventual" deadlock_detection:false
+Nodes: 3, queued: 0, elapsed: 176.625us
+Peak (new): queue=1 pendingActionStarts=1
+Time taken for model checking: 186.958us
+Writen graph dotfile: tests/specs/eventual-liveness-terminal-state/out/run_2026-11-24_00-08-29/graph.dot
+To generate svg, run:
+dot -Tsvg tests/specs/eventual-liveness-terminal-state/out/run_2026-11-24_00-08-29/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 3 Unique states: 3
+Checking strict liveness with nondeterministic checker
+Checking eventually always Done
+Always eventually  invariant passed
+IsLive: true
+Time taken to check liveness: 104.583us
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/eventual-liveness-terminal-state/out/run_2026-11-24_00-08-29
