@@ -1,0 +1,16 @@
+---
+deadlock_detection: false
+---
+
+# Regression: a key given twice to genericmap(), or to update() for a key
+# the map already has, must replace the value. Both appended a second entry
+# for the key, so len() counted it twice and lookups saw the old value.
+
+action Init:
+    built = genericmap({"a": 1}, a=2)
+    updated = genericmap(a=1)
+    updated.update(a=2)
+
+always assertion OneEntryPerKey:
+    return (len(built) == 1 and built["a"] == 2
+            and len(updated) == 1 and updated["a"] == 2)

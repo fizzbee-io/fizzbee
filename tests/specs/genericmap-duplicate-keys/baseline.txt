@@ -1,0 +1,15 @@
+Model checking tests/specs/genericmap-duplicate-keys/GenericMapDuplicateKeys.json
+configFileName: tests/specs/genericmap-duplicate-keys/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}  deadlock_detection:false
+Nodes: 1, queued: 0, elapsed: 260.334us
+Peak (new): queue=1 pendingActionStarts=0
+Time taken for model checking: 271.208us
+Writen graph dotfile: tests/specs/genericmap-duplicate-keys/out/run_2026-11-24_00-03-40/graph.dot
+To generate svg, run:
+dot -Tsvg tests/specs/genericmap-duplicate-keys/out/run_2026-11-24_00-03-40/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 1 Unique states: 1
+IsLive: true
+Time taken to check liveness: 110.625us
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/genericmap-duplicate-keys/out/run_2026-11-24_00-03-40
