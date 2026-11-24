@@ -172,12 +172,14 @@ func (p *Process) callFizzFunc(_ *starlark.Thread, recv *lib.Role, name string, 
 	if !ok || v == nil {
 		return starlark.None, nil
 	}
-	// The result may hold roles of the clone's state. Map them back to the
-	// caller's roles, so they compare equal and their methods can be called;
-	// containers are copied, so changing them can't reach the caller's state.
+	// The result may hold roles and role stubs of the clone's state. Map them
+	// back to the caller's, so they compare equal and their methods can be
+	// called; containers are copied, so changing them can't reach the caller's
+	// state.
 	back := make(map[starlark.Value]starlark.Value)
 	for orig, cloned := range refs {
-		if _, isRole := orig.(*lib.Role); isRole {
+		switch orig.(type) {
+		case *lib.Role, *lib.RoleStub:
 			back[cloned] = orig
 		}
 	}

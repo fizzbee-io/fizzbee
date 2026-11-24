@@ -1,0 +1,23 @@
+---
+deadlock_detection: false
+---
+
+# Regression: two variables that hold one role stub must still hold one
+# stub after the state is copied, and a stub that a func hands back must be
+# the one it was given. Each reference got its own copy, and stubs compare
+# by identity, so both comparisons turned False.
+
+role Server:
+    action Init:
+        pass
+
+func same(stub):
+    return stub
+
+action Init:
+    ch = Channel(ordering="unordered", delivery="exactly_once", blocking="fire_and_forget")
+    first = ch.stub(Server())
+    second = first
+
+always assertion SameStub:
+    return first == second and same(first) == first

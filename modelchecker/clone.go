@@ -185,13 +185,14 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 		}
 		return newVal, nil
 	case "RoleStub":
-		// TODO(jp): Should this also reuse cached refs?
 		r := value.(*lib.RoleStub)
 		role, err := deepCloneStarlarkValueWithPermutations(r.Role, refs, permutations, alt)
 		if err != nil {
 			return nil, err
 		}
-		return lib.NewRoleStub(role.(*lib.Role), r.Channel), nil
+		stub := lib.NewRoleStub(role.(*lib.Role), r.Channel)
+		refs[value] = stub
+		return stub, nil
 	case "symmetry_segment":
 		s := value.(*lib.Segment)
 		newLeft := s.Left
