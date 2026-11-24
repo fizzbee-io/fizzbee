@@ -25,6 +25,7 @@ package modelchecker
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
 	"slices"
 	"sort"
@@ -36,7 +37,6 @@ import (
 	"github.com/fizzbee-io/fizzbee/lib"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // labelScope is one action or function, top-level or in a role.
@@ -82,7 +82,7 @@ func buildLabelIndex(files []*ast.File) *labelIndex {
 		if block == nil {
 			return
 		}
-		collectBlockLabels(block.ProtoReflect(), path+".Block", func(label, blockPath string) {
+		collectBlockLabels(reflect.ValueOf(block), path+".Block", func(label, blockPath string) {
 			if _, dup := s.labels[label]; dup && idx.err == nil {
 				idx.err = fmt.Errorf("threads: label %q appears more than once in %s", label, key)
 			}
@@ -119,47 +119,41 @@ func buildLabelIndex(files []*ast.File) *labelIndex {
 	return idx
 }
 
-// collectBlockLabels walks msg (any AST message) and reports every Block with
-// labels, with its path in the GetProtoFieldByPath format.
-func collectBlockLabels(msg protoreflect.Message, path string, visit func(label, blockPath string)) {
-	if b, ok := msg.Interface().(*ast.Block); ok {
-		for _, l := range b.GetLabels() {
-			visit(l, path)
+// collectBlockLabels walks v (an AST node) and reports every labeled Block
+// with its path. It walks the Go structs with reflect, exactly as
+// GetFieldByPath resolves a pc, so the paths use the same field names as
+// thread pcs and any new AST node type is covered without changes here.
+func collectBlockLabels(v reflect.Value, path string, visit func(label, blockPath string)) {
+	if v.Kind() == reflect.Pointer {
+		if v.IsNil() {
+			return
 		}
-	}
-	msg.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
-		if fd.Kind() != protoreflect.MessageKind {
-			return true
-		}
-		name := goFieldName(string(fd.Name()))
-		if fd.IsList() {
-			list := v.List()
-			for i := 0; i < list.Len(); i++ {
-				collectBlockLabels(list.Get(i).Message(), fmt.Sprintf("%s.%s[%d]", path, name, i), visit)
+		if b, ok := v.Interface().(*ast.Block); ok {
+			for _, l := range b.GetLabels() {
+				visit(l, path)
 			}
-		} else if !fd.IsMap() {
-			collectBlockLabels(v.Message(), path+"."+name, visit)
 		}
-		return true
-	})
-}
-
-// goFieldName converts a proto field name (if_stmt) to its Go name (IfStmt).
-func goFieldName(s string) string {
-	var b strings.Builder
-	upper := true
-	for _, c := range s {
-		if c == '_' {
-			upper = true
-			continue
-		}
-		if upper && c >= 'a' && c <= 'z' {
-			c -= 'a' - 'A'
-		}
-		upper = false
-		b.WriteRune(c)
+		v = v.Elem()
 	}
-	return b.String()
+	if v.Kind() != reflect.Struct {
+		return
+	}
+	t := v.Type()
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		if !f.IsExported() {
+			continue // protobuf bookkeeping (state, sizeCache, unknownFields)
+		}
+		fv := v.Field(i)
+		switch {
+		case fv.Kind() == reflect.Pointer:
+			collectBlockLabels(fv, path+"."+f.Name, visit)
+		case fv.Kind() == reflect.Slice && fv.Type().Elem().Kind() == reflect.Pointer:
+			for j := 0; j < fv.Len(); j++ {
+				collectBlockLabels(fv.Index(j), fmt.Sprintf("%s.%s[%d]", path, f.Name, j), visit)
+			}
+		}
+	}
 }
 
 // labelTarget is a resolved query path.

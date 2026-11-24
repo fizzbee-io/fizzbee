@@ -1,6 +1,7 @@
 package modelchecker
 
 import (
+	"slices"
 	"testing"
 
 	ast "fizz/proto"
@@ -52,11 +53,23 @@ func TestMergeCopiesGroupsOnlyIdenticalStacks(t *testing.T) {
 	}
 }
 
-func TestGoFieldName(t *testing.T) {
-	for in, want := range map[string]string{"if_stmt": "IfStmt", "stmts": "Stmts", "block": "Block", "py_stmt": "PyStmt"} {
-		if got := goFieldName(in); got != want {
-			t.Errorf("goFieldName(%q) = %q, want %q", in, got, want)
+// Every indexed label path must resolve, through the interpreter's own pc
+// resolver, to a Block carrying that label.
+func TestLabelPathsResolveLikePcs(t *testing.T) {
+	files := []*ast.File{labelsFile()}
+	idx := buildLabelIndex(files)
+	n := 0
+	for key, s := range idx.scopes {
+		for label, path := range s.labels {
+			n++
+			b, ok := GetProtoFieldByPath(files[s.fileIndex], path).(*ast.Block)
+			if !ok || b == nil || !slices.Contains(b.GetLabels(), label) {
+				t.Errorf("%s.%s: path %s does not resolve to a block labeled %q", key, label, path, label)
+			}
 		}
+	}
+	if n == 0 {
+		t.Fatal("no labels indexed")
 	}
 }
 
