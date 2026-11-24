@@ -1,0 +1,15 @@
+Model checking tests/specs/genericmap-assignment-aliasing/GenericMapAssign.json
+configFileName: tests/specs/genericmap-assignment-aliasing/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2} deadlock_detection:false
+Nodes: 1, queued: 0, elapsed: 548.458us
+Peak (new): queue=1 pendingActionStarts=0
+Time taken for model checking: 584.333us
+Writen graph dotfile: tests/specs/genericmap-assignment-aliasing/out/run_2026-11-24_07-24-30/graph.dot
+To generate svg, run:
+dot -Tsvg tests/specs/genericmap-assignment-aliasing/out/run_2026-11-24_07-24-30/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 1 Unique states: 1
+IsLive: true
+Time taken to check liveness: 169.959us
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/genericmap-assignment-aliasing/out/run_2026-11-24_07-24-30

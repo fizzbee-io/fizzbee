@@ -1,0 +1,15 @@
+---
+deadlock_detection: false
+---
+
+# Regression: a copy made with genericmap(m) and the pairs items() returned
+# shared storage with the map, so m[k] = v changed them too.
+
+action Init:
+    m = genericmap(a=1)
+    copy = genericmap(m)
+    items = m.items()
+    m["a"] = 2
+
+always assertion AssignmentStaysInItsMap:
+    return m["a"] == 2 and copy["a"] == 1 and items[0][1] == 1
