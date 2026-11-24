@@ -1,0 +1,53 @@
+Model checking tests/specs/refinement-failing-branch/Counter.json
+configFileName: tests/specs/refinement-failing-branch/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2} deadlock_detection:false
+
+Refined Spec: Simple
+configFileName: tests/specs/refinement-failing-branch/fizz.yaml
+fizz.yaml not found. Using default options
+Model checking abstract spec: tests/specs/refinement-failing-branch/Simple.fizz
+Nodes: 3, queued: 0, elapsed: 173.667us
+Peak (new): queue=1 pendingActionStarts=1
+Time taken for model checking: 189.708us
+Writen graph dotfile: tests/specs/refinement-failing-branch/out/run_2026-11-24_00-11-12/Simple/graph.dot
+To generate svg, run:
+dot -Tsvg tests/specs/refinement-failing-branch/out/run_2026-11-24_00-11-12/Simple/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 3 Unique states: 3
+IsLive: true
+Time taken to check liveness: 132.584us
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/refinement-failing-branch/out/run_2026-11-24_00-11-12/Simple
+Model checking implementation spec (refined): Counter.fizz
+configFileName: tests/specs/refinement-failing-branch/fizz.yaml
+fizz.yaml not found. Using default options
+Join hash not found for key: 0,2
+Nodes: 2, queued: 0, elapsed: 120.208us
+Peak (new): queue=1 pendingActionStarts=1
+Time taken for model checking: 125.666us
+Writen graph dotfile: tests/specs/refinement-failing-branch/out/run_2026-11-24_00-11-12/_/graph.dot
+To generate svg, run:
+dot -Tsvg tests/specs/refinement-failing-branch/out/run_2026-11-24_00-11-12/_/graph.dot -o graph.svg && open graph.svg
+FAILED: Model checker failed (no failed-invariant metadata on the failing node; see trace below).
+------
+Init
+--
+state: {"x":0}
+------
+Inc
+--
+state: {"x":0}
+------
+Any:step=2
+--
+state: {"x":2}
+------
+Writen graph json: tests/specs/refinement-failing-branch/out/run_2026-11-24_00-11-12/_/error-graph.json
+Writen graph dotfile: tests/specs/refinement-failing-branch/out/run_2026-11-24_00-11-12/_/error-graph.dot
+To generate an image file, run:
+dot -Tsvg tests/specs/refinement-failing-branch/out/run_2026-11-24_00-11-12/_/error-graph.dot -o error-graph.svg && open error-graph.svg
+Error reading source file: open Counter.fizz: no such file or directory
+Writen error states as html: tests/specs/refinement-failing-branch/out/run_2026-11-24_00-11-12/_/error-states.html
+To open:
+open tests/specs/refinement-failing-branch/out/run_2026-11-24_00-11-12/_/error-states.html
+Error in model checking implementation spec
