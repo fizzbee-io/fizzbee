@@ -3134,6 +3134,7 @@ func (p *Process) getSymmetryTranslations() []string {
 	p2, refs, permMap, count := getSymmetryPermutations(p)
 	//fmt.Println("Symmetry permutations count:", count, permMap)
 	//fmt.Println("Permutation map:", permMap)
+	p2.RotationalLastAllocated = p.RotationalLastAllocated
 	hashes := make([]string, count)
 	for i := 0; i < count; i++ {
 		hashes[i] = p2.symmetricHashWithoutClone(refs, permMap, i)
@@ -3289,6 +3290,11 @@ func (p *Process) symmetricHashWithoutClone(refs map[starlark.Value]starlark.Val
 		refMappings[prefix][oldRef] = newRef
 	}
 
+	// 1b. Move each rotational domain's last-allocated id with its values.
+	// This reads the ids of the values, so it comes before they change.
+	origLastAllocated := p.RotationalLastAllocated
+	p.RotationalLastAllocated = rotateLastAllocated(origLastAllocated, permutations, alt)
+
 	// 2. Iterate refs to find ALL SymmetricValue and Role pointers, and mutate them if they have a mapping.
 	// We track original values to restore them later.
 	origSymVals := make(map[*lib.SymmetricValue]int64)
@@ -3376,6 +3382,7 @@ func (p *Process) symmetricHashWithoutClone(refs map[starlark.Value]starlark.Val
 
 	// 7. Restore Everything
 	copy(p.Roles, origRoles)
+	p.RotationalLastAllocated = origLastAllocated
 	for msg, oldReceiver := range origReceivers {
 		msg.receiver = oldReceiver
 	}
@@ -3389,6 +3396,57 @@ func (p *Process) symmetricHashWithoutClone(refs map[starlark.Value]starlark.Val
 
 	return hash1
 
+}
+
+// rotateLastAllocated returns last, the id fresh() last gave out in each
+// rotational domain, as permutation alt sees it. fresh() gives out the next
+// free id after that one, so the id has to turn with the domain's values
+// for two states that are rotations of each other to hash alike. A domain
+// that never allocated counts from the id before 0. A domain with no value
+// left is left out: all its rotations are the same state.
+func rotateLastAllocated(last map[string]int64, permutations map[*lib.SymmetricValue][]*lib.SymmetricValue, alt int) map[string]int64 {
+	type pair struct{ from, to int64 }
+	pairs := make(map[string][]pair)
+	limits := make(map[string]int64)
+	for symVal, perm := range permutations {
+		if symVal.Kind == lib.SymmetryKindRotational && symVal.Limit > 0 {
+			pairs[symVal.GetPrefix()] = append(pairs[symVal.GetPrefix()], pair{symVal.GetId(), perm[alt].GetId()})
+			limits[symVal.GetPrefix()] = int64(symVal.Limit)
+		}
+	}
+	if len(pairs) == 0 {
+		return nil
+	}
+	rotated := make(map[string]int64, len(pairs))
+	for name, ps := range pairs {
+		limit := limits[name]
+		mod := func(n int64) int64 { return (n%limit + limit) % limit }
+		id, ok := last[name]
+		if !ok {
+			if int64(len(ps)) == limit {
+				// Every id is in use without one ever being allocated: a
+				// materialized domain, where fresh() can never give one out.
+				continue
+			}
+			id = limit - 1
+		}
+		// A rotation adds the same shift to every value. Otherwise alt is a
+		// reflection, which maps v to c - v for one c.
+		shift := mod(ps[0].to - ps[0].from)
+		reflected := false
+		for _, p := range ps {
+			if mod(p.to-p.from) != shift {
+				reflected = true
+				break
+			}
+		}
+		if reflected {
+			rotated[name] = mod(ps[0].to + ps[0].from - id)
+		} else {
+			rotated[name] = mod(id + shift)
+		}
+	}
+	return rotated
 }
 
 func (p *Process) GetSymmetryRoles() []*lib.SymmetricValues {

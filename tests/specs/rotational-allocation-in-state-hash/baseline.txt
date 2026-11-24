@@ -1,0 +1,39 @@
+Model checking tests/specs/rotational-allocation-in-state-hash/RotationalAllocation.json
+configFileName: tests/specs/rotational-allocation-in-state-hash/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}  deadlock_detection:false
+Nodes: 5, queued: 0, elapsed: 3.192125ms
+Peak (new): queue=1 pendingActionStarts=2
+Time taken for model checking: 3.218208ms
+Writen graph dotfile: tests/specs/rotational-allocation-in-state-hash/out/run_2026-11-23_23-58-05/graph.dot
+To generate svg, run:
+dot -Tsvg tests/specs/rotational-allocation-in-state-hash/out/run_2026-11-23_23-58-05/graph.dot -o graph.svg && open graph.svg
+FAILED: Model checker failed. Invariant:  NeverTwoApart
+------
+Init
+--
+state: {"positions":[]}
+------
+Alloc
+--
+state: {"positions":["pos0"]}
+------
+Alloc
+--
+state: {"positions":["pos0","pos1"]}
+------
+FreeSecond
+--
+state: {"positions":["pos0"]}
+------
+Alloc
+--
+state: {"positions":["pos0","pos2"]}
+------
+Writen graph json: tests/specs/rotational-allocation-in-state-hash/out/run_2026-11-23_23-58-05/error-graph.json
+Writen graph dotfile: tests/specs/rotational-allocation-in-state-hash/out/run_2026-11-23_23-58-05/error-graph.dot
+To generate an image file, run:
+dot -Tsvg tests/specs/rotational-allocation-in-state-hash/out/run_2026-11-23_23-58-05/error-graph.dot -o error-graph.svg && open error-graph.svg
+Writen error states as html: tests/specs/rotational-allocation-in-state-hash/out/run_2026-11-23_23-58-05/error-states.html
+To open:
+open tests/specs/rotational-allocation-in-state-hash/out/run_2026-11-23_23-58-05/error-states.html
