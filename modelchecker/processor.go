@@ -972,7 +972,7 @@ func (p *Process) PanicIfFalse(ok bool, sourceInfo *ast.SourceInfo, msg string) 
 	}
 }
 
-func (p *Process) RecordCall(callerFrame *CallFrame, receiverFrame *CallFrame, flow ast.Flow) {
+func (p *Process) RecordCall(callerFrame *CallFrame, receiverFrame *CallFrame, params []*ast.Parameter, flow ast.Flow) {
 	if (callerFrame.obj == nil && receiverFrame.obj == nil) || callerFrame.obj == receiverFrame.obj {
 		return
 	}
@@ -985,9 +985,10 @@ func (p *Process) RecordCall(callerFrame *CallFrame, receiverFrame *CallFrame, f
 	if receiverFrame.obj != nil {
 		msg.Receivers = []string{receiverFrame.obj.RefStringShort()}
 	}
-	for name, value := range receiverFrame.vars {
-		str := strings.ReplaceAll(value.String(), lib.SymmetryPrefix, "")
-		msg.Values = append(msg.Values, &ast.NameValue{Name: name, Value: str})
+	// In declaration order: ranging over vars would differ from run to run.
+	for _, param := range params {
+		str := strings.ReplaceAll(receiverFrame.vars[param.Name].String(), lib.SymmetryPrefix, "")
+		msg.Values = append(msg.Values, &ast.NameValue{Name: param.Name, Value: str})
 	}
 	if flow != ast.Flow_FLOW_ATOMIC {
 		msg.Lossy = true

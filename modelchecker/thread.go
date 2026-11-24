@@ -989,7 +989,7 @@ func (t *Thread) executeStatement() ([]*Process, bool) {
 			}
 			newFrame.callerAssignVarNames = stmt.CallStmt.Vars
 			t.Process.Labels = append(t.Process.Labels, newFrame.Name+".call")
-			t.Process.RecordCall(frame, newFrame, parentScope.flow)
+			t.Process.RecordCall(frame, newFrame, def.params, parentScope.flow)
 
 			if stub == nil /*|| (stub.Channel.IsSynchronous() && stub.Channel.IsOrdered())*/ {
 				// TODO: Handle args
