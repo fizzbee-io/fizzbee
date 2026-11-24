@@ -1,0 +1,15 @@
+Model checking tests/specs/role-stub-shared-reference/RoleStubAlias.json
+configFileName: tests/specs/role-stub-shared-reference/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}  deadlock_detection:false
+Nodes: 1, queued: 0, elapsed: 199.917us
+Peak (new): queue=1 pendingActionStarts=0
+Time taken for model checking: 209.625us
+Writen graph dotfile: tests/specs/role-stub-shared-reference/out/run_2026-11-24_00-16-03/graph.dot
+To generate svg, run:
+dot -Tsvg tests/specs/role-stub-shared-reference/out/run_2026-11-24_00-16-03/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 1 Unique states: 1
+IsLive: true
+Time taken to check liveness: 117.084us
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/role-stub-shared-reference/out/run_2026-11-24_00-16-03
