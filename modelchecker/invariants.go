@@ -578,10 +578,6 @@ func EventuallyAlwaysFast(nodes []*Node, predicate Predicate) ([]*Link, bool) {
 	visited := make(map[*Node]bool)
 	queue := lib.NewQueue[*Node]()
 	for _, node := range nodes {
-		if len(node.Outbound) == 0 {
-			fmt.Println("Deadlock detected, at node: ", node.String())
-			panic("Deadlock detected, at node: " + node.String())
-		}
 		relevant, value := predicate(node)
 		if relevant && !value {
 			queue.Enqueue(node)

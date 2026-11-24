@@ -1,0 +1,18 @@
+---
+deadlock_detection: false
+liveness: eventual
+---
+
+# Regression: with liveness: eventual, a state with no enabled action where
+# an eventually always assertion does not hold must fail the check. x == 2
+# is such a state here, and the assertion only holds on the way to it.
+
+action Init:
+    x = 0
+
+fair action Inc:
+    require x < 2
+    x = x + 1
+
+eventually always assertion StaysOne:
+    return x == 1
