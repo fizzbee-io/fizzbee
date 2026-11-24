@@ -601,3 +601,20 @@ func WriteFile(t *testing.T, tempDir string, filename string, content []byte) {
 		t.Fatalf("Failed to write file: %v", err)
 	}
 }
+
+// A recorded call lists its arguments in declaration order, whatever order
+// the frame's map yields them in.
+func TestRecordCallArgumentOrder(t *testing.T) {
+	caller := &CallFrame{obj: testRole("Client", 0)}
+	receiver := &CallFrame{Name: "Bank.Transfer", obj: testRole("Bank", 0), vars: starlark.StringDict{
+		"src": starlark.MakeInt(1), "dst": starlark.MakeInt(2), "amount": starlark.MakeInt(3), "memo": starlark.MakeInt(4),
+	}}
+	params := []*ast.Parameter{{Name: "src"}, {Name: "dst"}, {Name: "amount"}, {Name: "memo"}}
+	p := &Process{}
+	p.RecordCall(caller, receiver, params, ast.Flow_FLOW_ATOMIC)
+	var names []string
+	for _, v := range p.Messages[0].Values {
+		names = append(names, v.Name)
+	}
+	require.Equal(t, []string{"src", "dst", "amount", "memo"}, names)
+}
