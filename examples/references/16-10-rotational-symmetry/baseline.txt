@@ -2,12 +2,12 @@ Model checking examples/references/16-10-rotational-symmetry/RotationalSymmetry.
 configFileName: examples/references/16-10-rotational-symmetry/fizz.yaml
 fizz.yaml not found. Using default options
 StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
-Nodes: 11, queued: 0, elapsed: 863.958µs
+Nodes: 51, queued: 0, elapsed: 863.958us
 Time taken for model checking: 871.833µs
 Writen graph dotfile: examples/references/16-10-rotational-symmetry/out/run_2026-03-07_23-56-11/graph.dot
 To generate svg, run: 
 dot -Tsvg examples/references/16-10-rotational-symmetry/out/run_2026-03-07_23-56-11/graph.dot -o graph.svg && open graph.svg
-Valid Nodes: 11 Unique states: 6
+Valid Nodes: 51 Unique states: 26
 IsLive: true
 Time taken to check liveness: 154.25µs
 PASSED: Model checker completed successfully

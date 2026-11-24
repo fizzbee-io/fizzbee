@@ -206,6 +206,19 @@ func (p *Process) HashCode() string {
 	// hash the heap variables as well
 	e.WriteString(p.Heap.HashCode())
 
+	// The id fresh() last gave out in a rotational domain decides which
+	// one it gives out next.
+	lastAllocated := make([]string, 0, len(p.RotationalLastAllocated))
+	for name := range p.RotationalLastAllocated {
+		lastAllocated = append(lastAllocated, name)
+	}
+	sort.Strings(lastAllocated)
+	e.WriteUvarint(uint64(len(lastAllocated)))
+	for _, name := range lastAllocated {
+		e.WriteString(name)
+		e.WriteInt64(p.RotationalLastAllocated[name])
+	}
+
 	channelKeys := make([]int, 0, len(p.Channels))
 	for k := range p.Channels {
 		channelKeys = append(channelKeys, k)

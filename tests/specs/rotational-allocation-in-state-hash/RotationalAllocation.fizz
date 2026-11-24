@@ -1,0 +1,26 @@
+---
+deadlock_detection: false
+---
+
+# Regression: the id fresh() last gave out in a rotational domain must be
+# part of the state hash, since fresh() gives out the next free id after it.
+# Alloc, Alloc, FreeSecond leaves {pos0} as after one Alloc, but the next
+# Alloc gives pos2, not pos1. The two {pos0} states were merged, so
+# {pos0, pos2} was never reached.
+
+RING = symmetry.rotational(name="pos", limit=5)
+
+action Init:
+    positions = set()
+
+atomic action Alloc:
+    require len(positions) < 2
+    positions.add(RING.fresh())
+
+atomic action FreeSecond:
+    require len(positions) == 2
+    positions.remove(RING.values()[1])
+
+always assertion NeverTwoApart:
+    pair = RING.values()
+    return len(pair) < 2 or pair[1] - pair[0] != 2

@@ -860,13 +860,13 @@ Examples 10-04 to 10-11 and 10-13 to 10-17 and 10-19 to 10-20 run with `FIZZ_LIV
 - **Status**: ✅ PASSED
 
 ### 16-10-rotational-symmetry: Rotational Symmetry (symmetry module)
-- **State space**: 11 nodes, 6 unique states
+- **State space**: 51 nodes, 26 unique states
 - **Purpose**: Ring/modular arithmetic with wrapping values
 - **Key concepts**: `symmetry.rotational()`, `val + int` (wrapping), `val - val` (mod), ring positions
 - **Status**: ✅ PASSED
 
 ### 16-11-reflection: Reflection Symmetry
-- **Files**: ReflectionInterval.fizz (6 states), ReflectionNoReflection.fizz (11 states), ReflectionRotational.fizz (7 states)
+- **Files**: ReflectionInterval.fizz (6 states), ReflectionNoReflection.fizz (11 states), ReflectionRotational.fizz (25 states)
 - **Purpose**: Mirror-state equivalence using `reflection=True`
 - **Key concepts**: `reflection=True`, interval reflection (v-min vs max-v), rotational reflection (CW=CCW)
 - **Status**: ✅ ALL PASSED
