@@ -587,8 +587,7 @@ func (g *GenericSet) CompareSameType(op syntax.Token, y_ starlark.Value, depth i
 		defer iter.Done()
 		return x.IsSuperset(iter)
 	case syntax.LE: // subset
-		gt, err := y.CompareSameType(syntax.GT, x, depth)
-		return !gt, err
+		return y.CompareSameType(syntax.GE, x, depth)
 	case syntax.GT: // proper superset
 		if x.Len() <= y.Len() {
 			return false, nil
@@ -597,8 +596,7 @@ func (g *GenericSet) CompareSameType(op syntax.Token, y_ starlark.Value, depth i
 		defer iter.Done()
 		return x.IsSuperset(iter)
 	case syntax.LT: // proper subset
-		ge, err := y.CompareSameType(syntax.GE, x, depth)
-		return !ge, err
+		return y.CompareSameType(syntax.GT, x, depth)
 	default:
 		return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
 	}

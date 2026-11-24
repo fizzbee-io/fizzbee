@@ -1,0 +1,19 @@
+---
+deadlock_detection: false
+---
+
+# Regression: <= and < on genericsets are the subset tests. They were
+# computed as "not a proper superset" and "not a superset", which is wrong
+# for a proper subset or superset and for sets where neither contains the
+# other.
+
+action Init:
+    small = genericset([1])
+    big = genericset([1, 2])
+    other = genericset([2, 3])
+
+always assertion SubsetComparisons:
+    return (small <= big and small < big
+            and big <= big and not (big < big)
+            and not (big <= small) and not (big < small)
+            and not (big <= other) and not (big < other))
