@@ -21,8 +21,11 @@ action Init:
     locked = False
 
 fair action Worker:
+    noncs:
+        atomic:
+            pass  # non-critical work; any number of workers get this far
     atomic:
-        require BUGGY or not locked
+        require BUGGY or not locked  # the others wait here for the lock
         locked = True
     cs:
         atomic:
@@ -32,3 +35,8 @@ fair action Worker:
 
 always assertion MutualExclusion:
     return not threads.cardinality("Worker.cs").is_many()
+
+# Several workers have started, yet exactly one is in the critical section.
+exists assertion ManyStartedOneInside:
+    return (threads.cardinality("Worker").is_many()
+            and threads.cardinality("Worker.cs").is_one())

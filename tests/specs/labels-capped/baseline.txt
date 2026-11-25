@@ -2,14 +2,14 @@ Model checking tests/specs/labels-capped/Lock.json
 configFileName: tests/specs/labels-capped/fizz.yaml
 fizz.yaml not found. Using default options
 StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2 crash_on_yield:false} action_options:{key:"Worker" value:{max_concurrent_actions:-1}} deadlock_detection:false
-Nodes: 18, queued: 0, elapsed: 822.528µs
-Peak (new): queue=3 pendingActionStarts=3
-Time taken for model checking: 950.298µs
-Writen graph dotfile: tests/specs/labels-capped/out/run_2026-11-23_17-47-16/graph.dot
+Nodes: 75, queued: 0, elapsed: 3.313665ms
+Peak (new): queue=6 pendingActionStarts=4
+Time taken for model checking: 3.415313ms
+Writen graph dotfile: tests/specs/labels-capped/out/run_2026-11-25_05-44-36/graph.dot
 To generate svg, run: 
-dot -Tsvg tests/specs/labels-capped/out/run_2026-11-23_17-47-16/graph.dot -o graph.svg && open graph.svg
-Valid Nodes: 18 Unique states: 13
+dot -Tsvg tests/specs/labels-capped/out/run_2026-11-25_05-44-36/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 63 Unique states: 43
 IsLive: true
-Time taken to check liveness: 328.778µs
+Time taken to check liveness: 3.389721ms
 PASSED: Model checker completed successfully
-Writen 1 node files and 1 link files to dir tests/specs/labels-capped/out/run_2026-11-23_17-47-16
+Writen 1 node files and 1 link files to dir tests/specs/labels-capped/out/run_2026-11-25_05-44-36
