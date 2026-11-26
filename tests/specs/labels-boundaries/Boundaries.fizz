@@ -13,141 +13,142 @@ options:
 import threads
 
 action Init:
-    w = "idle"     # Walk
-    c = "idle"     # Call and its callee Callee
-    r = "idle"     # Ret
-    b = "idle"     # Brk
-    n = "idle"     # Nest
-    cur = "unset"  # threads.current() seen from inside Walk.txn
+    # Each *_step is the last step its action ran.
+    walk_step = "idle"
+    call_step = "idle"   # Call and its callee Callee
+    ret_step = "idle"
+    brk_step = "idle"
+    nest_step = "idle"
+    walk_current_inside = "unset"  # threads.current() seen from inside Walk.txn
 
 serial action Walk:
     atomic:
-        w = "A"
+        walk_step = "A"
     txn:
         atomic:
-            w = "B"
-            cur = threads.current().inside("Walk.txn")
+            walk_step = "B"
+            walk_current_inside = threads.current().inside("Walk.txn")
         atomic:
-            w = "C"
+            walk_step = "C"
     atomic:
-        w = "D"
-        cur = threads.current().inside("Walk.txn")
+        walk_step = "D"
+        walk_current_inside = threads.current().inside("Walk.txn")
 
 serial func Callee():
-    fl:
+    callee_body:
         atomic:
-            c = "callee1"
+            call_step = "callee1"
         atomic:
-            c = "callee2"
+            call_step = "callee2"
 
 serial action Call:
-    cl:
+    call_site:
         atomic:
-            c = "caller1"
+            call_step = "caller1"
         Callee()
     atomic:
-        c = "after"
+        call_step = "after"
 
 serial func RetF():
-    rl:
+    ret_body:
         atomic:
-            r = "r1"
+            ret_step = "r1"
             return 1
         atomic:
-            r = "unreachable"
+            ret_step = "unreachable"
 
 serial action Ret:
     x = RetF()
     atomic:
-        r = "after"
+        ret_step = "after"
 
 serial action Brk:
     for i in range(2):
-        bl:
+        loop_body:
             atomic:
-                b = "b1"
+                brk_step = "b1"
                 break
     atomic:
-        b = "after"
+        brk_step = "after"
 
 serial action Nest:
     outer:
         atomic:
-            n = "o1"
+            nest_step = "o1"
         inner:
             atomic:
-                n = "i1"
+                nest_step = "i1"
             atomic:
-                n = "i2"
+                nest_step = "i2"
         atomic:
-            n = "o2"
+            nest_step = "o2"
     atomic:
-        n = "after"
+        nest_step = "after"
 
 always assertion Expected:
     # marker: (inside the label, inside the action)
     walk = {"idle": (False, False), "A": (False, True), "B": (True, True),
             "C": (False, True), "D": (False, False)}
-    if (threads.inside("Walk.txn"), threads.inside("Walk")) != walk[w]:
+    if (threads.inside("Walk.txn"), threads.inside("Walk")) != walk[walk_step]:
         return False
     # current() sees its own thread: inside txn at B, out of it at D
-    if w == "B" and cur != True:
+    if walk_step == "B" and walk_current_inside != True:
         return False
-    if w == "D" and cur != False:
+    if walk_step == "D" and walk_current_inside != False:
         return False
 
     # (caller label, callee label, callee func, caller action). At callee2
     # the callee has run its last step but has not returned yet, so the
-    # caller is still inside cl, at the call.
+    # caller is still inside call_site, at the call.
     call = {"idle": (False, False, False, False),
             "caller1": (True, False, False, True),
             "callee1": (True, True, True, True),
             "callee2": (True, False, False, True),
             "after": (False, False, False, False)}
-    got = (threads.inside("Call.cl"), threads.inside("Callee.fl"),
+    got = (threads.inside("Call.call_site"), threads.inside("Callee.callee_body"),
            threads.inside("Callee"), threads.inside("Call"))
-    if got != call[c]:
+    if got != call[call_step]:
         return False
 
     # return from inside the label leaves it and the func
     ret = {"idle": (False, False, False), "r1": (False, False, True),
            "after": (False, False, False)}
-    if (threads.inside("RetF.rl"), threads.inside("RetF"), threads.inside("Ret")) != ret[r]:
+    if (threads.inside("RetF.ret_body"), threads.inside("RetF"), threads.inside("Ret")) != ret[ret_step]:
         return False
 
     # break from inside the label leaves it, and the loop
     brk = {"idle": (False, False), "b1": (False, True), "after": (False, False)}
-    if (threads.inside("Brk.bl"), threads.inside("Brk")) != brk[b]:
+    if (threads.inside("Brk.loop_body"), threads.inside("Brk")) != brk[brk_step]:
         return False
 
     # nested labels; both at once, through one thread handle
     nest = {"idle": (False, False), "o1": (True, False), "i1": (True, True),
             "i2": (True, False), "o2": (False, False), "after": (False, False)}
-    if (threads.inside("Nest.outer"), threads.inside("Nest.inner")) != nest[n]:
+    if (threads.inside("Nest.outer"), threads.inside("Nest.inner")) != nest[nest_step]:
         return False
     both = len([t for t in threads.all() if t.inside("Nest.outer") and t.inside("Nest.inner")])
-    if both != (1 if nest[n] == (True, True) else 0):
+    if both != (1 if nest[nest_step] == (True, True) else 0):
         return False
     return True
 
 # Every interesting row above is reached.
 exists assertion ReachMiddle:
-    return w == "C"
+    return walk_step == "C"
 
 exists assertion ReachCallee:
-    return c == "callee1"
+    return call_step == "callee1"
 
 exists assertion ReachCalleeEnd:
-    return c == "callee2"
+    return call_step == "callee2"
 
 exists assertion ReachReturn:
-    return r == "r1"
+    return ret_step == "r1"
 
 exists assertion ReachBreak:
-    return b == "b1"
+    return brk_step == "b1"
 
 exists assertion ReachInner:
-    return n == "i1"
+    return nest_step == "i1"
 
 exists assertion ReachInnerEnd:
-    return n == "i2"
+    return nest_step == "i2"

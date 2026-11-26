@@ -12,85 +12,86 @@ options:
 import threads
 
 action Init:
-    l1 = 0
-    l2 = 0
-    l3 = 0
-    l4 = 0
-    l5 = 0
-    l6 = 0
+    # Each *_count is the shadow counter for the label of the same name.
+    if_last_count = 0
+    loop_last_count = 0
+    in_loop_count = 0
+    oneof_inside_count = 0
+    in_oneof_count = 0
+    oneof_in_last_count = 0
 
 serial action IfLast:
     # The label ends with an if whose branch is an atomic block.
-    l1lbl:
+    if_last:
         atomic:
-            l1 += 1
-        if l1 > 0:
+            if_last_count += 1
+        if if_last_count > 0:
             atomic:
-                l1 -= 1
+                if_last_count -= 1
         else:
             atomic:
-                l1 -= 1
+                if_last_count -= 1
     pass
 
 serial action LoopLast:
     # The label ends with a loop. Each iteration ends on the loop body's end.
-    l2lbl:
+    loop_last:
         atomic:
-            l2 += 1
+            loop_last_count += 1
         for i in range(2):
             atomic:
-                l2 += 0
+                loop_last_count += 0
         atomic:
-            l2 -= 1
+            loop_last_count -= 1
 
 serial action LabelInLoop:
     # The label is the loop body; it is outside between iterations.
     for i in range(2):
-        l3lbl:
+        in_loop:
             atomic:
-                l3 += 1
+                in_loop_count += 1
             atomic:
-                l3 -= 1
+                in_loop_count -= 1
 
 serial action OneofInside:
-    l4lbl:
+    oneof_inside:
         atomic:
-            l4 += 1
+            oneof_inside_count += 1
         oneof:
             atomic:
-                l4 -= 1
+                oneof_inside_count -= 1
             serial:
                 atomic:
-                    l4 += 0
+                    oneof_inside_count += 0
                 atomic:
-                    l4 -= 1
+                    oneof_inside_count -= 1
 
 serial action LabelInOneof:
     # The label inherits oneof from the enclosing block, so it runs exactly
     # one of its two statements.
     oneof:
-        l5lbl:
+        in_oneof:
             atomic:
-                l5 += 1
-                l5 -= 1
+                in_oneof_count += 1
+                in_oneof_count -= 1
             atomic:
-                l5 += 1
-                l5 -= 1
+                in_oneof_count += 1
+                in_oneof_count -= 1
         atomic:
-            l5 += 0
+            in_oneof_count += 0
 
 serial action OneofInLast:
-    l6lbl:
+    oneof_in_last:
         atomic:
-            l6 += 1
+            oneof_in_last_count += 1
         oneof x in [1, 2]:
             atomic:
-                l6 -= 1
+                oneof_in_last_count -= 1
 
 always assertion Agrees:
-    return (threads.count("IfLast.l1lbl") == l1
-        and threads.count("LoopLast.l2lbl") == l2
-        and threads.count("LabelInLoop.l3lbl") == l3
-        and threads.count("OneofInside.l4lbl") == l4
-        and threads.count("LabelInOneof.l5lbl") == l5
-        and threads.count("OneofInLast.l6lbl") == l6)
+    return (threads.count("IfLast.if_last") == if_last_count
+        and threads.count("LoopLast.loop_last") == loop_last_count
+        and threads.count("LabelInLoop.in_loop") == in_loop_count
+        and threads.count("OneofInside.oneof_inside") == oneof_inside_count
+        and threads.count("LabelInOneof.in_oneof") == in_oneof_count
+        and threads.count("OneofInLast.oneof_in_last") == oneof_in_last_count)

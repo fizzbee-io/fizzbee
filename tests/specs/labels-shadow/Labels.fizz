@@ -21,7 +21,7 @@ NUM_SERVERS = 2
 role Server:
     action Init:
         self.txn = 0     # threads inside Pass.txn
-        self.work = 0    # threads inside Work.w
+        self.work = 0    # threads inside Work.work_body
         self.pass_ = 0   # threads running Pass
 
     serial action Pass:
@@ -43,7 +43,7 @@ role Server:
         self.Work()
 
     serial func Work():
-        w:
+        work_body:
             atomic:
                 self.work += 1
             atomic:
@@ -63,15 +63,15 @@ role Server:
 
 action Init:
     servers = [Server() for i in range(NUM_SERVERS)]
-    g = 0
+    global_count = 0
 
 serial action Global:
-    a:
-        b:
+    outer:
+        inner:
             atomic:
-                g += 1
+                global_count += 1
             atomic:
-                g -= 1
+                global_count -= 1
 
 
 always assertion Agrees:
@@ -80,16 +80,16 @@ always assertion Agrees:
             return False
         if threads.inside("Server.Pass.txn", s) != (s.txn > 0):
             return False
-        if threads.count("Server.Work.w", s) != s.work:
+        if threads.count("Server.Work.work_body", s) != s.work:
             return False
         if threads.count("Server.Pass", s) != s.pass_:
             return False
     if threads.count("Server.Pass.txn") != sum([s.txn for s in servers]):
         return False
-    if threads.count("Global.a") != g:
+    if threads.count("Global.outer") != global_count:
         return False
-    if threads.count("Global.b") != g:
+    if threads.count("Global.inner") != global_count:
         return False
-    if threads.inside("Global") != (g > 0):
+    if threads.inside("Global") != (global_count > 0):
         return False
     return True
