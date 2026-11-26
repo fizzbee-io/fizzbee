@@ -1,4 +1,4 @@
-"""Tests for parsing labeled blocks (`txn:`, `cs, txn:`)."""
+"""Tests for parsing labeled blocks (`txn:`)."""
 import contextlib
 import io
 import unittest
@@ -26,11 +26,18 @@ class LabelsTest(unittest.TestCase):
         self.assertEqual(lb.flow, ast.Flow.FLOW_UNKNOWN)
         self.assertEqual(len(lb.stmts), 2)
 
-    def test_several_labels(self):
-        b = action_block(parse("serial action A:\n    x = 1\n    cs, txn:\n        x = 2\n"), "A")
-        lb = b.stmts[1].block
-        self.assertEqual(list(lb.labels), ["cs", "txn"])
-        self.assertEqual(lb.flow, ast.Flow.FLOW_UNKNOWN)
+    def test_one_label_per_block(self):
+        # `cs, txn:` is not a labeled block; the parser reports a syntax error.
+        err = io.StringIO()
+        b = action_block(parse("serial action A:\n    x = 1\n    cs, txn:\n        x = 2\n", stderr=err), "A")
+        self.assertFalse(any(s.block.labels for s in b.stmts))
+        self.assertIn("mismatched input", err.getvalue())
+
+    def test_nested_labels_stay_nested(self):
+        b = action_block(parse("serial action A:\n    x = 1\n    txn:\n        cs:\n            x = 2\n"), "A")
+        outer = b.stmts[1].block
+        self.assertEqual(list(outer.labels), ["txn"])
+        self.assertEqual(list(outer.stmts[0].block.labels), ["cs"])
 
     def test_flow_word_before_label_is_rejected(self):
         # A label always inherits the flow; nest a flow block for another one.
@@ -48,10 +55,6 @@ class LabelsTest(unittest.TestCase):
     def test_annotated_assignment_is_not_a_label(self):
         b = action_block(parse("atomic action A:\n    y: int = 1\n    x = y\n"), "A")
         self.assertEqual(b.stmts[0].py_stmt.code.replace(" ", ""), "y:int=1")
-
-    def test_duplicate_label_on_one_block(self):
-        with self.assertRaises(Exception):
-            parse("serial action A:\n    txn, txn:\n        x = 2\n")
 
     def test_keyword_is_not_a_label(self):
         # `atomic:` stays a flow block, not a label named atomic.

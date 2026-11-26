@@ -2,7 +2,7 @@ package modelchecker
 
 // Block labels and the `threads` builtin module.
 //
-// A block can be named with `txn:` (or `cs, txn:`); it inherits the
+// A block can be named with `txn:` (one label; nest for more); it inherits the
 // enclosing flow. The
 // threads module answers questions about where threads are paused:
 //

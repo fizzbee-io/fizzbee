@@ -887,27 +887,14 @@ class BuildAstVisitor(FizzParserVisitor):
         return block
 
     # Visit a parse tree produced by FizzParser#labeled_block_stmt.
-    # `txn:` or `cs, txn:`. The flow is left unknown, so the block inherits
+    # `txn:`. The flow is left unknown, so the block inherits
     # the flow of its enclosing scope.
     def visitLabeled_block_stmt(self, ctx:FizzParser.Labeled_block_stmtContext):
-        labels = []
-        block = None
-        for child in ctx.getChildren():
-            if isinstance(child, FizzParser.Indented_blockContext):
-                # Keep a lone nested block nested: its own flow (say atomic)
-                # must not be replaced by the label's inherited flow.
-                block = self.visitSuite(child, unwrap=False)
-            elif hasattr(child, 'getSymbol'):
-                t = child.getSymbol().type
-                if t == FizzParser.NAME:
-                    name = child.getText()
-                    if name in labels:
-                        raise Exception(f"duplicate block label {name!r} at line {child.getSymbol().line}")
-                    labels.append(name)
-        if block is None:
-            block = ast.Block(source_info=get_source_info(ctx))
+        # Keep a lone nested block nested: its own flow (say atomic), or its
+        # own label, must not be replaced by this label's block.
+        block = self.visitSuite(ctx.indented_block(), unwrap=False)
         block.flow = ast.Flow.FLOW_UNKNOWN  # a label always inherits the flow
-        block.labels.extend(labels)
+        block.labels.append(ctx.NAME().getText())
         return block
 
     # Visit a parse tree produced by FizzParser#labeled_stmt.

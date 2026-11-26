@@ -12,7 +12,7 @@ action_options:
 # state, that threads.count and threads.inside give the same answer as the
 # counters. Covers: inner atomic steps, a loop body, break out of a label, a
 # return out of a label in a role func called from two actions, two threads
-# of the same action, several labels on one block, and a top-level action.
+# of the same action, nested labels, and a top-level action.
 
 import threads
 
@@ -66,11 +66,12 @@ action Init:
     g = 0
 
 serial action Global:
-    a, b:
-        atomic:
-            g += 1
-        atomic:
-            g -= 1
+    a:
+        b:
+            atomic:
+                g += 1
+            atomic:
+                g -= 1
 
 
 always assertion Agrees:

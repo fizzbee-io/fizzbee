@@ -88,10 +88,11 @@ compound_stmt
     | composedef                                                                     # compose_stmt
     | refinedef                                                                      # refine_stmt
     | (ATOMIC | SERIAL | PARALLEL | ONEOF) COLON suite                               # flow_stmt
-    // A labeled block: `txn:` or `cs, txn:`. It always inherits the enclosing
-    // flow; nest a flow block inside it for another flow. The body must start on
-    // its own line, since `txn: x = 1` is a Python annotated assignment.
-    | NAME (COMMA NAME)* COLON indented_block                                        # labeled_block_stmt
+    // A labeled block: `txn:`. It always inherits the enclosing flow; nest a
+    // flow block inside it for another flow, or another labeled block for a
+    // smaller region. The body must start on its own line, since `txn: x = 1`
+    // is a Python annotated assignment.
+    | NAME COLON indented_block                                                      # labeled_block_stmt
     ;
 
 suite
