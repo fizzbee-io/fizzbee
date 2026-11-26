@@ -182,10 +182,25 @@ func TestTallyCardinalityAndRoleFilter(t *testing.T) {
 	}
 	for _, c := range cases {
 		p := &Process{Files: files, Threads: c.threads}
-		n, m, card := lt.tally(p, c.role)
+		n, m, card := labelTargets{lt}.tally(p, c.role)
 		if n != c.wantN || m != c.wantMany || card.String() != c.wantCard {
 			t.Errorf("%s: got n=%d many=%d card=%s, want n=%d many=%d card=%s", c.name, n, m, card, c.wantN, c.wantMany, c.wantCard)
 		}
+	}
+
+	// A list of paths is a union: a thread inside both the action and its
+	// txn label is counted once.
+	whole, err := buildLabelIndex(files).resolve("Server.Pass")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := &Process{Files: files, Threads: []*Thread{thread(s0, nil, passTxnMid), thread(s1, nil, passBefore)}}
+	if n, _, card := (labelTargets{lt, whole}).tally(p, nil); n != 2 || card.String() != "MANY" {
+		t.Errorf("union: got n=%d card=%s, want n=2 card=MANY", n, card)
+	}
+	p = &Process{Files: files, Threads: []*Thread{thread(s0, nil, passTxnMid)}}
+	if n, _, card := (labelTargets{lt, whole}).tally(p, nil); n != 1 || card.String() != "1" {
+		t.Errorf("union of overlapping paths: got n=%d card=%s, want n=1 card=1", n, card)
 	}
 }
 

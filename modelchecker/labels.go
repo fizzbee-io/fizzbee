@@ -368,12 +368,44 @@ func processOf(t *starlark.Thread, name string) (*Process, error) {
 	return p, nil
 }
 
-// unpackPathRole reads (path, role=None) and resolves the path.
-func unpackPathRole(p *Process, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (*labelTarget, *lib.Role, error) {
-	var path string
+// labelTargets is a query over one or more paths: a thread matches when it
+// matches any of them, and is counted once.
+type labelTargets []*labelTarget
+
+func (lts labelTargets) threadMatches(files []*ast.File, t *Thread, role *lib.Role) bool {
+	for _, lt := range lts {
+		if lt.threadMatches(files, t, role) {
+			return true
+		}
+	}
+	return false
+}
+
+// unpackPathRole reads (path, role=None) and resolves the path, which is a
+// string or a list or tuple of strings.
+func unpackPathRole(p *Process, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (labelTargets, *lib.Role, error) {
+	var pathVal starlark.Value
 	var roleVal starlark.Value = starlark.None
-	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "path", &path, "role?", &roleVal); err != nil {
+	if err := starlark.UnpackArgs(b.Name(), args, kwargs, "path", &pathVal, "role?", &roleVal); err != nil {
 		return nil, nil, err
+	}
+	var paths []string
+	switch v := pathVal.(type) {
+	case starlark.String:
+		paths = []string{string(v)}
+	case starlark.Indexable: // list or tuple
+		for i := 0; i < v.Len(); i++ {
+			s, ok := v.Index(i).(starlark.String)
+			if !ok {
+				return nil, nil, fmt.Errorf("%s: path list must hold strings, got %s", b.Name(), v.Index(i).Type())
+			}
+			paths = append(paths, string(s))
+		}
+		if len(paths) == 0 {
+			return nil, nil, fmt.Errorf("%s: path list is empty", b.Name())
+		}
+	default:
+		return nil, nil, fmt.Errorf("%s: path must be a string or a list of strings, got %s", b.Name(), pathVal.Type())
 	}
 	var role *lib.Role
 	if roleVal != starlark.None {
@@ -383,14 +415,19 @@ func unpackPathRole(p *Process, b *starlark.Builtin, args starlark.Tuple, kwargs
 		}
 		role = r
 	}
-	lt, err := getLabelIndex(p.Files).resolve(path)
-	if err != nil {
-		return nil, nil, err
+	idx := getLabelIndex(p.Files)
+	lts := make(labelTargets, 0, len(paths))
+	for _, path := range paths {
+		lt, err := idx.resolve(path)
+		if err != nil {
+			return nil, nil, err
+		}
+		if role != nil && lt.scope.role != role.Name {
+			return nil, nil, fmt.Errorf("%s: role %s is not a %s (path %q)", b.Name(), role.String(), describeScopeRole(lt.scope), path)
+		}
+		lts = append(lts, lt)
 	}
-	if role != nil && lt.scope.role != role.Name {
-		return nil, nil, fmt.Errorf("%s: role %s is not a %s", b.Name(), role.String(), describeScopeRole(lt.scope))
-	}
-	return lt, role, nil
+	return lts, role, nil
 }
 
 func threadsQuery(t *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -417,7 +454,7 @@ func threadsQuery(t *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, 
 
 // tally counts the threads matching lt (after the role filter): n entries,
 // many of them standing for MANY capped copies, and the exact cardinality.
-func (lt *labelTarget) tally(p *Process, role *lib.Role) (n, many int, card *lib.CardinalityCounter) {
+func (lt labelTargets) tally(p *Process, role *lib.Role) (n, many int, card *lib.CardinalityCounter) {
 	card = lib.NewCardinalityCounter(0)
 	for _, th := range liveThreads(p) {
 		if !lt.threadMatches(p.Files, th, role) {
