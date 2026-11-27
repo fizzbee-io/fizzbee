@@ -346,6 +346,9 @@ func deepCloneStarlarkValueWithPermutations(value starlark.Value, refs map[starl
 			return newRole, nil
 		}
 	default:
+		if _, ok := value.(*threadHandle); ok {
+			return nil, errThreadHandleKept
+		}
 		return nil, fmt.Errorf("unsupported type: %T, %s", value, value.Type())
 	}
 }

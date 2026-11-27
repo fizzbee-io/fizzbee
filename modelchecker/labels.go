@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -60,11 +61,16 @@ type labelTarget struct {
 // actions with the same name) is kept as ambiguous and is an error only if
 // a query uses that path.
 type labelIndex struct {
+	files     []*ast.File // the files it was built from
 	targets   map[string]*labelTarget
 	ambiguous map[string]bool
 	err       error
 }
 
+// labelIndexCache holds the index of each loaded spec, keyed by its first
+// file. Every process of a run shares one Files slice, so the lookup is a
+// pointer compare; an entry is used only if it was built from the same
+// files, element by element.
 var labelIndexCache sync.Map // *ast.File (files[0]) -> *labelIndex
 
 func getLabelIndex(files []*ast.File) *labelIndex {
@@ -72,15 +78,17 @@ func getLabelIndex(files []*ast.File) *labelIndex {
 		return &labelIndex{targets: map[string]*labelTarget{}, ambiguous: map[string]bool{}}
 	}
 	if v, ok := labelIndexCache.Load(files[0]); ok {
-		return v.(*labelIndex)
+		if idx := v.(*labelIndex); slices.Equal(idx.files, files) {
+			return idx
+		}
 	}
 	idx := buildLabelIndex(files)
-	v, _ := labelIndexCache.LoadOrStore(files[0], idx)
-	return v.(*labelIndex)
+	labelIndexCache.Store(files[0], idx)
+	return idx
 }
 
 func buildLabelIndex(files []*ast.File) *labelIndex {
-	idx := &labelIndex{targets: map[string]*labelTarget{}, ambiguous: map[string]bool{}}
+	idx := &labelIndex{files: slices.Clone(files), targets: map[string]*labelTarget{}, ambiguous: map[string]bool{}}
 	put := func(key string, lt *labelTarget) {
 		old, clash := idx.targets[key]
 		if !clash {
@@ -215,10 +223,15 @@ func (lt *labelTarget) frameMatches(files []*ast.File, f *CallFrame, role *lib.R
 	if lt.exact != "" && f.pc == lt.exact {
 		return true
 	}
+	if f.pc == "" {
+		// Parked at a parallel join, so inside joinBlock with statements
+		// still to run: inside every region that contains that block.
+		return f.joinBlock != "" && strings.HasPrefix(f.joinBlock+".", lt.prefix)
+	}
 	if !strings.HasPrefix(f.pc, lt.prefix) {
 		return false
 	}
-	return !pastEnd(files[f.FileIndex], f.pc, lt.block)
+	return !pastEnd(files[f.FileIndex], f, lt.block)
 }
 
 // effectiveFlow is the flow a block runs with: its own, or for a block with
@@ -248,9 +261,11 @@ var stmtIndexSuffix = regexp.MustCompile(`^(.*)\.Stmts\[(\d+)\]$`)
 // block that was the last statement of its parent. Such a pc is past the
 // end of root when draining the markers, which runs no spec code, would
 // leave root. A loop body's end is not past the end: the loop may run again.
-// A parallel block's statements run in any order, so its end is unknown
-// until it is drained; it counts as not past the end.
-func pastEnd(file *ast.File, pc, root string) bool {
+// A parallel block ends when all its statements have run, which the
+// block's scope records (skipstmts); if that scope can't be identified,
+// the block counts as not past the end.
+func pastEnd(file *ast.File, f *CallFrame, root string) bool {
+	pc := f.pc
 	for strings.HasSuffix(pc, ".$") {
 		block := strings.TrimSuffix(pc, ".$")
 		if block == root {
@@ -290,7 +305,10 @@ func pastEnd(file *ast.File, pc, root string) bool {
 		k, _ := strconv.Atoi(m[2])
 		switch effectiveFlow(file, m[1], parent) {
 		case ast.Flow_FLOW_PARALLEL:
-			return false
+			s := scopeOfBlock(f, m[1])
+			if s == nil || len(s.skipstmts) < len(parent.GetStmts()) {
+				return false
+			}
 		case ast.Flow_FLOW_ONEOF:
 			// One statement runs, then the block ends.
 		default:
@@ -301,6 +319,26 @@ func pastEnd(file *ast.File, pc, root string) bool {
 		pc = m[1] + ".$"
 	}
 	return false
+}
+
+// scopeOfBlock returns the scope of the block at blockPath, an enclosing
+// block of a frame paused at an end-of-block marker. Each entered block
+// has one scope, so the scope chain lines up with the .Block segments of
+// the pc. Loops and any statements add scopes of their own; when the
+// counts differ, it returns nil rather than guess.
+func scopeOfBlock(f *CallFrame, blockPath string) *Scope {
+	depth := 0
+	for s := f.scope; s != nil; s = s.parent {
+		depth++
+	}
+	if depth != strings.Count(f.pc, ".Block.") {
+		return nil
+	}
+	s := f.scope
+	for up := depth - strings.Count(blockPath+".", ".Block."); up > 0 && s != nil; up-- {
+		s = s.parent
+	}
+	return s
 }
 
 func sameRole(a, b *lib.Role) bool {
@@ -325,15 +363,24 @@ func (lt *labelTarget) threadMatches(files []*ast.File, t *Thread, role *lib.Rol
 }
 
 // liveThreads are the spec's threads: assertion bodies run on a thread of
-// their own in a cloned process, and that thread is left out.
+// their own in a cloned process, and that thread is left out. So is a
+// thread that has run its action's last statement and is parked at the
+// action's end marker: it is finished, and is removed when drained.
 func liveThreads(p *Process) []*Thread {
 	out := make([]*Thread, 0, len(p.Threads))
 	for _, t := range p.Threads {
 		if t == nil || t.Stack == nil || t.Stack.Len() == 0 {
 			continue
 		}
-		if bottom := t.Stack.RawArray()[0]; strings.HasPrefix(bottom.pc, "Invariants[") {
+		bottom := t.Stack.RawArray()[0]
+		if strings.HasPrefix(bottom.pc, "Invariants[") {
 			continue
+		}
+		if t.Stack.Len() == 1 {
+			if i := strings.Index(bottom.pc, ".Block"); i >= 0 &&
+				pastEnd(p.Files[bottom.FileIndex], bottom, bottom.pc[:i+len(".Block")]) {
+				continue
+			}
 		}
 		out = append(out, t)
 	}
@@ -515,14 +562,20 @@ func threadsAll(t *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kw
 }
 
 // threadHandle is a thread seen from spec code. It is valid only while the
-// code that obtained it runs: it is not a value the state can hold, so it
-// cannot be kept across a yield.
+// code that obtained it runs. It is not a value the state can hold: the
+// clone at a yield or at a branch (any, oneof) rejects it with
+// errThreadHandleKept rather than copying a pointer into the old process.
 type threadHandle struct {
 	p *Process
 	t *Thread
 }
 
 var _ starlark.HasAttrs = (*threadHandle)(nil)
+
+var errThreadHandleKept = fmt.Errorf("threads: a thread handle (from threads.current() or threads.all()) " +
+	"is still held in a variable at a yield or a branch (any, oneof), where the state is copied; " +
+	"handles can't be stored. Use one within a single statement, for example " +
+	"threads.current().inside(path) or [t for t in threads.all() if t.inside(path)]")
 
 func (h *threadHandle) String() string {
 	return fmt.Sprintf("<thread %s>", h.t.actionName())

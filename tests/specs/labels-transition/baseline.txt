@@ -1,0 +1,15 @@
+Model checking tests/specs/labels-transition/Transition.json
+configFileName: tests/specs/labels-transition/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:1  max_concurrent_actions:2}  deadlock_detection:false
+Nodes: 7, queued: 0, elapsed: 725.62µs
+Peak (new): queue=3 pendingActionStarts=1
+Time taken for model checking: 836.672µs
+Writen graph dotfile: tests/specs/labels-transition/out/run_2026-11-27_21-58-41/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/labels-transition/out/run_2026-11-27_21-58-41/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 7 Unique states: 5
+IsLive: true
+Time taken to check liveness: 132.524µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/labels-transition/out/run_2026-11-27_21-58-41

@@ -1,7 +1,9 @@
 package modelchecker
 
 import (
+	"errors"
 	"slices"
+	"strings"
 	"testing"
 
 	ast "fizz/proto"
@@ -259,5 +261,46 @@ func TestSameThreadAcrossRoleInstances(t *testing.T) {
 	// Swapped instances: Server#1 has no Pass frame, Server#0 no Begin frame.
 	if txn.threadMatches(files, both, s1) || w.threadMatches(files, both, s0) {
 		t.Error("role filter must match the frame's own self, not any frame of the thread")
+	}
+}
+
+// A thread handle can't be part of the state: cloning one, alone or inside
+// a list held in a local, fails with errThreadHandleKept instead of the
+// generic unsupported-type error.
+func TestThreadHandleCannotBeCloned(t *testing.T) {
+	h := &threadHandle{}
+	for _, v := range []starlark.Value{h, starlark.NewList([]starlark.Value{h})} {
+		_, err := deepCloneStarlarkValueWithPermutations(v, map[starlark.Value]starlark.Value{}, nil, 0)
+		if !errors.Is(err, errThreadHandleKept) {
+			t.Errorf("clone of %s: got %v, want errThreadHandleKept", v.Type(), err)
+		}
+	}
+}
+
+// Assertions, transition assertions included, run on a clone with
+// predicate calls enabled; there is no current thread there.
+func TestThreadsCurrentFailsInAssertions(t *testing.T) {
+	p := &Process{Files: []*ast.File{labelsFile()}, Current: 0,
+		Threads: []*Thread{thread(nil, nil, "Actions[0].Block.Stmts[0].Block.Stmts[0]")}}
+	p.enablePredicateCalls()
+	th := &starlark.Thread{}
+	th.SetLocal(lib.ProcessKey, p)
+	_, err := starlark.Call(th, threadsModule.Members["current"], nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "no current thread in an assertion") {
+		t.Errorf("threads.current() in an assertion: got %v", err)
+	}
+}
+
+// The cache returns an index only for the files it was built from.
+func TestLabelIndexCacheMatchesAllFiles(t *testing.T) {
+	a, b := labelsFile(), labelsFile()
+	b.Actions[0].Name = "Other"
+	first := getLabelIndex([]*ast.File{a})
+	second := getLabelIndex([]*ast.File{a, b})
+	if first == second {
+		t.Fatal("same index for different file lists")
+	}
+	if _, ok := second.targets["Other"]; !ok {
+		t.Error("index for [a, b] is missing b's action")
 	}
 }
