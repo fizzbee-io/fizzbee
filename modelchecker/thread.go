@@ -264,8 +264,9 @@ type CallFrame struct {
 
 	// joinBlock is the parallel block a frame is parked in while pc is ""
 	// (a parallel join: the remaining statements run on forks). It is
-	// only read when pc is "", by the threads module, to tell which
-	// labeled blocks the frame is inside.
+	// meaningful only while pc is "", and it is part of the state hash
+	// then: without it, joins in two different parallel blocks with the
+	// same scopes would hash alike and be merged.
 	joinBlock string
 }
 

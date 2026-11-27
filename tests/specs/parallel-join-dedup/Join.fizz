@@ -1,0 +1,32 @@
+---
+deadlock_detection: false
+options:
+  max_actions: 1
+---
+# Two parallel blocks under a oneof. After each block's first statement the
+# thread is parked at a parallel join (pc ""), with the same scopes in both.
+# The join states must not merge: if they did, the second block's
+# `z = x + 1` would never run after its `x += 1`, and z == 2 would be
+# unreachable.
+
+action Init:
+    x = 0
+    y = 0
+    z = 0
+
+serial action A:
+    oneof:
+        parallel:
+            atomic:
+                x += 1
+            atomic:
+                y += 1
+        parallel:
+            atomic:
+                x += 1
+            atomic:
+                z = x + 1
+
+# In the second branch, running x += 1 first and then z = x + 1 gives z == 2.
+exists assertion SecondBranchXFirst:
+    return z == 2
