@@ -261,6 +261,13 @@ type CallFrame struct {
 
 	callerAssignVarNames []string
 	obj                  *lib.Role
+
+	// joinBlock is the parallel block a frame is parked in while pc is ""
+	// (a parallel join: the remaining statements run on forks). It is
+	// meaningful only while pc is "", and it is part of the state hash
+	// then: without it, joins in two different parallel blocks with the
+	// same scopes would hash alike and be merged.
+	joinBlock string
 }
 
 func (c *CallFrame) MarshalJSON() ([]byte, error) {
@@ -293,6 +300,7 @@ func (c *CallFrame) Clone(refs map[starlark.Value]starlark.Value, permutations m
 		vars:                 newVars,
 		callerAssignVarNames: c.callerAssignVarNames,
 		obj:                  obj,
+		joinBlock:            c.joinBlock,
 	}
 	return newFrame, nil
 }
@@ -1227,6 +1235,7 @@ func (t *Thread) executeEndOfStatement() ([]*Process, bool) {
 			forks = append(forks, fork)
 		}
 		currentFrame.pc = ""
+		currentFrame.joinBlock = blockPath
 		return forks, enabled
 	default:
 		panic(fmt.Sprintf("Unknown flow type at %s", t.currentPc()))
