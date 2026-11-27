@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -39,25 +38,38 @@ import (
 	"go.starlark.net/starlarkstruct"
 )
 
-// labelScope is one action or function, top-level or in a role.
-type labelScope struct {
+// labelTarget is what a query path names: an action or function, or a
+// labeled block in one.
+type labelTarget struct {
 	fileIndex int
-	role      string            // "" for top-level
-	path      string            // e.g. "Roles[0].Actions[1]"
-	labels    map[string]string // label -> block path
+	role      string // "" for a top-level action or function
+	scope     string // the action or function: "Role.Name" or "Name"
+	label     string // "" when the path names the whole action or function
+	prefix    string // a frame matches when its pc has this prefix
+	exact     string // ... or equals this (the def itself, before its block)
+	block     string // the block whose end means the frame is no longer inside
 }
 
+// labelIndex maps every valid query path ("Server.Pass", "Server.Pass.txn",
+// "Global", "Global.g") to its target. A query is one map lookup.
+//
+// Two targets can produce the same path: a top-level action Server with a
+// label Pass, and role Server's action Pass, are both "Server.Pass". Such a
+// clash is an error when the spec loads if a label is involved, so specs
+// without labels are never affected. A clash of two unlabeled paths (two
+// actions with the same name) is kept as ambiguous and is an error only if
+// a query uses that path.
 type labelIndex struct {
-	roles  map[string]bool
-	scopes map[string]*labelScope // "Role.Scope" or "Scope"
-	err    error
+	targets   map[string]*labelTarget
+	ambiguous map[string]bool
+	err       error
 }
 
 var labelIndexCache sync.Map // *ast.File (files[0]) -> *labelIndex
 
 func getLabelIndex(files []*ast.File) *labelIndex {
 	if len(files) == 0 {
-		return &labelIndex{roles: map[string]bool{}, scopes: map[string]*labelScope{}}
+		return &labelIndex{targets: map[string]*labelTarget{}, ambiguous: map[string]bool{}}
 	}
 	if v, ok := labelIndexCache.Load(files[0]); ok {
 		return v.(*labelIndex)
@@ -68,43 +80,41 @@ func getLabelIndex(files []*ast.File) *labelIndex {
 }
 
 func buildLabelIndex(files []*ast.File) *labelIndex {
-	idx := &labelIndex{roles: map[string]bool{}, scopes: map[string]*labelScope{}}
+	idx := &labelIndex{targets: map[string]*labelTarget{}, ambiguous: map[string]bool{}}
+	put := func(key string, lt *labelTarget) {
+		old, clash := idx.targets[key]
+		if !clash {
+			idx.targets[key] = lt
+			return
+		}
+		if old.label == "" && lt.label == "" {
+			idx.ambiguous[key] = true
+			return
+		}
+		if idx.err == nil {
+			idx.err = fmt.Errorf("threads: %q names more than one place: %s and %s", key, old.describe(), lt.describe())
+		}
+	}
 	add := func(fi int, role, name, path string, block *ast.Block) {
-		key := name
+		scope := name
 		if role != "" {
-			key = role + "." + name
+			scope = role + "." + name
 		}
-		s := &labelScope{fileIndex: fi, role: role, path: path, labels: map[string]string{}}
-		if old, ok := idx.scopes[key]; ok && idx.err == nil && old.path != path {
-			idx.err = fmt.Errorf("threads: %q names more than one action or function", key)
-		}
-		idx.scopes[key] = s
+		put(scope, &labelTarget{fileIndex: fi, role: role, scope: scope,
+			prefix: path + ".", exact: path, block: path + ".Block"})
 		if block == nil {
 			return
 		}
 		collectBlockLabels(reflect.ValueOf(block), path+".Block", func(label, blockPath string) {
-			if _, dup := s.labels[label]; dup && idx.err == nil {
-				idx.err = fmt.Errorf("threads: label %q appears more than once in %s", label, key)
-			}
-			s.labels[label] = blockPath
+			put(scope+"."+label, &labelTarget{fileIndex: fi, role: role, scope: scope, label: label,
+				prefix: blockPath + ".", block: blockPath})
 		})
-	}
-	for _, file := range files {
-		for _, role := range file.Roles {
-			idx.roles[role.Name] = true
-		}
 	}
 	for fi, file := range files {
 		for i, a := range file.Actions {
-			if idx.roles[a.Name] && idx.err == nil {
-				idx.err = fmt.Errorf("threads: %q is both a role and a top-level action", a.Name)
-			}
 			add(fi, "", a.Name, fmt.Sprintf("Actions[%d]", i), a.Block)
 		}
 		for i, f := range file.Functions {
-			if idx.roles[f.Name] && idx.err == nil {
-				idx.err = fmt.Errorf("threads: %q is both a role and a top-level function", f.Name)
-			}
 			add(fi, "", f.Name, fmt.Sprintf("Functions[%d]", i), f.Block)
 		}
 		for r, role := range file.Roles {
@@ -117,6 +127,13 @@ func buildLabelIndex(files []*ast.File) *labelIndex {
 		}
 	}
 	return idx
+}
+
+func (lt *labelTarget) describe() string {
+	if lt.label == "" {
+		return lt.scope
+	}
+	return fmt.Sprintf("label %s in %s", lt.label, lt.scope)
 }
 
 // collectBlockLabels walks v (an AST node) and reports every labeled Block
@@ -156,53 +173,39 @@ func collectBlockLabels(v reflect.Value, path string, visit func(label, blockPat
 	}
 }
 
-// labelTarget is a resolved query path.
-type labelTarget struct {
-	scope  *labelScope
-	prefix string // a frame matches when its pc has this prefix
-	exact  string // ... or equals this (the def itself, before its block)
-	block  string // the block whose end means the frame is no longer inside
-}
-
 func (idx *labelIndex) resolve(path string) (*labelTarget, error) {
 	if idx.err != nil {
 		return nil, idx.err
 	}
-	parts := strings.Split(path, ".")
-	n := 1
-	if idx.roles[parts[0]] {
-		n = 2
+	if idx.ambiguous[path] {
+		return nil, fmt.Errorf("threads: %q names more than one action or function", path)
 	}
-	if len(parts) < n || len(parts) > n+1 {
-		return nil, fmt.Errorf("threads: bad path %q: want [Role.]ActionOrFunc[.label]", path)
+	if lt, ok := idx.targets[path]; ok {
+		return lt, nil
 	}
-	key := strings.Join(parts[:n], ".")
-	scope, ok := idx.scopes[key]
-	if !ok {
-		return nil, fmt.Errorf("threads: no action or function %q", key)
-	}
-	if len(parts) == n {
-		return &labelTarget{scope: scope, prefix: scope.path + ".", exact: scope.path, block: scope.path + ".Block"}, nil
-	}
-	label := parts[n]
-	block, ok := scope.labels[label]
-	if !ok {
-		known := make([]string, 0, len(scope.labels))
-		for l := range scope.labels {
-			known = append(known, l)
+	// Not found. If the path minus its last part is an action or function,
+	// say which labels it has.
+	if i := strings.LastIndex(path, "."); i >= 0 {
+		if scope, ok := idx.targets[path[:i]]; ok && scope.label == "" {
+			var known []string
+			for _, lt := range idx.targets {
+				if lt.scope == scope.scope && lt.label != "" {
+					known = append(known, lt.label)
+				}
+			}
+			sort.Strings(known)
+			return nil, fmt.Errorf("threads: no label %q in %s (labels: %s)", path[i+1:], scope.scope, strings.Join(known, ", "))
 		}
-		sort.Strings(known)
-		return nil, fmt.Errorf("threads: no label %q in %s (labels: %s)", label, key, strings.Join(known, ", "))
 	}
-	return &labelTarget{scope: scope, prefix: block + ".", block: block}, nil
+	return nil, fmt.Errorf("threads: no action, function or label %q: want [Role.]ActionOrFunc[.label]", path)
 }
 
 func (lt *labelTarget) frameMatches(files []*ast.File, f *CallFrame, role *lib.Role) bool {
-	if f == nil || f.FileIndex != lt.scope.fileIndex {
+	if f == nil || f.FileIndex != lt.fileIndex {
 		return false
 	}
-	if lt.scope.role != "" {
-		if f.obj == nil || f.obj.Name != lt.scope.role {
+	if lt.role != "" {
+		if f.obj == nil || f.obj.Name != lt.role {
 			return false
 		}
 		if role != nil && !sameRole(f.obj, role) {
@@ -422,8 +425,8 @@ func unpackPathRole(p *Process, b *starlark.Builtin, args starlark.Tuple, kwargs
 		if err != nil {
 			return nil, nil, err
 		}
-		if role != nil && lt.scope.role != role.Name {
-			return nil, nil, fmt.Errorf("%s: role %s is not a %s (path %q)", b.Name(), role.String(), describeScopeRole(lt.scope), path)
+		if role != nil && lt.role != role.Name {
+			return nil, nil, fmt.Errorf("%s: role %s is not a %s (path %q)", b.Name(), role.String(), describeScopeRole(lt.role), path)
 		}
 		lts = append(lts, lt)
 	}
@@ -552,29 +555,16 @@ func (h *threadHandle) Attr(name string) (starlark.Value, error) {
 	return nil, nil
 }
 
-func describeScopeRole(s *labelScope) string {
-	if s.role == "" {
+func describeScopeRole(role string) string {
+	if role == "" {
 		return "role (the path names a top-level action or function)"
 	}
-	return s.role
+	return role
 }
 
-// checkLabels reports label errors found when the spec is loaded:
-// duplicate labels in one scope, and a role sharing a name with a
-// top-level action or function.
+// checkLabels reports label errors found when the spec is loaded: a label
+// used twice in one action or function, or a labeled path that also names
+// something else.
 func checkLabels(files []*ast.File) error {
 	return getLabelIndex(files).err
-}
-
-// labelsInFiles lists every label, for warnings and tests.
-func labelsInFiles(files []*ast.File) []string {
-	idx := getLabelIndex(files)
-	var out []string
-	for key, s := range idx.scopes {
-		for l := range s.labels {
-			out = append(out, key+"."+l)
-		}
-	}
-	slices.Sort(out)
-	return out
 }

@@ -59,13 +59,14 @@ func TestLabelPathsResolveLikePcs(t *testing.T) {
 	files := []*ast.File{labelsFile()}
 	idx := buildLabelIndex(files)
 	n := 0
-	for key, s := range idx.scopes {
-		for label, path := range s.labels {
-			n++
-			b, ok := GetProtoFieldByPath(files[s.fileIndex], path).(*ast.Block)
-			if !ok || b == nil || !slices.Contains(b.GetLabels(), label) {
-				t.Errorf("%s.%s: path %s does not resolve to a block labeled %q", key, label, path, label)
-			}
+	for key, lt := range idx.targets {
+		if lt.label == "" {
+			continue
+		}
+		n++
+		b, ok := GetProtoFieldByPath(files[lt.fileIndex], lt.block).(*ast.Block)
+		if !ok || b == nil || !slices.Contains(b.GetLabels(), lt.label) {
+			t.Errorf("%s: path %s does not resolve to a block labeled %q", key, lt.block, lt.label)
 		}
 	}
 	if n == 0 {
@@ -135,10 +136,36 @@ func TestLabelIndexErrors(t *testing.T) {
 	if err := buildLabelIndex([]*ast.File{dup}).err; err == nil {
 		t.Error("a label used twice in one action should be an error")
 	}
+	// A top-level action Server with a label Pass clashes with role
+	// Server's action Pass: both are "Server.Pass".
 	clash := labelsFile()
 	clash.Actions[0].Name = "Server"
+	clash.Actions[0].Block.Stmts[0].Block.Labels = []string{"Pass"}
 	if err := buildLabelIndex([]*ast.File{clash}).err; err == nil {
-		t.Error("a top-level action named like a role should be an error")
+		t.Error("a labeled path that also names a role's action should be an error")
+	}
+	// Without a label, a top-level action named like a role is fine.
+	shared := labelsFile()
+	shared.Actions[0].Name = "Server"
+	shared.Actions[0].Block.Stmts[0].Block.Labels = nil
+	idx := buildLabelIndex([]*ast.File{shared})
+	if idx.err != nil {
+		t.Errorf("a top-level action named like a role, with no clashing label: %v", idx.err)
+	}
+	for _, path := range []string{"Server", "Server.Pass", "Server.Pass.txn"} {
+		if _, err := idx.resolve(path); err != nil {
+			t.Errorf("resolve(%q): %v", path, err)
+		}
+	}
+	// Two unlabeled actions with one name are an error only when queried.
+	twice := labelsFile()
+	twice.Actions = append(twice.Actions, &ast.Action{Name: "Global"})
+	idx = buildLabelIndex([]*ast.File{twice})
+	if idx.err != nil {
+		t.Errorf("an unqueried name clash should not fail the load: %v", idx.err)
+	}
+	if _, err := idx.resolve("Global"); err == nil {
+		t.Error("querying an ambiguous path should be an error")
 	}
 }
 
