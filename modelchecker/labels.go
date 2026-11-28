@@ -564,7 +564,7 @@ var _ starlark.HasAttrs = (*threadHandle)(nil)
 var errThreadHandleKept = fmt.Errorf("threads: a thread handle (from threads.current() or threads.all()) " +
 	"is still held in a variable at a yield or a branch (any, oneof), where the state is copied; " +
 	"handles can't be stored. Use one within a single statement, for example " +
-	"threads.current().inside(path) or [t for t in threads.all() if t.inside(path)]")
+	"threads.current().inside(path) or any([t.inside(path) for t in threads.all()])")
 
 func (h *threadHandle) String() string {
 	return fmt.Sprintf("<thread %s>", h.t.actionName())
