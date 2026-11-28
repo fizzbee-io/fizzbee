@@ -102,3 +102,28 @@ func TestProcessHashCoversEveryPart(t *testing.T) {
 	assert.Equal(t, build(twoThreads(false)), build(twoThreads(true)), "thread order")
 	assert.Equal(t, base, build(func(p *Process) { p.Threads = append(p.Threads, nil) }), "removed thread")
 }
+
+// A frame parked at a parallel join (pc "") hashes its join block, so joins
+// in two different parallel blocks stay apart. Any other frame ignores
+// joinBlock: it is meaningful only while pc is "".
+func TestParallelJoinHashIncludesJoinBlock(t *testing.T) {
+	frame := func(pc, joinBlock string) *CallFrame {
+		return &CallFrame{pc: pc, joinBlock: joinBlock, scope: &Scope{vars: starlark.StringDict{}}}
+	}
+	assert.NotEqual(t,
+		frame("", "Actions[0].Block.Stmts[0].Block").HashCode(),
+		frame("", "Actions[0].Block.Stmts[1].Block").HashCode(),
+		"joins in different parallel blocks must hash apart")
+	assert.Equal(t,
+		frame("Actions[0].Block.Stmts[0]", "A").HashCode(),
+		frame("Actions[0].Block.Stmts[0]", "B").HashCode(),
+		"joinBlock must not affect a frame that is not at a join")
+	assert.Equal(t,
+		frame("Actions[0].Block.Stmts[0]", "").HashCode(),
+		frame("Actions[0].Block.Stmts[0]", "A").HashCode(),
+		"a stale joinBlock must not affect a frame that is not at a join")
+
+	cloned, err := frame("", "Actions[0].Block.Stmts[1].Block").Clone(map[starlark.Value]starlark.Value{}, nil, 0)
+	require.NoError(t, err)
+	assert.Equal(t, "Actions[0].Block.Stmts[1].Block", cloned.joinBlock, "Clone must keep joinBlock")
+}
