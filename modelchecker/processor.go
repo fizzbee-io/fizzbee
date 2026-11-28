@@ -3027,7 +3027,12 @@ func (p *Processor) crashRoles(node *Node, safeRolesList []*lib.Role) *Node {
 	var failedNode *Node
 	var crashNode *Node
 	for _, role := range node.Roles {
-		if !slices.Contains(safeRolesList, role) {
+		// node may be a crash fork whose roles are copies of the ones in
+		// safeRolesList, so match by instance, not by pointer.
+		isSafe := slices.ContainsFunc(safeRolesList, func(safe *lib.Role) bool {
+			return sameRoleInstance(safe, role)
+		})
+		if !isSafe {
 			crashNode, failedNode = p.crashRole(node, role)
 			if failedNode != nil {
 				return failedNode

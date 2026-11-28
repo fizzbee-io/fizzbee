@@ -1,0 +1,68 @@
+---
+deadlock_detection: false
+action_options:
+  Caller.Run:
+    crash_on_yield: false
+---
+# A role whose method is still on a thread's stack, below a call into
+# another role, must not crash: its frame would resume with reset state.
+# crashProcess marks the caller safe, then crashRoles crashes some other
+# role (Bystander) and recurses on the fork to crash more. The fork holds
+# copies of the roles, so the safe list must match roles by instance (name
+# and ID), not by pointer; otherwise the recursion crashes the caller too,
+# resetting its ephemeral busy flag in the middle of the call.
+
+import threads
+
+@state(ephemeral=['busy'])
+role Caller:
+    action Init:
+        self.busy = False
+        self.done = False
+
+    serial action Run:
+        atomic:
+            require not self.busy and not self.done
+            self.busy = True
+        calling:
+            callee.Work()
+        atomic:
+            self.busy = False
+            self.done = True
+
+@state(ephemeral=['x'])
+role Callee:
+    action Init:
+        self.x = 0
+
+    func Work():
+        atomic:
+            self.x = 1
+        atomic:
+            self.x = 2
+
+@state(ephemeral=['y'])
+role Bystander:
+    action Init:
+        self.y = 0
+        self.bumped = False
+
+    # Gives a crash of the bystander something to reset (y) next to a
+    # durable mark (bumped), so the crash reaches a new state and
+    # crashRoles recurses from it.
+    atomic action Bump:
+        require not self.bumped
+        self.y = 1
+        self.bumped = True
+
+action Init:
+    bystander = Bystander()
+    callee = Callee()
+    caller = Caller()
+
+always assertion CallerKeepsStateDuringCall:
+    return not threads.inside("Caller.Run.calling") or caller.busy
+
+# The call does get under way, so the assertion is not vacuous.
+exists assertion InsideCall:
+    return threads.inside("Caller.Run.calling")
