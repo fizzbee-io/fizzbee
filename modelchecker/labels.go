@@ -552,7 +552,7 @@ func threadsAll(t *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kw
 
 // threadHandle is a thread seen from spec code. It is valid only while the
 // code that obtained it runs. It is not a value the state can hold: the
-// clone at a yield or at a branch (any, oneof) rejects it with
+// clone at a yield or at a branch (oneof) rejects it with
 // errThreadHandleKept rather than copying a pointer into the old process.
 type threadHandle struct {
 	p *Process
@@ -562,9 +562,9 @@ type threadHandle struct {
 var _ starlark.HasAttrs = (*threadHandle)(nil)
 
 var errThreadHandleKept = fmt.Errorf("threads: a thread handle (from threads.current() or threads.all()) " +
-	"is still held in a variable at a yield or a branch (any, oneof), where the state is copied; " +
+	"is still held in a variable at a yield or a oneof branch, where the state is copied; " +
 	"handles can't be stored. Use one within a single statement, for example " +
-	"threads.current().inside(path) or any([t.inside(path) for t in threads.all()])")
+	"threads.current().inside(path) or (True in [t.inside(path) for t in threads.all()])")
 
 func (h *threadHandle) String() string {
 	return fmt.Sprintf("<thread %s>", h.t.actionName())
