@@ -205,7 +205,7 @@ func (lt *labelTarget) frameMatches(files []*ast.File, f *CallFrame, role *lib.R
 		if f.obj == nil || f.obj.Name != lt.role {
 			return false
 		}
-		if role != nil && !sameRole(f.obj, role) {
+		if role != nil && !sameRoleInstance(f.obj, role) {
 			return false
 		}
 	}
@@ -328,17 +328,6 @@ func scopeOfBlock(f *CallFrame, blockPath string) *Scope {
 		s = s.parent
 	}
 	return s
-}
-
-func sameRole(a, b *lib.Role) bool {
-	if a == b {
-		return true
-	}
-	if a.Name != b.Name {
-		return false
-	}
-	eq, err := starlark.Equal(a.ID, b.ID)
-	return err == nil && eq
 }
 
 // threadMatches reports whether some frame of t matches lt.

@@ -305,3 +305,34 @@ func TestLabelIndexIsPerRun(t *testing.T) {
 		t.Error("a separate run should build its own label index")
 	}
 }
+
+// sameRoleInstance compares role instances by name and ID value, not by
+// pointer: forks and assertion clones hold copies of the roles.
+func TestSameRoleInstance(t *testing.T) {
+	model := func(name string, id int64) *lib.Role {
+		return &lib.Role{Name: name, ID: lib.NewModelValue(name, id)}
+	}
+	sym := func(name string, id int64) *lib.Role {
+		return &lib.Role{Name: name, ID: lib.NewSymmetricValue(name, id), Symmetric: true}
+	}
+	cases := []struct {
+		name string
+		a, b *lib.Role
+		want bool
+	}{
+		{"same model ID, separate objects", model("Server", 0), model("Server", 0), true},
+		{"different model IDs", model("Server", 0), model("Server", 1), false},
+		{"same symmetric ID, separate objects", sym("Server", 0), sym("Server", 0), true},
+		{"different symmetric IDs", sym("Server", 0), sym("Server", 1), false},
+		{"same int ID, separate objects", server(0), server(0), true},
+		{"different names, equal IDs", &lib.Role{Name: "Server", ID: starlark.MakeInt(0)}, &lib.Role{Name: "Client", ID: starlark.MakeInt(0)}, false},
+		{"both nil", nil, nil, true},
+		{"one nil", server(0), nil, false},
+		{"other nil", nil, server(0), false},
+	}
+	for _, c := range cases {
+		if got := sameRoleInstance(c.a, c.b); got != c.want {
+			t.Errorf("%s: got %v, want %v", c.name, got, c.want)
+		}
+	}
+}

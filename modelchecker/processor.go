@@ -3027,7 +3027,12 @@ func (p *Processor) crashRoles(node *Node, safeRolesList []*lib.Role) *Node {
 	var failedNode *Node
 	var crashNode *Node
 	for _, role := range node.Roles {
-		if !slices.Contains(safeRolesList, role) {
+		// node may be a crash fork whose roles are copies of the ones in
+		// safeRolesList, so match by instance, not by pointer.
+		isSafe := slices.ContainsFunc(safeRolesList, func(safe *lib.Role) bool {
+			return sameRoleInstance(safe, role)
+		})
+		if !isSafe {
 			crashNode, failedNode = p.crashRole(node, role)
 			if failedNode != nil {
 				return failedNode
@@ -3044,6 +3049,19 @@ func (p *Processor) crashRoles(node *Node, safeRolesList []*lib.Role) *Node {
 	return failedNode
 }
 
+// sameRoleInstance reports whether a and b are the same role instance,
+// possibly copies of it in different processes.
+func sameRoleInstance(a, b *lib.Role) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	if a.Name != b.Name {
+		return false
+	}
+	eq, err := starlark.Equal(a.ID, b.ID)
+	return err == nil && eq
+}
+
 func (p *Processor) crashRole(node *Node, role *lib.Role) (*Node, *Node) {
 	if role == nil || !p.durabilitySpec.HasDurabilitySpec(role.Name) {
 		return nil, nil
@@ -3056,7 +3074,11 @@ func (p *Processor) crashRole(node *Node, role *lib.Role) (*Node, *Node) {
 		return nil, nil
 	}
 	for i, thread := range crashNode.Threads {
-		if thread == nil || thread.currentFrame().obj == nil || thread.currentFrame().obj.Name != role.Name {
+		// Only the crashed instance's threads die. crashNode is a fork, so
+		// its frames hold the fork's copies of the roles: compare by type
+		// and ID, not by pointer, and not by type alone (which would also
+		// kill the threads of every other instance of the role).
+		if thread == nil || !sameRoleInstance(thread.currentFrame().obj, role) {
 			continue
 		}
 		crashNode.removeThread(i)
