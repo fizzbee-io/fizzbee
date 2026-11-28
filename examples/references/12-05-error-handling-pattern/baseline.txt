@@ -2,13 +2,12 @@ Model checking examples/references/12-05-error-handling-pattern/Errors.json
 configFileName: examples/references/12-05-error-handling-pattern/fizz.yaml
 fizz.yaml not found. Using default options
 StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2}
-Nodes: 240, queued: 0, elapsed: 11.863333ms
-Time taken for model checking: 11.879458ms
-Writen graph dotfile: examples/references/12-05-error-handling-pattern/out/run_2026-03-07_23-55-24/graph.dot
-To generate svg, run: 
-dot -Tsvg examples/references/12-05-error-handling-pattern/out/run_2026-03-07_23-55-24/graph.dot -o graph.svg && open graph.svg
-Valid Nodes: 240 Unique states: 213
+Nodes: 251, queued: 0, elapsed: 11.933226ms
+Peak (new): queue=50 pendingActionStarts=4
+Time taken for model checking: 11.953757ms
+Skipping dotfile generation. Too many Nodes: 251
+Valid Nodes: 251 Unique states: 205
 IsLive: true
-Time taken to check liveness: 8.189917ms
+Time taken to check liveness: 740.073µs
 PASSED: Model checker completed successfully
-Writen 1 node files and 1 link files to dir examples/references/12-05-error-handling-pattern/out/run_2026-03-07_23-55-24
+Writen 1 node files and 1 link files to dir examples/references/12-05-error-handling-pattern/out/run_2026-11-20_18-02-45

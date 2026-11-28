@@ -1,0 +1,13 @@
+Model checking tests/specs/labels-boundaries/Boundaries.json
+configFileName: tests/specs/labels-boundaries/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:1 crash_on_yield:false} deadlock_detection:false
+Nodes: 320, queued: 0, elapsed: 33.726886ms
+Peak (new): queue=30 pendingActionStarts=5
+Time taken for model checking: 33.98802ms
+Skipping dotfile generation. Too many Nodes: 320
+Valid Nodes: 320 Unique states: 320
+IsLive: true
+Time taken to check liveness: 796.257µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/labels-boundaries/out/run_2026-11-13_18-57-30

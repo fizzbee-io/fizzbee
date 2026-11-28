@@ -414,6 +414,7 @@ func writeFrame(w *lib.StateWriter, f *CallFrame) error {
 	w.WriteUvarint(uint64(f.FileIndex))
 	w.WriteString(f.pc)
 	w.WriteString(f.Name)
+	w.WriteString(f.joinBlock)
 	if err := writeScopeChain(w, f.scope); err != nil {
 		return err
 	}
@@ -741,7 +742,7 @@ func readThread(r *lib.StateReader, p *Process) (*Thread, error) {
 }
 
 func readFrame(r *lib.StateReader) (*CallFrame, error) {
-	f := &CallFrame{FileIndex: int(r.ReadUvarint()), pc: r.ReadString(), Name: r.ReadString()}
+	f := &CallFrame{FileIndex: int(r.ReadUvarint()), pc: r.ReadString(), Name: r.ReadString(), joinBlock: r.ReadString()}
 	if r.Err() != nil {
 		return nil, r.Err()
 	}

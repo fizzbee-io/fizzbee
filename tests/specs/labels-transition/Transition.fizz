@@ -1,0 +1,46 @@
+---
+deadlock_detection: false
+options:
+  max_actions: 1
+---
+# threads queries in a transition assertion read the after state, the same
+# as bare state variables do. A step that enters txn ends with the thread
+# inside it; the step that runs txn's last statement ends with the thread
+# outside it, at the statement after; the action's last step ends with the
+# thread gone. The assertion's own helper thread is never counted.
+
+import threads
+
+action Init:
+    x = 0
+
+serial action Enter:
+    txn:
+        atomic:
+            x = 1
+        atomic:
+            x = 2
+    atomic:
+        x = 3
+
+transition assertion AfterState(before, after):
+    if before.x == 0 and after.x == 1:
+        # Entered txn in this step.
+        return (threads.inside("Enter.txn") and threads.count("Enter.txn") == 1
+                and len(threads.all()) == 1)
+    if before.x == 1 and after.x == 2:
+        # Ran txn's last statement: still in Enter, no longer in txn.
+        return (not threads.inside("Enter.txn") and threads.inside("Enter")
+                and len(threads.all()) == 1)
+    if before.x == 2 and after.x == 3:
+        # The action finished in this step.
+        return len(threads.all()) == 0 and not threads.inside("Enter")
+    return True
+
+# Make sure each branch of AfterState is reached.
+exists assertion ReachedTxn:
+    return x == 1
+exists assertion ReachedAfterTxn:
+    return x == 2
+exists assertion ReachedEnd:
+    return x == 3

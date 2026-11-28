@@ -1,0 +1,26 @@
+---
+deadlock_detection: false
+---
+
+action Init:
+    x = 0
+    y = 0
+    done = False
+
+atomic action Bump:
+    require x == 0 and not done
+    x = 1
+
+# Reset from Init (x=0) and from after Bump (x=1) reaches the same
+# mid-action state at the oneof. Each path must be checked from its own
+# start, so Bump then Reset fails.
+atomic action Reset:
+    require not done
+    done = True
+    x = 0
+    oneof:
+        y = 1
+        y = 2
+
+transition assertion NoDrop(before, after):
+    return not (before.x == 1 and after.x == 0)

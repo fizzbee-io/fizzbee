@@ -1,0 +1,18 @@
+Model checking tests/specs/transition-shared-step-threads/Shared.json
+configFileName: tests/specs/transition-shared-step-threads/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100 max_concurrent_actions:2 crash_on_yield:false} deadlock_detection:false
+Nodes: 32, queued: 0, elapsed: 5.897055ms
+Peak (new): queue=8 pendingActionStarts=3
+Time taken for model checking: 5.912725ms
+Writen graph dotfile: tests/specs/transition-shared-step-threads/out/run_2026-11-20_17-31-27/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/transition-shared-step-threads/out/run_2026-11-20_17-31-27/graph.dot -o graph.svg && open graph.svg
+Writen communication diagram dotfile: tests/specs/transition-shared-step-threads/out/run_2026-11-20_17-31-27/communication.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/transition-shared-step-threads/out/run_2026-11-20_17-31-27/communication.dot -o communication.svg && open communication.svg
+Valid Nodes: 32 Unique states: 24
+IsLive: true
+Time taken to check liveness: 1.17202ms
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/transition-shared-step-threads/out/run_2026-11-20_17-31-27

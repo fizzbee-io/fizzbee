@@ -85,6 +85,9 @@ message Block {
   SourceInfo source_info = 1;
   Flow flow = 2;
   repeated Statement stmts = 3;
+  // Names given to this block with the `name:` syntax. Queried with
+  // threads.inside("Role.Scope.name").
+  repeated string labels = 4;
 }
 
 message Statement {

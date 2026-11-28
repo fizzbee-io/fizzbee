@@ -1,0 +1,33 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+---
+
+# Both workers start Work and stop at the yield after the first statement.
+# From there, continuing Worker#0's thread or Worker#1's thread reaches the
+# same mid-action state at the oneof under symmetry, so the two thread
+# continuations of that yield point share the step. They have the same
+# starting yield point, so the transition assertion still sees every step.
+
+symmetric role Worker:
+    action Init:
+        self.done = False
+        self.v = 0
+
+    serial action Work:
+        require not self.done
+        self.done = True
+        oneof:
+            self.v = 1
+            self.v = 2
+
+action Init:
+    workers = bag()
+    for i in range(2):
+        workers.add(Worker())
+
+# Only a worker that has started gets a value, one worker per step.
+transition assertion OneValuePerStep(before, after):
+    valued = len([w for w in after.workers if w.v != 0]) - len([w for w in before.workers if w.v != 0])
+    return valued == 0 or valued == 1

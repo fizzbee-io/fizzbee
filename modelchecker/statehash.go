@@ -64,6 +64,10 @@ func (c *CallFrame) writeFrame(e *lib.StateEncoder) {
 	// two states that differ only in a paused call's argument hash alike.
 	e.WriteStringDict(c.vars)
 	e.WriteString(c.pc)
+	if c.pc == "" && c.joinBlock != "" {
+		// Only parked parallel joins write this, so other frames hash as before.
+		e.WriteString(c.joinBlock)
+	}
 	if c.obj != nil {
 		e.WriteString(c.obj.RefString())
 	} else {
