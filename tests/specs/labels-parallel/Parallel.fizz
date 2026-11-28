@@ -1,0 +1,55 @@
+---
+deadlock_detection: false
+options:
+  max_actions: 1
+---
+# A label ending in a parallel block. The branches finish in any order and
+# one branch takes two steps, so the thread must stay inside the label until
+# the last branch is done, whichever branch that is, and leave it in that
+# same step. Then is the statement after the label; Last has nothing after
+# the label, so the thread ends with it.
+
+import threads
+
+action Init:
+    then_steps = 0
+    then_done = False
+    last_steps = 0
+
+serial action Then:
+    region:
+        parallel:
+            serial:
+                atomic:
+                    then_steps += 1
+                atomic:
+                    then_steps += 1
+            atomic:
+                then_steps += 1
+    then_done = True
+
+serial action Last:
+    region:
+        parallel:
+            serial:
+                atomic:
+                    last_steps += 1
+                atomic:
+                    last_steps += 1
+            atomic:
+                last_steps += 1
+
+always assertion ThenInsideUntilLastBranch:
+    return threads.inside("Then.region") == (1 <= then_steps and then_steps <= 2)
+
+always assertion LastInsideUntilLastBranch:
+    return threads.inside("Last.region") == (1 <= last_steps and last_steps <= 2)
+
+# The thread is at `then_done = True`, outside the label, only once all
+# three branch steps have run.
+always assertion ThenOutsideBeforeDone:
+    return not (then_steps == 3 and not then_done) or (
+        threads.inside("Then") and not threads.inside("Then.region"))
+
+exists assertion ThenMidway:
+    return then_steps == 2 and threads.inside("Then.region")

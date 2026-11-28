@@ -1,0 +1,15 @@
+Model checking tests/specs/labels-union/Lock.json
+configFileName: tests/specs/labels-union/fizz.yaml
+fizz.yaml not found. Using default options
+StateSpaceOptions: options:{max_actions:100  max_concurrent_actions:2  crash_on_yield:false}  action_options:{key:"B"  value:{max_concurrent_actions:1}}  deadlock_detection:false
+Nodes: 16, queued: 0, elapsed: 1.564001ms
+Peak (new): queue=3 pendingActionStarts=3
+Time taken for model checking: 1.707942ms
+Writen graph dotfile: tests/specs/labels-union/out/run_2026-11-26_09-21-37/graph.dot
+To generate svg, run: 
+dot -Tsvg tests/specs/labels-union/out/run_2026-11-26_09-21-37/graph.dot -o graph.svg && open graph.svg
+Valid Nodes: 16 Unique states: 16
+IsLive: true
+Time taken to check liveness: 433.24µs
+PASSED: Model checker completed successfully
+Writen 1 node files and 1 link files to dir tests/specs/labels-union/out/run_2026-11-26_09-21-37

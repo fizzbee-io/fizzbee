@@ -1,0 +1,41 @@
+---
+deadlock_detection: false
+---
+# A crash removes threads, so their labels read as outside afterwards.
+# The shadow counters are ephemeral, so a role crash resets them to 0 too.
+# A thread crash (crash_on_yield) removes one thread but keeps the state, so
+# the counter can be ahead of the threads: never behind. Agrees checks that.
+
+import threads
+
+@state(ephemeral=['txn', 'pass_'])
+role Server:
+    action Init:
+        self.txn = 0
+        self.pass_ = 0
+        self.writes = 0
+
+    serial action Pass:
+        atomic:
+            require self.writes < 2 and self.pass_ < 2
+            self.pass_ += 1
+        txn:
+            atomic:
+                self.txn += 1
+            atomic:
+                self.writes += 1
+            atomic:
+                self.txn -= 1
+        atomic:
+            self.pass_ -= 1
+
+action Init:
+    servers = [Server() for i in range(2)]
+
+always assertion Agrees:
+    for s in servers:
+        if threads.count("Server.Pass.txn", s) > s.txn:
+            return False
+        if threads.count("Server.Pass", s) > s.pass_:
+            return False
+    return True

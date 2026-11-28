@@ -1,0 +1,56 @@
+---
+deadlock_detection: false
+options:
+  max_concurrent_actions: 2
+  crash_on_yield: false
+action_options:
+  B:
+    max_concurrent_actions: 1
+---
+# One lock guards two critical sections in different actions. A query over a
+# list of paths counts each thread once, so mutual exclusion across both is
+# one assertion. BUGGY makes B ignore the lock entirely. B runs one at a
+# time, so each label on its own never holds two threads; only the union
+# catches the bug.
+
+import threads
+
+BUGGY = True
+CS = ["A.cs1", "B.cs2"]
+
+action Init:
+    locked = False
+
+serial action A:
+    atomic:
+        require not locked
+        locked = True
+    cs1:
+        atomic:
+            pass
+        atomic:
+            locked = False
+
+serial action B:
+    atomic:
+        if not BUGGY:
+            require not locked
+            locked = True
+    cs2:
+        atomic:
+            pass
+        atomic:
+            if not BUGGY:
+                locked = False
+
+always assertion MutualExclusion:
+    return threads.count(CS) <= 1
+
+always assertion EachLabelAlone:
+    return threads.count("A.cs1") <= 1 and threads.count("B.cs2") <= 1
+
+exists assertion InsideCs1:
+    return threads.inside("A.cs1")
+
+exists assertion InsideCs2:
+    return threads.inside(["B.cs2"])

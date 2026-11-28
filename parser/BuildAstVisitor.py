@@ -886,6 +886,17 @@ class BuildAstVisitor(FizzParserVisitor):
         print("visitFlow_stmt block", block)
         return block
 
+    # Visit a parse tree produced by FizzParser#labeled_block_stmt.
+    # `txn:`. The flow is left unknown, so the block inherits
+    # the flow of its enclosing scope.
+    def visitLabeled_block_stmt(self, ctx:FizzParser.Labeled_block_stmtContext):
+        # Keep a lone nested block nested: its own flow (say atomic), or its
+        # own label, must not be replaced by this label's block.
+        block = self.visitSuite(ctx.indented_block(), unwrap=False)
+        block.flow = ast.Flow.FLOW_UNKNOWN  # a label always inherits the flow
+        block.labels.append(ctx.NAME().getText())
+        return block
+
     # Visit a parse tree produced by FizzParser#labeled_stmt.
     def visitLabeled_stmt(self, ctx:FizzParser.Labeled_stmtContext):
         print("\n\nvisitLabeled_stmt",ctx.__class__.__name__)
@@ -917,7 +928,14 @@ class BuildAstVisitor(FizzParserVisitor):
         raise Exception("visitLabeled_stmt childProto (unknown) type", childProto.__class__.__name__, dir(childProto), childProto)
 
     # Visit a parse tree produced by FizzParser#suite.
-    def visitSuite(self, ctx:FizzParser.SuiteContext):
+    def visitSuite(self, ctx, unwrap=True):
+        # A suite is a simple_stmt or an indented_block; read the block's
+        # statements directly. A labeled block passes its indented_block here.
+        # unwrap: a suite whose only statement is a block (say `atomic:`)
+        # returns that block itself, so `action A:` + `atomic:` is one block.
+        # A labeled block passes unwrap=False so its inner block stays nested.
+        if isinstance(ctx, FizzParser.SuiteContext) and ctx.indented_block() is not None:
+            ctx = ctx.indented_block()
         print("\n\nvisitSuite",ctx.__class__.__name__)
         print("visitSuite\n",ctx.getText())
         block = ast.Block(source_info=get_source_info(ctx))
@@ -952,7 +970,7 @@ class BuildAstVisitor(FizzParserVisitor):
                 print("visitSuite child (unknown) type",child.__class__.__name__, dir(child))
                 raise Exception("visitSuite child (unknown) type")
         print("visitSuite block", block)
-        if len(block.stmts) == 1 and block.stmts[0].block is not None and block.stmts[0].block.ByteSize() > 0:
+        if unwrap and len(block.stmts) == 1 and block.stmts[0].block is not None and block.stmts[0].block.ByteSize() > 0:
             print("visitSuite block.stmts[0].block", block.stmts[0].block, block.stmts[0].block.__class__.__name__)
             return block.stmts[0].block
         return block

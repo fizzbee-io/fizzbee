@@ -1,0 +1,95 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+action_options:
+  Server#.Pass:
+    max_concurrent_actions: 2
+---
+# Block labels checked against hand-kept shadow counters. Every place a
+# thread enters a labeled block, the first step adds 1 to a counter, and the
+# last step takes 1 away. The Agrees assertion checks, in every reachable
+# state, that threads.count and threads.inside give the same answer as the
+# counters. Covers: inner atomic steps, a loop body, break out of a label, a
+# return out of a label in a role func called from two actions, two threads
+# of the same action, nested labels, and a top-level action.
+
+import threads
+
+NUM_SERVERS = 2
+
+role Server:
+    action Init:
+        self.txn = 0     # threads inside Pass.txn
+        self.work = 0    # threads inside Work.work_body
+        self.pass_ = 0   # threads running Pass
+
+    serial action Pass:
+        atomic:
+            self.pass_ += 1
+        for i in range(2):
+            txn:
+                atomic:
+                    self.txn += 1
+                atomic:
+                    stop = oneof [True, False]
+                    self.txn -= 1
+            if stop:
+                break
+        atomic:
+            self.pass_ -= 1
+
+    serial action Other:
+        self.Work()
+
+    serial func Work():
+        work_body:
+            atomic:
+                self.work += 1
+            atomic:
+                done = oneof [True, False]
+                if done:
+                    self.work -= 1
+                    return
+            atomic:
+                self.work -= 1
+
+    atomic action Poke:
+        # The query from inside an action of the same role.
+        require not threads.inside("Server.Pass.txn", self)
+        require not threads.inside("Server.Other", self)
+        self.Work()
+
+
+action Init:
+    servers = [Server() for i in range(NUM_SERVERS)]
+    global_count = 0
+
+serial action Global:
+    outer:
+        inner:
+            atomic:
+                global_count += 1
+            atomic:
+                global_count -= 1
+
+
+always assertion Agrees:
+    for s in servers:
+        if threads.count("Server.Pass.txn", s) != s.txn:
+            return False
+        if threads.inside("Server.Pass.txn", s) != (s.txn > 0):
+            return False
+        if threads.count("Server.Work.work_body", s) != s.work:
+            return False
+        if threads.count("Server.Pass", s) != s.pass_:
+            return False
+    if threads.count("Server.Pass.txn") != sum([s.txn for s in servers]):
+        return False
+    if threads.count("Global.outer") != global_count:
+        return False
+    if threads.count("Global.inner") != global_count:
+        return False
+    if threads.inside("Global") != (global_count > 0):
+        return False
+    return True

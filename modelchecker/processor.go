@@ -721,6 +721,7 @@ func (p *Process) createSymmetryContext() *lib.SymmetryContext {
 	ctx.FizzCall = p.fizzCall
 	ctx.Roles = &p.Roles
 	ctx.Channels = p.Channels
+	ctx.Process = p
 	return ctx
 }
 
@@ -1878,6 +1879,9 @@ func (p *Processor) InitializeNode() (*Node, *Node, error) {
 
 // Start the model checker
 func (p *Processor) Start() (init *Node, failedNode *Node, err error) {
+	if err := checkLabels(p.Files); err != nil {
+		return nil, nil, err
+	}
 	if p.simulation {
 		return p.StartSimulation()
 	}

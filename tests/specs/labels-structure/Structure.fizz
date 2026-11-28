@@ -1,0 +1,97 @@
+---
+deadlock_detection: false
+options:
+  crash_on_yield: false
+  max_concurrent_actions: 1
+---
+# Labels whose last statement is a nested block, so a thread can pause on an
+# end-of-block marker inside the label. Each label has a shadow counter, set
+# by its first step and cleared by its last. Agrees checks them against
+# threads.count in every reachable state.
+
+import threads
+
+action Init:
+    # Each *_count is the shadow counter for the label of the same name.
+    if_last_count = 0
+    loop_last_count = 0
+    in_loop_count = 0
+    oneof_inside_count = 0
+    in_oneof_count = 0
+    oneof_in_last_count = 0
+
+serial action IfLast:
+    # The label ends with an if whose branch is an atomic block.
+    if_last:
+        atomic:
+            if_last_count += 1
+        if if_last_count > 0:
+            atomic:
+                if_last_count -= 1
+        else:
+            atomic:
+                if_last_count -= 1
+    pass
+
+serial action LoopLast:
+    # The label ends with a loop. Each iteration ends on the loop body's end.
+    loop_last:
+        atomic:
+            loop_last_count += 1
+        for i in range(2):
+            atomic:
+                loop_last_count += 0
+        atomic:
+            loop_last_count -= 1
+
+serial action LabelInLoop:
+    # The label is the loop body; it is outside between iterations.
+    for i in range(2):
+        in_loop:
+            atomic:
+                in_loop_count += 1
+            atomic:
+                in_loop_count -= 1
+
+serial action OneofInside:
+    oneof_inside:
+        atomic:
+            oneof_inside_count += 1
+        oneof:
+            atomic:
+                oneof_inside_count -= 1
+            serial:
+                atomic:
+                    oneof_inside_count += 0
+                atomic:
+                    oneof_inside_count -= 1
+
+serial action LabelInOneof:
+    # The label inherits oneof from the enclosing block, so it runs exactly
+    # one of its two statements.
+    oneof:
+        in_oneof:
+            atomic:
+                in_oneof_count += 1
+                in_oneof_count -= 1
+            atomic:
+                in_oneof_count += 1
+                in_oneof_count -= 1
+        atomic:
+            in_oneof_count += 0
+
+serial action OneofInLast:
+    oneof_in_last:
+        atomic:
+            oneof_in_last_count += 1
+        oneof x in [1, 2]:
+            atomic:
+                oneof_in_last_count -= 1
+
+always assertion Agrees:
+    return (threads.count("IfLast.if_last") == if_last_count
+        and threads.count("LoopLast.loop_last") == loop_last_count
+        and threads.count("LabelInLoop.in_loop") == in_loop_count
+        and threads.count("OneofInside.oneof_inside") == oneof_inside_count
+        and threads.count("LabelInOneof.in_oneof") == in_oneof_count
+        and threads.count("OneofInLast.oneof_in_last") == oneof_in_last_count)
