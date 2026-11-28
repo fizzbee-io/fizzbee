@@ -38,6 +38,11 @@ type Evaluator struct {
 	// use by CodecContext.
 	codecOnce sync.Once
 	codecCtx  *lib.CodecContext
+
+	// labels is the threads module's label index, made on first use by
+	// getLabelIndex.
+	labelsOnce sync.Once
+	labels     *labelIndex
 }
 
 func NewEvaluator(options *syntax.FileOptions, thread *starlark.Thread) *Evaluator {

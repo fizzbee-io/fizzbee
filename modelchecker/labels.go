@@ -27,11 +27,9 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 
 	ast "fizz/proto"
 	"github.com/fizzbee-io/fizzbee/lib"
@@ -61,34 +59,25 @@ type labelTarget struct {
 // actions with the same name) is kept as ambiguous and is an error only if
 // a query uses that path.
 type labelIndex struct {
-	files     []*ast.File // the files it was built from
 	targets   map[string]*labelTarget
 	ambiguous map[string]bool
 	err       error
 }
 
-// labelIndexCache holds the index of each loaded spec, keyed by its first
-// file. Every process of a run shares one Files slice, so the lookup is a
-// pointer compare; an entry is used only if it was built from the same
-// files, element by element.
-var labelIndexCache sync.Map // *ast.File (files[0]) -> *labelIndex
-
-func getLabelIndex(files []*ast.File) *labelIndex {
-	if len(files) == 0 {
-		return &labelIndex{targets: map[string]*labelTarget{}, ambiguous: map[string]bool{}}
+// getLabelIndex returns the run's label index. It is built on first use and
+// kept on the Evaluator, which every process of a run shares (forks copy
+// the pointer), so it lives exactly as long as the run.
+func getLabelIndex(p *Process) *labelIndex {
+	e := p.Evaluator
+	if e == nil {
+		return buildLabelIndex(p.Files)
 	}
-	if v, ok := labelIndexCache.Load(files[0]); ok {
-		if idx := v.(*labelIndex); slices.Equal(idx.files, files) {
-			return idx
-		}
-	}
-	idx := buildLabelIndex(files)
-	labelIndexCache.Store(files[0], idx)
-	return idx
+	e.labelsOnce.Do(func() { e.labels = buildLabelIndex(p.Files) })
+	return e.labels
 }
 
 func buildLabelIndex(files []*ast.File) *labelIndex {
-	idx := &labelIndex{files: slices.Clone(files), targets: map[string]*labelTarget{}, ambiguous: map[string]bool{}}
+	idx := &labelIndex{targets: map[string]*labelTarget{}, ambiguous: map[string]bool{}}
 	put := func(key string, lt *labelTarget) {
 		old, clash := idx.targets[key]
 		if !clash {
@@ -465,7 +454,7 @@ func unpackPathRole(p *Process, b *starlark.Builtin, args starlark.Tuple, kwargs
 		}
 		role = r
 	}
-	idx := getLabelIndex(p.Files)
+	idx := getLabelIndex(p)
 	lts := make(labelTargets, 0, len(paths))
 	for _, path := range paths {
 		lt, err := idx.resolve(path)
@@ -619,5 +608,5 @@ func describeScopeRole(role string) string {
 // used twice in one action or function, or a labeled path that also names
 // something else.
 func checkLabels(files []*ast.File) error {
-	return getLabelIndex(files).err
+	return buildLabelIndex(files).err
 }

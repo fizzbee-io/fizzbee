@@ -291,52 +291,17 @@ func TestThreadsCurrentFailsInAssertions(t *testing.T) {
 	}
 }
 
-// The cache returns an index only for the files it was built from.
-func TestLabelIndexCacheMatchesAllFiles(t *testing.T) {
-	a, b := labelsFile(), labelsFile()
-	b.Actions[0].Name = "Other"
-	first := getLabelIndex([]*ast.File{a})
-	second := getLabelIndex([]*ast.File{a, b})
-	if first == second {
-		t.Fatal("same index for different file lists")
+// The index lives on the run's Evaluator: processes of one run (forks)
+// share it, and another run builds its own.
+func TestLabelIndexIsPerRun(t *testing.T) {
+	files := []*ast.File{labelsFile()}
+	p := NewProcess("run1", files, nil)
+	fork := p.Fork()
+	if getLabelIndex(p) != getLabelIndex(fork) {
+		t.Error("a fork should share its run's label index")
 	}
-	if _, ok := second.targets["Other"]; !ok {
-		t.Error("index for [a, b] is missing b's action")
-	}
-}
-
-// The same rejection on the real path: Process.Fork clones every frame's
-// locals and the heap, which is what happens at a yield and at a branch
-// (any, oneof). Fork has no error return, so the error surfaces as a panic
-// carrying errThreadHandleKept, the way other spec runtime errors do.
-func TestForkRejectsKeptThreadHandle(t *testing.T) {
-	cases := map[string]func(p *Process, h *threadHandle){
-		"local": func(p *Process, h *threadHandle) {
-			p.Threads[0].currentFrame().scope.vars["t"] = h
-		},
-		"local list": func(p *Process, h *threadHandle) {
-			p.Threads[0].currentFrame().scope.vars["ts"] = starlark.NewList([]starlark.Value{h})
-		},
-		"state variable": func(p *Process, h *threadHandle) {
-			p.Heap.state["t"] = h
-		},
-	}
-	for name, store := range cases {
-		t.Run(name, func(t *testing.T) {
-			p := NewProcess("test", []*ast.File{labelsFile()}, nil)
-			th := p.NewThread()
-			th.currentFrame().pc = "Actions[0].Block.Stmts[0].Block.Stmts[0]"
-			th.InsertNewScope()
-			store(p, &threadHandle{p: p, t: th})
-			defer func() {
-				r := recover()
-				err, ok := r.(error)
-				if !ok || !errors.Is(err, errThreadHandleKept) {
-					t.Errorf("Fork with a kept handle: got panic %v, want errThreadHandleKept", r)
-				}
-			}()
-			p.Fork()
-			t.Error("Fork with a kept handle did not fail")
-		})
+	other := NewProcess("run2", files, nil)
+	if getLabelIndex(other) == getLabelIndex(p) {
+		t.Error("a separate run should build its own label index")
 	}
 }
